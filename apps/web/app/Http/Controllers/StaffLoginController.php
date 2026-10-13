@@ -24,6 +24,7 @@ class StaffLoginController extends Controller
         if (! $staff || ! Hash::check($input['password'], $staff->password)) {
             return back()->withErrors(['identifier' => 'Akun atau password tidak sesuai.']);
         }
+        Auth::guard('web')->logout();
         Auth::guard('staff')->login($staff);
         $request->session()->regenerate();
 

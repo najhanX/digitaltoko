@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'nik', 'address', 'ktp_path'])]
 class User extends Authenticatable
 {
     protected $attributes = ['role' => 'owner'];
@@ -28,6 +28,12 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'reviewed_at' => 'datetime',
+            'document_purge_at' => 'datetime',
+            'nik' => 'encrypted',
+            'address' => 'encrypted',
             'password' => 'hashed',
         ];
     }

@@ -1,0 +1,119 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Store;
+use App\Models\StoreStaff;
+use App\Models\User;
+use App\Support\PlatformHost;
+use App\Support\StaffPermissions;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class StoreManagementController extends Controller
+{
+    private function owner(Request $request): User
+    {
+        abort_unless($request->user()?->role === 'owner', 403);
+
+        return $request->user();
+    }
+
+    private function owned(Request $request, Store $store): User
+    {
+        $owner = $this->owner($request);
+        abort_unless($store->owner_id === $owner->id, 404);
+        abort_unless($owner->verification_status === 'approved', 403);
+
+        return $owner;
+    }
+
+    public function create(Request $request): Response
+    {
+        $owner = $this->owner($request);
+        abort_unless($owner->verification_status === 'approved', 403);
+
+        return Inertia::render('Owner/CreateStore', ['platformDomain' => config('platform.domain')]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $owner = $this->owner($request);
+        $request->merge(['slug' => strtolower(trim((string) $request->input('slug')))]);
+        $data = $request->validate(['name' => 'required|string|max:100',
+            'slug' => ['required', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::notIn(config('platform.reserved_slugs')), Rule::unique('stores', 'slug')],
+            'category' => 'required|in:bot,web,full', 'plan' => 'required|in:orbit,space,galaxy', 'template' => 'required|in:aurora,nebula,atlas']);
+        $store = DB::transaction(function () use ($owner, $data) {
+            $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->verification_status === 'approved' && $locked->email_verified_at && $locked->phone_verified_at, 403);
+
+            return Store::create([...$data, 'owner_id' => $owner->id, 'status' => 'draft', 'expires_at' => null, 'is_trial' => false]);
+        });
+
+        return redirect('/owner/stores/'.$store->id.'/manage')->with('success', 'Toko draft dibuat. Langganan belum dimulai.');
+    }
+
+    public function show(Request $request, Store $store): Response
+    {
+        $this->owned($request, $store);
+
+        return Inertia::render('Owner/ManageStore', ['store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status']),
+            'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => StoreStaff::where('store_id', $store->id)->orderBy('name')
+                ->get()->map(fn ($staff) => $staff->only(['id', 'name', 'username', 'email', 'permissions', 'active'])),
+            'permissionLabels' => StaffPermissions::labels()]);
+    }
+
+    public function update(Request $request, Store $store): RedirectResponse
+    {
+        $this->owned($request, $store);
+        $data = $request->validate(['name' => 'required|string|max:100', 'template' => 'required|in:aurora,nebula,atlas']);
+        $store->update($data);
+
+        return back()->with('success', 'Pengaturan toko tersimpan.');
+    }
+
+    public function saveStaff(Request $request, Store $store, ?StoreStaff $staff = null): RedirectResponse
+    {
+        $this->owned($request, $store);
+        abort_if($staff && $staff->store_id !== $store->id, 404);
+        $request->merge(['email' => strtolower(trim((string) $request->input('email'))), 'username' => trim((string) $request->input('username'))]);
+        $data = $request->validate([
+            'name' => 'required|string|max:100',
+            'username' => ['required', 'regex:/^[a-zA-Z0-9_.-]{3,40}$/', Rule::unique('store_staff')->where('store_id', $store->id)->ignore($staff?->id)],
+            'email' => ['required', 'email:rfc', 'max:255', Rule::unique('store_staff')->where('store_id', $store->id)->ignore($staff?->id)],
+            'password' => [$staff ? 'nullable' : 'required', 'string', 'min:12', 'max:128'],
+            'active' => 'required|boolean', 'permissions' => 'present|array',
+            'permissions.*' => ['string', 'distinct', Rule::in(array_keys(StaffPermissions::labels()))],
+        ]);
+        DB::transaction(function () use ($store, $staff, $data) {
+            Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            if (! $staff && StoreStaff::where('store_id', $store->id)->count() >= 5) {
+                throw ValidationException::withMessages(['name' => 'Maksimal 5 akun staff per toko.']);
+            }
+            if (empty($data['password'])) {
+                unset($data['password']);
+            }
+            if ($staff) {
+                $staff->update($data);
+            } else {
+                StoreStaff::create([...$data, 'store_id' => $store->id]);
+            }
+        });
+
+        return back()->with('success', 'Akun staff tersimpan hanya di toko ini.');
+    }
+
+    public function deleteStaff(Request $request, Store $store, StoreStaff $staff): RedirectResponse
+    {
+        $this->owned($request, $store);
+        abort_unless($staff->store_id === $store->id, 404);
+        $staff->delete();
+
+        return back()->with('success', 'Akun staff dihapus dari toko ini.');
+    }
+}

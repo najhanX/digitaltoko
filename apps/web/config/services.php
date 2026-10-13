@@ -2,6 +2,11 @@
 
 return [
 
+    'hanshop' => [
+        'url' => env('HANSHOP_API_URL'),
+        'token' => env('HANSHOP_IDENTITY_TOKEN'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

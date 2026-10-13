@@ -12,6 +12,6 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return [...parent::share($request), 'brand' => ['name' => 'DigitalToko'],
-            'flash' => ['error' => fn () => $request->session()->get('error')]];
+            'flash' => ['error' => fn () => $request->session()->get('error'), 'success' => fn () => $request->session()->get('success')]];
     }
 }

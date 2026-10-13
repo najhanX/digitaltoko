@@ -24,7 +24,7 @@ Pada APP_ENV=local, localhost dan 127.0.0.1 sama-sama diterima untuk root/panel 
 
 ## Belum tersedia
 
-OTP owner/pembeli, pendaftaran/saldo Hanshop, KTP, permission CRUD staff, subscription/trial/billing, katalog/stok/checkout, pembayaran Midtrans/QRIS, otomatisasi domain, provisioning worker, scheduler purge/renewal, dan UI pairing belum selesai. Role-protected panel belum mempunyai login admin/owner yang dipakai operator; login contoh tidak dibuka ke produksi. DB foundation bukan schema bisnis final.
+OTP owner dan pendaftaran Hanshop, verifikasi email dan KTP, toko draft, serta CRUD staff tersedia. Admin memakai login password lokal di /admin/login; owner memakai OTP di /login. Pengiriman sungguhan membutuhkan bridge Hanshop dan SMTP. OTP pembeli, saldo pemasok, subscription/trial/billing, katalog/stok/checkout, pembayaran Midtrans/QRIS, otomatisasi domain, provisioning worker, purge toko/renewal, dan UI pairing masih tahap berikutnya. DB onboarding bukan schema bisnis final.
 
 SQLite hanya untuk development/tests. Deployment VPS memakai database aplikasi MySQL sendiri; jangan gunakan database Hanshop sebagai DB Laravel. Integrasi Hanshop server-to-server akan dibuat kemudian.
 

@@ -17,6 +17,6 @@ Platform penyewaan bot WhatsApp untuk toko produk digital. Setiap toko memiliki 
 
 Ikuti apps/web/README.md dan apps/bot/README.md. Preview lokal http://localhost:8000/preview/owner hanya local+flag preview, bukan autentikasi. Migrasi SQLite lokal dan frontend build telah dijalankan. Bot default WA_ENABLED=false, tanpa token/session live.
 
-Fondasi tersedia, belum siap layanan bisnis: OTP/pendaftaran Hanshop, KTP, billing/trial, katalog/stok/checkout, gateway, provisioning otomatis, scheduler retensi, dan UI pairing belum selesai. Staff password/guard dan domain/role boundary diuji; CRUD staff belum ada.
+Onboarding owner tersedia: login/daftar OTP melalui bridge identitas Hanshop, verifikasi email, pengajuan dan review KTP manual, toko draft, serta CRUD staff dan permission per toko. Billing/trial, katalog/stok/checkout, gateway, provisioning otomatis, retensi toko, dan UI pairing belum selesai. Pengiriman OTP nyata memerlukan konfigurasi bridge Hanshop dan SMTP; kontrak serta alur lokal telah diuji.
 
 Domain configurable melalui APP_URL/PLATFORM_DOMAIN; domain aliases mendukung transisi, custom domain verified dipetakan per toko. DNS/TLS, sender email, callback provider dan WEB_BASE_URL bot tetap perlu dikonfigurasi. Belum ada perubahan VPS/DNS produksi. Panduan: docs/DEPLOYMENT.md, contoh Nginx/worker di deploy/.
