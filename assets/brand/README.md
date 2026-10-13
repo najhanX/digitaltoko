@@ -1,0 +1,7 @@
+# DigitalToko logo v1
+
+Generated with the built-in image_gen tool. Raster PNG with a transparent background; not an SVG/vector source. Concept: a geometric storefront combined with a D-shaped doorway, paired with the DigitalToko wordmark. Dark ink treatment intended for a light background.
+
+## Final generation prompt
+
+Use case: logo-brand. Create one polished simple elegant logo for the Indonesian digital commerce SaaS brand DigitalToko, domain digitaltoko.com. Platform provides online topup storefronts, WhatsApp bots, and digital product integrations to tenant shops. A single horizontal logo lockup with compact distinctive geometric icon at left and exact wordmark "DigitalToko" at right. Icon subtly combines a minimal storefront roof and a D-shaped open doorway in one clear abstract shape, no clutter. Sophisticated flat monochrome dark ink design, precise geometric construction, generous negative space, professional modern sans-serif typography, balanced optical spacing, medium weight, exceptionally legible. True transparent background, no white backdrop. Center the single logo with ample padding in a wide canvas. Solid flat fills, vector-like sharp edges suitable for later vector tracing. Do not include domain suffix, slogan, extra text, alternative designs, brand board, mockup, objects, shadows, gradients, glows, 3D, watermarks, or decorative circuit lines. Text must read exactly DigitalToko.

@@ -1,0 +1,23 @@
+/apps/web/.env
+/apps/web/vendor/
+/apps/web/node_modules/
+/apps/web/public/build/
+/apps/web/public/hot
+/apps/web/database/*.sqlite*
+/apps/web/storage/*.key
+/apps/web/storage/logs/*
+/apps/bot/.env
+/apps/bot/node_modules/
+/apps/bot/dist/
+/apps/bot/sessions/
+
+# Local credentials; keep only configuration templates in Git.
+**/.env*
+!**/.env.example
+!**/.env.vps.example
+**/auth.json
+*.pem
+*.key
+*.p12
+*.pfx
+Thumbs.db

@@ -1,0 +1,7 @@
+# DigitalToko logo v3
+
+Edited using the built-in image_gen tool with v2 as reference. D and T form a connected monogram, retaining the digital pixel accent. Transparent raster PNG for light backgrounds. Previous versions preserved.
+
+## Final prompt
+
+Use case: logo-brand. Edit the supplied DigitalToko v2 logo. The user likes this icon and requests that initials D and T join into one connected monogram. Change ONLY the icon at the left; preserve the exact DigitalToko wordmark, its typography, scale, placement, dark ink color, horizontal layout, transparent background and padding. Redesign the D symbol as an elegant fused DT monogram using shared strokes: retain the strong vertical left stem and rounded outer D contour; integrate a clearly readable uppercase T into the inner counter, with a horizontal T crossbar that connects to the D structure and a vertical T stem below it. D and T must appear intentionally interlocked as ONE cohesive emblem rather than two letters side by side. Keep the small detached square pixel at the upper-right as the digital accent, proportionate and secondary. Both initials should be recognizable at a glance; generous inner negative space, uniform substantial strokes, optical balance and simple geometric construction. Flat solid monochrome, no texture or gradients. No storefront awning, bag, play triangle, circuit traces, ornament, extra symbols, slogan, extra text, mockup or shadow. One logo only, true transparent background. Premium minimal SaaS identity.
