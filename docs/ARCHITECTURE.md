@@ -16,21 +16,27 @@ Panel admin/owner/staff dan storefront memakai satu Laravel + Inertia React di a
 - Owner mengelola toko yang menjadi hak aksesnya: koneksi WhatsApp, produk, harga, stok, pelanggan, transaksi, dan konfigurasi pembayaran.
 - Pelanggan bertransaksi melalui WhatsApp toko tanpa memiliki akses admin panel.
 
-## Paket awal
+## Paket publik (15 Oktober 2026)
 
-| Kode internal sementara | Nama publik | Digiflazz milik toko | Stok premium milik toko | Integrasi API Hanshop |
-| --- | --- | --- | --- | --- |
-| PPOB | Orbit | Ya | Tidak | Ya |
-| PREMIUM | Space | Tidak | Ya | Ya |
-| COMBO | Galaxy | Ya | Ya | Ya |
+| Urutan | Paket | Kanal | Sumber sendiri |
+| --- | --- | --- | --- |
+| 1 | Mercury | Bot WhatsApp | Stok premium |
+| 2 | Venus | Bot WhatsApp | Digiflazz |
+| 3 | Terra | Web toko | Stok premium |
+| 4 | Mars | Web toko | Digiflazz |
+| 5 | Jupiter | Bot WhatsApp | Stok premium + Digiflazz |
+| 6 | Saturn | Web toko | Stok premium + Digiflazz |
+| 7 | Uranus | Bot + Web | Stok premium |
+| 8 | Neptune | Bot + Web | Digiflazz |
+| 9 | Andromeda | Bot + Web | Stok premium + Digiflazz |
 
-Nama publik Orbit, Space, dan Galaxy sudah dipilih pengguna. Kode di atas hanya penanda desain internal, bukan nama paket yang ditampilkan.
+Semua paket aktif termasuk integrasi API Hanshop. Definisi nama/rincian bersumber dari apps/web/resources/js/packageCatalog.json, digunakan frontend dan config/package_catalog.php. Kode sumber internal orbit/space/galaxy tetap berarti Digiflazz/stok/keduanya, dikombinasikan dengan kategori bot/web/full; nama publik kini unik per kombinasi sehingga hak langganan lama tetap sesuai snapshot.
 
 ## Web toko untuk penyewa
 
-Web toko publik berbeda dari panel tetapi memakai Laravel/Inertia React yang sama, di apps/web/resources/js/pages/Storefront. apps/storefront hanya catatan, bukan runtime kedua. Template awal Minimal/Promo/Kategori tersedia, katalog/checkout belum terhubung.
+Web toko publik berbeda dari panel tetapi memakai Laravel/Inertia React yang sama, di apps/web/resources/js/pages/Storefront. apps/storefront hanya catatan, bukan runtime kedua. Tiga template utuh Aurora/Nebula/Atlas memakai katalog nyata yang sama; checkout pelanggan merupakan tahap berikutnya.
 
-Pisahkan hak sumber (`own_digiflazz`, `own_premium_stock`, `hanshop_api`) dari hak kanal (`whatsapp_bot`, `web_storefront`) dan domain (`custom_domain`). Pengguna sudah menetapkan tiga kategori sewa: Web Topup saja, Bot WhatsApp saja, dan Paket Lengkap (Web Topup + Bot WhatsApp). Masing-masing kategori dapat memakai Orbit, Space, atau Galaxy, sehingga terdapat sembilan kombinasi. Semua kategori memiliki panel pengelolaan. Harga, durasi, limit, dan nama publik kategori selain deskripsi fungsinya belum ditetapkan.
+Pisahkan hak sumber (`own_digiflazz`, `own_premium_stock`, `hanshop_api`) dari hak kanal (`whatsapp_bot`, `web_storefront`) dan domain (`custom_domain`). Pengguna sudah menetapkan tiga kategori sewa: Web Topup saja, Bot WhatsApp saja, dan Paket Lengkap (Web Topup + Bot WhatsApp). Sembilan kombinasi mempunyai nama unik Mercury sampai Andromeda seperti tabel di atas. Semua kategori memiliki panel pengelolaan. Harga, durasi, limit, dan nama publik kategori selain deskripsi fungsinya belum ditetapkan.
 
 Katalog, harga, saldo pelanggan, persediaan, dan pesanan menggunakan sumber kebenaran backend yang sama untuk web dan WhatsApp. Satu stok tidak boleh terjual dua kali lewat kanal berbeda. Identitas pelanggan web dan WhatsApp hanya digabung setelah kepemilikan nomor diverifikasi, bukan karena pengunjung memasukkan nomor yang sama.
 
@@ -38,7 +44,7 @@ Tema, logo, warna, banner, dan domain toko adalah konfigurasi tenant; bukan sali
 
 Rancangan domain dan onboarding ada di `docs/DOMAINS.md`. Nama domain dalam contoh hanyalah placeholder; belum ada pembelian, konfigurasi DNS, hosting, atau penerbitan SSL.
 
-Harga/durasi admin. Tiap toko satu nomor WA, lima staff lokal, satu subdomain tetap dan satu custom domain gratis. Jumlah toko owner tanpa batas; tiap toko sewa sendiri. Trial Bot WA Galaxy tujuh hari sekali per owner, langsung berhenti tanpa grace; retensi/hold tetap berlaku. Konversi paid sebelum habis langsung mulai tanpa tambah sisa trial. Nilai harga/durasi admin belum diisi.
+Harga/durasi admin. Tiap toko satu nomor WA, lima staff lokal, satu subdomain tetap dan satu custom domain gratis. Jumlah toko owner tanpa batas; tiap toko sewa sendiri. Trial Bot WA Jupiter tujuh hari sekali per owner, langsung berhenti tanpa grace; retensi/hold tetap berlaku. Konversi paid sebelum habis langsung mulai tanpa tambah sisa trial. Nilai harga/durasi admin belum diisi.
 
 Paket memiliki capability sumber sendiri `own_digiflazz` dan `own_premium_stock`, bukan build bot yang berbeda. Akses `hanshop_api` tersedia pada setiap paket aktif. Pembatasan sumber sendiri tidak membatasi jenis produk yang dapat ditarik dari Hanshop; katalog yang tersedia mengikuti akses partner Hanshop. Langganan menyimpan versi paket atau snapshot capability dan limit; perubahan definisi paket tidak diam-diam mengubah hak pelanggan lama.
 

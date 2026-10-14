@@ -13,8 +13,8 @@ import {
   createCredentialSaver,
   createCredentialUpdateHandler,
 } from "./utils/credentialPersistence.js";
-import { resolveWaWebVersion, getRejectedConnectionDelay } from "./utils/waVersion.js";
-import { createPairing, linkedPhone, pairingBrowser, clearIncompletePairingState, type BotState } from "./utils/pairing.js";
+import { resolveWaWebVersion, getConnectionRestartDelay } from "./utils/waVersion.js";
+import { createPairing, linkedPhone, pairingBrowser, clearIncompletePairingState, hasPairedIdentity, type BotState } from "./utils/pairing.js";
 import { withOperationTimeout } from "./utils/operationTimeout.js";
 
 const config = loadConfig();
@@ -77,7 +77,7 @@ async function startSocket() {
       await save();
       logger.info({store_id: config.storeId}, "State pairing yang belum selesai dipulihkan.");
     }
-    if (auth.creds.registered && config.phone && linkedPhone(auth.creds.me) !== config.phone) {
+    if (hasPairedIdentity(auth.creds) && config.phone && linkedPhone(auth.creds.me) !== config.phone) {
       halt = true;
       await report({status: "ERROR", error: "PHONE_MISMATCH"});
       return;
@@ -95,7 +95,9 @@ async function startSocket() {
       syncFullHistory: false,
     });
     socket = sock;
+    let socketClosed = false;
     const fail = async (error: string) => {
+      if (socket !== sock || stopping || halt) return;
       halt = true;
       pairing.close();
       clearTimeout(pairingTimer);
@@ -118,7 +120,7 @@ async function startSocket() {
         logger.warn({store_id: config.storeId, method: config.method, ...diagnostic}, "Permintaan pairing gagal.");
         await fail("PAIRING_FAILED");
       }});
-    if (!auth.creds.registered) {
+    if (!hasPairedIdentity(auth.creds)) {
       clearTimeout(pairingTimer);
       pairingTimer = setTimeout(() => {
         if (socket !== sock || state.status === "CONNECTED") return;
@@ -134,7 +136,13 @@ async function startSocket() {
     );
     sock.ev.on("connection.update", (update) => {
       void (async () => {
-      if (socket !== sock || stopping || halt || paused) return;
+      if (socket !== sock || socketClosed || stopping || halt || paused) return;
+      if (update.isNewLogin) {
+        pairing.close();
+        clearTimeout(pairingTimer);
+        logger.info({store_id: config.storeId}, "Identitas WhatsApp diterima; menuntaskan penautan.");
+        await report({status: "CONNECTING"});
+      }
       if (update.connection === "open") {
         pairing.close();
         clearTimeout(pairingTimer);
@@ -146,23 +154,31 @@ async function startSocket() {
           return;
         }
         failures = 0;
+        logger.info({store_id: config.storeId}, "Koneksi WhatsApp berhasil.");
         await report({ status: "CONNECTED", ...(phone ? {phone} : {}) });
       }
       if (update.connection === "close") {
+        socketClosed = true;
         pairing.close();
         clearTimeout(pairingTimer);
         const code = (update.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output
           ?.statusCode;
+        logger.info({store_id: config.storeId, status_code: code, paired_identity: hasPairedIdentity(auth.creds)}, "Koneksi WhatsApp ditutup.");
         if (code === DisconnectReason.loggedOut) {halt = true;await report({status: "LOGGED_OUT"});return;}
-        await report({ status: "DISCONNECTED" });
+        try { await save(); }
+        catch { await fail("CREDENTIAL_FAILED"); return; }
+        if (socket !== sock || stopping || halt || paused) return;
+        await report({ status: code === DisconnectReason.restartRequired ? "CONNECTING" : "DISCONNECTED" });
         if (stopping || halt) return;
         if (++failures > 8) {await fail("CONNECTION_FAILED");return;}
         clearTimeout(reconnect);
+        const delay = getConnectionRestartDelay(code, failures);
+        logger.info({store_id: config.storeId, status_code: code, delay_ms: delay}, "Menjadwalkan koneksi ulang WhatsApp.");
         reconnect = setTimeout(() => {
           void startSocket().catch(() => fail("CONNECTION_FAILED"));
-        }, getRejectedConnectionDelay(failures));
+        }, delay);
       }
-      else await pairing.update(update, auth.creds.registered);
+      else await pairing.update(update, hasPairedIdentity(auth.creds));
       })().catch(() => fail("CONNECTION_FAILED"));
     });
     sock.ev.on("messages.upsert", async (batch) => {

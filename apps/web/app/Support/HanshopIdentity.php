@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Services\SupplierFailure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
@@ -16,7 +17,11 @@ class HanshopIdentity
 
     public function call(string $path, array $data): array
     {
+        $supplier = str_starts_with($path, 'supplier/');
         if (! $this->ready()) {
+            if ($supplier) {
+                throw new SupplierFailure('Koneksi Hanshop belum dikonfigurasi. Administrator perlu mengatur URL dan token integrasi Hanshop.');
+            }
             throw ValidationException::withMessages(['identifier' => 'Koneksi akun Hanshop belum dikonfigurasi.']);
         }
         try {
@@ -24,13 +29,30 @@ class HanshopIdentity
                 ->connectTimeout(5)->timeout(30)
                 ->post(rtrim(config('services.hanshop.url'), '/').'/internal/digitaltoko/'.$path, $data);
         } catch (ConnectionException $exception) {
+            if ($supplier) {
+                throw new SupplierFailure('API Hanshop tidak dapat dihubungi. Pastikan server API Hanshop berjalan dan URL koneksinya benar.');
+            }
             throw ValidationException::withMessages(['identifier' => 'Hanshop belum dapat dihubungi. Silakan coba kembali.']);
         }
         if (! $response->successful() || $response->json('status') !== 'SUCCESS') {
+            if ($supplier) {
+                $status = $response->status();
+                $message = match (true) {
+                    $status === 429 => 'Hanshop sedang membatasi permintaan.',
+                    in_array($status, [401, 403], true) => 'Token integrasi Hanshop ditolak. Administrator perlu menyamakan token pada web dan API Hanshop.',
+                    $status === 404 => 'Endpoint pemasok Hanshop belum tersedia. Jalankan API Hanshop dengan source terbaru.',
+                    $status >= 500 => 'Layanan API Hanshop sedang bermasalah. Periksa layanan dan konfigurasi API Hanshop.',
+                    default => 'Pembacaan akun Hanshop ditolak. Periksa tautan akun owner dan masa aktif toko.',
+                };
+                throw new SupplierFailure($message, rateLimited: $status === 429);
+            }
             throw ValidationException::withMessages(['identifier' => 'Permintaan akun Hanshop gagal. Periksa data atau coba kembali.']);
         }
         $payload = $response->json('data');
         if (! is_array($payload)) {
+            if ($supplier) {
+                throw new SupplierFailure('Respons pemasok Hanshop tidak valid. Periksa versi API Hanshop yang berjalan.');
+            }
             throw ValidationException::withMessages(['identifier' => 'Respons akun Hanshop tidak valid.']);
         }
         if (in_array($path, ['identity', 'register', 'profile'], true)) {

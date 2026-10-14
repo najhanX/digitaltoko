@@ -67,7 +67,7 @@ Trial hanya sekali per owner terverifikasi pada satu toko, bukan sekali per toko
 
 Setelah tujuh hari bot dan akses transaksi baru berdasarkan trial langsung berhenti tanpa grace. Panel pembelian paket/penyelesaian tetap tersedia; transaksi lama direkonsiliasi. Data tidak langsung dihapus: pemeriksaan purge 30 hari sejak trial berakhir dan penundaan saldo/transaksi/refund tetap berlaku. Akun/riwayat owner Hanshop tidak terdampak.
 
-Trial memakai Galaxy dalam kategori Bot WhatsApp, sehingga sumber Digiflazz dan stok sendiri dapat dicoba bersama akses Hanshop; tidak mendapat storefront. Saat membeli paid sebelum trial habis, paid langsung mulai ketika konversi efektif dan sisa trial tidak ditambahkan. Resource baru pada kategori web/full tetap perlu disiapkan sebelum layanan baru dijanjikan siap. Setelah trial habis, paid mengikuti expired dari pembayaran sukses, tanpa trial/provisioning ulang toko yang masih tersimpan. Konversi membatalkan timer penghentian/purge trial lama secara idempotent.
+Trial memakai Jupiter dalam kategori Bot WhatsApp, sehingga sumber Digiflazz dan stok sendiri dapat dicoba bersama akses Hanshop; tidak mendapat storefront. Saat membeli paid sebelum trial habis, paid langsung mulai ketika konversi efektif dan sisa trial tidak ditambahkan. Resource baru pada kategori web/full tetap perlu disiapkan sebelum layanan baru dijanjikan siap. Setelah trial habis, paid mengikuti expired dari pembayaran sukses, tanpa trial/provisioning ulang toko yang masih tersimpan. Konversi membatalkan timer penghentian/purge trial lama secara idempotent.
 
 ## Masa tenggang, suspend, dan penghapusan toko
 
@@ -133,7 +133,7 @@ Usulan pemasangan: setiap tenant modul custom memakai perangkat/notifikasi QRIS 
 
 ## Paket, toko, staf, dan domain
 
-- Admin mengatur harga serta durasi dari panel, untuk kategori Web Topup, Bot WhatsApp, atau Paket Lengkap dan paket Orbit/Space/Galaxy.
+- Admin mengatur harga serta durasi dari panel, untuk kategori Web Topup, Bot WhatsApp, atau Paket Lengkap dan sembilan paket Mercury sampai Andromeda sesuai kombinasi kanal/sumber.
 - Trial tujuh hari hanya Bot WhatsApp; detail eligibility/conversion dibedakan dari subscription paid.
 - Harga/fitur/durasi disnapshot pada invoice dan subscription; pengeditan paket tidak mengubah invoice lama atau hak sewa existing secara diam-diam.
 - Setiap toko maksimal satu nomor/sesi WhatsApp jika kategori menyertakan bot. Pergantian nomor harus melalui logout/pelepasan sesi lama, bukan dua sesi aktif.

@@ -19,17 +19,26 @@ class SupplierCache
             }
 
             return $cache->lock($key.':lock', 60)->block(5, function () use ($cache, $key, $read) {
-                if ($cache->has($key.':cooldown')) {
-                    throw ValidationException::withMessages(['supplier' => 'Pemasok sedang membatasi permintaan. Coba kembali setelah beberapa menit.']);
-                }
                 if (is_array($cached = $cache->get($key))) {
                     return $cached;
+                }
+                $failureKey = $key.':failure:v2';
+                $failure = $cache->get($failureKey);
+                if (is_array($failure)) {
+                    $seconds = max(1, (int) $failure['until'] - now()->timestamp);
+                    throw ValidationException::withMessages(['supplier' => $failure['message'].' Coba kembali dalam '.$seconds.' detik.']);
                 }
                 try {
                     $value = $read();
                 } catch (\Throwable $error) {
-                    $cache->put($key.':cooldown', true, 120);
-                    throw $error;
+                    $seconds = $error instanceof SupplierFailure && ! $error->rateLimited ? 15 : 120;
+                    $message = match (true) {
+                        $error instanceof SupplierFailure => $error->getMessage(),
+                        $error instanceof ValidationException => collect($error->errors())->flatten()->first() ?? 'Respons pemasok tidak valid.',
+                        default => 'Koneksi pemasok gagal. Periksa layanan pemasok dan konfigurasi server.',
+                    };
+                    $cache->put($failureKey, ['message' => $message, 'until' => now()->timestamp + $seconds], $seconds);
+                    throw ValidationException::withMessages(['supplier' => $message.' Coba kembali dalam '.$seconds.' detik.']);
                 }
                 $snapshot = ['value' => $value, 'observed_at' => now()->toIso8601String()];
                 $cache->put($key, $snapshot, max(60, min(180, (int) config('suppliers.cache_seconds', 120))));

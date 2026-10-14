@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\PlanOption;
 use App\Models\Store;
 use App\Models\StoreStaff;
 use App\Models\User;
@@ -23,12 +22,7 @@ class DemoStoreSeeder extends Seeder
             throw new \RuntimeException('Demo hanya untuk local/testing.');
         }
         DB::transaction(function () {
-            foreach (['bot', 'web', 'full'] as $category) {
-                foreach (['orbit', 'space', 'galaxy'] as $plan) {
-                    PlanOption::firstOrCreate(['name' => 'Demo '.ucfirst($plan).' '.strtoupper($category).' 30 hari'],
-                        ['category' => $category, 'plan' => $plan, 'price' => 50000, 'duration_days' => 30, 'active' => false]);
-                }
-            }
+            $this->call(PackagePlanSeeder::class);
 
             User::firstOrCreate(['email' => 'demo-admin@example.test'], [
                 'name' => 'Admin Demo', 'role' => 'admin', 'password' => Hash::make(self::PASSWORD),

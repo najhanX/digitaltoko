@@ -13,7 +13,7 @@ APP_URL=http://localhost:8000 dan PLATFORM_DOMAIN=localhost. Untuk pratinjau lok
 
 ### Data dummy lokal
 
-Jalankan `php artisan db:seed --no-interaction` dari apps/web setelah migrate. DatabaseSeeder memanggil DemoStoreSeeder dan CatalogDemoSeeder; keduanya untuk local/testing dan seeder demo menolak production termasuk dengan --force. Tidak perlu migrate:fresh (perintah tersebut menghapus data).
+Jalankan `php artisan db:seed --no-interaction` dari apps/web setelah migrate. DatabaseSeeder memanggil DemoStoreSeeder (termasuk PackagePlanSeeder) dan CatalogDemoSeeder; keduanya untuk local/testing dan seeder demo menolak production termasuk dengan --force. Tidak perlu migrate:fresh (perintah tersebut menghapus data).
 
 Seeder membuat admin `demo-admin@example.test`, dua owner lokal, delapan toko, dan tiga staff pada masing-masing dari tujuh toko owner utama. Password awal admin/staff: `DigitalToko-Demo2026!`. Admin masuk di `/admin/login`; staff di `/staff/{UUID-toko}/login` (URL lengkap dicetak seeder). Username `manager` mendapat semua permission staff, `viewer` hanya baca, dan `nonaktif` ditolak login. Akun staff tetap terpisah per toko meskipun username/email sama.
 
@@ -60,3 +60,11 @@ Hanshop memerlukan build API terbaru yang memuat `/internal/digitaltoko/supplier
 Web publik ketiga template dan `#produk`, `#produk canva`, `#produk 2` memakai katalog toko yang sama. Pemesanan, pembayaran pelanggan, fallback saat dispatch, dan pengiriman stok merupakan tahap berikutnya. Restart worker yang sedang berjalan setelah build bot agar handler baru termuat; sesi WhatsApp tetap dipertahankan.
 
 Dummy katalog lokal dapat diulang dengan `php artisan db:seed --class=CatalogDemoSeeder --no-interaction`; tidak memakai `migrate:fresh`. Verifikasi: `php artisan test --compact`, `npm run test:frontend`, `npm run build`, serta `npm test` di apps/bot.
+
+Jika koneksi Hanshop gagal, perhatikan penyebab yang muncul: API tidak terjangkau berarti proses API/URL perlu diperiksa; token ditolak berarti token bridge harus sama di kedua aplikasi; endpoint 404 berarti proses API perlu memakai source terbaru. Gangguan ini diberi jeda retry 15 detik. Hanya respons HTTP 429 Hanshop yang memakai pesan pembatasan permintaan dan jeda 120 detik. Cache snapshot pemasok tetap aktif.
+
+## Sembilan paket planet
+
+Mercury = bot/stok; Venus = bot/Digiflazz; Terra = web/stok; Mars = web/Digiflazz; Jupiter = bot/keduanya; Saturn = web/keduanya; Uranus = bot+web/stok; Neptune = bot+web/Digiflazz; Andromeda = bot+web/keduanya. Semua paket aktif termasuk Hanshop. Satu katalog JSON dipakai admin, owner/staff, landing, seeder dan filter paket. Trial Bot penuh bernama Jupiter.
+
+`php artisan db:seed --class=PackagePlanSeeder --no-interaction` memperbarui nama legacy tanpa mengubah harga, durasi, status aktif, ID atau snapshot langganan/invoice. Penawaran khusus tetap tersimpan. Kombinasi yang belum ada mendapat penawaran dummy Rp50.000/30 hari nonaktif. Pada 15 Oktober 2026 seeder dijalankan pada MySQL lokal setelah backup privat: sembilan nama berubah, jumlah penawaran tetap sembilan, dan invariant komersial/snapshot lulus pemeriksaan.

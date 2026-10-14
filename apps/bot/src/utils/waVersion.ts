@@ -1,5 +1,6 @@
 import {
   fetchLatestWaWebVersion,
+  DisconnectReason,
   type WAVersion,
 } from "@whiskeysockets/baileys";
 import { withOperationTimeout } from "./operationTimeout.js";
@@ -79,4 +80,9 @@ export function getRejectedConnectionDelay(
   const base = positiveInteger(baseDelayMs, 15000);
   const maximum = Math.max(base, positiveInteger(maximumDelayMs, 300000));
   return Math.min(maximum, base * 2 ** Math.min(normalizedAttempt - 1, 10));
+}
+
+export function getConnectionRestartDelay(statusCode: number | undefined, attempt: number): number {
+  if (statusCode === DisconnectReason.restartRequired) return 1000;
+  return statusCode === 405 ? getRejectedConnectionDelay(attempt) : 3000;
 }

@@ -1,0 +1,125 @@
+[
+  {
+    "key": "mercury",
+    "name": "Mercury",
+    "category": "bot",
+    "plan": "space",
+    "source": "Stok premium sendiri",
+    "description": "Bot WhatsApp · Stok premium sendiri",
+    "features": [
+      "Satu nomor bot WhatsApp",
+      "Stok aplikasi premium privat per toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "venus",
+    "name": "Venus",
+    "category": "bot",
+    "plan": "orbit",
+    "source": "Digiflazz sendiri",
+    "description": "Bot WhatsApp · Digiflazz sendiri",
+    "features": [
+      "Satu nomor bot WhatsApp",
+      "Koneksi Digiflazz milik toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "terra",
+    "name": "Terra",
+    "category": "web",
+    "plan": "space",
+    "source": "Stok premium sendiri",
+    "description": "Web toko · Stok premium sendiri",
+    "features": [
+      "Web toko dengan tiga pilihan template",
+      "Stok aplikasi premium privat per toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "mars",
+    "name": "Mars",
+    "category": "web",
+    "plan": "orbit",
+    "source": "Digiflazz sendiri",
+    "description": "Web toko · Digiflazz sendiri",
+    "features": [
+      "Web toko dengan tiga pilihan template",
+      "Koneksi Digiflazz milik toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "jupiter",
+    "name": "Jupiter",
+    "category": "bot",
+    "plan": "galaxy",
+    "source": "Stok premium + Digiflazz sendiri",
+    "description": "Bot WhatsApp · Stok premium + Digiflazz sendiri",
+    "features": [
+      "Satu nomor bot WhatsApp",
+      "Stok aplikasi premium privat per toko",
+      "Koneksi Digiflazz milik toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "saturn",
+    "name": "Saturn",
+    "category": "web",
+    "plan": "galaxy",
+    "source": "Stok premium + Digiflazz sendiri",
+    "description": "Web toko · Stok premium + Digiflazz sendiri",
+    "features": [
+      "Web toko dengan tiga pilihan template",
+      "Stok aplikasi premium privat per toko",
+      "Koneksi Digiflazz milik toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "uranus",
+    "name": "Uranus",
+    "category": "full",
+    "plan": "space",
+    "source": "Stok premium sendiri",
+    "description": "Bot WhatsApp + Web toko · Stok premium sendiri",
+    "features": [
+      "Satu nomor bot WhatsApp",
+      "Web toko dengan tiga pilihan template",
+      "Stok aplikasi premium privat per toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "neptune",
+    "name": "Neptune",
+    "category": "full",
+    "plan": "orbit",
+    "source": "Digiflazz sendiri",
+    "description": "Bot WhatsApp + Web toko · Digiflazz sendiri",
+    "features": [
+      "Satu nomor bot WhatsApp",
+      "Web toko dengan tiga pilihan template",
+      "Koneksi Digiflazz milik toko",
+      "Integrasi API Hanshop"
+    ]
+  },
+  {
+    "key": "andromeda",
+    "name": "Andromeda",
+    "category": "full",
+    "plan": "galaxy",
+    "source": "Stok premium + Digiflazz sendiri",
+    "description": "Bot WhatsApp + Web toko · Stok premium + Digiflazz sendiri",
+    "features": [
+      "Satu nomor bot WhatsApp",
+      "Web toko dengan tiga pilihan template",
+      "Stok aplikasi premium privat per toko",
+      "Koneksi Digiflazz milik toko",
+      "Integrasi API Hanshop"
+    ]
+  }
+]

@@ -16,11 +16,13 @@ use App\Services\StoreCatalog;
 use App\Services\SupplierCatalog;
 use Database\Seeders\CatalogDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -212,6 +214,12 @@ class StoreCatalogTest extends TestCase
         $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Stock manager', 'username' => 'stockmanager', 'email' => 'stockmanager@example.test', 'password' => 'test-password-123', 'permissions' => ['stock.view', 'stock.manage']]);
         auth('web')->logout();
         $this->actingAs($staff, 'staff')->get($base)->assertOk()->assertDontSee('secret-123');
+        $inertiaHeaders = ['X-Inertia' => 'true', 'X-Inertia-Version' => (string) Inertia::getVersion()];
+        $this->get($base, $inertiaHeaders)->assertOk()->assertHeader('X-Inertia', 'true')
+            ->assertHeader('Cache-Control', 'no-store, private')->assertJsonPath('component', 'Owner/Stock')
+            ->assertJsonPath('encryptHistory', true)->assertJsonCount(2, 'props.stocks')->assertDontSee('secret-123');
+        $this->get($base.'?status=ready&per_page=5', [...$inertiaHeaders, 'X-Inertia-Partial-Component' => 'Owner/Stock', 'X-Inertia-Partial-Data' => 'stocks,pagination,filters'])
+            ->assertOk()->assertJsonPath('props.pagination.total', 2)->assertJsonPath('props.filters.status', 'ready')->assertDontSee('secret-123');
         $this->postJson($base.'/'.$stock->id.'/reveal')->assertForbidden();
         $staff->update(['permissions' => ['stock.view', 'stock.manage', 'stock.credentials']]);
         $this->postJson($base.'/'.$stock->id.'/reveal')->assertOk()->assertJsonPath('data.payload', $stock->payload)->assertHeader('Cache-Control', 'no-store, private');
@@ -332,5 +340,73 @@ class StoreCatalogTest extends TestCase
         $this->assertGreaterThan(0, $stocks);
         $this->assertDatabaseCount('supplier_connections', 0);
         Http::assertNothingSent();
+    }
+
+    public function test_hanshop_connection_failures_keep_the_real_reason_and_recover_after_a_short_backoff(): void
+    {
+        $store = $this->shop();
+        config(['services.hanshop.url' => 'https://hanshop.test', 'services.hanshop.token' => str_repeat('h', 40)]);
+        $key = 'supplier:v1:hanshop:'.hash_hmac('sha256', 'https://hanshop.test:'.$store->owner->hanshop_user_id, config('app.key')).':balance';
+        Cache::store('array')->put($key.':cooldown', true, 120);
+        $attempts = 0;
+        Http::fake(function () use (&$attempts, $store) {
+            $attempts++;
+            if ($attempts === 1) {
+                throw new ConnectionException('Private transport details with TOKEN-DO-NOT-RETURN');
+            }
+
+            return Http::response(['status' => 'SUCCESS', 'data' => ['id_user' => $store->owner->hanshop_user_id, 'balance' => 50000]]);
+        });
+        $url = '/stores/'.$store->id.'/sources';
+        $this->actingAs($store->owner)->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasErrors('supplier');
+        $this->assertStringContainsString('API Hanshop tidak dapat dihubungi', session('errors')->first('supplier'));
+        $this->assertStringNotContainsString('TOKEN-DO-NOT-RETURN', session('errors')->first('supplier'));
+        $this->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasErrors('supplier');
+        $this->assertStringContainsString('API Hanshop tidak dapat dihubungi', session('errors')->first('supplier'));
+        $this->assertStringNotContainsString('membatasi', session('errors')->first('supplier'));
+        $this->assertSame(1, $attempts);
+        $this->assertDatabaseCount('supplier_connections', 0);
+        $this->travel(16)->seconds();
+        $this->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasNoErrors();
+        $this->assertSame(2, $attempts);
+        $this->assertDatabaseHas('supplier_connections', ['store_id' => $store->id, 'kind' => 'hanshop', 'enabled' => true]);
+    }
+
+    public function test_hanshop_http_errors_distinguish_token_endpoint_and_real_rate_limits_without_exposing_response_bodies(): void
+    {
+        config(['services.hanshop.url' => 'https://hanshop.test', 'services.hanshop.token' => str_repeat('h', 40)]);
+        $attempts = 0;
+        $currentStatus = 0;
+        $accountId = '';
+        Http::fake(function () use (&$attempts, &$currentStatus, &$accountId) {
+            $attempts++;
+
+            return $attempts === 1
+                ? Http::response(['status' => 'ERROR', 'message' => 'PRIVATE-SERVER-ERROR'], $currentStatus)
+                : Http::response(['status' => 'SUCCESS', 'data' => ['id_user' => $accountId, 'balance' => 50000]]);
+        });
+        foreach ([401 => 'Token integrasi Hanshop ditolak', 404 => 'Endpoint pemasok Hanshop belum tersedia', 503 => 'Layanan API Hanshop sedang bermasalah', 429 => 'Hanshop sedang membatasi permintaan'] as $status => $message) {
+            $store = $this->shop();
+            $attempts = 0;
+            $currentStatus = $status;
+            $accountId = $store->owner->hanshop_user_id;
+            $url = '/stores/'.$store->id.'/sources';
+            $this->actingAs($store->owner)->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasErrors('supplier');
+            $this->assertStringContainsString($message, session('errors')->first('supplier'));
+            $this->assertStringNotContainsString('PRIVATE-SERVER-ERROR', session('errors')->first('supplier'));
+            $this->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasErrors('supplier');
+            $this->assertStringContainsString($message, session('errors')->first('supplier'));
+            $this->assertSame(1, $attempts);
+            if ($status === 429) {
+                $this->travel(16)->seconds();
+                $this->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasErrors('supplier');
+                $this->assertSame(1, $attempts);
+                $this->travel(105)->seconds();
+            } else {
+                $this->travel(16)->seconds();
+            }
+            $this->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasNoErrors();
+            $this->assertSame(2, $attempts);
+        }
     }
 }

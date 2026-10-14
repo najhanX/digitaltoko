@@ -7,6 +7,7 @@ use App\Models\SubscriptionInvoice;
 use App\Models\User;
 use App\Services\SubscriptionService;
 use App\Support\ListQuery;
+use App\Support\PackageCatalog;
 use App\Support\PlatformHost;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -40,7 +41,7 @@ class PanelController extends Controller
         abort_unless($request->user()?->role === 'admin', 403);
 
         $list = $this->storeList($request);
-        $page = $list->paginate($list->apply(Store::with('domain'), ['name', 'slug'], ['status' => 'status', 'category' => 'category', 'plan' => 'plan'])->latest()->orderByDesc('id'));
+        $page = $list->paginate($list->apply(PackageCatalog::filter(Store::with('domain'), (string) ($list->filters['package'] ?? '')), ['name', 'slug'], ['status' => 'status', 'category' => 'category', 'plan' => 'plan'])->latest()->orderByDesc('id'));
 
         return Inertia::render('Panel/Dashboard', ['role' => 'admin', 'preview' => false,
             'viewer' => $request->user()->only(['name']),
@@ -66,14 +67,14 @@ class PanelController extends Controller
     private function storeList(Request $request): ListQuery
     {
         return new ListQuery($request, ['status' => ['draft', 'provisioning', 'active', 'grace', 'expired', 'suspended', 'suspended_manual', 'purging'],
-            'category' => ['bot', 'web', 'full'], 'plan' => ['orbit', 'space', 'galaxy']], 10);
+            'category' => ['bot', 'web', 'full'], 'plan' => ['orbit', 'space', 'galaxy'], 'package' => PackageCatalog::keys()], 10);
     }
 
     private function ownerList(Request $request, bool $listing): Response
     {
         $list = $this->storeList($request);
         $query = Store::where('owner_id', $request->user()->id);
-        $page = $list->paginate($list->apply((clone $query)->with('domain'), ['name', 'slug'], ['status' => 'status', 'category' => 'category', 'plan' => 'plan'])->latest()->orderByDesc('id'));
+        $page = $list->paginate($list->apply(PackageCatalog::filter((clone $query)->with('domain'), (string) ($list->filters['package'] ?? '')), ['name', 'slug'], ['status' => 'status', 'category' => 'category', 'plan' => 'plan'])->latest()->orderByDesc('id'));
         $stores = $this->summaries($page->getCollection());
         $statuses = (clone $query)->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status');
 

@@ -11,7 +11,7 @@ Catatan per 13 Oktober 2026. Dokumen membedakan keputusan pengguna dari usulan d
 - Platform melayani banyak toko dengan panel owner dan panel admin platform untuk mengelola sewa/masa aktif.
 - Web app dan bot WhatsApp dipisahkan dalam folder project. Web toko publik merupakan kebutuhan tambahan di luar panel pengelolaan.
 - Tiga kategori sewa: Web Topup saja, Bot WhatsApp saja, Paket Lengkap.
-- Tiga paket sumber: Orbit = Digiflazz sendiri; Space = stok premium sendiri; Galaxy = keduanya.
+- Sejak 15 Oktober 2026, sembilan nama publik: Mercury (bot/stok), Venus (bot/Digiflazz), Terra (web/stok), Mars (web/Digiflazz), Jupiter (bot/keduanya), Saturn (web/keduanya), Uranus (bot+web/stok), Neptune (bot+web/Digiflazz), Andromeda (bot+web/keduanya). Semua termasuk Hanshop selama aktif. Kode sumber internal lama dipertahankan untuk kompatibilitas snapshot.
 - Integrasi API Hanshop tersedia pada setiap paket aktif sebagai sumber tambahan, tanpa mengikuti pembatasan jenis produk sumber sendiri.
 - Owner dapat menghubungkan WhatsApp dari panel dan mengelola produk tokonya.
 - Pembayaran pembeli: hanya satu gateway aktif, Midtrans akun masing-masing toko atau custom QRIS sendiri. Pembebanan fee dapat diatur owner/staff berpermission. Modul custom dibeli sekali per toko; setelah toko dihapus dan dibuat ulang, lisensi harus dibeli baru.
@@ -27,7 +27,7 @@ Catatan per 13 Oktober 2026. Dokumen membedakan keputusan pengguna dari usulan d
 - Topup Midtrans mengkredit nominal topup tanpa fee. Topup QRIS custom dapat mengkredit nominal saja atau termasuk kode unik, diatur owner/staff berpermission dan disnapshot pada invoice. Policy topup dan refund produk terpisah.
 - Refund produk Midtrans tanpa fee. Modul custom tidak dapat direfund/dipindah, tetap melekat toko pembeli.
 - Trial Bot WhatsApp tujuh hari sekali per owner terverifikasi pada satu toko. Setelah habis langsung berhenti tanpa grace; data mengikuti retensi/penundaan purge. Hak trial tidak reset ketika toko dihapus.
-- Trial memakai Galaxy. Konversi paid sebelum habis langsung memulai masa paid tanpa menambah sisa trial; timer trial lama dibatalkan.
+- Trial memakai Jupiter (bot dengan kedua sumber sendiri). Konversi paid sebelum habis langsung memulai masa paid tanpa menambah sisa trial; timer trial lama dibatalkan.
 - Markup nominal/persen/kombinasi; produk > kategori > layanan, satu aturan menang tanpa akumulasi antar-level. Manual tutup harus menyelesaikan seluruh saldo/transaksi sebelum final.
 - Kesiapan bot wajib WA terhubung; web domain/subdomain ditentukan, provisioning fallback/DNS/TLS harus diverifikasi. Jika provisioning gagal admin mencoba memperbaiki dahulu.
 - Bila provisioning tetap gagal dan layanan belum diberikan, refund pembayaran sewa. Data diri wajib nama sesuai KTP, WA/email terverifikasi, alamat.

@@ -5,9 +5,17 @@ export function pairingBrowser(method: "qr" | "code"): ReturnType<typeof Browser
   return Browsers.macOS(method === "code" ? "Chrome" : "Google Chrome");
 }
 
-/** Recover an unfinished companion registration while preserving auth keys and registered sessions. */
-export function clearIncompletePairingState(credentials: Pick<AuthenticationCreds, "registered" | "me" | "pairingCode">): boolean {
-  if (credentials.registered) return false;
+type PairingCredentials = Pick<AuthenticationCreds, "registered" | "me" | "pairingCode" | "account">;
+
+/** QR pair-success supplies a signed account before registered becomes true. */
+export function hasPairedIdentity(credentials: PairingCredentials): boolean {
+  return credentials.registered || Boolean(credentials.me?.id && credentials.account?.accountSignatureKey?.length
+    && credentials.account.accountSignature?.length && credentials.account.deviceSignature?.length);
+}
+
+/** Clear abandoned code requests while keeping identities accepted by WhatsApp. */
+export function clearIncompletePairingState(credentials: PairingCredentials): boolean {
+  if (hasPairedIdentity(credentials)) return false;
   const incomplete = Boolean(credentials.me || credentials.pairingCode);
   if (incomplete) {
     credentials.me = undefined;

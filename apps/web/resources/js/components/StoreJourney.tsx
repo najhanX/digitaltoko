@@ -1,4 +1,5 @@
 import { Check, ArrowRight } from 'lucide-react';
+import { packageName } from './packageCatalog';
 import { Link } from '@inertiajs/react';
 import type { StoreSummary } from '../types';
 
@@ -28,7 +29,7 @@ export function StoreCard({store,role = 'owner',permissions = [],preview = false
     const paid = !!store.expires_at || store.status === 'provisioning';
     return <article className="card tenant-store-card">
         <div className="store-card-heading"><div><span className="store-category">{categories[store.category]}</span><h3>{scoped ? 'Status & langganan' : store.name}</h3><p>{store.slug}</p></div><span className={'store-status '+(store.billing_status ?? store.status)}>{store.billing_status === 'pending'?'Menunggu pembayaran':store.billing_status === 'review'?'Pembayaran diperiksa':storeStatuses[store.status] ?? store.status}</span></div>
-        <dl className="store-card-meta"><div><dt>Paket</dt><dd>{paid?(store.is_trial?'Trial Galaxy':store.plan[0].toUpperCase()+store.plan.slice(1)):store.billing_status?'Pilihan ada pada invoice':'Belum dipilih'}</dd></div><div><dt>Masa aktif sampai</dt><dd>{date(store.expires_at)}</dd></div></dl>
+        <dl className="store-card-meta"><div><dt>Paket</dt><dd>{paid?((store.is_trial?'Trial ':'')+packageName(store.category,store.plan)):store.billing_status?'Pilihan ada pada invoice':'Belum dipilih'}</dd></div><div><dt>Masa aktif sampai</dt><dd>{date(store.expires_at)}</dd></div></dl>
         <div className="store-next-step"><strong>{next.title}</strong><p>{next.description}</p></div>
         {!preview && <div className="card-actions">{billing && <Link className="button" href={role === 'staff' || store.status !== 'active'?'/stores/'+store.id+'/subscription':next.href}>{role === 'staff'?'Lihat langganan':next.label}<ArrowRight size={16}/></Link>}{role === 'owner' && !scoped && <Link className="button secondary" href={'/owner/stores/'+store.id}>Ringkasan toko</Link>}{role === 'staff' && settings && <Link className="button secondary" href={'/staff/'+store.id+'/settings'}>Pengaturan</Link>}</div>}
     </article>;

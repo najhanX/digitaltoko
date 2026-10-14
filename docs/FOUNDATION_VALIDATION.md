@@ -116,3 +116,27 @@ Dua belas tes notifikasi / 104 assertions, build TypeScript/Vite, dan Pint lulus
 - Predis diuji read/write/lock pada Redis lokal. Migration additive Laravel diterapkan pada MySQL lokal setelah backup privat. Seeder dummy hanya dijalankan pada database pengujian.
 - Browser fixture terisolasi: sinkron pasca, impor, tambah produk dengan beberapa parsing, markup produk mengalahkan kategori, stok batch, reveal berizin, staff baca, template Aurora/Nebula/Atlas dan modal mobile gelap. Harga contoh 7000 + 5% + 5000 = 12350 terlihat sama di panel dan storefront.
 - Bukti ini tidak menyatakan credential Digiflazz/Hanshop tenant nyata sudah dikonfigurasi atau pesan katalog WhatsApp live sudah diuji. Tidak ada perubahan VPS/DNS.
+
+## Perbaikan sidebar dan koneksi Hanshop — 15 Oktober 2026
+
+Sidebar workspace sekarang memiliki overflow vertikal, tinggi viewport dinamis, dan elemen menu yang tidak menyusut. Browser fixture diuji dengan scroll mouse pada desktop 1280×600 dan ponsel 390×600: menu Pengaturan toko serta Staff & hak akses dapat dijangkau, dan Escape menutup drawer.
+
+Kegagalan koneksi Hanshop dibedakan dari rate limit: jaringan/token/endpoint/server memakai backoff 15 detik dengan pesan penyebab yang tetap tampil saat retry; HTTP 429 memakai 120 detik. Cache snapshot per akun tetap dipertahankan. Marker cooldown boolean versi lama tidak lagi menyembunyikan alasan kegagalan. Respons/error transport mentah tidak ditampilkan.
+
+Validasi: 111 tes Laravel / 1451 assertions lulus, Pint lulus, frontend TypeScript/build lulus. Dua regression test mencakup server tidak terjangkau, token ditolak, endpoint belum tersedia, HTTP 503/429, retry tanpa membanjiri API, dan pemulihan setelah backoff. Pemeriksaan read-only lokal menemukan API Hanshop 127.0.0.1:4000 belum berjalan; koneksi nyata berhasil belum diklaim.
+
+## Pemulihan QR bot — 15 Oktober 2026
+
+Penyebab pada source: clearIncompletePairingState memakai registered sebagai satu-satunya tanda berhasil, sedangkan pair-success QR Baileys rc14 mengirim identitas me/account sebelum registered berubah. Cleanup sekarang mempertahankan identitas bertanda tangan; deadline pairing ditutup saat isNewLogin, antrean credential ditunggu sebelum reconnect, dan restartRequired 515 menggunakan jeda 1 detik. Diagnostic status code ditambahkan tanpa payload rahasia.
+
+Build TypeScript dan 21 tes bot lulus, termasuk dua tes proses worker dengan transport lokal, penyimpanan lambat/gagal, backend event asli melalui HTTP loopback, dan file sesi sementara. Phone scan nyata masih memerlukan percobaan pengguna. Manager lokal merespons health SUCCESS dengan nol worker pada pemeriksaan akhir; worker yang dimulai berikutnya akan memakai dist terbaru. Tidak ada sesi pengguna yang dihapus untuk perbaikan ini.
+
+## Paket planet dan checkpoint pekerjaan — 15 Oktober 2026
+
+Nama/rincian sembilan paket dipusatkan di resources/js/packageCatalog.json: Mercury, Venus, Terra, Mars, Jupiter, Saturn, Uranus, Neptune, Andromeda. Landing menampilkan sembilan kombinasi berurutan; panel admin memakai pemilihan paket lengkap dan rincian fitur; owner/staff menampilkan nama sesuai kategori/sumber, termasuk trial Jupiter. Filter paket memeriksa kanal dan sumber sekaligus.
+
+PackagePlanSeeder dijalankan pada MySQL lokal setelah backup privat plan_options (9 row). Hasil: sembilan nama diperbarui, jumlah row tetap sembilan; ID/harga/durasi/aktif/kategori/sumber tetap sama. Hash state langganan toko dan snapshot invoice sebelum/sesudah identik. Seeder dapat diulang dan tidak membuat akun dummy atau menghubungi API. DatabaseSeeder lokal ikut memakai katalog paket baru.
+
+Validasi: 114 tes Laravel / 1596 assertions lulus, dua tes parser frontend lulus, TypeScript/build berhasil, Pint lulus. Tiga tes paket mencakup sembilan kombinasi dan fitur, seed berulang, preservasi penawaran khusus serta invoice/langganan, urutan admin serta filter toko admin/owner tanpa mengubah angka ringkasan. Browser fixture: admin memilih Neptune/Andromeda di modal; owner memilih Mercury 90 hari tanpa membuat invoice; sembilan nama landing; layar 390px tanpa overflow horizontal.
+
+Checkpoint ini juga menyimpan perbaikan yang sudah selesai pada turn sebelumnya: sidebar dapat discroll, pesan kegagalan Hanshop membedakan penyebab, respons halaman stok kompatibel HTML/JSON Inertia (termasuk regression navigasi/filter), serta pemulihan QR bot dengan 21 tes lulus. Bukti WhatsApp nyata sesudah perbaikan tetap menunggu percobaan pengguna; API Hanshop source di repo terpisah tidak dimasukkan ke commit Hansbot ini.

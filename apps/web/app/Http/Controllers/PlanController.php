@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PlanOption;
 use App\Models\SubscriptionInvoice;
 use App\Support\ListQuery;
+use App\Support\PackageCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,8 +17,8 @@ class PlanController extends Controller
     {
         abort_unless($request->user()?->role === 'admin', 403);
 
-        $list = new ListQuery($request, ['category' => ['bot', 'web', 'full'], 'plan' => ['orbit', 'space', 'galaxy'], 'active' => ['0', '1']], 10);
-        $page = $list->paginate($list->apply(PlanOption::query(), ['name'], ['category' => 'category', 'plan' => 'plan', 'active' => 'active'])->orderBy('category')->orderBy('price')->orderBy('id'));
+        $list = new ListQuery($request, ['category' => ['bot', 'web', 'full'], 'plan' => ['orbit', 'space', 'galaxy'], 'package' => PackageCatalog::keys(), 'active' => ['0', '1']], 10);
+        $page = $list->paginate($list->apply(PackageCatalog::filter(PackageCatalog::ordered(PlanOption::query()), (string) ($list->filters['package'] ?? '')), ['name'], ['category' => 'category', 'plan' => 'plan', 'active' => 'active'])->orderBy('duration_days')->orderBy('price')->orderBy('id'));
 
         return Inertia::render('Admin/Plans', ['plans' => $page->items(), 'pagination' => ListQuery::meta($page), 'filters' => $list->filters]);
     }

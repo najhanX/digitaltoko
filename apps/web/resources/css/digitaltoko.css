@@ -32,7 +32,8 @@
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .panel-surface.workspace-shell{grid-template-columns:248px minmax(0,1fr)}
 .workspace-shell .panel-main{min-width:0}
-.workspace-shell .workspace-sidebar{display:flex;flex-direction:column;min-width:0;padding:24px 18px}
+.workspace-shell .workspace-sidebar{display:flex;flex-direction:column;min-width:0;min-height:0;height:100vh;height:100dvh;align-self:start;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;padding:24px 18px}
+.workspace-shell .workspace-sidebar>*{flex-shrink:0}
 .sidebar-brand{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .workspace-shell .workspace-nav{display:grid;gap:5px}
 .workspace-shell .sidebar-label{font-size:10px;letter-spacing:.13em;margin:27px 12px 12px}
@@ -406,3 +407,5 @@
 /* Public product dialogs inherit the selected storefront palette. */
 .sf-site .panel-dialog{--primary:var(--sf-accent);--accent:var(--sf-accent);--border:var(--sf-line);--panel-card:var(--sf-card);--panel-text:var(--sf-text);--panel-soft:var(--sf-bg);--muted:var(--sf-muted);background:var(--sf-card);color:var(--sf-text)}
 .sf-site .panel-dialog .button{background:var(--sf-accent);color:#fff}.sf-nebula .panel-dialog .button{color:#12172c}.sf-site .panel-dialog .button.secondary{background:var(--sf-card);color:var(--sf-text);border:1px solid var(--sf-line)}
+
+.package-feature-list{display:grid;gap:9px;padding:0;list-style:none;margin:16px 0;color:var(--muted);font-size:12px}.package-feature-list li{display:flex;align-items:flex-start;gap:8px}.package-feature-list svg{flex-shrink:0;color:var(--accent);margin-top:1px}

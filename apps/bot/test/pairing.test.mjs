@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {getCompanionPlatformId} from '@whiskeysockets/baileys';
-import {createPairing, linkedPhone, pairingFailure, pairingBrowser, clearIncompletePairingState} from '../dist/utils/pairing.js';
+import {createPairing, linkedPhone, pairingFailure, pairingBrowser, clearIncompletePairingState, hasPairedIdentity} from '../dist/utils/pairing.js';
+import {getConnectionRestartDelay} from '../dist/utils/waVersion.js';
 
 test('code uses canonical Chrome companion identity and QR keeps its existing identity',async()=>{
   const codeBrowser=pairingBrowser('code'), qrBrowser=pairingBrowser('qr');
@@ -32,6 +33,28 @@ test('registered WhatsApp credentials are preserved during startup recovery',()=
   const before=structuredClone(credentials);
   assert.equal(clearIncompletePairingState(credentials),false);
   assert.deepEqual(credentials,before);
+});
+
+test('QR identity survives restart before registered becomes true and does not request another pairing',async()=>{
+  const credentials={registered:false,me:{id:'6281234567890:7@s.whatsapp.net'},account:{accountSignatureKey:Buffer.alloc(32,1),accountSignature:Buffer.alloc(64,2),deviceSignature:Buffer.alloc(64,3)}};
+  const before=JSON.stringify(credentials);
+  assert.equal(hasPairedIdentity(credentials),true);
+  assert.equal(clearIncompletePairingState(credentials),false);
+  assert.equal(JSON.stringify(credentials),before);
+  let requests=0;
+  const pairing=createPairing({method:'qr',requestCode:async()=>{throw Error('Unexpected request');},publish:async()=>{requests++;},fail:async()=>{throw Error('Unexpected failure');}});
+  await pairing.update({qr:'must-not-publish'},hasPairedIdentity(credentials));
+  assert.equal(requests,0);
+  assert.equal(getConnectionRestartDelay(515,1),1000);
+  assert.equal(getConnectionRestartDelay(428,1),3000);
+  assert.ok(getConnectionRestartDelay(405,2)>getConnectionRestartDelay(405,1));
+});
+
+test('a phone placeholder or incomplete account is not proof of completed pairing',()=>{
+  const credentials={registered:false,me:{id:'6281234567890@s.whatsapp.net'},pairingCode:'ABCDEFGH',account:{accountSignatureKey:Buffer.alloc(32,1)}};
+  assert.equal(hasPairedIdentity(credentials),false);
+  assert.equal(clearIncompletePairingState(credentials),true);
+  assert.equal(credentials.me,undefined);
 });
 
 test('QR is encoded locally as PNG with a finite expiry; code transport is unused', async()=>{

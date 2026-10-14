@@ -15,7 +15,7 @@ export function CreateStoreButton({children, className = 'button'}:{children:Rea
 
 export default function CreateStoreModal({open,onClose,platformDomain}:{open:boolean;onClose:()=>void;platformDomain:string}) {
     const formId = useId();
-    const form = useForm({name:'',slug:'',category:'bot',plan:'orbit',template:'aurora'});
+    const form = useForm({name:'',slug:'',category:'bot',plan:'space',template:'aurora'});
     const services = [
         {key:'bot',label:'Bot WhatsApp',description:'Satu nomor WhatsApp untuk melayani pelanggan toko.',icon:Bot},
         {key:'web',label:'Web Topup',description:'Web toko dengan subdomain dan template pilihan.',icon:Globe2},
