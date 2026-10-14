@@ -132,7 +132,7 @@ class PlatformFoundationTest extends TestCase
     {
         $a = $this->store();
         $b = $this->store(null, 'another');
-        StoreStaff::create(['store_id' => $a->id, 'name' => 'Staff', 'username' => 'operator', 'email' => 'staff@example.test', 'password' => 'secret-test']);
+        StoreStaff::create(['store_id' => $a->id, 'name' => 'Staff', 'username' => 'operator', 'email' => 'staff@example.test', 'password' => 'secret-test', 'permissions' => ['dashboard.view']]);
         $this->post('https://hansdigi.biz.id/staff/'.$b->id.'/login', ['identifier' => 'operator', 'password' => 'secret-test'])
             ->assertSessionHasErrors('identifier');
         $this->post('https://hansdigi.biz.id/staff/'.$a->id.'/login', ['identifier' => 'staff@example.test', 'password' => 'secret-test'])

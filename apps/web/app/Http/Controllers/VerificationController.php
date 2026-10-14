@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\ListQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,14 +23,16 @@ class VerificationController extends Controller
     {
         abort_unless($request->user()?->role === 'admin', 403);
 
-        return Inertia::render('Admin/Verifications', ['owners' => User::where('role', 'owner')
-            ->where('verification_status', '!=', 'unsubmitted')
-            ->orderByRaw("CASE WHEN verification_status = 'pending' THEN 0 ELSE 1 END")->orderBy('submitted_at')->orderBy('id')
-            ->paginate(20)->through(fn (User $owner) => ['id' => $owner->id, 'name' => $owner->name, 'legal_name' => $owner->legal_name,
-                'phone' => $owner->phone, 'email' => $owner->email, 'address' => $owner->address,
-                'nik' => $owner->nik, 'verification_status' => $owner->verification_status,
-                'rejection_reason' => $owner->rejection_reason, 'has_document' => (bool) $owner->ktp_path,
-                'submitted_at' => $owner->submitted_at?->toIso8601String(), 'submission_reference' => $this->reference($owner)])]);
+        $list = new ListQuery($request, ['status' => ['pending', 'approved', 'rejected']]);
+        $page = $list->paginate($list->apply(User::where('role', 'owner')->where('verification_status', '!=', 'unsubmitted'), ['name', 'email', 'phone'], ['status' => 'verification_status'])
+            ->orderByRaw("CASE WHEN verification_status = 'pending' THEN 0 ELSE 1 END")->orderBy('submitted_at')->orderBy('id'));
+
+        return Inertia::render('Admin/Verifications', ['filters' => $list->filters, 'owners' => $page->through(fn (User $owner) => ['id' => $owner->id, 'name' => $owner->name, 'legal_name' => $owner->legal_name,
+            'phone' => $owner->phone, 'email' => $owner->email, 'address' => $owner->address,
+            'birth_place' => $owner->birth_place, 'birth_date' => $owner->birth_date,
+            'verification_status' => $owner->verification_status,
+            'rejection_reason' => $owner->rejection_reason, 'has_document' => (bool) $owner->ktp_path,
+            'submitted_at' => $owner->submitted_at?->toIso8601String(), 'submission_reference' => $this->reference($owner)])]);
     }
 
     public function document(Request $request, User $owner): BinaryFileResponse

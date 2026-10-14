@@ -47,6 +47,10 @@ Detail aturan, batas reuse source, dan usulan implementasi ada di `docs/BUSINESS
 
 ## Belum ditetapkan
 
+### Klarifikasi limit Digiflazz (13 Oktober 2026)
+
+Menurut konfirmasi owner, limit Digiflazz berlaku per akun/API key, bukan per IP. Rancangan cache Redis, lock refresh dan pembatasan request harus mengikuti identitas akun pemasok + parameter request. Toko yang memakai akun sama boleh berbagi cache; akun berbeda tetap terpisah. Target freshness 1–3 menit. IP keluar bersama pada VPS tidak berarti seluruh akun berbagi kuota. Ini catatan keputusan dari owner; implementasi cache/limiter masih tahap berikutnya.
+
 Fondasi lokal kini memiliki Laravel/Inertia React, migrasi toko/domain/staff, role/tenant gate, password staff, halaman dasar, token/status worker, serta skeleton Baileys interaktif. Modul bisnis/auth owner/payment/provisioning belum selesai. Bukti dan batasnya di apps/web/README.md, apps/bot/README.md, dan docs/DEPLOYMENT.md; source Hanshop/bot lama tidak diubah.
 
 | Area | Keputusan yang diperlukan | Pengaruh |

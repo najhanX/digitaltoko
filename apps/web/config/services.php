@@ -2,6 +2,11 @@
 
 return [
 
+    'bot_manager' => [
+        'url' => env('BOT_MANAGER_URL', 'http://127.0.0.1:3099'),
+        'token' => env('BOT_MANAGER_TOKEN'),
+    ],
+
     'hanshop' => [
         'url' => env('HANSHOP_API_URL'),
         'token' => env('HANSHOP_IDENTITY_TOKEN'),

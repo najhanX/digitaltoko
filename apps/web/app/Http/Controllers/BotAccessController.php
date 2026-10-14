@@ -17,7 +17,8 @@ class BotAccessController extends Controller
 
         return response()->json(['status' => 'SUCCESS', 'message' => 'Hak bot dibaca.', 'data' => [
             'store_name' => $store->name, 'allowed' => $supportsBot && $store->acceptsOrders(),
-            'can_connect' => $supportsBot && ($store->status === 'draft' || $store->acceptsOrders()),
+            'can_connect' => $store->canConnectBot(), 'phone' => $store->bot_phone,
+            'method' => $store->bot_method, 'connection_id' => $store->bot_connection_id,
         ]]);
     }
 }

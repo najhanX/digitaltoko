@@ -1,19 +1,32 @@
 <?php
 
 use App\Http\Controllers\AdminLoginController;
+use App\Http\Controllers\BotConnectionController;
 use App\Http\Controllers\BotStateController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OwnerAuthController;
 use App\Http\Controllers\OwnerOnboardingController;
 use App\Http\Controllers\PanelController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PreviewController;
 use App\Http\Controllers\StaffLoginController;
 use App\Http\Controllers\StoreManagementController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::middleware('platform.host')->group(function () {
+    Route::get('/admin/plans', [PlanController::class, 'index'])->middleware('auth:web');
+    Route::post('/admin/plans', [PlanController::class, 'save'])->middleware('auth:web');
+    Route::patch('/admin/plans/{plan}', [PlanController::class, 'save'])->middleware('auth:web');
+    Route::get('/admin/billing', [PlanController::class, 'invoices'])->middleware('auth:web');
+    Route::get('/stores/{store}/subscription', [SubscriptionController::class, 'show']);
+    Route::post('/stores/{store}/subscription/checkout', [SubscriptionController::class, 'checkout'])->middleware('throttle:6,1');
+    Route::post('/stores/{store}/subscription/{invoice}/refresh', [SubscriptionController::class, 'refresh'])->middleware('throttle:12,1');
+    Route::post('/stores/{store}/subscription/trial', [SubscriptionController::class, 'trial'])->middleware('throttle:6,1');
+    Route::post('/stores/{store}/subscription/activate', [SubscriptionController::class, 'activate'])->middleware('throttle:6,1');
+
     Route::get('/login', [OwnerAuthController::class, 'create'])->name('login');
     Route::post('/login/otp', [OwnerAuthController::class, 'requestOtp'])->middleware('throttle:6,1');
     Route::post('/login/verify', [OwnerAuthController::class, 'verify'])->middleware('throttle:10,1');
@@ -39,10 +52,17 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/preview/{surface}', PreviewController::class);
     Route::get('/admin', [PanelController::class, 'admin'])->middleware('auth:web');
     Route::get('/owner', [PanelController::class, 'owner'])->middleware('auth:web');
+    Route::get('/owner/stores', [PanelController::class, 'stores'])->middleware('auth:web');
     Route::get('/owner/stores/{store}', [PanelController::class, 'store'])->middleware('auth:web');
     Route::get('/stores/{store}/bot-state', BotStateController::class)->middleware('throttle:60,1');
+    Route::get('/stores/{store}/bot', [BotConnectionController::class, 'show'])->name('stores.bot');
+    Route::post('/stores/{store}/bot/connect', [BotConnectionController::class, 'connect'])->middleware('throttle:6,1');
+    Route::post('/stores/{store}/bot/disconnect', [BotConnectionController::class, 'disconnect'])->middleware('throttle:6,1');
     Route::get('/staff/{store}/login', [StaffLoginController::class, 'create']);
     Route::post('/staff/{store}/login', [StaffLoginController::class, 'store'])->middleware('throttle:6,1');
     Route::get('/staff/{store}/dashboard', [PanelController::class, 'staff'])->middleware('auth:staff');
+    Route::get('/staff/{store}/access', [PanelController::class, 'staffAccess'])->middleware('auth:staff');
+    Route::get('/staff/{store}/settings', [StoreManagementController::class, 'staffSettings'])->middleware('auth:staff');
+    Route::patch('/staff/{store}/settings', [StoreManagementController::class, 'updateStaffSettings'])->middleware('auth:staff');
     Route::post('/logout', [StaffLoginController::class, 'destroy']);
 });

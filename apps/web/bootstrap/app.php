@@ -4,6 +4,7 @@ use App\Http\Middleware\ConfiguredTrustProxies;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequirePlatformHost;
 use App\Http\Middleware\ResolvePlatformHost;
+use App\Models\Store;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,7 +23,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);
         $middleware->replace(TrustProxies::class, ConfiguredTrustProxies::class);
-        $middleware->redirectGuestsTo(fn (Request $request) => '/login');
+        $middleware->redirectGuestsTo(function (Request $request): string {
+            if ($request->is('staff/*')) {
+                $store = $request->route('store');
+                $id = $store instanceof Store ? $store->id : (string) $store;
+
+                return '/staff/'.rawurlencode($id).'/login';
+            }
+
+            return $request->is('admin*') ? '/admin/login' : '/login';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

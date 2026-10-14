@@ -16,7 +16,9 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+use App\Models\SubscriptionInvoice;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
@@ -61,3 +63,19 @@ Artisan::command('digitaltoko:purge-rejected-ktp', function () {
 })->purpose('Hapus foto KTP ditolak setelah 72 jam; akun dan alasan penolakan tetap disimpan.');
 
 Schedule::command('digitaltoko:purge-rejected-ktp')->everyMinute()->withoutOverlapping();
+
+Artisan::command('digitaltoko:subscriptions', function (SubscriptionService $service) {
+    SubscriptionInvoice::where('status', 'pending')->orderBy('updated_at')->limit(100)->get()->each(function ($invoice) use ($service) {
+        try {
+            $service->sync($invoice);
+        } catch (Throwable $exception) {
+            $invoice->update(['last_error' => 'Gateway belum dapat disinkronkan. Akan dicoba lagi.']);
+            report($exception);
+        }
+    });
+    Store::whereIn('status', ['active', 'grace', 'expired', 'provisioning'])->each(function ($store) use ($service) {
+        $service->tick($store);
+    });
+    $this->info('Status invoice dan langganan diperiksa.');
+})->purpose('Rekonsiliasi invoice, aktivasi otomatis dan masa tenggang per toko.');
+Schedule::command('digitaltoko:subscriptions')->everyMinute()->withoutOverlapping();

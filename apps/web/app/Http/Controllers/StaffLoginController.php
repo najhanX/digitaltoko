@@ -28,16 +28,30 @@ class StaffLoginController extends Controller
         Auth::guard('staff')->login($staff);
         $request->session()->regenerate();
 
-        return redirect('/staff/'.$store->id.'/dashboard');
+        $permissions = $staff->permissions ?? [];
+        $target = '/staff/'.$store->id.'/access';
+        if (in_array('dashboard.view', $permissions, true)) {
+            $target = '/staff/'.$store->id.'/dashboard';
+        } elseif (in_array('subscription.view', $permissions, true)) {
+            $target = '/stores/'.$store->id.'/subscription';
+        } elseif (in_array('web.manage', $permissions, true)) {
+            $target = '/staff/'.$store->id.'/settings';
+        } elseif ($store->category !== 'web' && (in_array('bot.view', $permissions, true) || in_array('bot.manage', $permissions, true))) {
+            $target = '/stores/'.$store->id.'/bot';
+        }
+
+        return redirect($target);
     }
 
     public function destroy(Request $request)
     {
+        $staff = $request->user('staff');
+        $target = $staff ? '/staff/'.$staff->store_id.'/login' : ($request->user('web')?->role === 'admin' ? '/admin/login' : '/login');
         Auth::guard('staff')->logout();
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect($target);
     }
 }

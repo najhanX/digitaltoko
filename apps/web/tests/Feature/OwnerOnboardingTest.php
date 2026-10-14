@@ -174,7 +174,7 @@ class OwnerOnboardingTest extends TestCase
     {
         $owner = $this->owner('unsubmitted');
         $this->actingAs($owner)->post('/owner/stores', $this->storeInput())->assertForbidden();
-        $this->post('/owner/profile/verification', ['legal_name' => 'Owner Legal', 'nik' => '1234567890123456',
+        $this->post('/owner/profile/verification', ['birth_place' => 'Bandung', 'birth_date' => '1995-06-15', 'legal_name' => 'Owner Legal', 'nik' => '1234567890123456',
             'address' => 'Alamat test untuk pengujian', 'ktp' => UploadedFile::fake()->image('ktp.jpg')])->assertSessionHasNoErrors();
         $owner->refresh();
         $this->assertSame('pending', $owner->verification_status);
@@ -326,13 +326,15 @@ class OwnerOnboardingTest extends TestCase
     {
         $owner = $this->owner();
         $path = UploadedFile::fake()->image('approved.png')->store('ktp', 'local');
-        $owner->forceFill(['ktp_path' => $path, 'nik' => '1111222233334444', 'address' => 'Alamat test privat', 'legal_name' => 'Owner Legal'])->save();
+        $owner->forceFill(['birth_place' => 'Bandung', 'birth_date' => '1995-06-15', 'ktp_path' => $path, 'nik' => '1111222233334444', 'address' => 'Alamat test privat', 'legal_name' => 'Owner Legal'])->save();
         $this->travel(80)->hours();
         $this->artisan('digitaltoko:purge-rejected-ktp')->assertSuccessful();
         Storage::disk('local')->assertExists($path);
         $this->actingAs($owner)->delete('/owner/profile/identity')->assertSessionHasNoErrors();
         Storage::disk('local')->assertMissing($path);
         $this->assertNull($owner->fresh()->nik);
+        $this->assertNull($owner->fresh()->birth_place);
+        $this->assertNull($owner->fresh()->birth_date);
         $this->assertSame('unsubmitted', $owner->fresh()->verification_status);
         $this->assertSame($owner->hanshop_user_id, $owner->fresh()->hanshop_user_id);
         Http::assertNothingSent();
@@ -372,10 +374,10 @@ class OwnerOnboardingTest extends TestCase
     {
         $owner = $this->owner('unsubmitted');
         $owner->forceFill(['email_verified_at' => null])->save();
-        $this->actingAs($owner)->post('/owner/profile/verification', ['legal_name' => 'Owner', 'nik' => '1234567890123456',
+        $this->actingAs($owner)->post('/owner/profile/verification', ['birth_place' => 'Bandung', 'birth_date' => '1995-06-15', 'legal_name' => 'Owner', 'nik' => '1234567890123456',
             'address' => 'Alamat simulasi', 'ktp' => UploadedFile::fake()->image('ktp.png')])->assertForbidden();
         $owner->forceFill(['email_verified_at' => now()])->save();
-        $this->post('/owner/profile/verification', ['legal_name' => 'Owner', 'nik' => '123', 'address' => 'Alamat simulasi',
+        $this->post('/owner/profile/verification', ['birth_place' => 'Bandung', 'birth_date' => '1995-06-15', 'legal_name' => 'Owner', 'nik' => '123', 'address' => 'Alamat simulasi',
             'ktp' => UploadedFile::fake()->create('document.svg', 10, 'image/svg+xml')])->assertSessionHasErrors(['nik', 'ktp']);
         $this->assertSame('unsubmitted', $owner->fresh()->verification_status);
         $this->assertNull($owner->fresh()->ktp_path);
@@ -391,7 +393,7 @@ class OwnerOnboardingTest extends TestCase
         $oldReference = $this->submissionReference($owner);
         $this->get('/identity/'.$owner->id.'/document?reference='.$oldReference)->assertOk();
         $this->post('/admin/verifications/'.$owner->id, ['decision' => 'rejected', 'reason' => 'Dokumen tidak jelas', 'reference' => $oldReference])->assertSessionHasNoErrors();
-        $this->actingAs($owner->fresh())->post('/owner/profile/verification', ['legal_name' => 'Owner Baru', 'nik' => '1111222233334444',
+        $this->actingAs($owner->fresh())->post('/owner/profile/verification', ['birth_place' => 'Bandung', 'birth_date' => '1995-06-15', 'legal_name' => 'Owner Baru', 'nik' => '1111222233334444',
             'address' => 'Alamat simulasi pengajuan baru', 'ktp' => UploadedFile::fake()->image('new.png')])->assertSessionHasNoErrors();
         $this->actingAs($admin)->post('/admin/verifications/'.$owner->id, ['decision' => 'approved', 'reference' => $oldReference])->assertConflict();
         $this->get('/identity/'.$owner->id.'/document?reference='.$oldReference)->assertConflict();
@@ -444,5 +446,32 @@ class OwnerOnboardingTest extends TestCase
         $this->post('/login/otp', ['intent' => 'register', 'identifier' => '081234567890', 'name' => 'Owner', 'channel' => 'wa'])->assertSessionHasErrors('identifier');
         $this->assertDatabaseCount('users', 0);
         $this->assertNull(session('owner_challenge_login'));
+    }
+
+    public function test_birth_details_are_required_validated_encrypted_and_visible_to_reviewer(): void
+    {
+        $owner = $this->owner('unsubmitted');
+        $this->actingAs($owner);
+        $input = ['legal_name' => 'Nama Lengkap Simulasi', 'address' => 'Alamat lengkap simulasi',
+            'ktp' => UploadedFile::fake()->image('ktp.jpg')];
+        $this->post('/owner/profile/verification', $input)->assertSessionHasErrors(['birth_place', 'birth_date']);
+        $this->post('/owner/profile/verification', [...$input, 'birth_place' => 'Bandung',
+            'birth_date' => now()->addDay()->format('Y-m-d')])->assertSessionHasErrors('birth_date');
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        session()->forget('errors');
+        $this->post('/owner/profile/verification', [...$input, 'birth_place' => 'Bandung',
+            'birth_date' => '1995-06-15'])->assertSessionHasNoErrors();
+        $owner->refresh();
+        $this->assertSame('Bandung', $owner->birth_place);
+        $this->assertSame('1995-06-15', $owner->birth_date);
+        $this->assertNotSame('Bandung', $owner->getRawOriginal('birth_place'));
+        $this->assertNotSame('1995-06-15', $owner->getRawOriginal('birth_date'));
+        $this->assertArrayNotHasKey('birth_date', $owner->toArray());
+        $this->get('/owner/profile')->assertInertia(fn (Assert $page) => $page
+            ->where('profile.birth_place', 'Bandung')->where('profile.birth_date', '1995-06-15'));
+        $admin = User::factory()->create();
+        $admin->forceFill(['role' => 'admin'])->save();
+        $this->actingAs($admin)->get('/admin/verifications')->assertInertia(fn (Assert $page) => $page
+            ->where('owners.data.0.birth_place', 'Bandung')->where('owners.data.0.birth_date', '1995-06-15')->missing('owners.data.0.nik'));
     }
 }

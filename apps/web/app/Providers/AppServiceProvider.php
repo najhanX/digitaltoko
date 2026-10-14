@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Store;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +23,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        RateLimiter::for('bot-worker', function (Request $request): Limit {
+            $token = $request->bearerToken();
+            $store = is_string($token) && strlen($token) >= 32
+                ? Store::where('worker_token_hash', hash('sha256', $token))->value('id') : null;
+
+            return $store ? Limit::perMinute(120)->by('bot-store:'.$store)
+                : Limit::perMinute(30)->by('bot-invalid:'.$request->ip());
+        });
     }
 }

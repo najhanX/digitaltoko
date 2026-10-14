@@ -31,6 +31,7 @@ class OwnerOnboardingController extends Controller
         return Inertia::render('Owner/Onboarding', ['profile' => [
             'id' => $owner->id,
             'name' => $owner->name, 'legal_name' => $owner->legal_name ?? '', 'address' => $owner->address ?? '',
+            'birth_place' => $owner->birth_place ?? '', 'birth_date' => $owner->birth_date ?? '',
             'phone' => $owner->phone, 'hanshop_user_id' => $owner->hanshop_user_id,
             'email' => str_ends_with($owner->email, '@identity.invalid') ? '' : $owner->email,
             'email_verified' => (bool) $owner->email_verified_at, 'phone_verified' => (bool) $owner->phone_verified_at,
@@ -70,7 +71,8 @@ class OwnerOnboardingController extends Controller
     {
         $owner = $this->owner($request);
         abort_unless($owner->email_verified_at && $owner->phone_verified_at && $owner->hanshop_user_id, 403);
-        $data = $request->validate(['legal_name' => 'required|string|max:150', 'nik' => 'required|digits:16',
+        $data = $request->validate(['legal_name' => 'required|string|max:150', 'nik' => 'nullable|digits:16',
+            'birth_place' => 'required|string|max:150', 'birth_date' => 'required|date_format:Y-m-d|before_or_equal:today',
             'address' => 'required|string|min:10|max:1000', 'ktp' => 'required|image|mimes:jpeg,png,jpg|max:5120']);
         $path = $request->file('ktp')->store('ktp', 'local');
         if (! is_string($path) || $path === '') {
@@ -81,7 +83,8 @@ class OwnerOnboardingController extends Controller
                 $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
                 abort_if(in_array($locked->verification_status, ['pending', 'approved'], true), 409, 'Verifikasi sedang diperiksa atau sudah disetujui.');
                 $old = $locked->ktp_path;
-                $locked->forceFill(['legal_name' => $data['legal_name'], 'nik' => $data['nik'], 'address' => $data['address'],
+                $locked->forceFill(['legal_name' => $data['legal_name'], 'nik' => $data['nik'] ?? null, 'address' => $data['address'],
+                    'birth_place' => $data['birth_place'], 'birth_date' => $data['birth_date'],
                     'ktp_path' => $path, 'verification_status' => 'pending', 'submitted_at' => now(), 'reviewed_at' => null,
                     'reviewed_by' => null, 'rejection_reason' => null, 'document_purge_at' => null])->save();
 
@@ -106,6 +109,7 @@ class OwnerOnboardingController extends Controller
             abort_if(Store::where('owner_id', $owner->id)->exists(), 409, 'Data diri masih diperlukan oleh toko Anda.');
             $path = $locked->ktp_path;
             $locked->forceFill(['legal_name' => null, 'nik' => null, 'address' => null, 'ktp_path' => null,
+                'birth_place' => null, 'birth_date' => null,
                 'verification_status' => 'unsubmitted', 'submitted_at' => null, 'reviewed_at' => null,
                 'reviewed_by' => null, 'rejection_reason' => null, 'document_purge_at' => null])->save();
 

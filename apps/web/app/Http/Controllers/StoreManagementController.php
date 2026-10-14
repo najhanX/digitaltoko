@@ -36,7 +36,7 @@ class StoreManagementController extends Controller
     public function create(Request $request): Response
     {
         $owner = $this->owner($request);
-        abort_unless($owner->verification_status === 'approved', 403);
+        abort_unless($owner->verification_status === 'approved' && $owner->email_verified_at && $owner->phone_verified_at, 403);
 
         return Inertia::render('Owner/CreateStore', ['platformDomain' => config('platform.domain')]);
     }
@@ -55,17 +55,39 @@ class StoreManagementController extends Controller
             return Store::create([...$data, 'owner_id' => $owner->id, 'status' => 'draft', 'expires_at' => null, 'is_trial' => false]);
         });
 
-        return redirect('/owner/stores/'.$store->id.'/manage')->with('success', 'Toko draft dibuat. Langganan belum dimulai.');
+        return redirect('/stores/'.$store->id.'/subscription')->with('success', 'Toko dibuat. Pilih paket dan durasi untuk melanjutkan. Masa sewa belum dimulai.');
     }
 
     public function show(Request $request, Store $store): Response
     {
         $this->owned($request, $store);
 
-        return Inertia::render('Owner/ManageStore', ['store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status']),
+        return Inertia::render('Owner/ManageStore', ['role' => 'owner', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial']),
             'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => StoreStaff::where('store_id', $store->id)->orderBy('name')
                 ->get()->map(fn ($staff) => $staff->only(['id', 'name', 'username', 'email', 'permissions', 'active'])),
             'permissionLabels' => StaffPermissions::labels()]);
+    }
+
+    private function authorizedStaff(Request $request, Store $store): void
+    {
+        $staff = $request->user('staff');
+        abort_unless($staff && $staff->active && $staff->store_id === $store->id && in_array('web.manage', $staff->permissions ?? [], true), 403);
+    }
+
+    public function staffSettings(Request $request, Store $store): Response
+    {
+        $this->authorizedStaff($request, $store);
+
+        return Inertia::render('Owner/ManageStore', ['role' => 'staff', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial']),
+            'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => [], 'permissionLabels' => []]);
+    }
+
+    public function updateStaffSettings(Request $request, Store $store): RedirectResponse
+    {
+        $this->authorizedStaff($request, $store);
+        $store->update($request->validate(['name' => 'required|string|max:100', 'template' => 'required|in:aurora,nebula,atlas']));
+
+        return back()->with('success', 'Pengaturan toko tersimpan.');
     }
 
     public function update(Request $request, Store $store): RedirectResponse
@@ -90,6 +112,12 @@ class StoreManagementController extends Controller
             'active' => 'required|boolean', 'permissions' => 'present|array',
             'permissions.*' => ['string', 'distinct', Rule::in(array_keys(StaffPermissions::labels()))],
         ]);
+        if (in_array('subscription.renew', $data['permissions'], true)) {
+            $data['permissions'] = array_values(array_unique([...$data['permissions'], 'subscription.view']));
+        }
+        if (in_array('bot.manage', $data['permissions'], true)) {
+            $data['permissions'] = array_values(array_unique([...$data['permissions'], 'bot.view']));
+        }
         DB::transaction(function () use ($store, $staff, $data) {
             Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
             if (! $staff && StoreStaff::where('store_id', $store->id)->count() >= 5) {
