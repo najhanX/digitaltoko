@@ -90,6 +90,17 @@ class SubscriptionService
             }
             $locked->update(['provider_id' => $data['id_payment'], 'total' => $data['total'], 'qr_url' => $data['qr_url'] ?? null, 'expires_at' => $data['expires_at'],
                 'status' => ['PENDING' => 'pending', 'PAID' => 'paid', 'EXPIRED' => 'expired', 'REVIEW' => 'review'][$data['status']], 'paid_at' => $data['paid_at'] ?? null, 'last_error' => null]);
+            if ($locked->status !== 'pending') {
+                $title = match ($locked->status) {
+                    'paid' => 'Pembayaran sewa diterima', 'expired' => 'Invoice sewa kedaluwarsa', default => 'Pembayaran sewa perlu ditinjau'
+                };
+                $message = match ($locked->status) {
+                    'paid' => 'Pembayaran paket untuk '.$store->name.' telah diterima. Buka langganan untuk melihat aktivasi atau jadwal berlakunya.',
+                    'expired' => 'Batas pembayaran invoice '.$store->name.' telah berakhir. Buka langganan untuk membuat invoice baru.',
+                    default => 'Pembayaran untuk '.$store->name.' memerlukan pemeriksaan administrator.',
+                };
+                app(PanelNotifications::class)->forStore($store, $title, $message, $locked->status === 'paid' ? 'success' : 'warning', 'invoice:'.$locked->id.':'.$locked->status, 'subscription.view');
+            }
             if ($locked->status === 'paid') {
                 if ($locked->purpose === 'initial') {
                     if (! $owner->trial_used_at && $owner->trial_store_id === $store->id) {
@@ -182,6 +193,12 @@ class SubscriptionService
                     $this->grant($store, $next, $store->expires_at);
                 }
                 $status = $store->expires_at->isFuture() ? 'active' : (! $store->is_trial && $store->expires_at->addDays(7)->isFuture() ? 'grace' : 'expired');
+                if ($status !== $store->status && in_array($status, ['grace', 'expired'], true)) {
+                    app(PanelNotifications::class)->forStore($store,
+                        $status === 'grace' ? 'Toko memasuki masa tenggang' : 'Masa aktif toko berakhir',
+                        $status === 'grace' ? $store->name.' memasuki masa tenggang tujuh hari. Transaksi masih tersedia; segera perpanjang langganan.' : 'Layanan '.$store->name.' berhenti karena masa aktif berakhir. Perpanjang langganan untuk melanjutkan.',
+                        'warning', 'subscription:'.$store->id.':'.$store->expires_at->timestamp.':'.$status, 'subscription.view');
+                }
                 $store->update(['status' => $status]);
             }
         });

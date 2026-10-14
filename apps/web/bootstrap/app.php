@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CapturePanelNotifications;
 use App\Http\Middleware\ConfiguredTrustProxies;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequirePlatformHost;
@@ -19,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(prepend: [ResolvePlatformHost::class], append: [HandleInertiaRequests::class]);
+        $middleware->web(prepend: [ResolvePlatformHost::class], append: [HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);
         $middleware->replace(TrustProxies::class, ConfiguredTrustProxies::class);

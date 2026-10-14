@@ -7,6 +7,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OwnerAuthController;
 use App\Http\Controllers\OwnerOnboardingController;
 use App\Http\Controllers\PanelController;
+use App\Http\Controllers\PanelNotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PreviewController;
 use App\Http\Controllers\StaffLoginController;
@@ -17,6 +18,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::middleware('platform.host')->group(function () {
+    Route::get('/panel/notifications', [PanelNotificationController::class, 'index'])->middleware('throttle:60,1')->name('panel.notifications');
+    Route::post('/panel/notifications/read-all', [PanelNotificationController::class, 'readAll'])->middleware('throttle:30,1');
+    Route::post('/panel/notifications/{notification}/read', [PanelNotificationController::class, 'read'])->middleware('throttle:60,1');
     Route::get('/admin/plans', [PlanController::class, 'index'])->middleware('auth:web');
     Route::post('/admin/plans', [PlanController::class, 'save'])->middleware('auth:web');
     Route::patch('/admin/plans/{plan}', [PlanController::class, 'save'])->middleware('auth:web');

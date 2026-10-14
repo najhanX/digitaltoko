@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\PanelNotifications;
 use App\Support\ListQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,11 @@ class VerificationController extends Controller
             $locked->forceFill(['verification_status' => $data['decision'], 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(), 'rejection_reason' => $data['decision'] === 'rejected' ? $data['reason'] : null,
                 'document_purge_at' => $data['decision'] === 'rejected' ? now()->addHours(72) : null])->save();
+            app(PanelNotifications::class)->send($locked,
+                $data['decision'] === 'approved' ? 'Verifikasi disetujui' : 'Verifikasi perlu diperbaiki',
+                $data['decision'] === 'approved' ? 'Identitas Anda telah disetujui. Anda dapat membuat toko dan memilih paket.' : 'Pengajuan verifikasi ditolak. Buka profil untuk melihat alasan dan mengajukan perbaikan.',
+                $data['decision'] === 'approved' ? 'success' : 'warning', '/owner/profile', null,
+                'verification:'.$data['reference'].':'.$data['decision']);
         });
 
         return back()->with('success', $data['decision'] === 'approved' ? 'KTP owner disetujui untuk seluruh tokonya.' : 'KTP ditolak. Alasan dapat dilihat owner.');

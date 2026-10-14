@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Services\PanelNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -39,6 +40,12 @@ class BotEventController extends Controller
         }
         // Never accept a store_id from the worker body as authorization.
         Cache::put('bot:'.$store->id.':state', [...$data, 'updated_at' => now()->toIso8601String()], now()->addSeconds(90));
+        if ($store->bot_connection_id && in_array($data['status'], ['CONNECTED', 'ERROR', 'LOGGED_OUT', 'EXPIRED'], true)) {
+            app(PanelNotifications::class)->forStore($store,
+                $data['status'] === 'CONNECTED' ? 'WhatsApp toko terhubung' : 'Koneksi WhatsApp perlu diperiksa',
+                $data['status'] === 'CONNECTED' ? 'WhatsApp '.$store->name.' berhasil terhubung. Untuk toko baru, lanjutkan konfirmasi aktivasi.' : 'Koneksi WhatsApp '.$store->name.' belum tersedia. Buka menu koneksi untuk menghubungkan kembali.',
+                $data['status'] === 'CONNECTED' ? 'success' : 'warning', 'bot:'.$store->bot_connection_id.':'.$data['status'], 'bot.view');
+        }
 
         return response()->json(['status' => 'SUCCESS', 'message' => 'Status bot diterima.']);
     }

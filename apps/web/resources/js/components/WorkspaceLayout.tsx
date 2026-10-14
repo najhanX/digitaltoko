@@ -4,6 +4,7 @@ import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Setti
 import Brand from './Brand';
 import ThemeToggle from './ThemeToggle';
 import PreviewBar from './PreviewBar';
+import NotificationBell, { type NotificationSummary } from './PanelNotifications';
 import type { WorkspaceContext } from '../types';
 
 type NavLink = { href: string; label: string; icon: LucideIcon; active: boolean };
@@ -23,7 +24,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     const path = page.url.split('?')[0];
     const scoped = path.startsWith('/stores/') || (path.startsWith('/owner/stores/') && path !== '/owner/stores/create') || role === 'staff';
     const tab = new URLSearchParams(page.url.split('?')[1] ?? '').get('tab');
-    const flash = page.props.flash as {success?: string; error?: string};
+    const notificationSummary = page.props.notificationSummary as NotificationSummary|null;
     useEffect(() => { setMobileOpen(false); }, [page.url]);
     useEffect(() => {
         if (!mobileOpen) return;
@@ -89,12 +90,10 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
             <div className="panel-main">
                 <header className="panel-top workspace-topbar">
                     <div className="topbar-location"><button ref={menuButtonRef} type="button" className="icon-button mobile-only" aria-label="Buka menu" aria-controls="workspace-navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21}/></button><span>{role === 'owner'?'Panel owner':role === 'staff'?'Panel staff':'Panel admin'} <span className="breadcrumb-separator">/</span> <strong>{breadcrumb ?? (scoped?store?.name:null) ?? 'DigitalToko'}</strong></span></div>
-                    <div className="panel-top-right"><ThemeToggle/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div><Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
+                    <div className="panel-top-right"><ThemeToggle/><NotificationBell summary={notificationSummary} preview={preview}/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div><Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
                 </header>
                 <main className="workspace-content panel-content">
                     <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{actions && <div className="page-heading-actions">{actions}</div>}</div>
-                    {flash?.success && <div className="feedback success" role="status">{flash.success}</div>}
-                    {flash?.error && <div className="feedback error" role="alert">{flash.error}</div>}
                     {children}
                 </main>
             </div>
