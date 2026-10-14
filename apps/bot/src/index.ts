@@ -6,7 +6,8 @@ import { mkdir, open, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
 import { MenuTokens, type MenuAction } from "./menu.js";
-import { sendMenu } from "./interactive.js";
+import { sendMenu, sendControls } from "./interactive.js";
+import { catalogQuery, catalogPage, catalogText } from "./catalog.js";
 import {
   createAtomicCredentialWriter,
   createCredentialSaver,
@@ -183,8 +184,26 @@ async function startSocket() {
               if (typeof value.id === "string") action = tokens.consume(value.id, chat, sender);
             } catch {}
           }
-          if (text === "#menu" || text === "#start") {
+          if (text === "#menu" || text === "#start" || action === "menu") {
             await sendMenu(sock, message, chat, sender, tokens, access.data.store_name);
+            continue;
+          }
+          const products=catalogQuery(text,action);
+          if(products) {
+            let data;
+            try {
+              const query=new URLSearchParams({page:String(products.page),q:products.search});
+              data=catalogPage((await api("/api/internal/bot/products?"+query)).data);
+            } catch {
+              await sock.sendMessage(chat,{text:"Katalog belum dapat dibaca. Coba kembali beberapa saat lagi."},{quoted:message});
+              continue;
+            }
+            await sock.sendMessage(chat,{text:catalogText(data,products)},{quoted:message});
+            const controls:(readonly [MenuAction,string])[]=[];
+            if(data.pagination.current_page>1)controls.push([{type:"products",page:data.pagination.current_page-1,search:products.search},"Sebelumnya"]);
+            if(data.pagination.current_page<data.pagination.last_page)controls.push([{type:"products",page:data.pagination.current_page+1,search:products.search},"Berikutnya"]);
+            controls.push(["menu","Menu toko"]);
+            await sendControls(sock,message,chat,sender,tokens,controls,"Jelajahi katalog toko");
             continue;
           }
           action ??=
@@ -193,7 +212,7 @@ async function startSocket() {
             await sock.sendMessage(
               chat,
               {
-                text: "Layanan katalog, status pesanan, dan saldo belum diaktifkan untuk bot fondasi ini. Hubungi owner toko.",
+                text: "Status pesanan dan saldo pelanggan belum tersedia. Hubungi owner toko untuk bantuan.",
               },
               { quoted: message },
             );

@@ -5,7 +5,8 @@
     "scripts": {
         "build": "tsc --noEmit && vite build",
         "dev": "vite",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test:frontend": "node --experimental-strip-types --test tests/Frontend/*.test.mjs"
     },
     "devDependencies": {
         "@inertiajs/vite": "^3.0.0",

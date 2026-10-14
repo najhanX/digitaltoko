@@ -22,6 +22,12 @@ WA_ENABLED=false tetap menjadi default mode manual. Manager mengaktifkan WhatsAp
 
 Menu #menu/#start menyediakan teks dan quick reply untuk perangkat mobile yang dikenali; desktop/unknown memakai teks. Tombol menggunakan token terikat chat/sender, expiry 15 menit, dan konsumsi satu kali. Perangkat nyata belum diuji; relay berhasil tidak membuktikan tombol tampil.
 
-Koneksi QR/kode, hubungkan ulang, dan lepas koneksi sudah tersedia di panel. Mengubah nomor/metode melepas sesi sebelumnya; menghubungkan ulang dengan pilihan yang sama mencoba memakai sesi yang tersimpan. Jika logout remote gagal karena jaringan, sesi lokal tetap dilepas dan perangkat harus dihapus juga melalui HP. Katalog, saldo, checkout, dan status transaksi produk masih belum tersedia; handler tidak membuat transaksi pemasok. Pada 14 Oktober 2026, pengguna mengonfirmasi pairing kode berhasil terhubung dan pengujian pesan/balasan dasar berjalan normal. Tampilan tombol native pada berbagai perangkat masih memerlukan pemeriksaan tersendiri.
+Koneksi QR/kode, hubungkan ulang, dan lepas koneksi sudah tersedia di panel. Mengubah nomor/metode melepas sesi sebelumnya; menghubungkan ulang dengan pilihan yang sama mencoba memakai sesi yang tersimpan. Jika logout remote gagal karena jaringan, sesi lokal tetap dilepas dan perangkat harus dihapus juga melalui HP. Katalog toko sudah tersedia melalui #produk; saldo pelanggan, checkout, dan status transaksi produk belum tersedia. Handler katalog tidak membuat transaksi pemasok. Pada 14 Oktober 2026, pengguna mengonfirmasi pairing kode berhasil terhubung dan pengujian pesan/balasan dasar berjalan normal. Tampilan tombol native pada berbagai perangkat masih memerlukan pemeriksaan tersendiri.
 
 Fondasi auth sesi masih file per toko dengan writer atomic untuk creds; penyimpanan key/auth production, pemulihan crash, dan operasi multi-host memerlukan milestone hardening sebelum dipakai penyewa.
+
+## Katalog nyata
+
+`#produk` menampilkan sepuluh produk per halaman; `#produk canva` mencari nama/kode/kategori/layanan; `#produk 2` atau `#produk 2 canva` membuka halaman berikutnya. Tombol sebelumnya/berikutnya memakai token terikat chat dan pengirim, dengan fallback perintah teks. Worker membaca `/api/internal/bot/products` menggunakan Bearer token toko existing; harga, kategori dan ketersediaan dihitung Laravel. Credential pemasok, modal dan payload stok tidak dikirim ke WhatsApp.
+
+Setelah perubahan source: `npm run build`, lalu restart manager melalui pengelola proses Anda. Registry/sesi tidak dihapus. Pada PM2 gunakan restart proses manager yang sudah ada; jangan menjalankan instance kedua. Pengujian katalog menggunakan transport/mock lokal, sehingga tampilan pesan/tombol pada WhatsApp nyata tetap perlu dicoba setelah restart.

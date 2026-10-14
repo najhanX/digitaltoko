@@ -113,3 +113,13 @@ Worker berjalan di server meskipun browser ditutup. Credential auth WhatsApp tet
 6. Implementasikan penagihan sewa, perubahan paket, monitoring, backup, dan pemulihan.
 
 Validasi wajib sebelum layanan dipakai: owner A tidak dapat membaca/mengubah toko B; sumber sendiri yang tidak termasuk paket ditolak; setiap paket aktif dapat mengakses Hanshop tanpa pembatasan jenis produk dari paket sumber sendiri; expiry/downgrade tidak menghilangkan penyelesaian pesanan lama; worker restart tidak menggandakan transaksi/pengiriman tanpa kendali; pembelian premium bersamaan tidak memakai stok yang sama.
+
+## Modul sumber dan katalog yang tersedia — 14 Oktober 2026
+
+Laravel menyimpan supplier_connections terenkripsi dan supplier_products sebagai snapshot per toko/mode/SKU. Cache Redis 120 detik (60–180) memakai HMAC fingerprint akun pemasok, shared lintas toko dengan akun sama, dengan lock dan cooldown kegagalan. Sync memvalidasi payload utuh sebelum upsert transactional; pembaca storefront/bot tidak melakukan I/O provider. Scheduler setiap dua menit memperbarui mode yang pernah disinkronkan. Snapshot remote >600 detik tidak eligible.
+
+CatalogProduct memiliki beberapa ProductMapping jenis sama. StoreCatalog menghitung kandidat aktif/eligible berdasarkan paket dan sumber, mengurutkan modal termurah, kemudian menerapkan ProductPricing. Markup nominal/persen/kombinasi serta auto_update diwariskan secara independen: produk → kategori → layanan; nilai 0 eksplisit bukan inherit. Harga jual di bawah modal membuat produk tidak tersedia. Fallback transaksi akan memakai kandidat ini pada milestone pemesanan; saat ini belum ada dispatch.
+
+PremiumStock menyimpan payload terenkripsi, terpisah per toko; daftar hanya metadata, reveal memerlukan stock.credentials dan respons no-store. Stok sent immutable. Public projection yang sama digunakan web/bot, tidak memuat modal, credential, parsing privat, atau payload akun. Koneksi pemasok owner-only; products.manage, pricing.manage, stock.manage dan stock.credentials terpisah. Saldo Hanshop global tidak tersedia untuk staff.
+
+Integrasi Hanshop memakai endpoint internal read-only pada bridge tepercaya existing: owner id tertaut, store UUID, access_until. Kredensial layanan tidak diberikan ke tenant. Pembacaan harga mengikuti tier akun existing dan tidak memanggil provider/mengubah saldo. Endpoint transaksi Partner API tetap memakai kontrak HMAC/scope/IP tersendiri dan tidak dipakai tahap katalog.

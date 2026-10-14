@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-export type MenuAction='products'|'status'|'balance';
+export type MenuAction='menu'|'products'|'status'|'balance'|{type:'products';page:number;search:string};
 type Entry={chat:string;sender:string;action:MenuAction;expires:number};
 export class MenuTokens {
     private entries=new Map<string,Entry>();

@@ -144,6 +144,8 @@ class PanelNotifications
                 '/staff/'.$recipient->store_id.'/dashboard' => in_array('dashboard.view', $permissions, true),
                 '/staff/'.$recipient->store_id.'/settings' => in_array('web.manage', $permissions, true),
                 '/stores/'.$recipient->store_id.'/subscription' => in_array('subscription.view', $permissions, true),
+                '/stores/'.$recipient->store_id.'/products', '/stores/'.$recipient->store_id.'/sources' => count(array_intersect(['products.view', 'products.manage', 'pricing.manage'], $permissions)) > 0,
+                '/stores/'.$recipient->store_id.'/stock' => count(array_intersect(['stock.view', 'stock.manage', 'stock.credentials'], $permissions)) > 0,
                 '/stores/'.$recipient->store_id.'/bot' => in_array('bot.view', $permissions, true) || in_array('bot.manage', $permissions, true),
                 default => false,
             };

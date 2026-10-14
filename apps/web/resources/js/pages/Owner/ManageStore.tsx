@@ -15,7 +15,7 @@ const permissionGroups = [
     {label:'Ringkasan & produk',keys:['dashboard.view','products.view','products.manage','pricing.manage']},
     {label:'Stok premium',keys:['stock.view','stock.manage','stock.credentials']},
     {label:'Pesanan & pelanggan',keys:['orders.view','orders.resend','guests.resolve','customers.view','customers.contacts','customers.manage']},
-    {label:'Pembayaran & saldo',keys:['payments.view','payments.policy','wallet.view','wallet.settlement']},
+    {label:'Pembayaran & saldo',keys:['payments.view','payments.policy','wallet.view','wallet.settlement','suppliers.balance']},
     {label:'Toko & langganan',keys:['web.manage','checkout.manage','bot.view','bot.manage','subscription.view','subscription.renew']},
 ];
 export default function ManageStore({role = 'owner',store,staff,permissionLabels}:{role?:'owner'|'staff';store:Store;staff:Staff[];permissionLabels:Record<string,string>}) {

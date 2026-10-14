@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(prepend: [ResolvePlatformHost::class], append: [HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
+        $middleware->trimStrings(except: ['payload', 'entries.*']);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);
         $middleware->replace(TrustProxies::class, ConfiguredTrustProxies::class);
         $middleware->redirectGuestsTo(function (Request $request): string {
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['password', 'password_confirmation', 'current_password', 'api_key', 'credentials', 'payload', 'entries']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

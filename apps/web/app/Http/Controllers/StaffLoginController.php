@@ -38,6 +38,10 @@ class StaffLoginController extends Controller
             $target = '/staff/'.$store->id.'/settings';
         } elseif ($store->category !== 'web' && (in_array('bot.view', $permissions, true) || in_array('bot.manage', $permissions, true))) {
             $target = '/stores/'.$store->id.'/bot';
+        } elseif (count(array_intersect(['products.view', 'products.manage', 'pricing.manage'], $permissions)) > 0) {
+            $target = '/stores/'.$store->id.'/products';
+        } elseif (count(array_intersect(['stock.view', 'stock.manage', 'stock.credentials'], $permissions)) > 0) {
+            $target = '/stores/'.$store->id.'/stock';
         }
 
         return redirect($target);

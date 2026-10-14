@@ -9,7 +9,7 @@ class StaffPermissions
         return ['dashboard.view' => 'Lihat ringkasan toko', 'products.view' => 'Lihat produk',
             'products.manage' => 'Kelola produk & parsing', 'pricing.manage' => 'Kelola harga & markup',
             'stock.view' => 'Lihat jumlah stok', 'stock.manage' => 'Kelola stok ready',
-            'stock.credentials' => 'Lihat credential stok', 'orders.view' => 'Lihat & cek transaksi',
+            'stock.credentials' => 'Lihat credential stok', 'suppliers.balance' => 'Lihat saldo Digiflazz toko', 'orders.view' => 'Lihat & cek transaksi',
             'orders.resend' => 'Kirim ulang hasil ke penerima asli', 'guests.resolve' => 'Tindak lanjut pesanan guest',
             'customers.view' => 'Lihat pelanggan', 'customers.contacts' => 'Lihat kontak pelanggan',
             'customers.manage' => 'Kelola profil pelanggan', 'payments.view' => 'Lihat pembayaran',

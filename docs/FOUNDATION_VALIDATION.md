@@ -106,3 +106,13 @@ Setelah penyelarasan tersebut, pengguna mengonfirmasi bot berhasil terhubung mel
 Kontrol halaman atas/bawah pada dropdown notifikasi diganti infinite scroll. Sepuluh item dimuat setiap permintaan, lalu ditambahkan ketika mendekati akhir daftar, dengan indikator loading, retry setelah gagal, dan penanda saat riwayat habis. Cursor berdasarkan waktu dan ID menjaga kelanjutan riwayat ketika notifikasi baru masuk atau item pada filter belum dibaca ditandai dibaca. Polling tidak mengganti daftar saat dropdown terbuka. Tandai dibaca mempertahankan item yang sudah dimuat dan posisi scroll.
 
 Dua belas tes notifikasi / 104 assertions, build TypeScript/Vite, dan Pint lulus. Browser fixture memverifikasi pemuatan dari 10 menjadi 20 item, daftar tetap berisi 10 saat server simulasi dimatikan, retry menambah menjadi 20 tanpa duplikasi, filter belum dibaca, penandaan satu item tanpa mereset 20 item yang sudah dimuat, serta scroll pada ponsel 390 px dalam dark mode. Tidak ada perubahan data pelanggan atau transaksi nyata. Bukti terbaru: `assets/notifications-scroll-after.jpg` dan `assets/notifications-scroll-mobile-after.jpg`; kontrol pagination pada daftar lain tetap tersedia.
+
+## Katalog toko — 14 Oktober 2026
+
+- `php artisan test --compact`: 109 tests / 1395 assertions lulus. 13 tes katalog mencakup cache per akun/kegagalan, sync atomic, mode pasca/prabayar, entitlement, isolasi toko/staff, import idempotent/kode bentrok, preservasi spasi credential, markup/inheritance/ceil, sumber termurah/expiry/stale, stok terenkripsi/reveal, dan kesamaan proyeksi web/bot.
+- `npm run test:frontend`: dua tes parser stok batch lulus, termasuk CRLF dan preservasi spasi credential. `npm run build` memeriksa TypeScript dan build frontend.
+- Bot: 17 tes lulus; katalog/paging/pencarian/validasi respons publik dan token navigasi ditambah pada regression pairing/manager existing.
+- API Hanshop: check/build lulus; 148 tes lulus dan satu tes MySQL billing opt-in dilewati. Reader katalog memakai mock pool; tidak ada pembelian/debit/live supplier pada pengujian ini.
+- Predis diuji read/write/lock pada Redis lokal. Migration additive Laravel diterapkan pada MySQL lokal setelah backup privat. Seeder dummy hanya dijalankan pada database pengujian.
+- Browser fixture terisolasi: sinkron pasca, impor, tambah produk dengan beberapa parsing, markup produk mengalahkan kategori, stok batch, reveal berizin, staff baca, template Aurora/Nebula/Atlas dan modal mobile gelap. Harga contoh 7000 + 5% + 5000 = 12350 terlihat sama di panel dan storefront.
+- Bukti ini tidak menyatakan credential Digiflazz/Hanshop tenant nyata sudah dikonfigurasi atau pesan katalog WhatsApp live sudah diuji. Tidak ada perubahan VPS/DNS.

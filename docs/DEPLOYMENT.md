@@ -105,3 +105,15 @@ Dokumen KTP disimpan pada disk privat, diakses hanya owner terkait/admin melalui
 6. Toko draft perlu bayar atau trial terlebih dahulu. Bot berhenti saat akses berakhir; masa tenggang berbayar tetap tersedia tujuh hari. Token dan ID percobaan mencegah worker/sesi lama memperbarui percobaan baru. QR/kode dihapus dari respons ketika kedaluwarsa atau sudah terhubung.
 
 Registry manager dan auth Baileys saat ini berada pada file privat per toko, dengan atomic writer untuk creds. Operasi multi-host, penyimpanan auth/key di database, pemulihan penuh setelah disk rusak, dan integrasi purge toko masih memerlukan tahap hardening. Jangan menyalin sesi bot Hanshop ke worker tenant. Panduan rinci dan batas modul bisnis: `apps/bot/README.md`.
+
+## Sumber produk dan katalog (14 Oktober 2026)
+
+1. Backup database DigitalToko, jalankan `composer install`, `php artisan migrate --force --no-interaction`, dan `npm run build` di apps/web. Migration katalog bersifat additive dan tidak mengubah database/saldo Hanshop.
+2. Gunakan `REDIS_CLIENT=predis` (dependensi Composer sudah disetujui/ditambahkan), `SUPPLIER_CACHE_STORE=redis`, `SUPPLIER_CACHE_SECONDS=120`, dan `SUPPLIER_MAX_SNAPSHOT_AGE=600`. Pertahankan APP_KEY untuk dekripsi credential serta stok privat. Redis harus terjangkau PHP/CLI.
+3. Build/restart API Hanshop yang memuat bridge supplier read-only, dengan `HANSHOP_API_URL` dan `HANSHOP_IDENTITY_TOKEN` existing. Tidak ada migration Hanshop baru untuk pembacaan katalog ini. Token tetap server-only dan komunikasi HTTPS/jaringan privat.
+4. Cron `schedule:run` setiap menit menjalankan sinkron katalog setiap dua menit, tanpa overlap. Saat lokal: `php artisan schedule:work`. Sinkron manual per toko: `php artisan digitaltoko:catalog-sync --store=UUID_TOKO`. Tidak ada transaksi atau perubahan saldo saat sinkron.
+5. Owner hubungkan sumber dan sinkronkan mode prabayar/pasca yang dibutuhkan; scheduler mengulang mode yang sudah dipilih. Orbit/Space/Galaxy membatasi sumber milik toko; Hanshop tersedia pada semua paket aktif. Stok lokal tetap privat per toko.
+6. Build bot dan restart manager yang sudah ada melalui supervisor/PM2 agar handler #produk baru dimuat, tanpa menghapus registry/sesi atau membuat instance kedua.
+7. Periksa impor produk, aturan harga, stok, katalog publik dan #produk. Jika cache/provider gagal, snapshot tidak dihapus dan sumber remote yang berumur lebih dari 600 detik dinyatakan tidak tersedia. Stok lokal yang masih ready tetap dapat ditampilkan.
+
+Katalog publik tidak memanggil provider langsung. Pasca hanya menampilkan biaya admin; inquiry/checkout/fallback dispatch serta pengiriman stok belum termasuk tahap ini.
