@@ -1,12 +1,13 @@
 import type { WAMessage, WASocket } from '@whiskeysockets/baileys';
+import { commerceInput,handleCommerce } from './commerce.js';
 import { MenuTokens, type MenuAction } from './menu.js';
 import { readCustomerMessage } from './messages.js';
 import { sendMenu, sendControls, sendChoices } from './interactive.js';
 import { catalogPage, catalogQuery, catalogText } from './catalog.js';
 import { navigationQuery, navigationPage, navigationText, navigationUrl, navigationChoices, servicesQuery, navigationHelp } from './navigation.js';
-import { catalogErrorText, expiredMenuText, featureText } from './replies.js';
+import { catalogErrorText, expiredMenuText } from './replies.js';
 
-export async function handleCustomerMessage(sock:WASocket,message:WAMessage,tokens:MenuTokens,api:(path:string)=>Promise<unknown>):Promise<void> {
+export async function handleCustomerMessage(sock:WASocket,message:WAMessage,tokens:MenuTokens,api:(path:string,body?:unknown)=>Promise<unknown>):Promise<void> {
     const chat=message.key.remoteJid;
     if (!chat || message.key.fromMe || chat==='status@broadcast' || chat.endsWith('@g.us') || chat.endsWith('@broadcast') || chat.endsWith('@newsletter')) return;
     const sender=chat;
@@ -21,13 +22,16 @@ export async function handleCustomerMessage(sock:WASocket,message:WAMessage,toke
     }
     const browse=expired ? null : navigationQuery(input.selection!==null ? '' : input.text,action);
     const products=expired || browse ? null : catalogQuery(input.selection!==null ? '' : input.text,action);
-    if (!action && !browse && !products && !expired) return;
+    const commerce=!expired && commerceInput(input.text,action);
+    if (!action && !browse && !products && !expired && !commerce) return;
     const access=await api('/api/internal/bot/access') as {data?:{allowed?:boolean;store_name?:string}};
     if (access?.data?.allowed!==true) return;
     const storeName=typeof access.data.store_name==='string' ? access.data.store_name : 'Toko Digital';
     if (expired) {
         await sock.sendMessage(chat,{text:expiredMenuText(storeName)},{quoted:message});
         await sendControls(sock,message,chat,sender,tokens,[['menu','Buka menu baru']],'Buka kembali menu toko');
+    } else if(commerce){
+        await handleCommerce(sock,message,tokens,api,storeName,action);
     } else if (action==='menu') {
         await sendMenu(sock,message,chat,sender,tokens,storeName);
     } else if (browse) {
@@ -70,8 +74,5 @@ export async function handleCustomerMessage(sock:WASocket,message:WAMessage,toke
         if (data.pagination.current_page<data.pagination.last_page) controls.push([{type:'products',page:data.pagination.current_page+1,search:products.search},'Berikutnya']);
         controls.push(['menu','Menu utama']);
         await sendControls(sock,message,chat,sender,tokens,controls,'Pilih halaman katalog');
-    } else if (action==='balance' || action==='status') {
-        await sock.sendMessage(chat,{text:featureText(storeName,action)},{quoted:message});
-        await sendControls(sock,message,chat,sender,tokens,[['services','Lihat layanan'],['menu','Menu utama']],'Silakan pilih menu berikutnya');
     }
 }

@@ -19,7 +19,7 @@ class CatalogAccess
         $staff = $request->user('staff');
         $grants = $staff?->permissions ?? [];
         $implied = match ($permission) {
-            'products.view' => ['products.manage', 'pricing.manage'],'stock.view' => ['stock.manage', 'stock.credentials'],default => []
+            'orders.view' => ['orders.resend', 'guests.resolve'], 'customers.view' => ['customers.contacts', 'wallet.view', 'wallet.settlement'], 'payments.view' => ['payments.policy', 'checkout.manage'], 'products.view' => ['products.manage', 'pricing.manage'],'stock.view' => ['stock.manage', 'stock.credentials'],default => []
         };
         abort_unless($staff && $staff->active && $staff->store_id === $store->id && (in_array($permission, $grants, true) || count(array_intersect($implied, $grants)) > 0), 403);
 

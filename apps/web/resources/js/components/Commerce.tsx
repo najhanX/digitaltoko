@@ -1,0 +1,12 @@
+import { Head, Link, usePage } from '@inertiajs/react';
+import type { ReactNode } from 'react';
+export const orderStatuses:Record<string,string>={awaiting_payment:'Menunggu pembayaran',paid:'Lunas · antre diproses',processing:'Diproses',pending:'Pending pemasok',success:'Berhasil',failed:'Gagal',expired:'Pembayaran kedaluwarsa',review:'Perlu pemeriksaan'};
+export type Shop={name:string;slug:string;template:string;branding:Record<string,string>|null};
+export type Order={id:string;number:string;purpose:string;status:string;payment_status:string;destination:string;amount:number;fee:number;unique_code:number;total:number;credit_amount:number;refund_amount:number;gateway:string;message:string|null;product:string;phone?:string;result?:string|null;qr_image?:string|null;url?:string;created_at:string;expires_at:string;paid_at:string|null;refunded_at:string|null;customer_id?:string|null;resolution?:{method:string;note:string;at:string}|null};
+export const money=(v:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v);
+export function ShopLayout({store,title,children}:{store:Shop;title:string;children:ReactNode}){
+ const flash=usePage().props.flash as {success?:string;error?:string}|undefined;
+ return <><Head title={title+' · '+store.name}/><div className={'sf-site sf-'+store.template+' commerce-page'}><header className="sf-container sf-header"><Link href="/" className="sf-brand"><strong>{store.name}</strong></Link><nav className="sf-nav"><Link href="/">Katalog</Link><Link href="/account">Akun & saldo</Link></nav></header><main className="sf-container commerce-content"><div className="sf-section-title"><h1>{title}</h1></div>{flash?.success && <div className="feedback success" role="status">{flash.success}</div>}{flash?.error && <div className="feedback error" role="alert">{flash.error}</div>}{children}</main><footer className="sf-container sf-footer-bottom"><Link href="/">{store.name}</Link><span>Powered by <strong>DigitalToko</strong></span></footer></div></>;
+}
+
+export async function privatePost<T>(url:string):Promise<T>{const cookie=document.cookie.split('; ').find(item=>item.startsWith('XSRF-TOKEN='));const response=await fetch(url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','X-XSRF-TOKEN':cookie?decodeURIComponent(cookie.slice(11)):''}});if(!response.ok)throw new Error('Permintaan gagal. Periksa hak akses dan coba kembali.');return response.json();}

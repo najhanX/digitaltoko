@@ -1,7 +1,8 @@
+import type { PurchaseAction } from './commerce.js';
 import { randomBytes } from 'node:crypto';
 
 export type BrowseQuery={type:'browse';view:'services'|'categories'|'products';page:number;service?:string;category?:string};
-export type MenuAction=BrowseQuery|'services'|'menu'|'products'|'status'|'balance'|{type:'products';page:number;search:string};
+export type MenuAction=PurchaseAction|BrowseQuery|'services'|'menu'|'products'|'status'|'balance'|{type:'products';page:number;search:string};
 export type MenuScope={chatAliases?:readonly string[];senderAliases?:readonly string[]};
 type Entry={chats:string[];senders:string[];action:MenuAction;expires:number};
 const bindings=(id:string,aliases:readonly string[]=[])=>[...new Set([id,...aliases])].slice(0,3);

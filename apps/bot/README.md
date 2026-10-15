@@ -53,3 +53,12 @@ Build dan 28 tes bot lulus, termasuk payload quick_reply Baileys asli yang diamb
 Mobile menerima daftar pilihan single_select untuk layanan/kategori dan quick_reply sebelumnya/berikutnya/kembali. Daftar maksimal sepuluh item per halaman; fallback teks selalu memuat perintah yang dapat dipakai. Parameter `--halaman 2` mempertahankan konteks layanan/kategori. Pencarian global `#produk canva` dan paging `#produk 2 canva` tetap tersedia. Endpoint protected `/api/internal/bot/catalog` membaca data aktif milik store dari token worker, mengagregasi/paginate SQL, dan memakai proyeksi harga/ketersediaan yang sama dengan web. Nama dengan spasi didukung melalui tanda kutip.
 
 33 tes bot lulus, termasuk generator single_select nyata → pilihan layanan → kategori → produk → paging → kembali dan isolasi token. Endpoint Laravel diuji untuk isolasi toko, kategori identik lintas layanan, pagination tiap tingkat, respons publik, validasi, dan penolakan akses saat ditangguhkan/kedaluwarsa/paket web saja. Pengujian transport tidak mengirim pesan WA nyata; coba `#menu` baru setelah build/worker dimuat ulang.
+
+
+## Transaksi pelanggan (15 Oktober 2026)
+
+Perintah `#beli KODE TUJUAN`, konfirmasi tombol Saldo/QRIS (atau `#pesan` sesuai format balasan), `#topup 50000`, `#saldo`, dan `#status [NOMOR]` tersambung ke commerce Laravel. Harga dibekukan saat konfirmasi dan diperiksa server. Nomor pelanggan berasal dari PN pada key pesan Baileys; LID tanpa PN tidak diterjemahkan menjadi nomor tebakan. ID pesan menjadi idempotency key. Tombol tetap terikat chat/penerima dan sekali pakai; perintah teks tetap tersedia.
+
+Heartbeat worker mengambil outbox dan mengirim status/hasil ke penerima asli, lalu mengakui pengiriman. Gangguan sesudah WhatsApp menerima pesan sebelum ACK dapat menyebabkan pemberitahuan ulang, tetapi tidak membuat pesanan/debit/fulfillment baru. Produk premium tidak dikirim ke grup. Status pending dikirim sekali setelah lima menit melalui scheduler; hasil berubah tetap mengirim notifikasi. Receipt link bersifat privat.
+
+Manager menyediakan POST `/qr` pada loopback dengan bearer manager existing untuk encoding QRIS lokal. Endpoint ini tidak membutuhkan sesi WhatsApp dan tidak mengganti endpoint pairing. Jangan membuka port manager/worker ke internet. Jalankan scheduler Laravel dan build/restart manager/worker existing agar handler commerce aktif tanpa menghapus sesi.

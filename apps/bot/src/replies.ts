@@ -8,21 +8,10 @@ export function menuText(storeName:string):string {
     return shopReply(storeName,'MENU UTAMA',[
         'Selamat datang! Silakan pilih menu toko.', '',
         '*🛍️ KATALOG PRODUK*', 'Format : #list', 'Ket : Layanan → kategori utama → produk.', 'Cari langsung : #produk canva', '',
-        '*💳 SALDO PELANGGAN*', 'Format : #saldo', 'Ket : Informasi fitur saldo toko.', '',
-        '*🧾 STATUS PESANAN*', 'Format : #status', 'Ket : Informasi pengecekan pesanan.', '',
-        'Klik tombol di bawah atau ketik perintahnya.', 'Kembali ke menu : #menu',
+        '*💳 SALDO PELANGGAN*', 'Format : #saldo', 'Ket : Saldo dan topup khusus toko ini.', '',
+        '*🧾 STATUS PESANAN*', 'Format : #status', 'Ket : Pesanan terbaru milik nomor Anda.', '',
+        '*🛒 PEMESANAN*', 'Format : #beli KODE TUJUAN', 'Topup saldo : #topup 50000', '', 'Klik tombol di bawah atau ketik perintahnya.', 'Kembali ke menu : #menu',
     ]);
-}
-export function featureText(storeName:string,action:'balance'|'status'):string {
-    return action==='balance'
-        ? shopReply(storeName,'SALDO PELANGGAN',[
-            'Fitur saldo pelanggan belum diaktifkan.', '',
-            'Saldo pelanggan nantinya berlaku khusus', 'untuk transaksi di toko ini.',
-            'Hubungi admin toko jika perlu bantuan.', '', 'Lihat katalog : #produk', 'Menu utama : #menu'])
-        : shopReply(storeName,'STATUS PESANAN',[
-            'Pengecekan pesanan belum diaktifkan.', '',
-            'Jika Anda sudah bertransaksi dengan toko,', 'hubungi admin dan sertakan bukti pesanan.', '',
-            'Lihat katalog : #produk', 'Menu utama : #menu']);
 }
 export function expiredMenuText(storeName:string):string {
     return shopReply(storeName,'MENU PERLU DIPERBARUI',[

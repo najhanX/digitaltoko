@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {MenuTokens} from '../dist/menu.js';
 import {readCustomerMessage} from '../dist/messages.js';
 import {handleCustomerMessage} from '../dist/customer.js';
-import {catalogErrorText, featureText, menuText} from '../dist/replies.js';
+import {catalogErrorText, menuText} from '../dist/replies.js';
 
 const pn='628000000001@s.whatsapp.net',lid='100000000001@lid';
 const incoming=message=>({key:{remoteJid:pn,id:'A'.repeat(21),fromMe:false},message});
@@ -11,9 +11,10 @@ function harness(options={}) {
     const sent=[],relays=[],paths=[];
     const tokens=new MenuTokens(options.now);
     const sock={user:{id:'628000000099@s.whatsapp.net'},sendMessage:async(chat,body)=>{sent.push({chat,...body});return {key:{id:'fake'}};},relayMessage:async(chat,message)=>{relays.push({chat,message});}};
-    const api=async path=>{
+    const api=async (path,body)=>{
         paths.push(path);
         if(path==='/api/internal/bot/access')return {data:{allowed:options.allowed ?? true,store_name:'Toko Contoh'}};
+        if(path==='/api/internal/bot/commerce')return {data:body.action==='balance'?{balance:25000}:{orders:[]}};
         if(options.failure)throw Error('SUPPLIER_SECRET_ERROR');
         return {data:{store_name:'Toko Contoh',items:[],pagination:{current_page:1,last_page:2,total:12}}};
     };
@@ -45,17 +46,17 @@ test('real generated balance button routes to the same reply as typed saldo, inc
     const click=incoming({ephemeralMessage:{message:response(id)}});click.key.remoteJid=lid;click.key.remoteJidAlt=pn;
     await h.run(click);
     assert.equal(h.sent.at(-1).chat,lid);
-    assert.equal(h.sent.at(-1).text,featureText('Toko Contoh','balance'));
+    assert.match(h.sent.at(-1).text,/SALDO PELANGGAN/);assert.match(h.sent.at(-1).text,/25.000/);
     const typed=harness();await typed.run(incoming({conversation:'#saldo'}));
     assert.equal(h.sent.at(-1).text,typed.sent[0].text);
-    assert.deepEqual(h.paths,['/api/internal/bot/access','/api/internal/bot/access']);
+    assert.deepEqual(h.paths,['/api/internal/bot/access','/api/internal/bot/access','/api/internal/bot/commerce']);
 });
 
 test('each legacy selection dispatches an opaque status action rather than the label or raw command',async()=>{
     for(const make of [id=>({buttonsResponseMessage:{selectedButtonId:id}}),id=>({templateButtonReplyMessage:{selectedId:id}}),id=>({listResponseMessage:{singleSelectReply:{selectedRowId:id}}})]){
         const h=harness(),id=h.tokens.issue(pn,pn,'status');
         await h.run(incoming(make(id)));
-        assert.equal(h.sent[0].text,featureText('Toko Contoh','status'));
+        assert.match(h.sent[0].text,/RIWAYAT PESANAN/);assert.match(h.sent[0].text,/Belum ada pesanan/);
     }
     const h=harness();await h.run(incoming(response('#saldo')));
     assert.match(h.sent[0].text,/MENU PERLU DIPERBARUI/);
@@ -98,8 +99,7 @@ test('text-only clients keep usable commands, aliases and readable tenant brandi
     const h=harness(),message=incoming({conversation:'#menu'});message.key.id='desktop-message';await h.run(message);
     assert.equal(h.relays.length,0);assert.match(h.sent[0].text,/Format : #list/);
     const branded=menuText('*Nama*\n#saldo');assert.ok(!branded.includes('*Nama*\n#saldo'));
-    assert.match(featureText('Toko Contoh','balance'),/belum diaktifkan/);
-    assert.doesNotMatch(featureText('Toko Contoh','balance'),/Rp0|Hanshop|Digiflazz/);
+    await h.run(incoming({conversation:'#saldo'}));assert.match(h.sent.at(-1).text,/25.000/);assert.doesNotMatch(h.sent.at(-1).text,/Hanshop|Digiflazz/);
     await h.run(incoming({conversation:'#list canva'}));assert.equal(h.paths.at(-1),'/api/internal/bot/catalog?view=categories&page=1&service=canva');
     await h.run(incoming({conversation:'#stok canva'}));assert.equal(h.paths.at(-1),'/api/internal/bot/catalog?view=products&page=1&category=canva');
 });

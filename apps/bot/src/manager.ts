@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import QRCode from "qrcode";
 import { timingSafeEqual, randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdir, readFile, rename, rm, writeFile, unlink } from "node:fs/promises";
@@ -102,6 +103,12 @@ app.use((req, res, next) => {
   const expected = Buffer.from(token);
   if (received.length !== expected.length || !timingSafeEqual(received, expected)) {res.sendStatus(401); return;}
   next();
+});
+app.post("/qr", async (req,res)=>{
+  const payload=req.body?.payload;
+  if(typeof payload!=="string" || payload.length<8 || payload.length>4096){res.sendStatus(422);return;}
+  try {res.json({status:"SUCCESS",data:await QRCode.toDataURL(payload,{errorCorrectionLevel:"M",width:360,margin:2})});}
+  catch {res.status(422).json({status:"FAILED",message:"Payload QR tidak valid."});}
 });
 app.get("/health", (_req, res) => res.json({status: "SUCCESS", workers: children.size}));
 app.post("/stores/:store/connect", async (req, res) => {

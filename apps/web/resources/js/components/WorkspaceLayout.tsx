@@ -51,6 +51,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         {href:'/admin/verifications',label:'Verifikasi owner',icon:ShieldCheck,active:path === '/admin/verifications'},
         {href:'/admin/plans',label:'Paket & harga',icon:Package,active:path === '/admin/plans'},
         {href:'/admin/billing',label:'Pembayaran sewa',icon:CreditCard,active:path === '/admin/billing'},
+        {href:'/admin/commerce',label:'Modul pembayaran',icon:CreditCard,active:path === '/admin/commerce'},
     ] : role === 'owner' ? [
         {href:'/owner',label:'Ringkasan',icon:LayoutDashboard,active:path === '/owner'},
         {href:'/owner/stores',label:'Toko saya',icon:Store,active:path === '/owner/stores' || path === '/owner/stores/create'},
@@ -66,6 +67,9 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
             scopedLinks.push({href:'/stores/'+store.id+'/catalog-structure',label:'Layanan & kategori',icon:Package,active:path === '/stores/'+store.id+'/catalog-structure'});
             scopedLinks.push({href:'/stores/'+store.id+'/products',label:'Katalog & harga',icon:Package,active:path === '/stores/'+store.id+'/products'});
         }
+        if(role==='owner' || permissions.some(value=>['orders.view','orders.resend','guests.resolve'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/orders',label:'Transaksi pelanggan',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/orders')});
+        if(role==='owner' || permissions.some(value=>['customers.view','customers.contacts','wallet.view','wallet.settlement'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/customers',label:'Pelanggan & saldo',icon:Users,active:path.startsWith('/stores/'+store.id+'/customers')});
+        if(role==='owner' || permissions.some(value=>['payments.view','payments.policy','checkout.manage'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/payments',label:'Pembayaran pelanggan',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/payments')});
         if (role === 'owner' || permissions.some(value=>['stock.view','stock.manage','stock.credentials'].includes(value))) scopedLinks.push({href:'/stores/'+store.id+'/stock',label:'Stok premium',icon:Package,active:path === '/stores/'+store.id+'/stock'});
         if (store.category !== 'web' && (role === 'owner' || permissions.includes('bot.view') || permissions.includes('bot.manage'))) scopedLinks.push({href:'/stores/'+store.id+'/bot',label:'Koneksi WhatsApp',icon:Smartphone,active:path === '/stores/'+store.id+'/bot'});
         const settings = role === 'owner' ? '/owner/stores/'+store.id+'/manage' : '/staff/'+store.id+'/settings';

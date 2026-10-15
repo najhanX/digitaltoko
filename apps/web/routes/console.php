@@ -80,3 +80,5 @@ Artisan::command('digitaltoko:subscriptions', function (SubscriptionService $ser
 })->purpose('Rekonsiliasi invoice, aktivasi otomatis dan masa tenggang per toko.');
 Schedule::command('digitaltoko:subscriptions')->everyMinute()->withoutOverlapping();
 Schedule::command('digitaltoko:catalog-sync')->everyTwoMinutes()->withoutOverlapping();
+
+Schedule::command('digitaltoko:commerce')->everyMinute()->withoutOverlapping();

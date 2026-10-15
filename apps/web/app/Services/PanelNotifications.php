@@ -76,10 +76,11 @@ class PanelNotifications
 
     public function forStore(Store $store, string $title, string $message, string $level, string $event, ?string $permission = null): void
     {
-        $url = '/stores/'.$store->id.'/'.(str_starts_with($event, 'bot:') ? 'bot' : 'subscription');
+        $url = '/stores/'.$store->id.'/'.(str_starts_with($event, 'order:') ? 'orders' : (str_starts_with($event, 'bot:') ? 'bot' : 'subscription'));
         $this->send($store->owner, $title, $message, $level, $url, $store, $event);
         foreach (StoreStaff::where('store_id', $store->id)->where('active', true)->get() as $staff) {
             if ($permission && ! in_array($permission, $staff->permissions ?? [], true)
+                && ! ($permission === 'orders.view' && count(array_intersect(['orders.resend', 'guests.resolve'], $staff->permissions ?? [])) > 0)
                 && ! ($permission === 'bot.view' && in_array('bot.manage', $staff->permissions ?? [], true))) {
                 continue;
             }
@@ -146,6 +147,8 @@ class PanelNotifications
                 '/stores/'.$recipient->store_id.'/subscription' => in_array('subscription.view', $permissions, true),
                 '/stores/'.$recipient->store_id.'/products', '/stores/'.$recipient->store_id.'/catalog-structure', '/stores/'.$recipient->store_id.'/sources' => count(array_intersect(['products.view', 'products.manage', 'pricing.manage'], $permissions)) > 0,
                 '/stores/'.$recipient->store_id.'/stock' => count(array_intersect(['stock.view', 'stock.manage', 'stock.credentials'], $permissions)) > 0,
+                '/stores/'.$recipient->store_id.'/orders' => count(array_intersect(['orders.view', 'orders.resend', 'guests.resolve'], $permissions)) > 0,
+                '/stores/'.$recipient->store_id.'/payments' => count(array_intersect(['payments.view', 'payments.policy', 'checkout.manage'], $permissions)) > 0,
                 '/stores/'.$recipient->store_id.'/bot' => in_array('bot.view', $permissions, true) || in_array('bot.manage', $permissions, true),
                 default => false,
             };

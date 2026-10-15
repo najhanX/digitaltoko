@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Customer;
 use App\Models\StoreStaff;
 use App\Models\User;
 
@@ -39,6 +40,7 @@ return [
     */
 
     'guards' => [
+        'customer' => ['driver' => 'session', 'provider' => 'customers'],
         'staff' => ['driver' => 'session', 'provider' => 'store_staff'],
         'web' => [
             'driver' => 'session',
@@ -64,6 +66,7 @@ return [
     */
 
     'providers' => [
+        'customers' => ['driver' => 'eloquent', 'model' => Customer::class],
         'store_staff' => ['driver' => 'eloquent', 'model' => StoreStaff::class],
         'users' => [
             'driver' => 'eloquent',

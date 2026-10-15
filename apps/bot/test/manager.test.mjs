@@ -46,6 +46,9 @@ test('manager authenticates, isolates sessions, starts idempotently and resumes 
   try{
     await startManager();
     assert.equal((await fetch(base+'/health')).status,401);
+    assert.equal((await fetch(base+'/qr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload:'000201010211TEST-ONLY'})})).status,401);
+    assert.equal((await fetch(base+'/qr',{method:'POST',headers,body:JSON.stringify({payload:'short'})})).status,422);
+    const encoded=await (await fetch(base+'/qr',{method:'POST',headers,body:JSON.stringify({payload:'000201010211TEST-ONLY'})})).json();assert.match(encoded.data,/^data:image\/png;base64,iVBOR/);
     assert.equal((await connect({...first,phone:'$(secret)'})).status,422);
     assert.equal((await fetch(base+'/stores/not-a-store/disconnect',{method:'POST',headers})).status,422);
     assert.equal((await connect(first)).status,200);
