@@ -68,3 +68,17 @@ Jika koneksi Hanshop gagal, perhatikan penyebab yang muncul: API tidak terjangka
 Mercury = bot/stok; Venus = bot/Digiflazz; Terra = web/stok; Mars = web/Digiflazz; Jupiter = bot/keduanya; Saturn = web/keduanya; Uranus = bot+web/stok; Neptune = bot+web/Digiflazz; Andromeda = bot+web/keduanya. Semua paket aktif termasuk Hanshop. Satu katalog JSON dipakai admin, owner/staff, landing, seeder dan filter paket. Trial Bot penuh bernama Jupiter.
 
 `php artisan db:seed --class=PackagePlanSeeder --no-interaction` memperbarui nama legacy tanpa mengubah harga, durasi, status aktif, ID atau snapshot langganan/invoice. Penawaran khusus tetap tersimpan. Kombinasi yang belum ada mendapat penawaran dummy Rp50.000/30 hari nonaktif. Pada 15 Oktober 2026 seeder dijalankan pada MySQL lokal setelah backup privat: sembilan nama berubah, jumlah penawaran tetap sembilan, dan invariant komersial/snapshot lulus pemeriksaan.
+
+### Pengelolaan toko administrator
+
+Buka `/admin/stores` setelah login administrator. Cari/filter toko atau klik nama owner untuk melihat tokonya. Detail toko menyediakan modal edit, ubah paket, koreksi masa aktif, tangguhkan/pulihkan, riwayat tindakan dengan alasan wajib, dan tautan pembayaran toko. Penangguhan admin terpisah dari langganan: masa aktif tetap berjalan dan pembayaran tidak mencabut penangguhan. Koreksi masa aktif hanya tersedia untuk langganan berbayar yang sudah aktif, tanpa invoice atau perubahan paket yang masih berjalan. Jalankan `php artisan migrate` saat memasang pembaruan pada server lain.
+
+Perubahan paket oleh admin merupakan koreksi langsung tanpa tagihan/refund otomatis. Pilih salah satu dari sembilan paket, isi alasan, lalu simpan. Masa aktif dan invoice historis tetap; kategori, sumber produk, dan fitur pada snapshot langganan diperbarui bersama. Trial, tahap aktivasi, penghapusan, serta invoice pending/paid/review memblokir perubahan ini. Toko draft dapat diganti pilihannya tanpa otomatis aktif. Data produk/stok/sesi tetap disimpan, dan penangguhan admin tetap berlaku.
+
+### Layanan dan kategori utama toko
+
+Pilih toko → **Layanan & kategori** → **Tambah layanan** → buka jumlah kategori pada layanan tersebut → **Tambah kategori utama**. Setelah itu buka produk pada kategori tersebut atau **Katalog & harga** → **Tambah produk**, lalu pilih layanan dan kategori utama. Form tambah/edit memakai modal; daftar dan pemilih memiliki pencarian serta pagination atas/bawah.
+
+Owner dapat mengelola struktur. Staff membutuhkan izin **Kelola layanan, kategori, produk & parsing** (`products.manage`); izin baca katalog hanya menampilkan daftar. Penggantian nama memperbarui produk terkait dan mempertahankan aturan markup. Layanan yang masih memiliki kategori dan kategori yang masih dipakai produk tidak dapat dihapus.
+
+Jalankan `php artisan migrate` pada lingkungan lain untuk tabel `catalog_services`, `catalog_categories`, dan relasi kategori produk. Migrasi menautkan produk lama berdasarkan layanan/kategori existing tanpa mengubah kolom lama atau aturan harga. Impor pemasok tetap membuat struktur sesuai label pemasok; struktur kosong hanya terlihat di panel, sedangkan katalog bot/web menampilkan bagian yang memiliki produk aktif.

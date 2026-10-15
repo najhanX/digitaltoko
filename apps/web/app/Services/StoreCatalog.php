@@ -13,7 +13,7 @@ class StoreCatalog
 
     public function query(Store $store): Builder
     {
-        return CatalogProduct::where('store_id', $store->id)->with(['mappings.item.connection'])
+        return CatalogProduct::where('store_id', $store->id)->with(['mappings.item.connection', 'taxonomyCategory'])
             ->withCount('readyStocks')->withMin('readyStocks', 'cost');
     }
 
@@ -50,7 +50,7 @@ class StoreCatalog
             return $public;
         }
 
-        return [...$public, ...$product->only(['active', 'sale_price', 'markup', 'auto_update']), 'cost' => $cost, 'rule' => $rule, 'candidates' => $candidates,
+        return [...$public, 'category_id' => $product->category_id, 'service_id' => $product->taxonomyCategory?->service_id, ...$product->only(['active', 'sale_price', 'markup', 'auto_update']), 'cost' => $cost, 'rule' => $rule, 'candidates' => $candidates,
             'mapping_ids' => $product->mappings->where('active', true)->pluck('supplier_product_id')->filter()->values(),
             'mapping_details' => $product->mappings->where('active', true)->filter(fn ($mapping) => $mapping->item)->map(fn ($mapping) => [...$mapping->item->only(['id', 'name', 'sku', 'mode', 'cost', 'kind']), 'source' => $mapping->source, 'allowed' => CatalogAccess::supports($store, $mapping->source)])->values(),
             'use_stock' => $product->mappings->where('source', 'stock')->where('active', true)->isNotEmpty(),

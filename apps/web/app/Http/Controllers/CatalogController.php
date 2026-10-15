@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CatalogCategory;
 use App\Models\CatalogProduct;
 use App\Models\PremiumStock;
 use App\Models\PricingRule;
@@ -27,11 +28,17 @@ class CatalogController extends Controller
     {
         $role = CatalogAccess::authorize($request, $store);
         $list = new ListQuery($request, ['kind' => ['ppob', 'premium', 'postpaid'], 'active' => ['1', '0']], 10);
-        $page = $list->paginate($list->apply($catalog->query($store), ['code', 'name', 'service', 'category'], ['kind' => 'kind', 'active' => 'active'])->orderBy('name')->orderBy('id'));
+        $categoryId = $request->query('category_id');
+        $selectedCategory = is_string($categoryId) && $categoryId !== '' ? CatalogCategory::with('service:id,name')->where('store_id', $store->id)->findOrFail($categoryId) : null;
+        $query = $catalog->query($store);
+        if ($selectedCategory) {
+            $query->where('category_id', $selectedCategory->id);
+        }
+        $page = $list->paginate($list->apply($query, ['code', 'name', 'service', 'category'], ['kind' => 'kind', 'active' => 'active'])->orderBy('name')->orderBy('id'));
         $rulesList = new ListQuery($request, ['scope' => ['category', 'service']], 10, 'rules_');
         $rules = $rulesList->paginate($rulesList->apply(PricingRule::where('store_id', $store->id), ['key', 'markup'], ['scope' => 'scope'])->orderBy('key')->orderBy('id'));
 
-        return Inertia::render('Owner/Catalog', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']),
+        return Inertia::render('Owner/Catalog', ['selectedCategory' => $selectedCategory?->only(['id', 'name', 'service']), 'role' => $role, 'store' => $store->only(['id', 'name', 'status']),
             'canManage' => CatalogAccess::has($request, $role, 'products.manage'), 'canPrice' => CatalogAccess::has($request, $role, 'pricing.manage'),
             'canStock' => CatalogAccess::supports($store, 'stock'), 'products' => $page->getCollection()->map(fn ($p) => $catalog->present($p, $store, true)),
             'filters' => $list->filters, 'pagination' => ListQuery::meta($page), 'rules' => $rules->items(), 'ruleFilters' => $rulesList->filters, 'rulePagination' => ListQuery::meta($rules)]);
@@ -44,10 +51,15 @@ class CatalogController extends Controller
         abort_if($product && $product->store_id !== $store->id, 404);
         $canPrice = CatalogAccess::has($request, $role, 'pricing.manage');
         abort_if(! $canPrice && $request->hasAny(['sale_price', 'markup', 'auto_update']), 403);
+        $request->validate(['category_id' => ['sometimes', 'nullable', 'uuid', Rule::exists('catalog_categories', 'id')->where('store_id', $store->id)]]);
+        if ($request->filled('category_id')) {
+            $category = CatalogCategory::with('service')->where('store_id', $store->id)->findOrFail($request->input('category_id'));
+            $request->merge(['service' => $category->service->name, 'category' => $category->name]);
+        }
         $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
         $data = $request->validate(['code' => ['required', 'regex:/^[A-Z0-9][A-Z0-9_.-]{0,49}$/', Rule::unique('catalog_products')->where('store_id', $store->id)->ignore($product?->id)],
             'name' => 'required|string|max:150', 'description' => 'nullable|string|max:3000', 'kind' => 'required|in:ppob,premium,postpaid',
-            'service' => 'required|string|max:100', 'category' => 'required|string|max:100', 'active' => 'required|boolean',
+            'category_id' => 'sometimes|nullable|uuid', 'service' => 'required|string|max:100', 'category' => 'required|string|max:100', 'active' => 'required|boolean',
             'mapping_ids' => 'present|array|max:20', 'mapping_ids.*' => 'required|uuid|distinct', 'use_stock' => 'required|boolean',
             'sale_price' => 'sometimes|nullable|integer|min:0|max:1000000000000', 'markup' => 'sometimes|nullable|string|max:100', 'auto_update' => 'sometimes|nullable|boolean']);
         if ($data['use_stock']) {

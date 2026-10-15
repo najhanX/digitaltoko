@@ -34,7 +34,7 @@ class SubscriptionService
             $option = PlanOption::whereKey($option->id)->lockForUpdate()->firstOrFail();
             $this->ensure($owner->verification_status === 'approved' && $owner->email_verified_at && $owner->phone_verified_at && (bool) $owner->hanshop_user_id, 'Lengkapi verifikasi owner terlebih dahulu.');
             $this->ensure($option->active, 'Paket tidak tersedia.');
-            $this->ensure(! in_array($store->status, ['purging', 'suspended_manual'], true), 'Toko ini perlu ditinjau admin.');
+            $this->ensure(! $store->admin_suspended_at && ! in_array($store->status, ['purging', 'suspended_manual'], true), 'Toko ini perlu ditinjau admin.');
             $open = SubscriptionInvoice::where('store_id', $store->id)->whereIn('status', ['pending', 'paid', 'review'])->first();
             if ($open) {
                 $this->ensure($open->status === 'pending' && $open->snapshot === $option->snapshot(), 'Selesaikan invoice atau perubahan paket yang masih berjalan.');
@@ -140,7 +140,7 @@ class SubscriptionService
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
             $this->ensure($owner->verification_status === 'approved' && $owner->email_verified_at && $owner->phone_verified_at, 'Lengkapi verifikasi owner.');
             $this->ensure(! $owner->trial_used_at && (! $owner->trial_store_id || $owner->trial_store_id === $store->id), 'Trial hanya sekali per owner.');
-            $this->ensure($store->category === 'bot' && $store->status === 'draft' && ! $store->expires_at, 'Trial hanya untuk toko bot baru.');
+            $this->ensure(! $store->admin_suspended_at && $store->category === 'bot' && $store->status === 'draft' && ! $store->expires_at, 'Trial hanya untuk toko bot baru yang tidak ditangguhkan.');
             $this->ensure(! SubscriptionInvoice::where('store_id', $store->id)->whereIn('status', ['pending', 'paid', 'review'])->exists(), 'Selesaikan invoice terlebih dahulu.');
             $owner->forceFill(['trial_store_id' => $store->id])->save();
             $store->update(['plan' => 'galaxy', 'trial_requested_at' => now(), 'status' => 'provisioning', 'is_trial' => true]);
@@ -153,6 +153,7 @@ class SubscriptionService
         DB::transaction(function () use ($store) {
             $owner = User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            $this->ensure(! $store->admin_suspended_at, 'Toko ditangguhkan administrator. Hubungi administrator sebelum mengaktifkan.');
             if ($store->status === 'active') {
                 return;
             }
@@ -174,7 +175,7 @@ class SubscriptionService
         DB::transaction(function () use ($store, &$auto) {
             User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
-            if (in_array($store->status, ['suspended_manual', 'purging'], true)) {
+            if ($store->admin_suspended_at || in_array($store->status, ['suspended_manual', 'purging'], true)) {
                 return;
             }
             if ($store->status === 'provisioning') {

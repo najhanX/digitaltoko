@@ -18,7 +18,7 @@ class PanelController extends Controller
 {
     private function storeData(Store $store, ?string $billingStatus = null): array
     {
-        return [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'status', 'template', 'expires_at', 'is_trial', 'starts_at']), 'billing_status' => $billingStatus,
+        return [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'status', 'template', 'expires_at', 'is_trial', 'starts_at', 'admin_suspended_at', 'admin_suspension_reason']), 'billing_status' => $billingStatus,
             'url' => app(PlatformHost::class)->storeUrl($store)];
     }
 
@@ -80,7 +80,7 @@ class PanelController extends Controller
 
         return Inertia::render('Panel/Dashboard', ['role' => 'owner', 'preview' => false, 'listing' => $listing,
             'viewer' => $request->user()->only(['name']), 'ownerStatus' => $request->user()->verification_status,
-            'counts' => ['stores' => array_sum($statuses->all()), 'active' => (int) ($statuses['active'] ?? 0),
+            'counts' => ['stores' => array_sum($statuses->all()), 'active' => (clone $query)->where('status', 'active')->whereNull('admin_suspended_at')->count(),
                 'setup' => (int) ($statuses['draft'] ?? 0) + (int) ($statuses['provisioning'] ?? 0),
                 'subscribed' => (clone $query)->where(fn ($nested) => $nested->whereNotNull('expires_at')->orWhere('status', 'provisioning'))->exists() ? 1 : 0],
             'stores' => $stores, 'pagination' => ListQuery::meta($page), 'filters' => $list->filters]);

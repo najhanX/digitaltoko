@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\CatalogTaxonomy;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CatalogProduct extends Model
@@ -13,6 +15,16 @@ class CatalogProduct extends Model
     use HasUuids;
 
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        static::saving(fn (CatalogProduct $product) => app(CatalogTaxonomy::class)->assign($product));
+    }
+
+    public function taxonomyCategory(): BelongsTo
+    {
+        return $this->belongsTo(CatalogCategory::class, 'category_id');
+    }
 
     protected function casts(): array
     {

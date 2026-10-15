@@ -18,7 +18,7 @@ class SyncStoreCatalogs extends Command
      */
     public function handle(SupplierCatalog $catalog): int
     {
-        $query = SupplierConnection::with('store.owner')->where('enabled', true)->whereHas('store', fn ($q) => $q->whereIn('status', ['active', 'grace', 'provisioning']));
+        $query = SupplierConnection::with('store.owner')->where('enabled', true)->whereHas('store', fn ($q) => $q->whereNull('admin_suspended_at')->whereIn('status', ['active', 'grace', 'provisioning']));
         if ($this->option('store')) {
             $query->where('store_id', $this->option('store'));
         }

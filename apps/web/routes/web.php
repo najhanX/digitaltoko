@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\AdminLoginController;
+use App\Http\Controllers\AdminStoreController;
 use App\Http\Controllers\BotConnectionController;
 use App\Http\Controllers\BotStateController;
 use App\Http\Controllers\CatalogController;
+use App\Http\Controllers\CatalogTaxonomyController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OwnerAuthController;
 use App\Http\Controllers\OwnerOnboardingController;
@@ -26,6 +28,14 @@ Route::middleware('platform.host')->group(function () {
     Route::post('/stores/{store}/sources/{connection}/sync', [SupplierController::class, 'sync'])->middleware('throttle:6,1');
     Route::delete('/stores/{store}/sources/{connection}', [SupplierController::class, 'disconnect']);
     Route::get('/stores/{store}/balances', [SupplierController::class, 'balances'])->middleware('throttle:30,1');
+    Route::get('/stores/{store}/catalog-structure', [CatalogTaxonomyController::class, 'index'])->name('stores.taxonomy');
+    Route::get('/stores/{store}/catalog-structure/options', [CatalogTaxonomyController::class, 'options']);
+    Route::post('/stores/{store}/services', [CatalogTaxonomyController::class, 'service']);
+    Route::patch('/stores/{store}/services/{service}', [CatalogTaxonomyController::class, 'service']);
+    Route::delete('/stores/{store}/services/{service}', [CatalogTaxonomyController::class, 'deleteService']);
+    Route::post('/stores/{store}/categories', [CatalogTaxonomyController::class, 'category']);
+    Route::patch('/stores/{store}/categories/{category}', [CatalogTaxonomyController::class, 'category']);
+    Route::delete('/stores/{store}/categories/{category}', [CatalogTaxonomyController::class, 'deleteCategory']);
     Route::get('/stores/{store}/products', [CatalogController::class, 'index']);
     Route::get('/stores/{store}/products/mappings', [CatalogController::class, 'mappings']);
     Route::post('/stores/{store}/products/import', [CatalogController::class, 'import']);
@@ -61,6 +71,9 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/admin/login', [AdminLoginController::class, 'create']);
     Route::post('/admin/login', [AdminLoginController::class, 'store'])->middleware('throttle:6,1');
     Route::middleware('auth:web')->group(function () {
+        Route::get('/admin/stores', [AdminStoreController::class, 'index'])->name('admin.stores.index');
+        Route::get('/admin/stores/{store}', [AdminStoreController::class, 'show'])->name('admin.stores.show');
+        Route::patch('/admin/stores/{store}', [AdminStoreController::class, 'update'])->name('admin.stores.update');
         Route::get('/owner/profile', [OwnerOnboardingController::class, 'show']);
         Route::post('/owner/profile/email/otp', [OwnerOnboardingController::class, 'emailOtp'])->middleware('throttle:3,1');
         Route::post('/owner/profile/email/verify', [OwnerOnboardingController::class, 'verifyEmail'])->middleware('throttle:10,1');

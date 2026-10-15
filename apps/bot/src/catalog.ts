@@ -1,3 +1,4 @@
+import { inline, divider, shopReply } from './replies.js';
 import type { MenuAction } from './menu.js';
 export type CatalogQuery={page:number;search:string};
 export type CatalogPage={store_name:string;items:{code:string;name:string;category:string;service:string;price:number;available:boolean;quantity:number|null;price_label:string}[];pagination:{current_page:number;last_page:number;total:number}};
@@ -22,9 +23,24 @@ export function catalogPage(value:unknown):CatalogPage {
     }
     return page;
 }
-const inline=(value:string)=>value.replace(/[\r\n*_~`]/g,' ').replace(/\s+/g,' ').trim().slice(0,150);
-export function catalogText(page:CatalogPage,query:CatalogQuery):string {
+export function catalogText(page:CatalogPage,query:CatalogQuery,navigation?:readonly string[]):string {
     const money=(price:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(price);
-    const rows=page.items.map(item=>'*'+inline(item.name)+'*\nKode: '+inline(item.code)+'\n'+inline(item.service)+' / '+inline(item.category)+'\n'+inline(item.price_label)+': '+money(item.price)+'\n'+(item.available?'Tersedia':'Tidak tersedia')+(item.quantity!==null?' · '+item.quantity+' stok':''));
-    return '*'+inline(page.store_name)+'*\nKatalog produk · '+page.pagination.total+' produk\nHalaman '+page.pagination.current_page+'/'+page.pagination.last_page+(query.search?'\nPencarian: '+inline(query.search):'')+'\n\n'+(rows.join('\n\n') || 'Produk belum ditemukan. Coba kata kunci lain atau hubungi toko.')+'\n\n#produk — semua produk\n#produk canva — cari produk\n#produk 2 — halaman berikutnya\n\nPowered by DigitalToko';
+    const lines:string[]=[`Halaman ${page.pagination.current_page}/${page.pagination.last_page} · ${page.pagination.total} produk`,
+        ...(query.search ? [`Pencarian : ${inline(query.search)}`] : []), ''];
+    page.items.forEach((item,index)=>{
+        if (index>0) lines.push(divider.slice(2));
+        lines.push(`*${inline(item.name)}*`, `Kode : ${inline(item.code)}`, `Kategori : ${inline(item.service)} / ${inline(item.category)}`,
+            `${inline(item.price_label)} : *${money(item.price)}*`,
+            `Status : ${item.available?'✅ Tersedia':'❌ Tidak tersedia'}`+(item.quantity!==null?` · ${item.quantity} stok`:''));
+    });
+    if (!page.items.length) lines.push('Produk belum ditemukan.', 'Coba kata kunci lain atau hubungi admin toko.');
+    if (navigation) lines.push('',...navigation);
+    else {
+        lines.push('', '*PANDUAN KATALOG*', 'Layanan : #list', 'Cari produk : #produk canva');
+        const suffix=query.search ? ' '+inline(query.search) : '';
+        if (page.pagination.current_page>1) lines.push(`Sebelumnya : #produk ${page.pagination.current_page-1}${suffix}`);
+        if (page.pagination.current_page<page.pagination.last_page) lines.push(`Berikutnya : #produk ${page.pagination.current_page+1}${suffix}`);
+        lines.push('Menu utama : #menu');
+    }
+    return shopReply(page.store_name,'KATALOG PRODUK',lines);
 }

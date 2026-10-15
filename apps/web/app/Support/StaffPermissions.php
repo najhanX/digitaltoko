@@ -7,7 +7,7 @@ class StaffPermissions
     public static function labels(): array
     {
         return ['dashboard.view' => 'Lihat ringkasan toko', 'products.view' => 'Lihat produk',
-            'products.manage' => 'Kelola produk & parsing', 'pricing.manage' => 'Kelola harga & markup',
+            'products.manage' => 'Kelola layanan, kategori, produk & parsing', 'pricing.manage' => 'Kelola harga & markup',
             'stock.view' => 'Lihat jumlah stok', 'stock.manage' => 'Kelola stok ready',
             'stock.credentials' => 'Lihat credential stok', 'suppliers.balance' => 'Lihat saldo Digiflazz toko', 'orders.view' => 'Lihat & cek transaksi',
             'orders.resend' => 'Kirim ulang hasil ke penerima asli', 'guests.resolve' => 'Tindak lanjut pesanan guest',

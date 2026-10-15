@@ -5,9 +5,8 @@ import { timingSafeEqual } from "node:crypto";
 import { mkdir, open, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
-import { MenuTokens, type MenuAction } from "./menu.js";
-import { sendMenu, sendControls } from "./interactive.js";
-import { catalogQuery, catalogPage, catalogText } from "./catalog.js";
+import { MenuTokens } from "./menu.js";
+import { handleCustomerMessage } from "./customer.js";
 import {
   createAtomicCredentialWriter,
   createCredentialSaver,
@@ -184,54 +183,8 @@ async function startSocket() {
     sock.ev.on("messages.upsert", async (batch) => {
       if (batch.type !== "notify" || stopping || halt || paused || state.status !== "CONNECTED") return;
       for (const message of batch.messages) {
-        const chat = message.key.remoteJid;
-        if (!chat || message.key.fromMe || chat === "status@broadcast" || chat.endsWith("@g.us")) continue;
-        const sender = message.key.participant ?? chat;
         try {
-          const access = await api("/api/internal/bot/access");
-          if (!access.data.allowed) continue;
-          const content = message.message;
-          const text = (content?.conversation ?? content?.extendedTextMessage?.text ?? "").trim().toLowerCase();
-          let action: MenuAction | null = null;
-          const params = content?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;
-          if (params) {
-            try {
-              const value = JSON.parse(params);
-              if (typeof value.id === "string") action = tokens.consume(value.id, chat, sender);
-            } catch {}
-          }
-          if (text === "#menu" || text === "#start" || action === "menu") {
-            await sendMenu(sock, message, chat, sender, tokens, access.data.store_name);
-            continue;
-          }
-          const products=catalogQuery(text,action);
-          if(products) {
-            let data;
-            try {
-              const query=new URLSearchParams({page:String(products.page),q:products.search});
-              data=catalogPage((await api("/api/internal/bot/products?"+query)).data);
-            } catch {
-              await sock.sendMessage(chat,{text:"Katalog belum dapat dibaca. Coba kembali beberapa saat lagi."},{quoted:message});
-              continue;
-            }
-            await sock.sendMessage(chat,{text:catalogText(data,products)},{quoted:message});
-            const controls:(readonly [MenuAction,string])[]=[];
-            if(data.pagination.current_page>1)controls.push([{type:"products",page:data.pagination.current_page-1,search:products.search},"Sebelumnya"]);
-            if(data.pagination.current_page<data.pagination.last_page)controls.push([{type:"products",page:data.pagination.current_page+1,search:products.search},"Berikutnya"]);
-            controls.push(["menu","Menu toko"]);
-            await sendControls(sock,message,chat,sender,tokens,controls,"Jelajahi katalog toko");
-            continue;
-          }
-          action ??=
-            text === "#produk" ? "products" : text === "#status" ? "status" : text === "#saldo" ? "balance" : null;
-          if (action)
-            await sock.sendMessage(
-              chat,
-              {
-                text: "Status pesanan dan saldo pelanggan belum tersedia. Hubungi owner toko untuk bantuan.",
-              },
-              { quoted: message },
-            );
+          await handleCustomerMessage(sock, message, tokens, api);
         } catch {
           logger.warn("Pesan tidak diproses: backend/transport belum siap.");
         }

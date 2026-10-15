@@ -33,7 +33,7 @@ class CatalogAccess
 
     public static function operational(Store $store): void
     {
-        abort_unless($store->status === 'provisioning' || $store->acceptsOrders(), 403, 'Aktifkan atau perpanjang paket toko terlebih dahulu.');
+        abort_unless(! $store->admin_suspended_at && ($store->status === 'provisioning' || $store->acceptsOrders()), 403, 'Aktifkan atau perpanjang paket toko terlebih dahulu. Jika toko ditangguhkan, hubungi administrator.');
     }
 
     public static function supports(Store $store, string $source): bool

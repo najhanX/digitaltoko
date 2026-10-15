@@ -101,7 +101,7 @@ class SupplierController extends Controller
 
                 continue;
             }
-            if (! $store->acceptsOrders() && $store->status !== 'provisioning') {
+            if ($store->admin_suspended_at || (! $store->acceptsOrders() && $store->status !== 'provisioning')) {
                 $result[$kind] = ['status' => 'inactive'];
 
                 continue;

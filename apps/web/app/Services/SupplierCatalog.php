@@ -44,6 +44,7 @@ class SupplierCatalog
 
     public function balance(SupplierConnection $connection): array
     {
+        CatalogAccess::operational($connection->store);
         $snapshot = $this->cache->remember($connection->kind, $this->account($connection), 'balance', function () use ($connection) {
             if ($connection->kind === 'digiflazz') {
                 $data = $this->digi($connection, 'cek-saldo', 'prepaid');

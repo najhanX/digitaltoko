@@ -47,6 +47,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     }, [mobileOpen]);
     const globalLinks: NavLink[] = role === 'admin' ? [
         {href:'/admin',label:'Ringkasan',icon:LayoutDashboard,active:path === '/admin'},
+        {href:'/admin/stores',label:'Kelola toko',icon:Store,active:path.startsWith('/admin/stores')},
         {href:'/admin/verifications',label:'Verifikasi owner',icon:ShieldCheck,active:path === '/admin/verifications'},
         {href:'/admin/plans',label:'Paket & harga',icon:Package,active:path === '/admin/plans'},
         {href:'/admin/billing',label:'Pembayaran sewa',icon:CreditCard,active:path === '/admin/billing'},
@@ -62,6 +63,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         if (role === 'owner' || permissions.includes('subscription.view')) scopedLinks.push({href:'/stores/'+store.id+'/subscription',label:'Langganan & aktivasi',icon:CreditCard,active:path === '/stores/'+store.id+'/subscription'});
         if (role === 'owner' || permissions.some(value=>['products.view','products.manage','pricing.manage'].includes(value))) {
             scopedLinks.push({href:'/stores/'+store.id+'/sources',label:'Sumber produk',icon:Package,active:path === '/stores/'+store.id+'/sources'});
+            scopedLinks.push({href:'/stores/'+store.id+'/catalog-structure',label:'Layanan & kategori',icon:Package,active:path === '/stores/'+store.id+'/catalog-structure'});
             scopedLinks.push({href:'/stores/'+store.id+'/products',label:'Katalog & harga',icon:Package,active:path === '/stores/'+store.id+'/products'});
         }
         if (role === 'owner' || permissions.some(value=>['stock.view','stock.manage','stock.credentials'].includes(value))) scopedLinks.push({href:'/stores/'+store.id+'/stock',label:'Stok premium',icon:Package,active:path === '/stores/'+store.id+'/stock'});
@@ -99,6 +101,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
                 </header>
                 <main className="workspace-content panel-content">
                     <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{actions && <div className="page-heading-actions">{actions}</div>}</div>
+                    {role !== 'admin' && store?.admin_suspended_at && <div className="feedback warning" role="status"><strong>Toko ditangguhkan administrator</strong><p>{store.admin_suspension_reason}</p><p>Layanan bot dan web berhenti. Hubungi administrator untuk tindak lanjut. Masa sewa tetap berjalan.</p></div>}
                     {children}
                 </main>
             </div>
