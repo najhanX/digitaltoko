@@ -7,6 +7,7 @@ use App\Models\StoreStaff;
 use App\Models\User;
 use App\Support\PlatformHost;
 use App\Support\StaffPermissions;
+use App\Support\StorefrontDesign;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,10 +63,10 @@ class StoreManagementController extends Controller
     {
         $this->owned($request, $store);
 
-        return Inertia::render('Owner/ManageStore', ['role' => 'owner', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial']),
+        return Inertia::render('Owner/ManageStore', ['role' => 'owner', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial', 'branding']),
             'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => StoreStaff::where('store_id', $store->id)->orderBy('name')
                 ->get()->map(fn ($staff) => $staff->only(['id', 'name', 'username', 'email', 'permissions', 'active'])),
-            'permissionLabels' => StaffPermissions::labels()]);
+            'permissionLabels' => StaffPermissions::labels(), ...app(StorefrontDesign::class)->editor($store)]);
     }
 
     private function authorizedStaff(Request $request, Store $store): void
@@ -78,14 +79,14 @@ class StoreManagementController extends Controller
     {
         $this->authorizedStaff($request, $store);
 
-        return Inertia::render('Owner/ManageStore', ['role' => 'staff', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial']),
-            'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => [], 'permissionLabels' => []]);
+        return Inertia::render('Owner/ManageStore', ['role' => 'staff', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial', 'branding']),
+            'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => [], 'permissionLabels' => [], ...app(StorefrontDesign::class)->editor($store)]);
     }
 
     public function updateStaffSettings(Request $request, Store $store): RedirectResponse
     {
         $this->authorizedStaff($request, $store);
-        $store->update($request->validate(['name' => 'required|string|max:100', 'template' => 'required|in:aurora,nebula,atlas']));
+        $this->saveAppearance($request, $store);
 
         return back()->with('success', 'Pengaturan toko tersimpan.');
     }
@@ -93,10 +94,28 @@ class StoreManagementController extends Controller
     public function update(Request $request, Store $store): RedirectResponse
     {
         $this->owned($request, $store);
-        $data = $request->validate(['name' => 'required|string|max:100', 'template' => 'required|in:aurora,nebula,atlas']);
-        $store->update($data);
+        $this->saveAppearance($request, $store);
 
         return back()->with('success', 'Pengaturan toko tersimpan.');
+    }
+
+    private function saveAppearance(Request $request, Store $store): void
+    {
+        $data = $request->validate(['name' => 'required|string|max:100', 'template' => 'required|in:aurora,nebula,atlas',
+            'appearance' => 'sometimes|array:gaming_banner_title,gaming_banner_subtitle,gaming_banner_image,gaming_flash_category,gaming_flash_ends_at',
+            'appearance.gaming_banner_title' => 'nullable|string|max:100',
+            'appearance.gaming_banner_subtitle' => 'nullable|string|max:200',
+            'appearance.gaming_banner_image' => 'nullable|url:https|max:1000',
+            'appearance.gaming_flash_category' => 'nullable|string|max:100',
+            'appearance.gaming_flash_ends_at' => 'nullable|date_format:Y-m-d\TH:i:sP',
+        ]);
+        DB::transaction(function () use ($store, $data) {
+            $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            if (array_key_exists('appearance', $data)) {
+                $locked->branding = [...($locked->branding ?? []), ...$data['appearance']];
+            }
+            $locked->fill(['name' => $data['name'], 'template' => $data['template']])->save();
+        });
     }
 
     public function saveStaff(Request $request, Store $store, ?StoreStaff $staff = null): RedirectResponse

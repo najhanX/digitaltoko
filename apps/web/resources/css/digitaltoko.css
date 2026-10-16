@@ -39,6 +39,26 @@
 .workspace-shell .sidebar-label{font-size:10px;letter-spacing:.13em;margin:27px 12px 12px}
 .workspace-shell .nav-item{font-size:12px;gap:11px;min-height:43px;border-radius:10px;font-weight:550}
 .workspace-shell .nav-item span{min-width:0}
+.workspace-shell.compact-navigation .workspace-sidebar{padding:18px 14px}
+.workspace-shell.compact-navigation .sidebar-label{margin:20px 10px 9px;letter-spacing:.1em}
+.workspace-shell.compact-navigation .workspace-nav{gap:3px}
+.workspace-shell.compact-navigation .nav-item{min-height:38px;padding:9px 11px;font-size:12px;gap:9px}
+.workspace-shell.compact-navigation .sidebar-brand .brand img{width:150px;height:48px}
+.workspace-shell .workspace-store-nav{gap:4px}
+.sidebar-section-toggle{display:flex;align-items:center;gap:9px;width:100%;min-height:40px;padding:10px 11px;border:0;border-radius:9px;background:transparent;color:var(--panel-text);font:inherit;font-size:12px;font-weight:600;text-align:left;transition:background .18s,color .18s}
+.sidebar-section-toggle:hover{background:var(--panel-soft)}
+.sidebar-section-toggle>span{flex:1;min-width:0}
+.sidebar-section-toggle>svg{flex-shrink:0;color:var(--muted)}
+.sidebar-section-toggle>svg:last-child{transition:transform .2s}
+.sidebar-section-toggle>svg.is-open{transform:rotate(180deg)}
+.sidebar-section.has-active>.sidebar-section-toggle{color:var(--primary);background:var(--panel-tint)}
+.sidebar-section.has-active>.sidebar-section-toggle>svg{color:var(--primary)}
+.sidebar-section-links{display:grid;gap:2px;margin:5px 0 6px 18px;padding-left:9px;border-left:1px solid var(--border)}
+.sidebar-section-links[hidden]{display:none}
+.workspace-shell .sidebar-section-links .nav-item{min-height:35px;padding:8px 9px;font-size:11px;gap:8px}
+.sidebar-section-links .nav-item>svg{width:15px;height:15px;flex-shrink:0}
+.workspace-shell.compact-navigation .sidebar-bottom{padding-top:20px}
+@media(prefers-reduced-motion:reduce){.sidebar-section-toggle,.sidebar-section-toggle>svg:last-child{transition:none}}
 .workspace-shell .sidebar-bottom{display:flex;gap:10px;align-items:center;margin-top:auto;padding-top:28px;position:static}
 .workspace-shell .sidebar-bottom strong{display:block;font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis}
 .workspace-shell .sidebar-bottom small{display:block;font-size:10px;color:var(--muted);margin-top:5px}
@@ -421,3 +441,5 @@
 .commerce-page{--panel-card:var(--sf-card,#fff);--panel-text:var(--sf-text,#172440);--panel-soft:var(--sf-bg,#f3f5fc);--border:var(--sf-line,#e7eaf0);--muted:var(--sf-muted,#64748b);color:var(--panel-text);min-height:100dvh}.commerce-content{padding-block:30px 70px}.commerce-content h1{font-size:30px}.commerce-auth{max-width:570px;margin:0 auto}.commerce-auth .form-stack+.form-stack{margin-top:28px;border-top:1px solid var(--border);padding-top:24px}.commerce-details{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px}.commerce-details dt{color:var(--muted)}.commerce-details dd{margin:0;text-align:right;overflow-wrap:anywhere}.commerce-qr{display:block;width:min(100%,320px);height:auto;background:#fff;border-radius:12px;padding:12px;margin:auto}.commerce-account-summary{display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:24px}.commerce-table{border-collapse:collapse;width:100%;min-width:580px;font-size:13px}.commerce-table th,.commerce-table td{padding:16px;text-align:left;border-bottom:1px solid var(--border)}.commerce-table td small{display:block;margin-top:5px}.commerce-page .table-scroll{margin-block:20px}.commerce-page .button.disabled{pointer-events:none;opacity:.5}.commerce-page .content-tabs button{border:0;background:none;color:var(--muted);font:inherit;padding:14px;cursor:pointer}.commerce-page .content-tabs button.selected{color:var(--primary);border-bottom:2px solid var(--primary)}@media(max-width:700px){.commerce-account-summary{align-items:stretch;flex-direction:column}.commerce-details{font-size:12px}.commerce-content{padding-block:20px 40px}.commerce-content h1{font-size:25px}}
 
 .commerce-wrap{overflow-wrap:anywhere;white-space:pre-wrap;font-size:12px;line-height:1.7}.onboarding-card>.button{margin-top:18px}
+
+@media(max-width:700px){.workspace-shell.compact-navigation .sidebar-section-links .nav-item{min-height:40px;font-size:12px}.workspace-shell.compact-navigation .sidebar-section-toggle{min-height:44px}}

@@ -10,6 +10,7 @@ use App\Http\Controllers\CommerceSettingsController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\CustomerPanelController;
+use App\Http\Controllers\GameIdentityController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OwnerAuthController;
 use App\Http\Controllers\OwnerOnboardingController;
@@ -19,6 +20,9 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PremiumStockController;
 use App\Http\Controllers\PreviewController;
 use App\Http\Controllers\StaffLoginController;
+use App\Http\Controllers\StoreClosureController;
+use App\Http\Controllers\StoreDesignController;
+use App\Http\Controllers\StorefrontPageController;
 use App\Http\Controllers\StoreManagementController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SupplierController;
@@ -26,7 +30,15 @@ use App\Http\Controllers\VerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::post('/game-identity', GameIdentityController::class)->middleware('throttle:20,1,storefront-game-identity');
+Route::get('/kategori/{category}', [StorefrontPageController::class, 'category'])->name('storefront.category');
+Route::get('/leaderboard', [StorefrontPageController::class, 'leaderboard'])->name('storefront.leaderboard');
+Route::get('/calculator/{calculator?}', [StorefrontPageController::class, 'calculator'])->where('calculator', 'winrate|magic-wheel|zodiac')->name('storefront.calculator');
+Route::get('/storefront-media/{store}/{asset}', [StoreDesignController::class, 'asset'])
+    ->where('asset', '[a-zA-Z0-9_-]{20,80}\.(jpg|jpeg|png|webp)')->name('storefront.media');
 Route::get('/checkout', [CustomerOrderController::class, 'checkout']);
+Route::get('/cek-pesanan', [CustomerOrderController::class, 'lookup'])->middleware('throttle:30,1,storefront-order-lookup');
+Route::post('/cek-pesanan/detail', [CustomerOrderController::class, 'lookupDetail'])->middleware('throttle:5,1,storefront-order-detail');
 Route::post('/checkout', [CustomerOrderController::class, 'create'])->middleware('throttle:12,1,commerce-checkout');
 Route::post('/checkout/inquiry', [CustomerOrderController::class, 'inquiry'])->middleware('throttle:20,1,commerce-checkout-inquiry');
 Route::get('/orders/{order}', [CustomerOrderController::class, 'show']);
@@ -40,8 +52,13 @@ Route::post('/account/email/otp', [CustomerAuthController::class, 'emailOtp'])->
 Route::post('/account/email/verify', [CustomerAuthController::class, 'emailVerify'])->middleware('throttle:10,1,commerce-account-email-verify');
 Route::post('/account/logout', [CustomerAuthController::class, 'logout']);
 Route::middleware('platform.host')->group(function () {
+    Route::get('/stores/{store}/design/products', [StoreDesignController::class, 'products']);
+    Route::get('/stores/{store}/design/categories', [StoreDesignController::class, 'categories']);
+    Route::post('/stores/{store}/design', [StoreDesignController::class, 'save'])->middleware('throttle:12,1');
     Route::get('/admin/commerce', [CommerceSettingsController::class, 'admin'])->middleware('auth:web');
     Route::patch('/admin/commerce', [CommerceSettingsController::class, 'adminSave'])->middleware('auth:web');
+    Route::get('/stores/{store}/closure', [StoreClosureController::class, 'show']);
+    Route::post('/stores/{store}/closure', [StoreClosureController::class, 'save']);
     Route::get('/stores/{store}/payments', [CommerceSettingsController::class, 'show']);
     Route::post('/stores/{store}/payments', [CommerceSettingsController::class, 'save']);
     Route::post('/stores/{store}/payments/forwarder', [CommerceSettingsController::class, 'forwarder'])->middleware('throttle:6,1,commerce-stores-store-payments-forwarder');

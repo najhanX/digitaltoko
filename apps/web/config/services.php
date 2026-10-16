@@ -2,6 +2,10 @@
 
 return [
 
+    'game_identity' => [
+        'url' => env('GAME_IDENTITY_URL', 'https://api.isan.eu.org/nickname'),
+    ],
+
     'bot_manager' => [
         'url' => env('BOT_MANAGER_URL', 'http://127.0.0.1:3099'),
         'token' => env('BOT_MANAGER_TOKEN'),

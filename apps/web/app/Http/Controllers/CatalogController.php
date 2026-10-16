@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CatalogCategory;
 use App\Models\CatalogProduct;
+use App\Models\CatalogService;
 use App\Models\PremiumStock;
 use App\Models\PricingRule;
 use App\Models\ProductMapping;
@@ -19,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -188,6 +190,13 @@ class CatalogController extends Controller
         $request->merge(['key' => mb_strtolower(trim((string) $request->input('key')))]);
         $data = $request->validate(['scope' => 'required|in:category,service', 'key' => ['required', 'string', 'max:100', Rule::unique('pricing_rules')->where('store_id', $store->id)->where('scope', $request->input('scope'))->ignore($rule?->id)],
             'markup' => 'nullable|string|max:100', 'auto_update' => 'present|nullable|boolean']);
+        $target = $data['scope'] === 'service' ? CatalogService::query() : CatalogCategory::query();
+        if (! $target->where('store_id', $store->id)->where('name_key', $data['key'])->exists()) {
+            $message = $data['scope'] === 'service'
+                ? 'Pilih layanan yang terdaftar pada toko ini. Kategori utama harus memakai tingkat aturan Kategori.'
+                : 'Pilih kategori utama yang terdaftar pada toko ini. Untuk nama layanan seperti Game, gunakan tingkat aturan Layanan.';
+            throw ValidationException::withMessages(['key' => $message]);
+        }
         $data['markup'] = $pricing->parse($data['markup'] ?? null)['text'] ?? null;
         $rule ? $rule->update($data) : PricingRule::create([...$data, 'store_id' => $store->id]);
         $catalog->reprice($store);

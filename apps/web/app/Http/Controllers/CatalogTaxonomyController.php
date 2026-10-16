@@ -7,12 +7,15 @@ use App\Models\CatalogProduct;
 use App\Models\CatalogService;
 use App\Models\Store;
 use App\Services\CatalogTaxonomy;
+use App\Services\GameIdentity;
 use App\Support\CatalogAccess;
 use App\Support\ListQuery;
+use App\Support\StorefrontDesign;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -45,7 +48,12 @@ class CatalogTaxonomyController extends Controller
 
         return Inertia::render('Owner/Taxonomy', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'tab' => $tab,
             'selectedService' => $service?->only(['id', 'name']), 'canManage' => CatalogAccess::has($request, $role, 'products.manage'),
-            'items' => $page->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
+            'gameOptions' => app(GameIdentity::class)->games(),
+            'items' => $page->getCollection()->map(fn ($item) => [...$item->toArray(),
+                'game_validation' => $store->branding['category_games'][$item->id]['game'] ?? 'auto',
+                'destination_format' => $store->branding['category_games'][$item->id]['destination_format'] ?? 'auto',
+                'image' => $tab === 'categories' ? ($store->branding['category_images'][$item->id] ?? null) : null]),
+            'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
     }
 
     public function options(Request $request, Store $store): JsonResponse
@@ -112,24 +120,63 @@ class CatalogTaxonomyController extends Controller
         if (! $category) {
             $request->validate(['service_id' => ['required', 'uuid', Rule::exists('catalog_services', 'id')->where('store_id', $store->id)]]);
         }
-        DB::transaction(function () use ($request, $store, $category, $data, $taxonomy) {
-            $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
-            CatalogAccess::operational($locked);
-            $serviceId = $category?->service_id ?? $request->string('service_id')->toString();
-            CatalogService::where('store_id', $store->id)->findOrFail($serviceId);
-            if (CatalogCategory::where('service_id', $serviceId)->where('name_key', $data['name_key'])->when($category, fn ($q) => $q->whereKeyNot($category->id))->exists()) {
-                throw ValidationException::withMessages(['name' => 'Nama kategori sudah digunakan dalam layanan ini.']);
+        $appearance = $request->validate(['image_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096|dimensions:max_width=6000,max_height=6000',
+            'image_url' => ['nullable', 'url:https', 'max:2048', 'regex:#^https://[^\s\\\\]+$#'], 'remove_image' => 'sometimes|boolean',
+            'game_validation' => ['sometimes', 'required', Rule::in(['auto', 'none', ...array_keys(app(GameIdentity::class)->games())])],
+            'destination_format' => ['sometimes', 'required', Rule::in(GameIdentity::FORMATS)]]);
+        $newFile = null;
+        $oldImage = null;
+        try {
+            DB::transaction(function () use ($request, $store, $category, $data, $taxonomy, $appearance, &$newFile, &$oldImage) {
+                $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+                CatalogAccess::operational($locked);
+                $serviceId = $category?->service_id ?? $request->string('service_id')->toString();
+                CatalogService::where('store_id', $store->id)->findOrFail($serviceId);
+                if (CatalogCategory::where('service_id', $serviceId)->where('name_key', $data['name_key'])->when($category, fn ($q) => $q->whereKeyNot($category->id))->exists()) {
+                    throw ValidationException::withMessages(['name' => 'Nama kategori sudah digunakan dalam layanan ini.']);
+                }
+                if ($category) {
+                    $category->refresh();
+                    $keepOld = CatalogCategory::where('store_id', $store->id)->where('name_key', $category->name_key)->whereKeyNot($category->id)->exists();
+                    $taxonomy->preserveRule($store->id, 'category', $category->name, $data['name'], $keepOld);
+                    CatalogProduct::where('store_id', $store->id)->where('category_id', $category->id)->update(['category' => $data['name']]);
+                    $category->update($data);
+                } else {
+                    $category = CatalogCategory::create([...$data, 'store_id' => $store->id, 'service_id' => $serviceId]);
+                }
+                if ($request->hasFile('image_file') || ! empty($appearance['image_url']) || ! empty($appearance['remove_image'])) {
+                    $branding = $locked->branding ?? [];
+                    $oldImage = $branding['category_images'][$category->id] ?? null;
+                    $image = null;
+                    if ($request->hasFile('image_file')) {
+                        $newFile = $request->file('image_file')->store('storefront/'.$store->id, 'local');
+                        if (! is_string($newFile)) {
+                            throw new \RuntimeException('Gambar kategori tidak dapat disimpan.');
+                        }
+                        $image = '/storefront-media/'.$store->id.'/'.basename($newFile);
+                    } elseif (! empty($appearance['image_url'])) {
+                        $image = $appearance['image_url'];
+                    }
+                    if ($image) {
+                        $branding['category_images'][$category->id] = $image;
+                    } else {
+                        unset($branding['category_images'][$category->id]);
+                    }
+                    $locked->update(['branding' => $branding]);
+                }
+                if (isset($appearance['game_validation'])) {
+                    $branding = $locked->branding ?? [];
+                    $branding['category_games'][$category->id] = ['game' => $appearance['game_validation'], 'destination_format' => $appearance['destination_format'] ?? 'auto'];
+                    $locked->update(['branding' => $branding]);
+                }
+            });
+        } catch (\Throwable $error) {
+            if (is_string($newFile)) {
+                Storage::disk('local')->delete($newFile);
             }
-            if ($category) {
-                $category->refresh();
-                $keepOld = CatalogCategory::where('store_id', $store->id)->where('name_key', $category->name_key)->whereKeyNot($category->id)->exists();
-                $taxonomy->preserveRule($store->id, 'category', $category->name, $data['name'], $keepOld);
-                CatalogProduct::where('store_id', $store->id)->where('category_id', $category->id)->update(['category' => $data['name']]);
-                $category->update($data);
-            } else {
-                CatalogCategory::create([...$data, 'store_id' => $store->id, 'service_id' => $serviceId]);
-            }
-        });
+            throw $error;
+        }
+        $this->removeUnusedImage($store->fresh(), $oldImage);
 
         return back()->with('success', 'Kategori utama tersimpan. Produk terkait tetap terhubung.');
     }
@@ -153,14 +200,32 @@ class CatalogTaxonomyController extends Controller
     {
         CatalogAccess::authorize($request, $store, 'products.manage');
         abort_unless($category->store_id === $store->id, 404);
-        DB::transaction(function () use ($store, $category) {
-            CatalogAccess::operational(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
+        $oldImage = null;
+        DB::transaction(function () use ($store, $category, &$oldImage) {
+            $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            CatalogAccess::operational($locked);
             if ($category->products()->exists()) {
                 throw ValidationException::withMessages(['delete' => 'Kategori masih dipakai produk. Pindahkan atau hapus produknya terlebih dahulu.']);
             }
             $category->delete();
+            $branding = $locked->branding ?? [];
+            $oldImage = $branding['category_images'][$category->id] ?? null;
+            unset($branding['category_images'][$category->id]);
+            unset($branding['category_games'][$category->id]);
+            $locked->update(['branding' => $branding]);
         });
+        $this->removeUnusedImage($store->fresh(), $oldImage);
 
         return back()->with('success', 'Kategori utama kosong berhasil dihapus.');
+    }
+
+    private function removeUnusedImage(Store $store, ?string $image): void
+    {
+        if (! $image || in_array($image, $store->branding['category_images'] ?? [], true)) {
+            return;
+        }
+        $designs = app(StorefrontDesign::class);
+        $files = $designs->assets(['logo' => $image], $store->id);
+        Storage::disk('local')->delete(array_diff($files, $designs->assets($store->branding['design'] ?? [], $store->id)));
     }
 }

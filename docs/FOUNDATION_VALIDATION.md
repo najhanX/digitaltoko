@@ -215,3 +215,121 @@ Validasi: suite Laravel lengkap 161 tes / 2254 assertions lulus (1 tes MySQL opt
 Browser menggunakan SQLite simulasi dan HTTP fake, bukan toko nyata: pagination header berpindah halaman; owner membuka hasil melalui modal; modal fee/kode unik tersimpan dengan toast; staff pengelola membuka transaksi dan staff tanpa izin mendapat 403; viewport 390 px tidak membuat overflow halaman; pembelian saldo dari checkout sampai stok berhasil, receipt dan saldo/riwayat akun diverifikasi. Bukti: `assets/customer-commerce-panel.png`. Tab dan server fixture 8010 sudah ditutup, server development milik pengguna tetap berjalan.
 
 Batas bukti: belum ada pembayaran merchant nyata, OTP/pesan pelanggan nyata, pembelian Digiflazz/Hanshop nyata, atau deploy/DNS. Operator perlu konfigurasi merchant/lisensi/SMTP, menjalankan scheduler, serta restart manager/worker agar kode baru dimuat; jangan menghapus sesi WA. Prosedur dicatat di DEPLOYMENT.md dan apps/bot/README.md. Form tagihan khusus multi-parameter perlu adapter tersendiri. Perubahan API Hanshop berada di repo sebelah yang sudah mempunyai banyak pekerjaan lain; tidak dilakukan commit massal atas perubahan repo tersebut.
+
+## Nebula khusus toko topup game — 15 Oktober 2026
+
+Nebula diubah menjadi storefront gaming: banner carousel dengan ilustrasi original lokal WebP (229.774 byte), pencarian, navigasi bagian, flash sale, trending, katalog berfilter/pagination, leaderboard mingguan/bulanan, panduan order, dan footer Powered by DigitalToko. Aurora dan Atlas tetap tersedia.
+
+Owner/staff berizin `web.manage` mengatur judul/deskripsi/gambar HTTPS banner, nama kategori promo, dan waktu berakhir melalui modal Pengaturan toko. Branding existing dipertahankan. Flash sale adalah sorotan produk tersedia dari kategori tersebut dengan harga katalog yang sama di checkout; tidak menerapkan diskon tersembunyi atau mengubah harga saat waktunya habis. Trending berdasarkan pesanan berhasil 30 hari. Leaderboard hanya nilai produk pesanan sukses/lunas, tanpa refund/topup saldo/fee, dipisah per toko; identitas memakai alias HMAC, tanpa nama/nomor/email/ID pelanggan publik. Angka contoh hanya pada route preview.
+
+Validasi: 37 tes katalog/foundation/Nebula (444 assertions), Pint, TypeScript dan build Vite lulus. Browser pada SQLite/HTTP fake: banner berganti, pencarian menyaring game, tab periode berubah, menu anchor, pagination, modal promo dari halaman katalog lain, dan checkout menampilkan harga yang sama; pengaturan simulasi tersimpan dan terbaca pada storefront. Viewport 390 px tidak overflow horizontal. Tidak membuat invoice atau pembayaran nyata. Bukti: `assets/nebula-gaming-desktop.png`. Banner: `apps/web/public/storefront/nebula-gaming-hero.webp`.
+
+## Editor desain owner/staff — 15 Oktober 2026
+
+Tab Pengaturan toko → Desain web menyediakan logo/warna, maksimal lima banner (file JPG/PNG/WebP atau URL HTTPS, urutan, teks/tombol, gambar penuh atau overlay), pemilihan hingga 12 produk flash sale langsung dari katalog beserta jadwal, trending otomatis/manual, serta judul/urutan/visibilitas tujuh bagian Nebula. Katalog wajib tampil dan Powered by DigitalToko tetap berada di footer sistem. Logo, warna dan banner juga dibaca Aurora/Atlas; halaman checkout/akun memakai logo dan warna yang sama. Tambah/edit/hapus memakai modal dan perubahan baru diterapkan melalui Simpan desain; pembatalan modal tidak mengunggah gambar.
+
+Konfigurasi berada pada JSON branding toko, tanpa migrasi baru. Endpoint berizin web.manage, product picker terfilter/paginated dan scoped per toko tanpa modal/credential pemasok. Revisi dikunci untuk menolak overwrite dari editor lama. Media disimpan lokal per UUID toko dan disajikan melalui URL relatif /storefront-media, sehingga tidak melekat pada domain. File SVG/non-image ditolak; unggahan maksimum 4 MB/6000 px. File baru dibersihkan jika penyimpanan gagal, file lama dihapus hanya setelah commit dan tidak lagi direferensikan banner/logo. Flash sale tetap memakai harga katalog/checkout dan tidak membuat aturan diskon lain.
+
+Validasi: 69 tes terkait (723 assertions) lulus; delapan tes desain mencakup upload/asset cleanup/referensi bersama, kurasi dan urutan produk, checkout, isolasi/izin staff, pagination, invalid input, revisi bersamaan, multipart daftar kosong serta boolean. Setelah perbaikan penghapusan jadwal legacy, 11 tes desain/Nebula (204 assertions) diperiksa ulang dan lulus. Pint dan build TypeScript/Vite lulus. Browser dengan SQLite/HTTP fake: unggah banner WebP dan simpan multipart, pindah urutan, ganti flash sale dengan produk kategori lain, ubah judul, sembunyikan bagian, simpan warna hex, lalu verifikasi hasil pada storefront. Editor staff dan modal banner pada 390 px tidak overflow halaman. Bukti `assets/store-design-editor.png`. Tidak ada perubahan desain toko nyata atau transaksi/pembayaran nyata.
+
+
+## Carousel otomatis dan tema warna toko — 16 Oktober 2026
+
+Editor Desain web kini menyediakan carousel otomatis (interval 3–30 detik, aktif/nonaktif), navigasi manual dan tombol jeda. Perpindahan berhenti sementara saat hover/fokus, dokumen tersembunyi, atau preferensi reduced motion aktif. Setiap banner dapat membuka kategori katalog toko, URL HTTPS/path lokal, atau tidak memiliki tautan. Pemilih kategori memakai pencarian dan infinite scroll dengan hasil terbatasi per halaman, berizin web.manage dan hanya membaca produk aktif toko tersebut. Tautan kategori memakai path relatif sehingga tetap mengikuti domain toko.
+
+Modal Identitas & tema warna menyediakan primary, secondary, background web, kartu/panel, teks utama, teks pendukung dan border, dengan preset Midnight/Daylight/Forest dan pratinjau langsung. Variabel tema berlaku pada Aurora/Nebula/Atlas serta checkout/akun. Prioritas CSS diperbaiki agar warna kartu/kategori bawaan Nebula tidak menimpa pilihan owner. Banner gambar penuh mempertahankan rasio 3:1 pada ponsel. Mengedit gambar unggahan yang sudah tersimpan tidak lagi terhalang validasi input URL HTML.
+
+Tidak ada migrasi atau dependency tambahan. Desain lama tetap dibaca; nilai default baru hanya ditambahkan pada editor sampai desain disimpan. Validasi server menolak warna non-hex, interval di luar batas, kategori toko lain, URL berbahaya, dan revisi editor lama. Branding, media privat dan alur harga/checkout existing dipertahankan.
+
+Validasi akhir: 15 tes desain/Nebula, 258 assertions, dan 4 tes frontend lulus; TypeScript/build Vite, Pint dan git diff --check lulus. Browser pada SQLite/HTTP fake membuktikan perpindahan banner otomatis 3 detik, tombol jeda, banner tanpa tautan, tautan kategori membuka filter Canva, penyimpanan tema dan banner, serta tema pada ketiga template. Storefront dan modal editor staff diuji pada viewport 390 px tanpa overflow; kartu tema terang berwarna putih sesuai pengaturan. Bukti: assets/store-theme-customizer.png. Pengujian tidak mengubah desain toko nyata atau menjalankan pembayaran/transaksi nyata. Tab dan server fixture ditutup setelah pemeriksaan.
+
+
+## Stabilitas pemuatan UI / refresh Nebula — 16 Oktober 2026
+
+Penyebab tampilan membesar sesaat adalah stylesheet storefront/desain yang diimpor oleh modul React terpisah, sedangkan HTML Nebula sudah dirender server sebelum stylesheet halaman tersebut tersedia. CSS dipusatkan ke entry resources/css/app.css dengan urutan digitaltoko → nebula → store-design dan dimuat melalui link stylesheet di head Blade. Import CSS pada Home/Commerce/StoreDesignPanel dihapus; manifest production hanya mempunyai satu entry CSS, tanpa stylesheet tambahan pada chunk Storefront/Home. Tidak menggunakan hide body, timeout tampilan, atau mematikan React StrictMode.
+
+Logo platform/toko dan gambar banner diberi dimensi intrinsik. Waktu awal storefront/preview disediakan server melalui renderedAt agar hitungan mundur memakai snapshot yang sama pada SSR dan hydration. Countdown tetap berjalan pada komponen sendiri; timer tingkat halaman hanya memperbarui status saat batas jadwal promo tercapai, sehingga katalog/header/footer tidak dirender ulang setiap detik. Cleanup timer tetap berjalan saat unmount dan StrictMode.
+
+Validasi: 16 tes desain/Nebula (269 assertions), termasuk HTML awal berisi stylesheet di head dan timestamp server, lulus. Build TypeScript/Vite dan Pint lulus. Manifest CSS tunggal 132,97 kB / gzip 24,82 kB. Browser pada server development 8000: HTML respons benar-benar memuat markup SSR Nebula dan stylesheet sebelum penutup head; refresh desktop/390 px, countdown, serta navigasi preview owner/staff/admin diperiksa tanpa error/warning React/hydration. Viewport ponsel 390 px, lebar konten 375 px dan font brand 19 px. Bukti assets/nebula-stable-refresh.png. Tidak mengubah data atau menjalankan transaksi toko nyata; server development pengguna tetap berjalan.
+
+
+## Animasi, iklan awal dan customer service Nebula — 16 Oktober 2026
+
+Pergantian slide Nebula kini memasang ulang lapisan banner berdasarkan ID agar animasi slide/fade 550 ms berjalan pada perpindahan otomatis maupun manual, sementara kontrol carousel tetap stabil. Ditambahkan kemunculan header/bagian halaman, hover kartu/gambar, respons tombol dan animasi dialog. CSS tetap melalui entry awal app.css, tanpa impor CSS dari React. Preferensi prefers-reduced-motion menonaktifkan animasi/transisi.
+
+Desain web → Atur iklan & CS menyediakan popup (judul, pesan, upload JPG/PNG/WebP/URL HTTPS, tombol/tujuan opsional) dan CS WhatsApp (nomor, label, pesan awal). Keduanya nonaktif sampai owner/staff mengaktifkannya. Popup beranda tampil setelah 650 ms, dapat langsung ditutup/Escape, dan muncul sekali per sesi tab untuk isi iklan yang sama; penyimpanan sesi gagal tidak membuat halaman error. Perubahan isi iklan dapat menampilkannya lagi. Nomor CS dinormalisasi ke kode 62; URL wa.me memakai pesan ter-encode, target tab baru dan noopener/noreferrer. Tombol tetap tersedia pada akun/checkout Nebula dengan ruang footer agar tidak menutupi informasi terbawah.
+
+Konfigurasi disimpan di branding.design, memakai otorisasi web.manage/revisi/transaksi/media per toko existing. Gambar iklan termasuk dalam perhitungan referensi aset dan dibersihkan setelah tidak dipakai. Tidak ada migrasi atau dependency baru. Tautan iklan/nomor CS/SVG divalidasi server.
+
+Validasi: 18 tes desain/Nebula (295 assertions), 5 tes frontend, TypeScript/build dan Pint lulus. Browser SQLite/HTTP fake membuktikan unggah gambar iklan lewat modal dan simpan multipart, popup desktop/390 px, tutup lalu refresh tidak membuka ulang, tab baru membuka popup, CSS animasi ng-slide-enter 0.55s, serta tautan CS yang sesuai pada storefront/akun. Tidak mengirim pesan WhatsApp atau membuat transaksi; nomor CS hanya data simulasi. Tidak ada error/warning browser yang tercatat; viewport 390 px memiliki lebar konten 375 px dan tombol CS berada di dalam layar. Bukti assets/nebula-welcome-ad.png. Tab dan server fixture ditutup setelah pemeriksaan.
+
+
+## Cek pesanan publik dan tinjauan halaman BangJeff — 16 Oktober 2026
+
+Menu Cek pesanan Nebula sekarang menuju /cek-pesanan, terpisah dari /account. Header bersama checkout/akun dan navigasi Aurora/Atlas juga menyediakan halaman tersebut. Preview Nebula memiliki halaman lookup tersendiri; form preview tidak mengirim pencarian ke toko nyata. Pencarian nomor invoice menampilkan produk, status pesanan/pembayaran, nominal dan waktu dari database toko tanpa login. Data tujuan/WA/email/hasil premium/token/ID internal tidak dikirim melalui hasil pencarian. Bukti lengkap dapat dibuka melalui modal dengan nomor WhatsApp yang cocok dengan data checkout; nomor 08/+62 dinormalisasi dan redirect tetap memakai token receipt existing. Akun pelanggan tidak dibuat oleh proses ini.
+
+Pencarian scoped per toko, dibatasi 30 permintaan/menit; pembukaan bukti 5/menit. Nomor tidak ditemukan dan data tidak valid memberikan respons yang jelas tanpa mengekspos toko lain. Halaman memakai no-store/private, no-referrer, noindex dan history terenkripsi. Pemeriksaan lama tetap bisa dilakukan setelah toko berhenti menerima pesanan baru. Pencarian tidak memanggil gateway/pemasok atau membuat transaksi baru.
+
+Validasi: 32 tes commerce/Nebula (387 assertions), TypeScript/build dan Pint lulus. Empat tes lookup mencakup guest, batas data publik, input array/panjang/script, invoice toko lain, WA benar/salah, akses receipt tanpa akun, dan toko kedaluwarsa. Browser SQLite/HTTP fake: cari invoice berhasil tanpa login, buka modal WA lalu bukti transaksi, serta viewport 390 px dengan lebar dokumen 375 px tanpa elemen melebar. Bukti assets/public-order-lookup.png. Tidak ada pembelian/pesan/permintaan OTP nyata. Server fixture dan tab ditutup setelah pengujian; server development pengguna tetap berjalan.
+
+### Temuan referensi halaman publik
+
+Cakupan: 14 halaman publik utama termasuk satu halaman produk perwakilan Mobile Legends. Halaman akun setelah autentikasi dan bukti pembayaran milik pelanggan referensi tidak diakses. Pencarian invoice referensi hanya diperiksa bentuk formnya, tanpa mencari invoice pelanggan lain.
+
+| Halaman BangJeff | Alur yang terlihat | Keadaan DigitalToko setelah perubahan |
+| --- | --- | --- |
+| [Beranda](https://www.bangjeff.com/id-id) | Banner, flash sale, trending, kelompok produk, artikel | Banner/promo/trending/katalog/CS sudah ada; artikel belum menjadi modul |
+| [Mobile Legends](https://www.bangjeff.com/id-id/mobile-legends) | Halaman per game: ID dan server, nominal, jumlah, pembayaran, kontak, promo, deskripsi/FAQ/ulasan | Checkout bersama sudah ada; halaman game dengan input ID/server terpisah, FAQ/ulasan dan promo belum lengkap |
+| [Cek transaksi](https://www.bangjeff.com/id-id/invoices) | Pencarian invoice publik dan tabel transaksi terakhir | Lookup publik sudah berfungsi; detail pembayaran/hasil produk memakai kecocokan WhatsApp; riwayat semua pelanggan tidak dipublikasikan |
+| [Leaderboard](https://www.bangjeff.com/id-id/leaderboard) | Halaman tersendiri untuk harian, mingguan, bulanan | Bagian leaderboard mingguan/bulanan sudah ada di Nebula; halaman khusus/harian belum tersedia |
+| [Masuk](https://www.bangjeff.com/id-id/sign-in) / [pemulihan](https://www.bangjeff.com/id-id/forgot-password) | Akun dan pemulihan dipisah dari cek invoice | Login DigitalToko tetap WA OTP atau email/password sesuai aturan proyek; guest dapat mengecek pesanan |
+| [Winrate](https://www.bangjeff.com/id-id/calculator/winrate), [Magic Wheel](https://www.bangjeff.com/id-id/calculator/magic-wheel), [Zodiac](https://www.bangjeff.com/id-id/calculator/zodiac) | Halaman kalkulator interaktif | Belum menjadi modul DigitalToko |
+| [Artikel](https://news.bangjeff.com/) | Portal artikel terpisah dengan pencarian | Belum menjadi modul DigitalToko |
+| [Kontak](https://www.bangjeff.com/id-id/contact-us) / [ulasan](https://www.bangjeff.com/id-id/reviews) | Bantuan/kontak dan ulasan memiliki halaman tersendiri | CS WhatsApp tersedia; halaman kontak/ulasan khusus belum tersedia |
+| [Syarat](https://www.bangjeff.com/id-id/terms-and-condition) / [privasi](https://www.bangjeff.com/id-id/privacy-policy) | Dokumen informasi tersendiri | Pengelolaan halaman kebijakan per toko belum tersedia; isi kebijakan referensi tidak disalin |
+
+Prioritas sesudah lookup: pengalaman halaman produk per game dengan pemilihan nominal dan format tujuan yang benar, lalu halaman leaderboard/kontak/kebijakan toko. Kalkulator, ulasan dan artikel memerlukan tahap modul tersendiri.
+
+
+### Navigasi Nebula, katalog kategori, dan kalkulator — 16 Oktober 2026
+
+- Header/footer Nebula memakai `NebulaLayout` bersama pada beranda, kategori, checkout, cek pesanan, akun/login, invoice, leaderboard, dan kalkulator. Header fixed dengan latar 86% serta blur setelah scroll >16px; ruang header disediakan sejak render awal. Pencarian menggunakan navigasi Inertia. Pratinjau template mempertahankan pemilih template di atas navbar sticky.
+- Beranda Nebula memuat kartu kategori aktif per toko dengan filter/pagination server. Produk biasa tidak lagi dikirim pada daftar beranda. Flash sale tetap berupa produk dan membuka `/kategori/{uuid}?product={uuid}` dengan produk terpilih. Trending memakai kategori, termasuk pemilihan manual maksimal 12 kategori pada editor desain; pilihan produk lama dibaca sebagai kategori untuk kompatibilitas.
+- `/kategori/{uuid}` menampilkan identitas/gambar kategori, daftar nominal dengan filter/pagination, formulir tujuan, pembayaran, kontak, dan ringkasan. `CheckoutForm` dipakai bersama dengan checkout langsung; tetap memakai endpoint pesanan/inquiry yang ada, harga harapan, idempotency key, ketentuan guest, saldo, dan refund yang sama. Hasil inquiry dibatalkan saat produk/tujuan/WA/metode berubah agar tagihan lama tidak dipakai.
+- Owner/staff berizin `products.manage` mengunggah atau mengganti gambar melalui Layanan & kategori → Kategori utama → Edit. JPG/PNG/WebP maksimal 4 MB, maksimal 6000px; tersedia URL HTTPS dan hapus gambar. Gambar tersimpan dalam branding berdasarkan UUID kategori sehingga aman saat nama berubah dan tidak memerlukan migrasi. Penulisan menggunakan lock toko; file baru dibersihkan saat rollback, file lama yang tidak dipakai lagi dibersihkan setelah sukses. Referensi gambar bersama dengan desain tetap dipertahankan.
+- Leaderboard pindah ke `/leaderboard`, dengan periode hari/minggu/bulan (Asia/Jakarta) dan pagination. Beranda tidak lagi menjalankan query leaderboard. Hanya pesanan produk sukses, terbayar, tidak direfund; alias HMAC digunakan tanpa mengirim nama, telepon, email, tujuan, atau ID pelanggan.
+- `/calculator` menyediakan Win Rate, Magic Wheel, Zodiac, masing-masing memiliki URL. Win Rate menghitung kemenangan beruntun dengan pembulatan atas dan menangani target 100%/target yang sudah tercapai. Estimasi diamond memakai asumsi eksplisit paket 5 putaran + sisa putaran tunggal, tanpa diskon/tiket/bonus; hasil bukan jaminan hadiah event.
+- Referensi visual: halaman Mobile Legends serta kalkulator di BangJeff ditinjau. Alur pemesanan tetap memakai mesin transaksi DigitalToko; tidak menambahkan input promo/jumlah yang belum didukung mesin pesanan.
+- Validasi: 78 tes backend terkait lulus (1137 assertion), 7 tes frontend lulus, pemeriksaan TypeScript/build Vite dan Pint lulus. Browser pada fixture SQLite terisolasi memverifikasi unggah kategori, pilihan nominal/ringkasan, header fixed/transparan, leaderboard, menu kalkulator, hasil Win Rate 100/50/60 = 25, Magic Wheel 199 = 60 diamond, dan Zodiac 0 = 1700 diamond. Tampilan ponsel 390px tidak meluap horizontal; pratinjau gelap pada server development 8000 juga diperiksa tanpa error React. Tidak melakukan pembayaran atau pengiriman pesan nyata.
+
+
+### Perapian filter storefront — 16 Oktober 2026
+
+Filter beranda kategori Nebula dan pilihan nominal memakai varian storefront pada `FilterBar`: pencarian fleksibel, input/select/tombol setinggi 44px, tombol Cari, dan reset ikon hanya saat ada kata kunci. Latar panel admin dihilangkan; warna memakai token storefront. Pada ponsel, pencarian satu baris penuh dengan jumlah data serta aksi di baris berikutnya. Pagination atas/bawah tetap ada. Browser fixture terisolasi memverifikasi pencarian Spotify, reset, dan pencarian nominal melalui Enter tanpa submit checkout; lebar 390px tidak meluap. Build TypeScript/Vite dan 7 tes frontend lulus. Bukti tampilan: `assets/nebula-catalog-filters.png` dan `assets/nebula-order-filters.png`.
+
+
+### Reveal lintas halaman dan hover navbar Nebula — 16 Oktober 2026
+
+`NebulaLayout` memakai hook `useStorefrontReveal` bersama untuk section, form, judul, kartu, nominal, daftar peringkat, serta footer di semua halaman Nebula. IntersectionObserver memicu animasi fade/geser 480ms sekali saat elemen masuk viewport, dengan stagger kartu maksimal 175ms. MutationObserver menangani elemen baru sesudah filter/pagination; pergantian route mengatur ulang observer. Konten SSR tidak disembunyikan oleh CSS, Web Animations tidak meninggalkan transform setelah selesai, dan panel sticky hanya memakai fade. Semua observer/animasi dibersihkan pada unmount; perubahan preferensi reduced motion menghentikan animasi.
+
+Navbar mendapat sorotan latar, garis bawah dari kiri, gerakan ikon, panah dropdown berputar, dan transisi item dropdown, termasuk fokus keyboard serta aturan reduced motion. Tidak menambah dependensi. TypeScript/build berhasil. Browser fixture memverifikasi perpindahan ke cek pesanan, leaderboard, kalkulator, dan login tanpa error React; computed opacity/transform selama reveal pada leaderboard dan kalkulator membuktikan animasi aktif di luar beranda. Bukti navbar: `assets/nebula-motion-navbar.png`.
+
+
+Penyempurnaan reveal: durasi diperpanjang dari 480ms menjadi 900ms, stagger kartu 60ms dengan batas 240ms. Elemen yang sudah terlihat saat registrasi tidak dibuat transparan kembali; elemen bersarang tidak mengulang fade milik bagian induknya. Reveal saat scroll dimulai dari opacity 0,25 dengan easing lebih bertahap untuk menghindari kesan kedip. Build TypeScript/Vite lulus.
+
+
+### Pengecekan akun game otomatis — 16 Oktober 2026
+
+- Integrasi endpoint nickname ihsangan/valid melalui layanan Laravel `GameIdentity`, bukan request langsung dari browser. Daftar konfigurasi mencakup 16 game pada implementasi sumber; Call of Duty menggunakan path `codm` sesuai routing aktual. Tidak menyalin worker atau menambah dependensi.
+- Deteksi kategori otomatis ditambah override/disable per UUID kategori pada branding. Owner/staff berizin products.manage memilih game dan format tujuan (otomatis, gabung, kurung, pipa, spasi, atau ID saja) melalui modal kategori. Tidak mengubah schema database.
+- `GameAccountFields` memisahkan User ID/Zone ID, menyediakan server bernama untuk LifeAfter/PGR, dan mendukung Riot ID+tag. Debounce 800ms, pembatalan request lama, pemeriksaan identitas input saat respons tiba, cache shared 3 menit, status akun tidak ditemukan/layanan gagal terpisah, dan tombol cek ulang. ID besar tetap string.
+- Hasil valid menghasilkan bukti terenkripsi 10 menit, terikat toko/kategori/game/tujuan. Mesin checkout web mewajibkan bukti cocok sebelum pendebitan saldo. Perubahan ID/server langsung mengosongkan bukti; nickname serta ID/server disimpan pada snapshot invoice dan ditampilkan pada ringkasan/bukti pribadi. Kanal bot yang ada dipertahankan.
+- Validasi: 68 tes backend terkait lulus (998 assertion), 9 tes frontend lulus, TypeScript/build dan Pint lulus. Meliputi input zona, game tanpa zona/Riot tag, cache lintas toko, ID/zona respons yang tidak cocok, HTTP error/JSON rusak, bukti palsu/kedaluwarsa/berbeda kategori, idempotensi, serta saldo tidak terpotong pada kegagalan verifikasi.
+- Endpoint asli berhasil diakses dari PHP/Laravel menggunakan contoh ID publik README (1114917746/13486). Browser memakai SQLite/HTTP fake terisolasi: owner mengaktifkan game di kategori simulasi, dua input tampil, nickname ditemukan otomatis, ID invalid mengosongkan nickname dan menonaktifkan tombol pesan. Tidak membuat pembayaran atau mengirim pesan nyata. Bukti UI: `assets/nebula-game-identity.png`.
+
+### Penyempurnaan panel dan harga — 16 Oktober 2026
+
+- Menu owner/staff dikelompokkan dalam Penjualan, Produk & harga, Kanal & tampilan, serta Administrasi toko. Submenu dapat dilipat, menyimpan preferensi sesi per toko, dan membuka kelompok halaman aktif. Browser desktop/ponsel serta staff simulasi diperiksa.
+- Penutupan toko dipindahkan ke halaman dan endpoint khusus owner `/stores/{store}/closure`; pembayaran pelanggan tidak lagi menerima aksi penutupan. Saldo dan pesanan yang belum selesai tetap menghalangi penutupan final. Pengelolaan staff dipisahkan dari tab identitas/desain; tautan login staff berada pada halaman staff.
+- Aturan harga memvalidasi nama target terhadap tingkat layanan/kategori dan toko. Aturan Bogor Topup sebelumnya tersimpan sebagai kategori game, sedangkan Game adalah layanan. Setelah backup aturan dan harga lokal, scope dipindahkan ke layanan; ML DIAMOND 100 menjadi Rp32.444 dari modal Rp29.494 + 10%.
+- Validasi: 27 tes katalog/taksonomi (393 assertion), 29 tes perdagangan pelanggan (302 assertion), build TypeScript/Vite, Pint, dan diff whitespace lulus. Pemeriksaan browser menggunakan fixture terisolasi; tidak menutup toko nyata.

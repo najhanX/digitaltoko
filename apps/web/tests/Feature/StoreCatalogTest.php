@@ -100,6 +100,40 @@ class StoreCatalogTest extends TestCase
         $pricing->parse('5% * shell_exec()');
     }
 
+    public function test_pricing_rules_require_a_target_in_the_selected_level_and_store(): void
+    {
+        $store = $this->shop();
+        $this->product($store, null, ['service' => 'Game', 'category' => 'Mobile Legends']);
+        $other = $this->shop();
+        $this->product($other, null, ['service' => 'Layanan Lain', 'category' => 'Kategori Lain']);
+        $url = '/stores/'.$store->id.'/pricing';
+        $this->actingAs($store->owner);
+        foreach ([['category', 'Game'], ['service', 'Mobile Legends'], ['category', 'Kategori Lain'], ['service', 'Layanan Lain']] as [$scope, $key]) {
+            $this->post($url, ['scope' => $scope, 'key' => $key, 'markup' => '10%', 'auto_update' => true])->assertSessionHasErrors('key');
+        }
+        $this->assertDatabaseCount('pricing_rules', 0);
+    }
+
+    public function test_service_rule_reprices_inherited_products_and_category_override_remains_independent(): void
+    {
+        $store = $this->shop();
+        $item = $this->item($this->connection($store, 'hanshop'), 29494);
+        $product = $this->product($store, $item, ['service' => 'Game', 'category' => 'Mobile Legends', 'sale_price' => 29494, 'markup' => null, 'auto_update' => null]);
+        $url = '/stores/'.$store->id.'/pricing';
+        $this->actingAs($store->owner)->post($url, ['scope' => 'service', 'key' => ' Game ', 'markup' => '10%', 'auto_update' => true])->assertSessionHasNoErrors();
+        $this->assertSame(32444, $product->fresh()->sale_price);
+        $quote = app(StoreCatalog::class)->present(app(StoreCatalog::class)->query($store, false)->findOrFail($product->id), $store, true);
+        $this->assertSame(32444, $quote['price']);
+        $this->assertSame(['markup' => '10%', 'auto_update' => true, 'level' => 'service'], $quote['rule']);
+
+        $this->post($url, ['scope' => 'category', 'key' => 'Mobile Legends', 'markup' => '5000', 'auto_update' => null])->assertSessionHasNoErrors();
+        $this->assertSame(34494, $product->fresh()->sale_price);
+        $rule = PricingRule::where('store_id', $store->id)->where('scope', 'category')->firstOrFail();
+        $this->patch($url.'/'.$rule->id, ['scope' => 'category', 'key' => 'Game', 'markup' => '5000', 'auto_update' => true])->assertSessionHasErrors('key');
+        $this->assertSame('mobile legends', $rule->fresh()->key);
+        $this->assertSame(34494, $product->fresh()->sale_price);
+    }
+
     public function test_sources_are_shared_only_per_supplier_account_and_valid_snapshots_survive_failure(): void
     {
         $a = $this->shop();
@@ -198,6 +232,70 @@ class StoreCatalogTest extends TestCase
         $this->assertTrue($this->quote($store, $product)['available']);
         $this->travel(601)->seconds();
         $this->assertFalse($this->quote($store, $product)['available']);
+    }
+
+    public function test_opening_catalog_refreshes_expired_hanshop_stock_and_shares_cache_per_owner(): void
+    {
+        config(['services.hanshop.url' => 'https://hanshop.test', 'services.hanshop.token' => str_repeat('h', 40)]);
+        $store = $this->shop();
+        $other = $this->shop();
+        $other->update(['owner_id' => $store->owner_id]);
+        $products = [];
+        foreach ([$store, $other] as $shop) {
+            $connection = $this->connection($shop, 'hanshop');
+            $connection->update(['synced_at' => now()->subMinutes(11), 'catalog_modes' => ['prepaid']]);
+            $item = $this->item($connection, 10000, 'premium');
+            $item->update(['sku' => 'NET1', 'quantity' => 2, 'observed_at' => now()->subMinutes(11)]);
+            $products[] = $this->product($shop, $item);
+        }
+        $quantity = 2;
+        Http::fake(function () use ($store, &$quantity) {
+            return Http::response(['status' => 'SUCCESS', 'data' => [
+                'id_user' => $store->owner->hanshop_user_id, 'items' => [[
+                    'code' => 'NET1', 'name' => 'Netflix', 'kind' => 'premium', 'price' => 10000,
+                    'service_name' => 'Aplikasi', 'category_name' => 'Netflix', 'available' => $quantity > 0, 'quantity' => $quantity,
+                ]], 'next_cursor' => null,
+            ]]);
+        });
+        foreach ([$store, $other] as $shop) {
+            $this->actingAs($store->owner)->get('/stores/'.$shop->id.'/products')
+                ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('products.0.available', true)->where('products.0.quantity', 2)->where('products.0.supplier_stale', false));
+        }
+        Http::assertSentCount(1);
+        $this->assertSame(2, $this->quote($store, $products[0])['quantity']);
+        Http::assertSentCount(1);
+
+        $this->travel(121)->seconds();
+        $quantity = 0;
+        $quote = $this->quote($store, $products[0]);
+        $this->assertFalse($quote['available']);
+        $this->assertSame(0, $quote['quantity']);
+        $this->assertFalse($quote['supplier_stale']);
+    }
+
+    public function test_failed_stock_refresh_keeps_snapshot_and_does_not_claim_stale_stock_is_zero(): void
+    {
+        config(['services.hanshop.url' => 'https://hanshop.test', 'services.hanshop.token' => str_repeat('h', 40)]);
+        $store = $this->shop();
+        $connection = $this->connection($store, 'hanshop');
+        $connection->update(['synced_at' => now()->subMinutes(3), 'catalog_modes' => ['prepaid']]);
+        $item = $this->item($connection, 10000, 'premium');
+        $item->update(['quantity' => 2, 'observed_at' => now()->subMinutes(3)]);
+        $product = $this->product($store, $item);
+        Http::fake(['hanshop.test/*' => Http::response(['status' => 'ERROR'], 503)]);
+
+        $quote = $this->quote($store, $product);
+        $this->assertTrue($quote['available']);
+        $this->assertSame(2, $quote['quantity']);
+        $this->travel(421)->seconds();
+        $this->actingAs($store->owner)->get('/stores/'.$store->id.'/products')->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('products.0.available', false)
+                ->where('products.0.quantity', null)->where('products.0.supplier_stale', true));
+        $this->quote($store, $product);
+        Http::assertSentCount(2);
+        $this->assertSame(2, $item->fresh()->quantity);
+        $this->assertTrue($item->fresh()->available);
     }
 
     public function test_stock_is_encrypted_scoped_counted_and_not_exposed_without_separate_credential_permission(): void

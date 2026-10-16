@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, type LucideIcon } from 'lucide-react';
 import Brand from './Brand';
 import ThemeToggle from './ThemeToggle';
@@ -7,7 +7,31 @@ import PreviewBar from './PreviewBar';
 import NotificationBell, { type NotificationSummary } from './PanelNotifications';
 import type { WorkspaceContext } from '../types';
 
-type NavLink = { href: string; label: string; icon: LucideIcon; active: boolean };
+const sidebarOffsets = new Map<string, number>();
+
+type NavSection = 'catalog' | 'sales' | 'channels' | 'management';
+type NavLink = { href: string; label: string; icon: LucideIcon; active: boolean; section?: NavSection };
+
+function SidebarSection({label, icon: Icon, links, storageKey, children}: {label:string; icon:LucideIcon; links:NavLink[]; storageKey:string; children:ReactNode}) {
+    const id = useId();
+    const activeHref = links.find(link => link.active)?.href;
+    const [open, setOpen] = useState(() => {
+        if (activeHref) return true;
+        try { return sessionStorage.getItem(storageKey) === 'open'; } catch { return false; }
+    });
+    useEffect(() => { if (activeHref) setOpen(true); }, [activeHref]);
+    function toggle() {
+        const next = !open;
+        setOpen(next);
+        try { sessionStorage.setItem(storageKey, next ? 'open' : 'closed'); } catch { /* Navigation remains usable without browser storage. */ }
+    }
+    return <div className={'sidebar-section '+(activeHref?'has-active':'')}>
+        <button type="button" className="sidebar-section-toggle" aria-expanded={open} aria-controls={id} onClick={toggle}>
+            <Icon size={17}/><span>{label}</span><ChevronDown size={15} className={open?'is-open':''}/>
+        </button>
+        <div id={id} className="sidebar-section-links" hidden={!open}>{children}</div>
+    </div>;
+}
 export default function WorkspaceLayout({ title, description, role = 'owner', canCreate: _canCreate, children, actions, eyebrow, breadcrumb, preview = false }: {
     title: string; description?: string; role?: 'owner'|'admin'|'staff'; canCreate?: boolean;
     children: ReactNode; actions?: ReactNode; eyebrow?: string; breadcrumb?: string; preview?: boolean;
@@ -25,12 +49,30 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     const scoped = path.startsWith('/stores/') || (path.startsWith('/owner/stores/') && path !== '/owner/stores/create') || role === 'staff';
     const tab = new URLSearchParams(page.url.split('?')[1] ?? '').get('tab');
     const notificationSummary = page.props.notificationSummary as NotificationSummary|null;
+    const sidebarScrollKey = 'digitaltoko.sidebar.'+role+'.'+(preview?'preview':notificationSummary?.recipient ?? viewer?.name ?? 'panel');
+    function saveSidebarScroll() {
+        const sidebar = navigationRef.current;
+        if (!sidebar || sidebar.clientHeight === 0) return;
+        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop');
+        sidebarOffsets.set(key, sidebar.scrollTop);
+        try { sessionStorage.setItem(key, String(sidebar.scrollTop)); } catch { /* In-memory restoration remains available when storage is blocked. */ }
+    }
+    useLayoutEffect(() => {
+        const sidebar = navigationRef.current;
+        if (!sidebar || sidebar.clientHeight === 0) return;
+        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop');
+        let offset = sidebarOffsets.get(key);
+        if (offset === undefined) {
+            try { const saved = sessionStorage.getItem(key); if (saved !== null) offset = Number(saved); } catch { /* Storage can be unavailable in private browser settings. */ }
+        }
+        if (offset !== undefined && Number.isFinite(offset) && offset >= 0) sidebar.scrollTop = offset;
+    }, [sidebarScrollKey, page.url, mobileOpen]);
     useEffect(() => { setMobileOpen(false); }, [page.url]);
     useEffect(() => {
         if (!mobileOpen) return;
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-        navigationRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+        navigationRef.current?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true});
         const close = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {setMobileOpen(false);return;}
             if (event.key !== 'Tab') return;
@@ -43,7 +85,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         window.addEventListener('keydown', close);
         const resize = () => {if(window.innerWidth > 700)setMobileOpen(false);};
         window.addEventListener('resize',resize);
-        return () => {document.body.style.overflow = previousOverflow;window.removeEventListener('keydown', close);window.removeEventListener('resize',resize);menuButtonRef.current?.focus();};
+        return () => {document.body.style.overflow = previousOverflow;window.removeEventListener('keydown', close);window.removeEventListener('resize',resize);menuButtonRef.current?.focus({preventScroll:true});};
     }, [mobileOpen]);
     const globalLinks: NavLink[] = role === 'admin' ? [
         {href:'/admin',label:'Ringkasan',icon:LayoutDashboard,active:path === '/admin'},
@@ -61,40 +103,53 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     if (store) {
         const overview = role === 'owner' ? '/owner/stores/'+store.id : '/staff/'+store.id+'/dashboard';
         if (role === 'owner' || permissions.includes('dashboard.view')) scopedLinks.push({href:overview,label:'Ringkasan toko',icon:LayoutDashboard,active:path === overview});
-        if (role === 'owner' || permissions.includes('subscription.view')) scopedLinks.push({href:'/stores/'+store.id+'/subscription',label:'Langganan & aktivasi',icon:CreditCard,active:path === '/stores/'+store.id+'/subscription'});
+        if (role === 'owner' || permissions.includes('subscription.view')) scopedLinks.push({href:'/stores/'+store.id+'/subscription',label:'Langganan & aktivasi',section:'management',icon:CreditCard,active:path === '/stores/'+store.id+'/subscription'});
         if (role === 'owner' || permissions.some(value=>['products.view','products.manage','pricing.manage'].includes(value))) {
-            scopedLinks.push({href:'/stores/'+store.id+'/sources',label:'Sumber produk',icon:Package,active:path === '/stores/'+store.id+'/sources'});
-            scopedLinks.push({href:'/stores/'+store.id+'/catalog-structure',label:'Layanan & kategori',icon:Package,active:path === '/stores/'+store.id+'/catalog-structure'});
-            scopedLinks.push({href:'/stores/'+store.id+'/products',label:'Katalog & harga',icon:Package,active:path === '/stores/'+store.id+'/products'});
+            scopedLinks.push({href:'/stores/'+store.id+'/sources',label:'Sumber produk',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/sources'});
+            scopedLinks.push({href:'/stores/'+store.id+'/catalog-structure',label:'Layanan & kategori',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/catalog-structure'});
+            scopedLinks.push({href:'/stores/'+store.id+'/products',label:'Katalog & harga',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/products'});
         }
-        if(role==='owner' || permissions.some(value=>['orders.view','orders.resend','guests.resolve'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/orders',label:'Transaksi pelanggan',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/orders')});
-        if(role==='owner' || permissions.some(value=>['customers.view','customers.contacts','wallet.view','wallet.settlement'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/customers',label:'Pelanggan & saldo',icon:Users,active:path.startsWith('/stores/'+store.id+'/customers')});
-        if(role==='owner' || permissions.some(value=>['payments.view','payments.policy','checkout.manage'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/payments',label:'Pembayaran pelanggan',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/payments')});
-        if (role === 'owner' || permissions.some(value=>['stock.view','stock.manage','stock.credentials'].includes(value))) scopedLinks.push({href:'/stores/'+store.id+'/stock',label:'Stok premium',icon:Package,active:path === '/stores/'+store.id+'/stock'});
-        if (store.category !== 'web' && (role === 'owner' || permissions.includes('bot.view') || permissions.includes('bot.manage'))) scopedLinks.push({href:'/stores/'+store.id+'/bot',label:'Koneksi WhatsApp',icon:Smartphone,active:path === '/stores/'+store.id+'/bot'});
+        if(role==='owner' || permissions.some(value=>['orders.view','orders.resend','guests.resolve'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/orders',label:'Transaksi pelanggan',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/orders')});
+        if(role==='owner' || permissions.some(value=>['customers.view','customers.contacts','wallet.view','wallet.settlement'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/customers',label:'Pelanggan & saldo',section:'sales',icon:Users,active:path.startsWith('/stores/'+store.id+'/customers')});
+        if(role==='owner' || permissions.some(value=>['payments.view','payments.policy','checkout.manage'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/payments',label:'Pembayaran pelanggan',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/payments')});
+        if (role === 'owner' || permissions.some(value=>['stock.view','stock.manage','stock.credentials'].includes(value))) scopedLinks.push({href:'/stores/'+store.id+'/stock',label:'Stok premium',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/stock'});
+        if (store.category !== 'web' && (role === 'owner' || permissions.includes('bot.view') || permissions.includes('bot.manage'))) scopedLinks.push({href:'/stores/'+store.id+'/bot',label:'Koneksi WhatsApp',section:'channels',icon:Smartphone,active:path === '/stores/'+store.id+'/bot'});
         const settings = role === 'owner' ? '/owner/stores/'+store.id+'/manage' : '/staff/'+store.id+'/settings';
-        if (role === 'owner' || permissions.includes('web.manage')) scopedLinks.push({href:settings,label:'Pengaturan toko',icon:Settings2,active:path === settings && tab !== 'staff'});
-        if (role === 'owner') scopedLinks.push({href:settings+'?tab=staff',label:'Staff & hak akses',icon:Users,active:path === settings && tab === 'staff'});
+        if (role === 'owner' || permissions.includes('web.manage')) scopedLinks.push({href:settings,label:'Tampilan & pengaturan',section:'channels',icon:Settings2,active:path === settings && tab !== 'staff'});
+        if (role === 'owner') scopedLinks.push({href:'/stores/'+store.id+'/closure',label:'Penutupan toko',section:'management',icon:Store,active:path === '/stores/'+store.id+'/closure'});
+        if (role === 'owner') scopedLinks.push({href:settings+'?tab=staff',label:'Staff & hak akses',section:'management',icon:Users,active:path === settings && tab === 'staff'});
     }
+    const sections: {id:NavSection;label:string;icon:LucideIcon}[] = [
+        {id:'sales',label:'Penjualan',icon:CreditCard},
+        {id:'catalog',label:'Produk & harga',icon:Package},
+        {id:'channels',label:'Kanal & tampilan',icon:Smartphone},
+        {id:'management',label:'Administrasi toko',icon:Settings2},
+    ];
     function navigation(links: NavLink[]) {
         return links.map(({href,label,icon:Icon,active}) => preview ?
             <div key={label} className={'nav-item '+(label === 'Ringkasan'?'selected':'')}><Icon size={18}/><span>{label}</span></div> :
-            <Link key={label} href={href} className={'nav-item '+(active?'selected':'')} aria-current={active?'page':undefined}><Icon size={18}/><span>{label}</span></Link>);
+            <Link key={label} onBefore={saveSidebarScroll} href={href} className={'nav-item '+(active?'selected':'')} aria-current={active?'page':undefined}><Icon size={18}/><span>{label}</span></Link>);
     }
     return <>
         <Head title={title}/>
         {preview && <PreviewBar/>}
-        <div className={'panel-layout panel-surface workspace-shell '+(mobileOpen?'nav-open':'')}>
+        <div className={'panel-layout panel-surface workspace-shell '+(role!=='admin'?'compact-navigation ':'')+(mobileOpen?'nav-open':'')}>
             {mobileOpen && <button type="button" className="sidebar-backdrop" aria-label="Tutup menu navigasi" tabIndex={-1} onClick={() => setMobileOpen(false)}/>}
-            <aside ref={navigationRef} className="sidebar workspace-sidebar" id="workspace-navigation" aria-label="Navigasi panel" role={mobileOpen?'dialog':undefined} aria-modal={mobileOpen?true:undefined}>
+            <aside ref={navigationRef} onScroll={saveSidebarScroll} className="sidebar workspace-sidebar" id="workspace-navigation" aria-label="Navigasi panel" role={mobileOpen?'dialog':undefined} aria-modal={mobileOpen?true:undefined}>
                 <div className="sidebar-brand"><Brand/><button type="button" className="icon-button mobile-only" aria-label="Tutup menu" onClick={() => setMobileOpen(false)}><X size={20}/></button></div>
                 <div className="sidebar-label">{role === 'admin'?'ADMIN PLATFORM':role === 'staff'?'RUANG STAFF':'RUANG OWNER'}</div>
                 <nav className="workspace-nav">{navigation(globalLinks)}</nav>
                 {role !== 'admin' && !preview && <>
                     <div className="sidebar-label">{role === 'owner'?'RUANG TOKO':'TOKO ANDA'}</div>
-                    {role === 'owner' && stores.length > 0 && <label className="store-switcher"><span className="sr-only">Pilih toko</span><select aria-label="Pilih toko" value={store?.id ?? ''} onChange={event => {if(event.target.value === '__browse')router.get('/owner/stores');else if(event.target.value)router.get('/owner/stores/'+event.target.value);}}><option value="">Pilih toko</option>{stores.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}<option value="__browse">Cari di semua toko…</option></select></label>}
+                    {role === 'owner' && stores.length > 0 && <label className="store-switcher"><span className="sr-only">Pilih toko</span><select aria-label="Pilih toko" value={store?.id ?? ''} onChange={event => {saveSidebarScroll();if(event.target.value === '__browse')router.get('/owner/stores');else if(event.target.value)router.get('/owner/stores/'+event.target.value);}}><option value="">Pilih toko</option>{stores.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}<option value="__browse">Cari di semua toko…</option></select></label>}
                     {role === 'staff' && store && <div className="sidebar-store"><Store size={18}/><strong>{store.name}</strong></div>}
-                    {store ? <nav className="workspace-nav">{navigation(scopedLinks)}</nav> : <p className="sidebar-hint">{stores.length?'Pilih toko untuk membuka langganan dan pengaturannya.':'Toko yang Anda buat akan muncul di sini.'}</p>}
+                    {store ? <nav className="workspace-nav workspace-store-nav" aria-label="Menu toko">
+                        {navigation(scopedLinks.filter(link => !link.section))}
+                        {sections.map(section => {
+                            const links = scopedLinks.filter(link => link.section === section.id);
+                            return links.length > 0 && <SidebarSection key={store.id+':'+section.id} label={section.label} icon={section.icon} links={links} storageKey={sidebarScrollKey+'.groups.'+store.id+'.'+section.id}>{navigation(links)}</SidebarSection>;
+                        })}
+                    </nav> : <p className="sidebar-hint">{stores.length?'Pilih toko untuk membuka langganan dan pengaturannya.':'Toko yang Anda buat akan muncul di sini.'}</p>}
                 </>}
                 <div className="sidebar-bottom"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><div><strong>{viewer?.name ?? 'DigitalToko'}</strong><small>{role === 'staff'?'Staff toko':role === 'admin'?'Administrator':'Pemilik toko'}</small></div></div>
             </aside>

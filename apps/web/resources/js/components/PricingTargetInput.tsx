@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import type { PageMeta } from './ListControls';
 
 type Option = {id:string;name:string};
-export default function PricingTargetInput({storeId,scope,value,onChange}:{storeId:string;scope:string;value:string;onChange:(value:string)=>void}) {
+export default function PricingTargetInput({storeId,scope,value,onChange,optionsUrl,label}:{storeId:string;scope:string;value:string;onChange:(value:string)=>void;optionsUrl?:string;label?:string}) {
     const id=useId(), input=useRef<HTMLInputElement>(null), dropdown=useRef<HTMLDivElement>(null), sentinel=useRef<HTMLDivElement>(null);
     const [open,setOpen]=useState(false),[search,setSearch]=useState(value),[page,setPage]=useState(1),[active,setActive]=useState(-1);
     const [placement,setPlacement]=useState({above:false,height:240});
@@ -15,14 +15,14 @@ export default function PricingTargetInput({storeId,scope,value,onChange}:{store
         if(page===1){setRows([]);setMeta(null);setActive(-1);if(dropdown.current)dropdown.current.scrollTop=0;}
         const timer=setTimeout(()=>{
             const parameters=new URLSearchParams({type:scope==='service'?'services':'pricing_categories',q:search,page:String(page)});
-            fetch('/stores/'+storeId+'/catalog-structure/options?'+parameters,{credentials:'same-origin',headers:{Accept:'application/json'},signal:controller.signal})
+            fetch((optionsUrl ?? '/stores/'+storeId+'/catalog-structure/options')+'?'+parameters,{credentials:'same-origin',headers:{Accept:'application/json'},signal:controller.signal})
                 .then(async response=>{if(!response.ok)throw new Error();return response.json();})
                 .then(data=>{if(!controller.signal.aborted){setRows(current=>page===1?data.items:[...current,...data.items.filter((option:Option)=>!current.some(item=>item.id===option.id))]);setMeta(data.pagination);}})
                 .catch(()=>{if(!controller.signal.aborted)setError(true);})
                 .finally(()=>{if(!controller.signal.aborted)setBusy(false);});
         },200);
         return()=>{clearTimeout(timer);controller.abort();};
-    },[open,scope,storeId,search,page,retry]);
+    },[open,scope,storeId,search,page,retry,optionsUrl]);
     useEffect(()=>{
         if(!open || busy || error || !meta || meta.current_page!==page || meta.current_page>=meta.last_page || !sentinel.current || !dropdown.current)return;
         const observer=new IntersectionObserver(entries=>{
@@ -43,7 +43,7 @@ export default function PricingTargetInput({storeId,scope,value,onChange}:{store
     }
     function choose(option:Option){onChange(option.name);input.current?.focus();setOpen(false);setActive(-1);}
     return <div className="pricing-target" onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget)){setOpen(false);setActive(-1);}}}>
-        <label htmlFor={id}>{scope==='service'?'Nama layanan':'Nama kategori utama'}</label>
+        <label htmlFor={id}>{label ?? (scope==='service'?'Nama layanan':'Nama kategori utama')}</label>
         <div className="pricing-target-control"><input ref={input} id={id} role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={id+'-options'} aria-activedescendant={open && active>=0?id+'-option-'+active:undefined} autoComplete="off" required maxLength={100} placeholder={scope==='service'?'Pilih atau cari layanan…':'Pilih atau cari kategori…'} value={value} onFocus={show} onClick={()=>{if(!open)show();}} onChange={event=>{onChange(event.target.value);setSearch(event.target.value);setPage(1);setActive(-1);setOpen(true);}} onKeyDown={event=>{
             if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setOpen(false);}
             else if(event.key==='ArrowDown' || event.key==='ArrowUp'){event.preventDefault();if(!open)show();else setActive(index=>rows.length?(event.key==='ArrowDown'?(index+1)%rows.length:(index<=0?rows.length-1:index-1)):-1);}

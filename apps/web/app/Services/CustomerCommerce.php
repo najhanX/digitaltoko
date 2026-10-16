@@ -44,6 +44,9 @@ class CustomerCommerce
         $this->ensure($destination !== '' && mb_strlen($destination) <= 255 && ! preg_match('/[\r\n]/', $destination), 'Tujuan transaksi wajib diisi.');
         $email = $customer?->email ?? ($input['email'] ?? null);
         $hash = hash('sha256', json_encode([$purpose, $input['product_id'] ?? null, $input['amount'] ?? null, $destination, $phone, $email, $customer?->id, $pay, $channel, $input['inquiry_id'] ?? null]));
+        if ($purpose === 'product') {
+            app(SupplierCatalog::class)->refreshForStore($store);
+        }
 
         return DB::transaction(function () use ($store, $input, $customer, $channel, $phone, $purpose, $pay, $key, $destination, $email, $hash) {
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
@@ -63,7 +66,7 @@ class CustomerCommerce
             $candidates = [];
             $product = null;
             if ($purpose === 'product') {
-                $product = app(StoreCatalog::class)->query($store)->whereKey($input['product_id'] ?? '')->firstOrFail();
+                $product = app(StoreCatalog::class)->query($store, false)->whereKey($input['product_id'] ?? '')->firstOrFail();
                 $quote = app(StoreCatalog::class)->present($product, $store, true);
                 $this->ensure($quote['available'], 'Produk tidak tersedia atau harga jual di bawah modal.');
 
@@ -71,6 +74,9 @@ class CustomerCommerce
 
                 $candidates = $quote['candidates'];
                 $snapshot = $product->only(['code', 'name', 'kind', 'service', 'category']);
+                if ($channel === 'web') {
+                    $snapshot['game_account'] = app(GameIdentity::class)->checkout($store, $product, $input);
+                }
                 if ($product->kind === 'postpaid') {
                     $inquiry = CustomerInquiry::where('store_id', $store->id)->where('product_id', $product->id)->whereKey($input['inquiry_id'] ?? '')->lockForUpdate()->first();
                     $this->ensure($inquiry && $inquiry->phone === $phone && $inquiry->destination === $destination && $inquiry->expires_at->isFuture(), 'Periksa tagihan kembali sebelum membayar.');
@@ -212,6 +218,6 @@ class CustomerCommerce
     public function publicData(CustomerOrder $order): array
     {
         return [...$order->only(['id', 'number', 'purpose', 'status', 'payment_status', 'destination', 'amount', 'fee', 'unique_code', 'total', 'credit_amount', 'refund_amount', 'gateway', 'message', 'created_at', 'expires_at', 'paid_at', 'refunded_at']),
-            'product' => $order->snapshot['name'], 'phone' => $order->phone, 'result' => $order->status === 'success' ? $order->result : null, 'payment_url' => $order->payment_url, 'qr_image' => $order->qr_image, 'url' => $this->url($order)];
+            'product' => $order->snapshot['name'], 'game_account' => $order->snapshot['game_account'] ?? null, 'phone' => $order->phone, 'result' => $order->status === 'success' ? $order->result : null, 'payment_url' => $order->payment_url, 'qr_image' => $order->qr_image, 'url' => $this->url($order)];
     }
 }

@@ -114,9 +114,11 @@ Registry manager dan auth Baileys saat ini berada pada file privat per toko, den
 4. Cron `schedule:run` setiap menit menjalankan sinkron katalog setiap dua menit, tanpa overlap. Saat lokal: `php artisan schedule:work`. Sinkron manual per toko: `php artisan digitaltoko:catalog-sync --store=UUID_TOKO`. Tidak ada transaksi atau perubahan saldo saat sinkron.
 5. Owner hubungkan sumber dan sinkronkan mode prabayar/pasca yang dibutuhkan; scheduler mengulang mode yang sudah dipilih. Sembilan paket publik membatasi sumber milik toko sesuai rinciannya; Hanshop tersedia pada semua paket aktif. Stok lokal tetap privat per toko.
 6. Build bot dan restart manager yang sudah ada melalui supervisor/PM2 agar handler #produk baru dimuat, tanpa menghapus registry/sesi atau membuat instance kedua.
-7. Periksa impor produk, aturan harga, stok, katalog publik dan #produk. Jika cache/provider gagal, snapshot tidak dihapus dan sumber remote yang berumur lebih dari 600 detik dinyatakan tidak tersedia. Stok lokal yang masih ready tetap dapat ditampilkan.
+7. Periksa impor produk, aturan harga, stok, katalog publik dan #produk. Membaca katalog panel/web/bot juga memperbarui koneksi yang pernah disinkronkan jika snapshot berumur sekitar dua menit; pembacaan tetap memakai cache dan lock per akun pemasok. Ini menjaga katalog lokal saat scheduler belum berjalan. Jika cache/provider gagal, snapshot tidak dihapus dan sumber remote yang berumur lebih dari 600 detik tetap tidak dapat dipesan. Panel menampilkan “Perlu sinkronisasi / Stok belum terverifikasi”, bukan menganggap stok pemasok habis. Stok lokal yang masih ready tetap dapat ditampilkan. Pemeriksaan sebelum membuat pesanan memperbarui pemasok sebelum mengambil lock transaksi database.
 
-Katalog publik tidak memanggil provider langsung. Pasca hanya menampilkan biaya admin; inquiry/checkout/fallback dispatch serta pengiriman stok belum termasuk tahap ini.
+Katalog publik membaca snapshot toko; pembaruan saat dibuka melalui layanan server dan cache akun pemasok, tanpa mengekspos credential ke browser/bot. Pasca pada katalog hanya menampilkan biaya admin; alur inquiry/checkout/fallback dispatch serta pengiriman stok dijelaskan pada bagian transaksi pelanggan di bawah.
+
+Editor desain web berada pada Pengaturan toko → Desain web, tersedia bagi owner dan staff berizin `web.manage`. File banner/logo tersimpan di disk `local` pada `storefront/{UUID_TOKO}` (umumnya `storage/app/private/storefront`). Sertakan folder ini pada persistent volume/backup saat redeploy. File disajikan oleh route `/storefront-media/{store}/{asset}` dan tidak memerlukan symlink `storage:link` atau domain tetap. Atur PHP `upload_max_filesize=4M` dan `post_max_size=32M` bila ingin mengunggah lima banner serta logo sekaligus; validasi aplikasi membatasi tiap file 4 MB. Perubahan desain baru berlaku saat Simpan desain; flash sale memilih produk katalog dengan harga yang tetap sama di checkout. Pengaturan jadwal menyembunyikan sorotan promo setelah berakhir, tanpa mengubah harga katalog.
 
 ## Pembaruan nama paket planet (15 Oktober 2026)
 
@@ -141,3 +143,12 @@ Frontend dan PHP membaca satu katalog JSON bersama. Deploy juga file resources/j
 12. Penutupan manual menghentikan checkout/topup baru; penutupan final mensyaratkan saldo 0, tidak ada invoice/pesanan belum selesai, dan guest gagal terbayar sudah ditindaklanjuti. Pencairan hanya pencatatan uang yang telah diberikan manual, bukan API transfer. Pembayaran sah yang terlambat masuk review; owner bisa menyelesaikan topup atau menggagalkan/refund pesanan yang BELUM dikirim ke pemasok. Pending yang sudah dispatch tidak dapat dipaksa gagal lewat tindakan tersebut. Notifikasi berhenti dikirim ke pelanggan bersaldo; perpanjangan membuka akses kembali tanpa mereset wallet/ledger/pesanan.
 
 Validasi protokol mengacu dokumentasi resmi Midtrans QRIS, status transaksi/notification, serta Digiflazz topup, cek tagihan, bayar tagihan, dan cek status. Pengujian otomatis memakai HTTP palsu dan database terisolasi; pembayaran, OTP WhatsApp nyata, serta pembelian pemasok nyata tetap harus diuji dengan akun operator setelah konfigurasi. Penghapusan otomatis toko beserta data saat kewajiban belum selesai tidak diaktifkan oleh modul ini.
+
+
+### Pengecekan akun game
+
+Endpoint nickname default adalah `https://api.isan.eu.org/nickname` (tanpa API key). `GAME_IDENTITY_URL` dapat mengganti base URL bila memakai layanan lain yang kompatibel. Request dilakukan server-to-server dengan timeout 6 detik, cache bersama 180 detik melalui cache Laravel, penguncian request sejenis, dan pembatasan request. Pastikan cache/lock aplikasi tersedia. Tidak memerlukan migrasi baru.
+
+Owner/staff berizin kelola produk mengatur game dan format tujuan pemasok melalui Layanan & kategori → Kategori utama → Edit → Pengecekan akun game. Deteksi otomatis memakai nama kategori yang dikenali; kategori yang tidak cocok dapat diberi game secara eksplisit atau dinonaktifkan. Mobile Legends/Magic Chess secara standar menggabungkan ID dan zona tanpa pemisah. Sesuaikan format jika pemasok meminta format lain.
+
+Integrasi memanggil endpoint publik, tanpa menyalin implementasi worker pihak ketiga. Repositori referensi `https://github.com/ihsangan/valid` menyatakan lisensi CC BY-NC-SA 4.0; ketentuan pemakaian endpoint untuk bisnis perlu dikonfirmasi kepada penyedia.

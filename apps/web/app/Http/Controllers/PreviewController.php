@@ -16,9 +16,22 @@ class PreviewController extends Controller
             'expires_at' => null, 'url' => '/preview/storefront', 'branding' => null];
         if ($surface === 'storefront') {
             $page = $request->query('page', 'home');
+            if ($page === 'leaderboard') {
+                $period = in_array($request->query('period'), ['day', 'week', 'month'], true) ? $request->query('period') : 'month';
 
-            return Inertia::render('Storefront/Home', ['store' => $store, 'available' => false, 'products' => [], 'preview' => true,
-                'page' => in_array($page, ['home', 'catalog', 'order', 'profile'], true) ? $page : 'home']);
+                return Inertia::render('Storefront/Leaderboard', ['store' => [...$store, 'preview' => true], 'preview' => true,
+                    'period' => $period, 'ranking' => [['name' => 'Gamer 7C00••', 'amount' => 2450000, 'purchases' => 28]],
+                    'filters' => ['q' => '', 'per_page' => 10],
+                    'pagination' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 10, 'total' => 1, 'from' => 1, 'to' => 1]]);
+            }
+            if (in_array($page, ['calculator', 'calculator/winrate', 'calculator/magic-wheel', 'calculator/zodiac'], true)) {
+                return Inertia::render('Storefront/Calculator', ['store' => [...$store, 'preview' => true], 'preview' => true,
+                    'calculator' => str_contains($page, '/') ? substr($page, strlen('calculator/')) : null]);
+            }
+
+            return Inertia::render('Storefront/Home', ['store' => $store, 'available' => false, 'products' => [], 'preview' => true, 'renderedAt' => (int) now()->format('Uv'),
+                'filters' => ['q' => is_string($request->query('q')) ? mb_substr($request->query('q'), 0, 120) : '', 'per_page' => 10],
+                'page' => in_array($page, ['home', 'catalog', 'order', 'profile', 'lookup'], true) ? $page : 'home']);
         }
 
         return Inertia::render('Panel/Dashboard', ['role' => $surface, 'preview' => true,

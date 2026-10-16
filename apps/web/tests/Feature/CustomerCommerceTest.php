@@ -324,6 +324,66 @@ class CustomerCommerceTest extends TestCase
         $this->assertDatabaseCount('customer_ledgers', 0);
     }
 
+    public function test_order_lookup_is_public_and_returns_status_without_private_receipt_fields(): void
+    {
+        $store = $this->store();
+        $this->gateway($store);
+        $product = $this->product($store);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product, ['payment' => 'gateway']), null);
+        $order->update(['status' => 'success', 'payment_status' => 'paid', 'result' => 'private-premium-password', 'destination' => 'private-destination']);
+        $host = 'http://'.$store->slug.'.localhost';
+        $this->get($host.'/cek-pesanan')->assertOk()->assertInertia(fn (Page $page) => $page
+            ->component('Storefront/OrderLookup')->where('receipt', null)->where('searched', false));
+        $this->get($host.'/cek-pesanan?number='.strtolower($order->number))->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertInertia(fn (Page $page) => $page->where('receipt.number', $order->number)->where('receipt.status', 'success')
+                ->where('receipt.total', 15000)->where('lookupError', null)->missing('receipt.result')->missing('receipt.phone')
+                ->missing('receipt.destination')->missing('receipt.id')->missing('receipt.access')->missing('receipt.url'));
+        $this->assertGuest('customer');
+    }
+
+    public function test_order_lookup_handles_invalid_input_and_never_finds_another_stores_order(): void
+    {
+        $store = $this->store();
+        $other = $this->store();
+        $this->gateway($store);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($this->product($store), ['payment' => 'gateway']), null);
+        $host = 'http://'.$other->slug.'.localhost';
+        $this->get($host.'/cek-pesanan?number='.$order->number)->assertOk()->assertInertia(fn (Page $page) => $page
+            ->where('receipt', null)->where('searched', true)->where('lookupError', 'Pesanan tidak ditemukan di toko ini. Periksa kembali nomor pada bukti pesanan Anda.'));
+        foreach (['number[]=invalid', 'number=%3Cscript%3E', 'number='.str_repeat('A', 100)] as $query) {
+            $this->get($host.'/cek-pesanan?'.$query)->assertOk()->assertInertia(fn (Page $page) => $page
+                ->where('receipt', null)->where('lookupError', 'Masukkan nomor pesanan yang valid.'));
+        }
+        $this->get('http://localhost/cek-pesanan')->assertNotFound();
+    }
+
+    public function test_guest_can_open_full_receipt_with_matching_checkout_phone_without_creating_an_account(): void
+    {
+        $store = $this->store();
+        $this->gateway($store);
+        $commerce = app(CustomerCommerce::class);
+        $order = $commerce->begin($store, $this->input($this->product($store), ['payment' => 'gateway']), null);
+        $url = 'http://'.$store->slug.'.localhost/cek-pesanan/detail';
+        $this->post($url, ['number' => $order->number, 'phone' => '089999999999'])->assertSessionHasErrors('phone');
+        $this->post($url, ['number' => strtolower($order->number), 'phone' => '081234567890'])->assertStatus(303)
+            ->assertRedirect('/orders/'.$order->id.'?access='.$commerce->token($order))->assertHeader('Cache-Control', 'no-store, private');
+        $other = $this->store();
+        $this->post('http://'.$other->slug.'.localhost/cek-pesanan/detail', ['number' => $order->number, 'phone' => '081234567890'])->assertSessionHasErrors('phone');
+        $this->assertGuest('customer');
+        $this->assertDatabaseCount('customers', 0);
+    }
+
+    public function test_public_order_checks_remain_available_after_store_stops_accepting_new_orders(): void
+    {
+        $store = $this->store();
+        $this->gateway($store);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($this->product($store), ['payment' => 'gateway']), null);
+        $store->update(['status' => 'expired', 'expires_at' => now()->subDays(10)]);
+        $this->get('http://'.$store->slug.'.localhost/cek-pesanan?number='.$order->number)->assertOk()
+            ->assertInertia(fn (Page $page) => $page->where('receipt.number', $order->number));
+    }
+
     public function test_staff_permissions_contacts_and_cross_store_reads_are_enforced(): void
     {
         $s = $this->store();
@@ -345,15 +405,35 @@ class CustomerCommerceTest extends TestCase
         $this->actingAs($s->owner);
         $base = '/stores/'.$s->id;
         $this->post($base.'/customers/'.$c->id.'/settle', ['amount' => 100000, 'note' => 'Bukti transfer tes', 'reference' => (string) Str::uuid()])->assertSessionHasErrors('commerce');
-        $this->post($base.'/payments', ['action' => 'closing', 'closing' => true, 'finalize' => false])->assertSessionHasNoErrors();
-        $this->post($base.'/payments', ['action' => 'closing', 'closing' => true, 'finalize' => true])->assertSessionHasErrors('commerce');
+        $this->post($base.'/closure', ['action' => 'closing', 'closing' => true, 'finalize' => false])->assertSessionHasNoErrors();
+        $this->post($base.'/closure', ['action' => 'closing', 'closing' => true, 'finalize' => true])->assertSessionHasErrors('commerce');
         $data = ['amount' => 100000, 'note' => 'Bukti transfer tes', 'reference' => (string) Str::uuid()];
         $this->post($base.'/customers/'.$c->id.'/settle', $data)->assertSessionHasNoErrors();
         $this->post($base.'/customers/'.$c->id.'/settle', $data)->assertSessionHasNoErrors();
         $this->assertSame(0, $c->fresh()->balance);
         $this->assertDatabaseCount('customer_ledgers', 1);
-        $this->post($base.'/payments', ['action' => 'closing', 'closing' => true, 'finalize' => true])->assertSessionHasNoErrors();
+        $this->post($base.'/closure', ['action' => 'closing', 'closing' => true, 'finalize' => true])->assertSessionHasNoErrors();
         $this->assertSame('suspended_manual', $s->fresh()->status);
+    }
+
+    public function test_store_closure_has_an_owner_only_page_and_endpoint_separate_from_payments(): void
+    {
+        $store = $this->store();
+        $this->customer($store);
+        $url = '/stores/'.$store->id.'/closure';
+        $this->actingAs($store->owner)->get($url)->assertOk()->assertInertia(fn (Page $page) => $page
+            ->component('Owner/StoreClosure')->where('closing', false)->where('obligations.balance', 100000)
+            ->where('obligations.orders', 0)->where('obligations.guests', 0));
+        $this->post('/stores/'.$store->id.'/payments', ['action' => 'closing', 'closing' => true])->assertSessionHasErrors('action');
+        $this->assertFalse(app(CustomerCommerce::class)->settings($store)->fresh()->closing);
+        $other = $this->store();
+        $this->actingAs($other->owner)->get($url)->assertForbidden();
+        $this->post($url, ['closing' => true])->assertForbidden();
+        $this->app['auth']->forgetGuards();
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Pembayaran', 'username' => 'closure-staff', 'email' => 'closure@test.invalid', 'password' => 'test-password-123', 'active' => true, 'permissions' => ['web.manage', 'payments.view', 'payments.policy']]);
+        $this->actingAs($staff, 'staff')->get($url)->assertForbidden();
+        $this->post($url, ['closing' => true])->assertForbidden();
+        $this->assertFalse(app(CustomerCommerce::class)->settings($store)->fresh()->closing);
     }
 
     public function test_custom_license_and_snapshot_secrets_are_not_exposed(): void

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Store;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Support\CatalogAccess;
@@ -16,6 +17,28 @@ use Illuminate\Validation\ValidationException;
 class SupplierCatalog
 {
     public function __construct(private SupplierCache $cache) {}
+
+    public function refreshForStore(Store $store): void
+    {
+        if (! $store->acceptsOrders() && $store->status !== 'provisioning') {
+            return;
+        }
+        $age = max(60, min(180, (int) config('suppliers.cache_seconds', 120)));
+        $connections = SupplierConnection::with('store.owner')->where('store_id', $store->id)
+            ->where('enabled', true)->whereNotNull('synced_at')->where('synced_at', '<=', now()->subSeconds($age))->get();
+        foreach ($connections as $connection) {
+            if (! CatalogAccess::supports($store, $connection->kind)) {
+                continue;
+            }
+            foreach ($connection->catalog_modes ?? ['prepaid'] as $mode) {
+                try {
+                    $this->sync($connection, $mode);
+                } catch (ValidationException) {
+                    // A failed refresh retains the last snapshot; stale data remains unavailable for checkout.
+                }
+            }
+        }
+    }
 
     private function account(SupplierConnection $connection): string
     {

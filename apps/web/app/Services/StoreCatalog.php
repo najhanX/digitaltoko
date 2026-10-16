@@ -11,8 +11,12 @@ class StoreCatalog
 {
     public function __construct(private ProductPricing $pricing) {}
 
-    public function query(Store $store): Builder
+    public function query(Store $store, bool $refreshSuppliers = true): Builder
     {
+        if ($refreshSuppliers) {
+            app(SupplierCatalog::class)->refreshForStore($store);
+        }
+
         return CatalogProduct::where('store_id', $store->id)->with(['mappings.item.connection', 'taxonomyCategory'])
             ->withCount('readyStocks')->withMin('readyStocks', 'cost');
     }
@@ -20,6 +24,7 @@ class StoreCatalog
     public function present(CatalogProduct $product, Store $store, bool $private = false): array
     {
         $candidates = [];
+        $staleSupplier = false;
         foreach ($product->mappings as $mapping) {
             if (! $mapping->active || $mapping->store_id !== $store->id || ! CatalogAccess::supports($store, $mapping->source)) {
                 continue;
@@ -32,8 +37,12 @@ class StoreCatalog
                 $item = $mapping->item;
                 $connection = $item?->connection;
                 if ($item && $item->store_id === $store->id && $item->kind === $product->kind && $connection?->enabled
-                    && $connection->store_id === $store->id && $connection->kind === $mapping->source && $item->available
-                    && $item->observed_at->gte(now()->subSeconds((int) config('suppliers.max_snapshot_age', 600)))) {
+                    && $connection->store_id === $store->id && $connection->kind === $mapping->source && $item->available) {
+                    if ($item->observed_at->lt(now()->subSeconds((int) config('suppliers.max_snapshot_age', 600)))) {
+                        $staleSupplier = true;
+
+                        continue;
+                    }
                     $candidates[] = ['mapping_id' => $mapping->id, 'source' => $mapping->source, 'cost' => $item->cost, 'quantity' => $item->quantity];
                 }
             }
@@ -42,10 +51,12 @@ class StoreCatalog
         $cost = $candidates[0]['cost'] ?? null;
         $rule = $this->pricing->resolve($product);
         $price = $cost !== null && $rule['auto_update'] ? $this->pricing->apply($cost, $rule['markup']) : $product->sale_price;
-        $quantity = count($candidates) ? (in_array(null, array_column($candidates, 'quantity'), true) ? null : array_sum(array_column($candidates, 'quantity'))) : 0;
+        $staleSupplier = $staleSupplier && count($candidates) === 0;
+        $quantity = count($candidates) ? (in_array(null, array_column($candidates, 'quantity'), true) ? null : array_sum(array_column($candidates, 'quantity'))) : ($staleSupplier ? null : 0);
         $available = $product->active && count($candidates) > 0 && $price >= $cost && $store->acceptsOrders();
-        $public = [...$product->only(['id', 'code', 'name', 'description', 'kind', 'service', 'category']), 'price' => $price, 'available' => $available,
-            'quantity' => $quantity, 'price_label' => $product->kind === 'postpaid' ? 'Biaya admin' : 'Harga'];
+        $public = [...$product->only(['id', 'code', 'name', 'description', 'kind', 'service', 'category', 'category_id']),
+            'category_image' => $store->branding['category_images'][$product->category_id] ?? null, 'price' => $price, 'available' => $available,
+            'quantity' => $quantity, 'supplier_stale' => $staleSupplier, 'price_label' => $product->kind === 'postpaid' ? 'Biaya admin' : 'Harga'];
         if (! $private) {
             return $public;
         }
@@ -60,7 +71,7 @@ class StoreCatalog
     public function reprice(Store $store): void
     {
         $this->pricing->forget();
-        $this->query($store)->chunkById(100, function ($products) use ($store) {
+        $this->query($store, false)->chunkById(100, function ($products) use ($store) {
             foreach ($products as $product) {
                 $quote = $this->present($product, $store, true);
                 if ($quote['rule']['auto_update'] && $quote['cost'] !== null && $product->sale_price !== $quote['price']) {

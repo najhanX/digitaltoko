@@ -1,0 +1,217 @@
+.sf-nebula.ng-site{--sf-bg:#0c101c;--sf-card:#171d2d;--sf-text:#f2f3fa;--sf-muted:#9ca5b9;--sf-line:#ffffff12;--sf-accent:#a897ff;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+.ng-site .sf-container{max-width:1240px;padding-inline:32px}
+.ng-site button,.ng-site input{font:inherit}
+.ng-site a,.ng-site button{-webkit-tap-highlight-color:transparent}
+.ng-site a:focus-visible,.ng-site button:focus-visible{outline:2px solid #b4a6ff;outline-offset:4px}
+.ng-site h1,.ng-site h2,.ng-site h3{letter-spacing:-.035em;line-height:1.2}
+.ng-site p{color:var(--sf-muted);line-height:1.7}
+.ng-header{background:#101523;border-bottom:1px solid var(--sf-line)}
+.ng-header-main{display:flex;align-items:center;gap:28px;min-height:94px}
+.ng-site .ng-brand{font-size:22px;letter-spacing:-.05em;gap:11px;white-space:nowrap}
+.ng-brand-symbol{width:44px;height:44px;background:linear-gradient(140deg,#7c5deb,#b38fff);box-shadow:0 4px 24px #9770ff28;display:grid;place-items:center;border-radius:13px;color:white}
+.ng-site .ng-brand small{font-size:8px;letter-spacing:.17em;font-weight:600;color:#858fa7;margin-top:7px}
+.ng-header .sf-search{flex:1;background:#1a2030;border-color:#ffffff0b;border-radius:10px;padding:12px 15px;gap:10px}
+.ng-header .sf-search input{font-size:12px}
+.ng-header .sf-search>button{background:#37304e;color:#d7cdff;padding:7px 11px;font-size:11px}
+.ng-currency{display:flex;align-items:center;gap:8px;font-size:10px;color:#abb4c8;white-space:nowrap}
+.ng-currency>span{width:17px;height:17px;border-radius:50%;background:linear-gradient(#f45c62 50%,#f6f7fc 50%)}
+.ng-signin{display:flex;align-items:center;gap:8px;background:#9075ee;border:1px solid #b5a1ff3b;color:#fff;font-size:12px;font-weight:650;padding:11px 17px;border-radius:9px;white-space:nowrap}
+.ng-nav-border{border-top:1px solid #ffffff06}
+.ng-nav{display:flex;align-items:center;gap:30px;min-height:55px;overflow-x:auto;scrollbar-width:none}
+.ng-nav>a{display:flex;gap:9px;align-items:center;color:#a2aabd;font-size:12px;white-space:nowrap;align-self:stretch;padding-block:18px;position:relative}
+.ng-nav>a.selected,.ng-nav>a:hover{color:#baaaff}
+.ng-nav>a.selected:after{position:absolute;content:'';bottom:0;left:0;right:0;height:2px;border-radius:3px;background:#a68cff}
+.ng-nav>span{margin-left:auto;color:#828da4;font-size:10px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.ng-main{padding-top:28px}
+.ng-notice{padding:16px;margin-bottom:20px;border:1px solid #f9bf5930;color:#f9ca7b;background:#f9bf590a;border-radius:10px;font-size:12px}
+.ng-hero{position:relative;isolation:isolate;min-height:410px;border-radius:20px;overflow:hidden;background:#11162b;border:1px solid #9e8aff25}
+.ng-hero-image{position:absolute;z-index:-3;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+.ng-hero-shade{position:absolute;z-index:-2;inset:0;background:linear-gradient(90deg,#0e1327e6,#0d122a6b 47%,transparent 75%),linear-gradient(0deg,#0c1022a3,transparent 35%)}
+.ng-hero-copy{padding:46px 44px 72px;max-width:640px}
+.ng-eyebrow{display:flex;align-items:center;gap:8px;color:#c4b9fa;font-size:9px;letter-spacing:.16em;font-weight:700}
+.ng-eyebrow>span{width:5px;height:5px;border-radius:50%;background:#af97ff;box-shadow:0 0 12px #b299ff}
+.ng-hero h1{font-size:47px;line-height:1.15;font-weight:780;margin-top:20px;letter-spacing:-.05em}
+.ng-hero h1>span{display:block}
+.ng-hero h1>span+span{color:#bbacff}
+.ng-hero-copy>p{font-size:12px;max-width:335px;margin:18px 0 23px;color:#b3bace;line-height:1.85}
+.ng-button{display:inline-flex;align-items:center;justify-content:center;gap:24px;background:#9c80f6;color:#fff;font-size:12px;font-weight:650;padding:13px 20px;border:1px solid #c5b4ff33;border-radius:9px;transition:background .15s}
+.ng-button:hover{background:#ad94ff}
+.ng-hero-caption{display:flex;gap:8px;align-items:center;font-size:9px;color:#9ea8c4;margin-top:17px}
+.ng-hero-caption>span{color:#726981}
+.ng-hero-bottom{position:absolute;inset:auto 25px 17px;display:flex;align-items:center;justify-content:space-between}
+.ng-hero-bottom>span{font-size:8px;letter-spacing:.16em;color:#b9b5d1a3;width:190px}
+.ng-slide-dots{display:flex;gap:6px}
+.ng-slide-dots button{width:6px;height:6px;background:#ffffff40;border:0;border-radius:8px;padding:0;box-sizing:content-box;border-block:8px solid transparent;background-clip:padding-box}
+.ng-slide-dots button[aria-pressed=true]{width:24px;background-color:#c1afff}
+.ng-slide-arrows{display:flex;gap:6px;justify-content:end;width:190px}
+.ng-slide-arrows button{background:#1216297a;color:#fff;width:30px;height:30px;border:1px solid #ffffff2a;border-radius:8px;display:grid;place-items:center}
+.ng-benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;border-bottom:1px solid var(--sf-line);padding:26px 12px 29px}
+.ng-benefits>div{display:flex;gap:12px;align-items:center;justify-content:center}
+.ng-benefits svg{color:#ac99ed;width:23px;flex-shrink:0}
+.ng-benefits strong,.ng-benefits small{display:block;font-size:11px;font-weight:600}
+.ng-benefits small{font-size:9px;color:#79849e;margin-top:5px;font-weight:400}
+.ng-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:23px}
+.ng-title-line{display:flex;gap:10px;align-items:center}
+.ng-title-line h2{font-size:23px;font-weight:700}
+.ng-title-line>svg{width:22px;height:22px;color:#b29cfb}
+.ng-title-line .ng-flash-icon{color:#ffc164}
+.ng-title-line .ng-hot-icon{color:#f29471}
+.ng-section-heading p{font-size:11px;margin-top:8px}
+.ng-section-heading>a{display:flex;align-items:center;gap:9px;color:#bbabf5;font-size:11px;white-space:nowrap}
+.ng-tag{font-size:7px;font-weight:650;letter-spacing:.1em;color:#e4b976;border:1px solid #d5a85540;padding:5px 7px;border-radius:4px;white-space:nowrap;background:#edbd6310}
+.ng-flash{margin-top:33px;padding:24px;border:1px solid #b988442b;border-radius:15px;background:linear-gradient(120deg,#332b201f,#171a280a);scroll-margin-top:20px}
+.ng-deadline{display:flex;align-items:center;gap:12px}
+.ng-deadline>small{font-size:9px;color:#a9a2a0}
+.ng-countdown{display:flex;align-items:center;gap:6px}
+.ng-countdown>span{display:grid;place-items:center;font-size:14px;font-weight:700;min-width:33px;height:32px;background:#f4b65b14;border:1px solid #e3b56a35;border-radius:6px;color:#ffd092;font-variant-numeric:tabular-nums}
+.ng-section-note{display:flex;align-items:center;gap:6px;color:#a6a0a2;font-size:9px}
+.ng-flash-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ng-sale-card{padding:15px;background:#1b1e2b;border:1px solid #f2c17d15;border-radius:11px;text-align:left;color:#f5f1eb;min-width:0;transition:border-color .15s,transform .15s}
+.ng-sale-card:hover{border-color:#dca05177;transform:translateY(-2px)}
+.ng-sale-top{display:flex;align-items:center;gap:10px}
+.ng-sale-top>span:nth-child(2){min-width:0;flex:1}
+.ng-sale-top>span>small{font-size:8px;color:#999aab;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ng-sale-top strong{display:block;font-size:10px;line-height:1.6;margin-top:4px}
+.ng-sale-top>svg{color:#e8b575;align-self:start;width:12px;flex-shrink:0}
+.ng-sale-price{display:grid;grid-template-columns:1fr auto;margin-top:20px;gap:4px;align-items:center;min-height:39px}
+.ng-sale-price del{grid-column:1/-1;color:#6f7489;font-size:9px}
+.ng-sale-price strong{font-size:16px;color:#ffd39d;letter-spacing:-.035em}
+.ng-sale-price svg{width:14px;color:#c99661}
+.ng-stock-line{border-top:1px solid #ffffff0b;padding-top:10px;margin-top:12px;display:flex;gap:5px;align-items:center}
+.ng-stock-line>span{width:4px;height:4px;background:#77bba9;border-radius:50%}
+.ng-stock-line>small{color:#9598a8;font-size:8px}
+.ng-game-art{--art:#8970ed;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;isolation:isolate;aspect-ratio:1/.93;width:100%;background:radial-gradient(ellipse at 90% 10%,color-mix(in srgb,var(--art),transparent 40%),transparent 60%),linear-gradient(140deg,#19203a,#0e1423);color:#fff}
+.ng-game-art:before{content:'';position:absolute;inset:0;z-index:-2;background:linear-gradient(0deg,#0b132222,transparent),url('/storefront/nebula-gaming-hero.webp') center right/auto 120%;opacity:.23;filter:saturate(.3);mix-blend-mode:screen}
+.ng-game-art:after{content:'';position:absolute;inset:0;background:linear-gradient(155deg,transparent 45%,#060d2066);z-index:-1}
+.ng-art-orbit{position:absolute;width:120%;aspect-ratio:1;border:1px solid #ffffff14;border-radius:50%;transform:translateY(30%) rotate(-30deg) scaleY(.65)}
+.ng-art-gem{position:absolute;width:80%;height:80%;color:var(--art);opacity:.2;transform:rotate(-18deg) translate(23%,-2%)}
+.ng-game-art>b{font-size:48px;font-weight:850;font-style:italic;letter-spacing:-.08em;text-shadow:3px 4px 0 #080d2440,0 8px 32px color-mix(in srgb,var(--art),transparent 40%);transform:skew(-3deg);padding-right:5px}
+.ng-game-art>small{font-size:6px;letter-spacing:.32em;opacity:.5;margin-top:7px}
+.ng-art-1{--art:#e2a36d}.ng-art-2{--art:#67bacd}.ng-art-3{--art:#5ba995}.ng-art-4{--art:#d47a92}.ng-art-5{--art:#9c81cd}
+.ng-game-art.ng-art-small{width:49px;height:49px;aspect-ratio:1;flex-shrink:0;border-radius:8px;border:1px solid #ffffff0b}
+.ng-art-small>b{font-size:22px}.ng-art-small>small{display:none}
+.ng-trending{padding-top:39px;scroll-margin-top:20px}
+.ng-trending-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ng-trending-card{display:flex;gap:13px;align-items:center;background:#141a28;border:1px solid #ffffff0a;border-radius:11px;padding:13px;color:var(--sf-text);text-align:left;transition:background .15s}
+.ng-trending-card:hover{background:#202439}
+.ng-trending-card>span:nth-child(2){flex:1;min-width:0}
+.ng-trending-card strong{font-size:12px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ng-trending-card small{display:block;color:#727e98;font-size:9px;margin-top:6px}
+.ng-trending-card>svg{color:#777791;width:15px;flex-shrink:0}
+.ng-inline-empty{display:flex;align-items:center;gap:14px;background:#ffffff02;border:1px dashed #ffffff12;border-radius:10px;padding:24px;color:#a995e1}
+.ng-inline-empty strong{font-size:12px;color:#d5d4e0}.ng-inline-empty p{font-size:11px}
+.ng-inline-empty>svg{flex-shrink:0}.ng-inline-empty>a{margin-left:auto;font-size:10px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.ng-site .sf-catalog{padding-top:40px;scroll-margin-top:10px}
+.ng-site .sf-section-title{margin-bottom:21px;align-items:center}
+.ng-site .sf-section-title h2{font-size:23px}
+.ng-site .sf-section-title .sf-kicker{display:none}
+.ng-site .sf-categories{gap:8px;flex-wrap:nowrap;overflow:auto;max-height:none;padding-bottom:5px;scrollbar-width:thin;margin-bottom:18px}
+.ng-site .sf-categories button{background:transparent;border:1px solid #ffffff0a;white-space:nowrap;font-size:10px;padding:10px 14px;color:#7d8aa3;flex-shrink:0}
+.ng-site .sf-categories button.selected{background:#a38cf01c;border-color:#9c7eee4d;color:#c6b6ff}
+.ng-site .sf-categories button svg{width:15px;height:15px}
+.ng-site .sf-products{grid-template-columns:repeat(6,minmax(0,1fr));gap:15px}
+.ng-site .sf-product{border:1px solid #ffffff0b;border-radius:12px;background:#151b2b;min-width:0;transition:transform .18s,border-color .18s}
+.ng-site .sf-product:hover{transform:translateY(-4px);border-color:#a38be866}
+.ng-site .sf-product-info{padding:14px}
+.ng-site .sf-product-info>small{font-size:8px;color:#818ca5}
+.ng-site .sf-product h3{font-size:12px;font-weight:650;line-height:1.5;min-height:36px;margin-top:6px}
+.ng-site .sf-price{margin-top:13px;font-size:11px}.ng-site .sf-price>small{font-size:8px}
+.ng-site .sf-price>strong{color:#c4b5ff}.ng-site .sf-price>svg{width:13px}
+.ng-site .sf-availability{font-size:8px;margin-top:10px}
+.ng-site .list-pagination{border-top-color:#ffffff09;color:#7b879e;gap:10px;font-size:10px}
+.ng-site .list-pagination p{font-size:10px}.ng-site .list-pagination.pagination-top{border:0;padding-top:0;margin-bottom:16px}
+.ng-site .list-pagination button{min-width:27px;min-height:27px;font-size:10px;background:#151b2a;color:#aab3cb;border-color:#ffffff0e;padding:6px 9px}
+.ng-site .list-pagination button.selected{background:#8069cc;color:#fff}.ng-site .list-pagination button svg{width:13px}
+.ng-community{display:grid;grid-template-columns:.85fr 1.15fr;gap:24px;margin-top:33px;scroll-margin-top:20px}
+.ng-member-card{position:relative;overflow:hidden;border:1px solid #8d76c92e;border-radius:16px;background:radial-gradient(ellipse at 80% 0%,#62479f3b,transparent 70%),#171a2c;padding:33px}
+.ng-member-art{position:absolute;right:26px;top:48px;color:#b19bf8;opacity:.8;transform:rotate(13deg)}
+.ng-member-art>svg:nth-child(2){position:absolute;right:-8px;bottom:7px;color:#70c3ce}.ng-member-art>svg:nth-child(3){position:absolute;top:-10px;left:-16px}
+.ng-member-card h2{font-size:29px;line-height:1.3;margin-top:65px;position:relative}
+.ng-member-card>p{font-size:11px;max-width:310px;margin:18px 0 23px}
+.ng-member-card>small{display:block;font-size:9px;line-height:1.7;color:#7b7793;margin-top:19px;max-width:260px}
+.ng-leaderboard{border:1px solid #ffffff0d;border-radius:16px;background:#131927;padding:26px}
+.ng-leaderboard .ng-section-heading{margin-bottom:19px}.ng-leaderboard .ng-title-line h2{font-size:21px}
+.ng-leaderboard .ng-section-heading>svg{color:#b59a61;opacity:.8}
+.ng-periods{display:flex;background:#0c1220;border:1px solid #ffffff08;border-radius:8px;padding:4px;gap:4px}
+.ng-periods button{flex:1;padding:8px;border-radius:6px;color:#7a859d;background:transparent;border:0;font-size:10px}
+.ng-periods button[aria-pressed=true]{background:#28253d;color:#c4b6ed;box-shadow:0 1px 5px #0002}
+.ng-ranking{padding:0;margin:13px 0 0;list-style:none}
+.ng-ranking li{display:flex;gap:11px;align-items:center;padding:13px 0;border-bottom:1px solid #ffffff07}
+.ng-rank{width:23px;text-align:center;font-size:10px;color:#666e83;font-weight:700;flex-shrink:0}
+.ng-rank-0{color:#efce8e}.ng-rank-1{color:#a5b6cc}.ng-rank-2{color:#bc917a}
+.ng-avatar{height:31px;width:31px;border-radius:50%;display:grid;place-items:center;background:#24283c;color:#a89fc9;font-size:10px;font-weight:700;flex-shrink:0}
+.ng-ranking li>span:nth-last-child(2){flex:1;min-width:0}.ng-ranking strong{display:block;font-size:10px;font-weight:600}
+.ng-ranking small{display:block;font-size:8px;color:#69748c;margin-top:4px}
+.ng-ranking b{font-size:11px;color:#bfa9fb;font-weight:650;white-space:nowrap}
+.ng-ranking-caption{font-size:8px!important;color:#606d85!important;line-height:1.7;margin-top:16px;max-width:380px}
+.ng-ranking-empty{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:13px;padding:24px}
+.ng-ranking-empty>svg{color:#84729c}.ng-ranking-empty strong{font-size:14px}.ng-ranking-empty p{font-size:11px;max-width:250px}
+.ng-ranking-empty a{display:flex;align-items:center;gap:8px;font-size:10px;color:#c2aafb}
+.ng-how{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:22px;border-block:1px solid #ffffff0a;padding:31px 0;margin:42px 0 20px;align-items:center}
+.ng-how .ng-eyebrow{font-size:7px;color:#787d98}.ng-how h2{font-size:19px;margin-top:9px}
+.ng-step{display:flex;gap:12px;align-items:start}.ng-step>span{font-size:13px;font-weight:700;color:#957dca;border-bottom:1px solid #6d528e;padding-bottom:7px}
+.ng-step h3{font-size:11px;font-weight:650}.ng-step p{font-size:9px;margin-top:7px}
+.ng-site .ng-footer{background:#0e1422;border-top:1px solid #ffffff09;margin-top:45px;padding-top:40px}
+.ng-footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr;gap:45px;padding-bottom:8px}
+.ng-footer-grid>div>strong{font-size:11px;display:block;color:#c6c9d9;margin-bottom:21px}
+.ng-footer-grid a:not(.sf-brand){display:block;color:#7d88a2;font-size:10px;margin-top:14px}
+.ng-footer-grid p{font-size:10px;line-height:1.9;max-width:285px;margin-top:17px}
+.ng-footer-badge{display:flex;align-items:center;gap:7px;color:#9e91ba;font-size:8px;margin-top:17px}
+.ng-footer-payments>div{display:flex;gap:8px}
+.ng-footer-payments>div>span{padding:8px;border:1px solid #ffffff0e;border-radius:6px;color:#9ea9bd;font-size:8px;font-weight:750;letter-spacing:.07em}
+.ng-site .sf-footer-bottom{border-color:#ffffff0a;font-size:9px;color:#67758d;margin-top:27px;padding-block:22px}
+@media(min-width:1500px){.ng-site .sf-container{max-width:1360px}.ng-hero{min-height:440px}.ng-hero h1{font-size:52px}.ng-hero-copy{padding-top:58px}}
+@media(max-width:1050px){.ng-header-main{gap:16px}.ng-currency{display:none}.ng-site .ng-brand{font-size:19px}.ng-site .sf-products{grid-template-columns:repeat(4,minmax(0,1fr))}.ng-flash-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ng-nav{gap:24px}.ng-nav>span{display:none}.ng-hero-copy{padding-left:30px}.ng-hero h1{font-size:42px}.ng-hero{min-height:380px}.ng-footer-grid{gap:25px}.ng-community{gap:18px}.ng-how{grid-template-columns:repeat(3,1fr)}.ng-how>div:first-child{grid-column:1/-1}}
+@media(max-width:700px){.ng-site .sf-container{padding-inline:18px}.ng-header-main{flex-wrap:wrap;padding-block:17px;gap:15px;min-height:0}.ng-site .ng-brand{font-size:19px;margin-right:auto}.ng-brand-symbol{width:37px;height:37px;border-radius:11px}.ng-brand small{font-size:6px!important}.ng-header .sf-search{order:3;flex-basis:100%;padding:11px 13px}.ng-signin{padding:9px 12px;font-size:10px}.ng-nav{gap:22px;min-height:48px}.ng-nav>a{font-size:10px;gap:7px;padding-block:15px}.ng-nav svg{width:15px;height:15px}.ng-main{padding-top:18px}.ng-hero{min-height:375px;border-radius:14px}.ng-hero-copy{padding:30px 24px 65px;max-width:100%}.ng-hero-shade{background:linear-gradient(90deg,#0e1327e8,#0d122a7a 75%,#0b112a44),linear-gradient(0deg,#0d1229c9,transparent)}.ng-hero-image{object-position:65% center;opacity:.75}.ng-eyebrow{font-size:7px;letter-spacing:.11em}.ng-hero h1{font-size:35px;max-width:330px;margin-top:25px;line-height:1.18}.ng-hero-copy>p{font-size:11px;max-width:245px;margin-block:18px 23px}.ng-button{font-size:11px;padding:12px 17px;gap:20px}.ng-hero-caption{font-size:7px;gap:5px}.ng-hero-caption svg{width:11px}.ng-hero-bottom{inset:auto 17px 14px}.ng-hero-bottom>span{font-size:6px;width:120px}.ng-slide-arrows{width:95px}.ng-slide-arrows button{width:26px;height:26px}.ng-benefits{gap:16px 10px;padding:22px 0;grid-template-columns:1fr 1fr}.ng-benefits>div{justify-content:start;gap:8px}.ng-benefits>div:last-child{display:none}.ng-benefits strong{font-size:8px}.ng-benefits small{font-size:7px;max-width:130px;line-height:1.6;margin-top:3px}.ng-benefits svg{width:19px}.ng-flash{padding:17px 14px;margin-top:26px;border-radius:12px}.ng-section-heading{align-items:start;margin-bottom:19px;gap:14px;flex-wrap:wrap}.ng-title-line{gap:7px}.ng-title-line h2{font-size:21px}.ng-title-line>svg{width:19px;height:19px}.ng-section-heading p{font-size:10px;line-height:1.7;max-width:280px}.ng-section-heading>a{font-size:9px}.ng-tag{font-size:6px;padding:4px 5px;margin-left:3px}.ng-deadline{gap:9px}.ng-deadline>small{font-size:8px}.ng-countdown>span{min-width:27px;height:27px;font-size:12px}.ng-flash-grid{gap:9px}.ng-sale-card{padding:11px;min-width:0}.ng-sale-top{gap:7px;align-items:start}.ng-game-art.ng-art-small{width:36px;height:36px;border-radius:6px}.ng-art-small>b{font-size:17px}.ng-sale-top>span>small{font-size:7px}.ng-sale-top strong{font-size:9px;line-height:1.5}.ng-sale-top>svg{display:none}.ng-sale-price{margin-top:15px;min-height:32px}.ng-sale-price strong{font-size:14px}.ng-sale-price del{font-size:8px}.ng-stock-line>small{font-size:7px}.ng-trending{padding-top:31px}.ng-trending-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ng-trending-card{padding:10px;gap:8px;min-width:0}.ng-trending-card strong{font-size:10px}.ng-trending-card small{font-size:7px;margin-top:4px}.ng-trending-card>svg{display:none}.ng-site .sf-catalog{padding-top:32px}.ng-site .sf-products{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ng-game-art>b{font-size:33px}.ng-game-art>small{font-size:4px}.ng-site .sf-product-info{padding:10px}.ng-site .sf-product-info>small{font-size:7px}.ng-site .sf-product h3{font-size:10px;min-height:30px}.ng-site .sf-price{font-size:9px;margin-top:12px}.ng-site .sf-price>small{font-size:6px}.ng-site .sf-price>svg{display:none}.ng-site .sf-availability{font-size:7px}.ng-site .sf-section-title h2{font-size:21px}.ng-site .sf-categories button{font-size:9px;padding:9px 12px}.ng-site .list-pagination{flex-wrap:wrap;gap:10px}.ng-site .list-pagination button{font-size:8px;min-width:25px;min-height:25px;padding:6px}.ng-site .list-pagination p{font-size:9px}.ng-site .list-pagination nav{gap:5px}.ng-community{grid-template-columns:1fr;margin-top:25px;gap:18px}.ng-member-card{padding:26px}.ng-member-card h2{font-size:27px;margin-top:40px}.ng-member-card>p{max-width:260px}.ng-member-art{right:29px;top:44px;opacity:.6}.ng-leaderboard{padding:23px 20px}.ng-ranking li{gap:9px}.ng-ranking b{font-size:10px}.ng-ranking-caption{font-size:8px!important}.ng-how{grid-template-columns:1fr;gap:23px;padding-block:27px;margin-top:30px}.ng-how>div:first-child{margin-bottom:3px}.ng-how h2{font-size:22px}.ng-step{gap:17px}.ng-step h3{font-size:12px}.ng-step p{font-size:10px}.ng-inline-empty{padding:18px;gap:11px;flex-wrap:wrap}.ng-inline-empty p{font-size:10px}.ng-inline-empty>a{margin-left:0}.ng-footer-grid{grid-template-columns:1fr 1fr;gap:28px 20px}.ng-footer-grid>div:first-child{grid-column:1/-1}.ng-footer-grid p{font-size:9px;margin-top:13px}.ng-footer-grid>div>strong{margin-bottom:17px}.ng-site .sf-footer-bottom{font-size:8px}.ng-footer-payments>div{flex-wrap:wrap}.ng-site .ng-footer{margin-top:30px;padding-top:30px}}
+@media(prefers-reduced-motion:reduce){.ng-site *{scroll-behavior:auto!important;transition:none!important}}
+
+.ng-slide-content{position:relative;isolation:isolate;min-height:inherit}.ng-hero-image-only .ng-slide-content{position:absolute;inset:0;min-height:0}
+@keyframes ng-slide-enter{from{opacity:0;transform:translate3d(28px,0,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes ng-copy-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ng-section-enter{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ng-dialog-enter{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ng-site .ng-slide-content{animation:ng-slide-enter .55s cubic-bezier(.22,.61,.36,1) both}.ng-site .ng-slide-content .ng-hero-copy{animation:ng-copy-enter .55s .09s ease-out both}.ng-site .ng-header{animation:ng-copy-enter .4s ease-out both}
+.ng-site .ng-button,.ng-site .ng-signin,.ng-site .ng-slide-arrows button{transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}.ng-site .ng-button:hover,.ng-site .ng-signin:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 7px 22px #0002}.ng-site .ng-button:active,.ng-site .ng-signin:active,.ng-site .ng-slide-arrows button:active{transform:translateY(1px) scale(.98)}.ng-site .ng-slide-dots button{transition:width .3s ease,background-color .3s ease}.ng-site .ng-game-art{transition:transform .3s ease}.ng-site .sf-product:hover .ng-game-art,.ng-site .ng-trending-card:hover .ng-game-art{transform:scale(1.035)}.ng-site .ng-trending-card,.ng-site .ng-sale-card,.ng-site .sf-product{transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}.ng-site .ng-trending-card:hover{transform:translateY(-3px)}.ng-site .sf-product:hover,.ng-site .ng-sale-card:hover{box-shadow:0 10px 25px #0002}.ng-site .panel-dialog[open]{animation:ng-dialog-enter .24s ease-out both}
+.ng-chat-float{position:fixed;right:24px;bottom:max(24px,env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;gap:10px;max-width:min(300px,calc(100vw - 40px));border-radius:40px;padding:15px 20px;background:var(--sf-accent);color:var(--sf-accent-ink,#fff);box-shadow:0 8px 30px #0004;border:1px solid color-mix(in srgb,var(--sf-accent),white 15%);font-size:12px;font-weight:700;transition:transform .2s ease,box-shadow .2s ease;animation:ng-copy-enter .4s ease-out both}.ng-chat-float svg{flex-shrink:0}.ng-chat-float span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ng-chat-float:hover{transform:translateY(-3px);box-shadow:0 12px 35px #0005}.ng-welcome-ad{display:grid;gap:18px}.ng-welcome-ad img{width:100%;height:auto;max-height:390px;object-fit:contain;border-radius:12px;background:var(--sf-bg)}.ng-welcome-ad p{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}.ng-site:has(.ng-chat-float) .sf-footer-bottom{padding-bottom:100px}
+@media(max-width:700px){.ng-chat-float{right:17px;bottom:max(17px,env(safe-area-inset-bottom));padding:13px 16px;font-size:11px;gap:8px}.ng-chat-float svg{width:20px;height:20px}}
+@media(prefers-reduced-motion:reduce){.ng-site *,.ng-site *:before,.ng-site *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.commerce-page:has(.ng-chat-float) .sf-footer-bottom{padding-bottom:100px}@media(prefers-reduced-motion:reduce){.ng-chat-float{animation:none!important;transition:none!important}}
+
+/* Shared storefront navigation and category checkout. */
+.ng-site{--ng-header-height:150px}.ng-header-space{height:var(--ng-header-height)}
+.ng-site .ng-header-fixed{position:fixed;inset:0 0 auto;z-index:45;animation:none;background:var(--sf-card,#101523);transition:background-color .2s ease,box-shadow .2s ease;isolation:isolate}
+.sf-site.ng-site .ng-header-fixed.ng-header-scrolled{background:color-mix(in srgb,var(--sf-card,#101523) 86%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 25px #00000012}
+.ng-site section[id]{scroll-margin-top:calc(var(--ng-header-height) + 24px)}
+.ng-site .ng-nav{overflow:visible;gap:28px}.ng-calculator-menu{position:relative;font-size:12px;color:var(--sf-muted)}.ng-calculator-menu summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;white-space:nowrap;padding-block:18px}.ng-calculator-menu summary::-webkit-details-marker{display:none}.ng-calculator-menu summary.selected{color:var(--sf-accent)}.ng-calculator-menu>div{position:absolute;top:100%;left:0;min-width:180px;background:var(--sf-card);border:1px solid var(--sf-line);box-shadow:0 10px 30px #0003;border-radius:10px;overflow:hidden;padding:6px}.ng-calculator-menu>div>a{display:block;padding:12px;border-radius:6px;color:var(--sf-text)}.ng-calculator-menu>div>a:hover{background:color-mix(in srgb,var(--sf-accent) 12%,var(--sf-card))}
+.ng-category-catalog{padding-top:28px}.ng-categories-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:18px}.ng-category-card{border:1px solid var(--sf-line);background:var(--sf-card);border-radius:14px;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s}.ng-category-card:hover{transform:translateY(-5px);border-color:var(--sf-accent);box-shadow:0 10px 25px #0002}.ng-category-card>.ng-game-art{aspect-ratio:4/5;height:auto;width:100%;border-radius:0}.ng-category-card>div{padding:14px}.ng-category-card small{font-size:10px;color:var(--sf-muted)}.ng-category-card h3{font-size:14px;margin:8px 0 13px;color:var(--sf-text)}.ng-category-card div>span{display:flex;justify-content:space-between;gap:8px;color:var(--sf-accent);font-size:10px}.ng-category-image img{width:100%;height:100%;object-fit:cover;display:block}.ng-category-image:after{display:none}.ng-category-image{padding:0;overflow:hidden;flex-shrink:0}
+.ng-site .commerce-content{padding:0 0 20px;min-height:45vh}.ng-back-link{display:inline-flex;align-items:center;gap:8px;color:var(--sf-muted);font-size:12px;margin:5px 0 22px}.ng-category-hero{display:flex;align-items:center;gap:26px;border:1px solid var(--sf-line);border-radius:16px;padding:26px;background:linear-gradient(110deg,color-mix(in srgb,var(--sf-accent) 12%,var(--sf-card)),var(--sf-card));margin-bottom:26px}.ng-category-hero>.ng-game-art{width:125px;height:150px;flex-shrink:0;border-radius:12px}.ng-category-hero h2{font-size:27px;margin:12px 0}.ng-category-hero p{font-size:12px;max-width:600px}.ng-category-promise{display:flex;align-items:center;flex-wrap:wrap;gap:8px;color:var(--sf-accent);font-size:11px;margin-top:18px}
+.ng-checkout-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:24px;align-items:start}.ng-checkout-steps{display:grid;gap:22px;min-width:0}.ng-checkout-step{display:grid;gap:16px}.ng-checkout-step h2{display:flex;align-items:center;gap:12px;font-size:18px;margin:0}.ng-checkout-step h2>b{background:var(--sf-accent);color:var(--sf-accent-ink,#fff);border-radius:9px;min-width:30px;height:30px;display:grid;place-items:center;font-size:14px}.ng-checkout-step p{font-size:12px;margin:0}.ng-checkout-step label{display:grid;gap:8px;font-size:12px}.ng-checkout-step input:not([type=radio]),.ng-calculator-content input:not([type=range]){width:100%;border:1px solid var(--sf-line);background:var(--sf-bg);border-radius:9px;padding:13px;color:var(--sf-text);min-width:0}.ng-checkout-step small{color:var(--sf-muted);font-size:10px;line-height:1.7}.ng-checkout-step .list-filters{margin:0}.ng-nominal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.ng-nominal{position:relative;display:flex;flex-direction:column;align-items:start;text-align:left;gap:18px;padding:16px;border:1px solid var(--sf-line);background:var(--sf-bg);color:var(--sf-text);border-radius:10px;cursor:pointer;min-width:0;transition:border-color .2s,background .2s}.ng-nominal strong{font-size:12px;line-height:1.5;display:block}.ng-nominal small{display:block;margin-top:6px}.ng-nominal>b{color:var(--sf-accent);font-size:13px}.ng-nominal>svg{position:absolute;right:8px;bottom:11px;color:var(--sf-accent)}.ng-nominal.selected{border-color:var(--sf-accent);background:color-mix(in srgb,var(--sf-accent) 9%,var(--sf-card))}.ng-nominal:disabled{opacity:.5;cursor:not-allowed}.ng-nominal:not(:disabled):hover{border-color:var(--sf-accent)}.ng-contact-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}.ng-payment-options{display:grid;gap:10px}.ng-checkout-step .ng-payment-options>label{display:flex;align-items:center;gap:12px;border:1px solid var(--sf-line);border-radius:10px;padding:16px;cursor:pointer;background:var(--sf-bg)}.ng-payment-options>label.selected{border-color:var(--sf-accent)}.ng-payment-options input{accent-color:var(--sf-accent);width:17px;min-width:17px}.ng-payment-options small{display:block;margin-top:5px}.ng-checkout-summary{position:sticky;top:calc(var(--ng-header-height,150px) + 20px);display:grid;gap:18px;min-width:0}.ng-checkout-summary>svg{color:var(--sf-accent)}.ng-checkout-summary h2{font-size:20px;margin:0}.ng-checkout-summary p{font-size:11px;margin:0}.ng-checkout-summary dl{font-size:12px;display:grid;gap:12px;margin:0}.ng-checkout-summary dl>div{display:flex;justify-content:space-between;gap:14px}.ng-checkout-summary dd{margin:0;overflow-wrap:anywhere;text-align:right}.ng-checkout-summary dt{color:var(--sf-muted)}.ng-checkout-summary>.ng-button{justify-content:center;width:100%;cursor:pointer;border:0}.ng-checkout-summary>small{display:block;font-size:10px;color:var(--sf-muted);line-height:1.7}.ng-checkout-summary>small svg{vertical-align:middle;margin-right:4px}.ng-button:disabled{opacity:.5;cursor:not-allowed}.ng-selected-product{display:flex;gap:12px;align-items:center;border:1px solid var(--sf-accent);border-radius:10px;padding:16px}.ng-selected-product>span{flex:1}.ng-selected-product small{display:block}.ng-selected-product b,.ng-selected-product>svg{color:var(--sf-accent)}
+.ng-leaderboard-page{max-width:840px;margin:auto;background:var(--sf-card);border:1px solid var(--sf-line);border-radius:18px;padding:34px}.ng-leaderboard-intro,.ng-calculator-intro{text-align:center;margin:5px 0 28px}.ng-leaderboard-intro>svg,.ng-calculator-intro>svg{display:block;margin:0 auto 18px;color:var(--sf-accent)}.ng-leaderboard-intro h2,.ng-calculator-intro h2{font-size:29px;margin:13px 0}.ng-leaderboard-intro p{font-size:12px;max-width:500px;margin:auto}.ng-periods>a{flex:1;text-align:center;padding:12px;border-radius:7px;color:var(--sf-muted);font-size:12px}.ng-periods>a.selected{background:var(--sf-card);color:var(--sf-accent);box-shadow:0 2px 7px #0002}.ng-leaderboard-page .ng-ranking li{padding:20px 0}.ng-leaderboard-page .ng-ranking strong{font-size:13px}.ng-leaderboard-page .ng-ranking small{font-size:10px}.ng-leaderboard-page .ng-ranking b{font-size:14px}.ng-leaderboard-page .ng-ranking-caption{font-size:11px!important;max-width:none}
+.ng-calculator-tabs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0 35px}.ng-calculator-tabs>a{display:flex;align-items:center;gap:9px;padding:13px 18px;border:1px solid var(--sf-line);border-radius:10px;font-size:12px;background:var(--sf-card);color:var(--sf-muted)}.ng-calculator-tabs>a.selected{color:var(--sf-accent);border-color:var(--sf-accent)}.ng-calculator-content{max-width:640px;margin:auto}.ng-calculator-content p{font-size:12px}.ng-calculator-content label{display:grid;gap:10px;font-size:12px}.ng-calculator-content .ng-button{border:0;justify-content:center;cursor:pointer}.ng-calculator-content small{font-size:10px;line-height:1.8;color:var(--sf-muted)}.ng-calculator-content input[type=range]{width:100%;accent-color:var(--sf-accent)}.ng-calculator-result{text-align:center;padding:26px;border-radius:12px;background:color-mix(in srgb,var(--sf-accent) 10%,var(--sf-bg));border:1px solid color-mix(in srgb,var(--sf-accent) 25%,var(--sf-line))}.ng-calculator-result>strong{font-size:45px;display:flex;align-items:center;justify-content:center;gap:12px;color:var(--sf-accent);margin:14px 0}.ng-range-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--sf-muted)}.ng-calculator-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.ng-calculator-choices .text-link{display:flex;align-items:center;gap:9px}.ng-calculator-choices .sf-form-card>svg{color:var(--sf-accent)}.taxonomy-name{display:flex;align-items:center;gap:12px}.taxonomy-name img,.taxonomy-image-preview{object-fit:cover;border-radius:7px;border:1px solid var(--border)}
+@media(max-width:1050px){.ng-categories-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ng-checkout-layout{grid-template-columns:minmax(0,1fr) 290px;gap:18px}.ng-nominal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.ng-site{--ng-header-height:193px}.ng-header-main{min-height:145px}.ng-site .ng-nav{gap:0;justify-content:space-between;min-height:48px}.ng-nav>a{font-size:9px;gap:5px}.ng-calculator-menu{font-size:9px}.ng-calculator-menu summary{gap:4px;padding-block:16px}.ng-calculator-menu>div{left:auto;right:0}.ng-categories-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.ng-category-card>div{padding:11px}.ng-category-card h3{font-size:11px;line-height:1.5;margin:6px 0 10px}.ng-category-card small,.ng-category-card div>span{font-size:8px}.ng-category-hero{padding:18px;gap:17px;align-items:start}.ng-category-hero>.ng-game-art{width:78px;height:98px}.ng-category-hero h2{font-size:20px;margin:8px 0}.ng-category-hero p{font-size:10px}.ng-category-promise{font-size:9px;gap:6px;margin-top:11px}.ng-checkout-layout{grid-template-columns:1fr;gap:20px}.ng-checkout-summary{position:static}.ng-checkout-step h2{font-size:16px}.ng-checkout-step{gap:14px}.ng-checkout-step .list-filters{flex-wrap:wrap}.ng-contact-fields{grid-template-columns:1fr}.ng-nominal{padding:14px}.ng-nominal strong{font-size:11px}.ng-nominal>b{font-size:12px}.ng-leaderboard-page{padding:23px 18px}.ng-leaderboard-intro h2,.ng-calculator-intro h2{font-size:24px}.ng-leaderboard-page .ng-ranking strong{font-size:11px}.ng-leaderboard-page .ng-ranking b{font-size:11px}.ng-calculator-tabs{gap:7px}.ng-calculator-tabs>a{font-size:10px;padding:11px}.ng-calculator-choices{grid-template-columns:1fr}.ng-site .ng-header-main .sf-search{max-width:none}.ng-site .ng-header-main .sf-search input{min-width:0;width:100%}}
+
+.ng-header .ng-brand{min-width:0;max-width:290px}.ng-header .ng-brand>span:last-child{overflow:hidden;text-overflow:ellipsis}.ng-header .ng-brand-symbol{flex-shrink:0}@media(max-width:700px){.ng-header .ng-brand{max-width:calc(100% - 90px)}}
+
+.commerce-page .ng-button{background:var(--sf-accent);color:var(--sf-accent-ink,#fff)}
+
+.ng-site{--sf-accent-ink:#101523}.ng-checkout-step label,.ng-calculator-content label{margin:0}
+
+.ng-preview-site .ng-header-fixed{position:sticky;top:0}.ng-preview-site .ng-header-space{display:none}
+
+.ng-category-hero .ng-eyebrow,.ng-calculator-intro .ng-eyebrow,.ng-leaderboard-intro .ng-eyebrow,.ng-category-catalog .ng-eyebrow{color:var(--sf-accent)}
+
+/* Navigation motion is shared by every Nebula page. */
+.ng-site .ng-nav>a,.ng-site .ng-calculator-menu>summary{position:relative;isolation:isolate;transition:color .2s ease}
+.ng-site .ng-nav>a:before,.ng-site .ng-calculator-menu>summary:before{content:'';position:absolute;inset:8px -10px;border-radius:9px;background:color-mix(in srgb,var(--sf-accent) 10%,transparent);opacity:0;transform:scale(.92);transition:opacity .2s ease,transform .2s ease;z-index:-1;pointer-events:none}
+.ng-site .ng-nav>a:after,.ng-site .ng-calculator-menu>summary:after{content:'';position:absolute;inset:auto 0 0;height:2px;border-radius:3px;background:var(--sf-accent);transform:scaleX(0);transform-origin:left;transition:transform .24s cubic-bezier(.22,.61,.36,1);pointer-events:none}
+.ng-site .ng-nav>a.selected:after,.ng-site .ng-calculator-menu>summary.selected:after{transform:scaleX(1)}
+.ng-site .ng-nav>a:focus-visible:before,.ng-site .ng-calculator-menu>summary:focus-visible:before{opacity:1;transform:scale(1)}
+.ng-site .ng-nav>a:focus-visible:after,.ng-site .ng-calculator-menu>summary:focus-visible:after{transform:scaleX(1)}
+.ng-site .ng-nav>a>svg,.ng-site .ng-calculator-menu>summary>svg{transition:transform .22s ease}
+.ng-site .ng-calculator-menu>div>a{transition:background-color .2s ease,color .2s ease,padding-left .2s ease}
+.ng-site .ng-calculator-menu>div>a:focus-visible{padding-left:17px;color:var(--sf-accent)}
+.ng-site .ng-calculator-menu[open]>summary>svg:last-child{transform:rotate(180deg)}
+@media(hover:hover){.sf-site.ng-site .ng-nav>a:hover,.sf-site.ng-site .ng-calculator-menu>summary:hover{color:var(--sf-accent)}.ng-site .ng-nav>a:hover:before,.ng-site .ng-calculator-menu>summary:hover:before{opacity:1;transform:scale(1)}.ng-site .ng-nav>a:hover:after,.ng-site .ng-calculator-menu>summary:hover:after{transform:scaleX(1)}.ng-site .ng-nav>a:hover>svg,.ng-site .ng-calculator-menu>summary:hover>svg:first-child{transform:translateY(-2px)}.ng-site .ng-calculator-menu>div>a:hover{padding-left:17px;color:var(--sf-accent)}}
+@media(prefers-reduced-motion:reduce){.ng-site .ng-nav>a:before,.ng-site .ng-nav>a:after,.ng-site .ng-calculator-menu>summary:before,.ng-site .ng-calculator-menu>summary:after,.ng-site .ng-nav>a>svg,.ng-site .ng-calculator-menu>summary>svg{transition:none!important;transform:none!important}.ng-site .ng-nav>a:not(.selected):after,.ng-site .ng-calculator-menu>summary:not(.selected):after{opacity:0}}
