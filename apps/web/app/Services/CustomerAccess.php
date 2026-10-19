@@ -28,6 +28,13 @@ class CustomerAccess
         return $customer;
     }
 
+    public function summary(Request $request, Store $store): ?array
+    {
+        $customer = $this->customer($request, $store);
+
+        return $customer ? [...$customer->only(['id', 'name', 'phone', 'email', 'email_verified_at']), 'balance' => $store->sandbox ? $customer->sandbox_balance : $customer->balance, 'has_password' => filled($customer->password)] : null;
+    }
+
     public function order(Request $request, CustomerOrder $order): void
     {
         $store = $this->store($request);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Models\StoreStaff;
 use App\Models\User;
+use App\Services\StoreEnvironment;
 use App\Support\PlatformHost;
 use App\Support\StaffPermissions;
 use App\Support\StorefrontDesign;
@@ -18,6 +19,15 @@ use Inertia\Response;
 
 class StoreManagementController extends Controller
 {
+    public function environment(Request $request, Store $store): RedirectResponse
+    {
+        $this->owned($request, $store);
+        $data = $request->validate(['sandbox' => 'required|boolean']);
+        app(StoreEnvironment::class)->change($store, (bool) $data['sandbox']);
+
+        return back()->with('success', 'Mode toko diperbarui. Sinkronkan ulang katalog pemasok.');
+    }
+
     private function owner(Request $request): User
     {
         abort_unless($request->user()?->role === 'owner', 403);
@@ -63,7 +73,7 @@ class StoreManagementController extends Controller
     {
         $this->owned($request, $store);
 
-        return Inertia::render('Owner/ManageStore', ['role' => 'owner', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial', 'branding']),
+        return Inertia::render('Owner/ManageStore', ['role' => 'owner', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial', 'sandbox', 'branding']),
             'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => StoreStaff::where('store_id', $store->id)->orderBy('name')
                 ->get()->map(fn ($staff) => $staff->only(['id', 'name', 'username', 'email', 'permissions', 'active'])),
             'permissionLabels' => StaffPermissions::labels(), ...app(StorefrontDesign::class)->editor($store)]);
@@ -79,7 +89,7 @@ class StoreManagementController extends Controller
     {
         $this->authorizedStaff($request, $store);
 
-        return Inertia::render('Owner/ManageStore', ['role' => 'staff', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial', 'branding']),
+        return Inertia::render('Owner/ManageStore', ['role' => 'staff', 'store' => [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'template', 'status', 'expires_at', 'is_trial', 'sandbox', 'branding']),
             'url' => app(PlatformHost::class)->storeUrl($store)], 'staff' => [], 'permissionLabels' => [], ...app(StorefrontDesign::class)->editor($store)]);
     }
 

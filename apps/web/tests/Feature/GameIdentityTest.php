@@ -174,6 +174,23 @@ class GameIdentityTest extends TestCase
         $this->assertDatabaseCount('customer_orders', 1);
     }
 
+    public function test_one_category_verification_can_be_used_for_different_nominals_without_another_lookup(): void
+    {
+        $this->upstream();
+        $store = $this->shop();
+        $first = $this->product($store);
+        $second = $this->product($store);
+        $customer = Customer::create(['store_id' => $store->id, 'name' => 'Player', 'phone' => '6281234567890', 'phone_verified_at' => now(), 'balance' => 100000]);
+        $account = $this->lookup($store, $first);
+        foreach ([$first, $second] as $product) {
+            $order = app(CustomerCommerce::class)->begin($store, ['product_id' => $product->id, 'destination' => $account['destination'], 'game_verification' => $account['verification'], 'payment' => 'wallet', 'idempotency_key' => (string) Str::uuid()], $customer);
+            $this->assertSame('Player One', $order->snapshot['game_account']['nickname']);
+            $this->assertSame('111491774613486', $order->destination);
+        }
+        Http::assertSentCount(1);
+        $this->assertSame(70000, $customer->fresh()->balance);
+    }
+
     public function test_category_configuration_respects_staff_permissions_and_destination_formats(): void
     {
         $store = $this->shop();

@@ -9,7 +9,6 @@ use App\Models\ModulePurchase;
 use App\Models\Store;
 use App\Services\CommerceModules;
 use App\Services\CustomerCommerce;
-use App\Services\CustomerDelivery;
 use App\Services\CustomerFulfillment;
 use App\Services\CustomerPayments;
 use Illuminate\Console\Command;
@@ -75,10 +74,6 @@ class ProcessCustomerCommerce extends Command
                 CustomerNotice::firstOrCreate(['event' => 'stopped:'.$store->id.':'.$customer->id.':'.($store->expires_at?->timestamp ?? 0)], ['store_id' => $store->id, 'phone' => $customer->phone, 'email' => $customer->email, 'message' => $store->name.' sedang berhenti beroperasi. Saldo Anda Rp'.number_format($customer->balance, 0, ',', '.').'. Hubungi owner toko untuk penyelesaian saldo. Data saldo dan transaksi tetap disimpan.']);
             }
             $customer->touch();
-        });
-        CustomerNotice::where(fn ($q) => $q->whereNull('wa_sent_at')->orWhere(fn ($email) => $email->whereNotNull('email')->whereNull('email_sent_at')))->oldest('updated_at')->limit($limit)->get()->each(function ($notice) {
-            app(CustomerDelivery::class)->send($notice);
-            $notice->touch();
         });
         $this->info('Antrean transaksi pelanggan diperiksa.');
 

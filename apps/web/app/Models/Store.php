@@ -13,11 +13,13 @@ class Store extends Model
 
     protected $guarded = [];
 
+    protected $attributes = ['sandbox' => false];
+
     protected $hidden = ['worker_token_hash'];
 
     protected function casts(): array
     {
-        return ['admin_suspended_at' => 'immutable_datetime', 'subscription' => 'array', 'starts_at' => 'immutable_datetime', 'ready_at' => 'immutable_datetime', 'trial_requested_at' => 'immutable_datetime', 'branding' => 'array', 'expires_at' => 'immutable_datetime', 'is_trial' => 'boolean'];
+        return ['sandbox' => 'boolean', 'admin_suspended_at' => 'immutable_datetime', 'subscription' => 'array', 'starts_at' => 'immutable_datetime', 'ready_at' => 'immutable_datetime', 'trial_requested_at' => 'immutable_datetime', 'branding' => 'array', 'expires_at' => 'immutable_datetime', 'is_trial' => 'boolean'];
     }
 
     public function owner(): BelongsTo

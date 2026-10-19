@@ -114,6 +114,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         if(role==='owner' || permissions.some(value=>['payments.view','payments.policy','checkout.manage'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/payments',label:'Pembayaran pelanggan',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/payments')});
         if (role === 'owner' || permissions.some(value=>['stock.view','stock.manage','stock.credentials'].includes(value))) scopedLinks.push({href:'/stores/'+store.id+'/stock',label:'Stok premium',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/stock'});
         if (store.category !== 'web' && (role === 'owner' || permissions.includes('bot.view') || permissions.includes('bot.manage'))) scopedLinks.push({href:'/stores/'+store.id+'/bot',label:'Koneksi WhatsApp',section:'channels',icon:Smartphone,active:path === '/stores/'+store.id+'/bot'});
+        if (store.category !== 'bot' && (role === 'owner' || permissions.some(value=>['articles.view','articles.manage'].includes(value)))) scopedLinks.push({href:'/stores/'+store.id+'/articles',label:'Artikel & berita',section:'channels',icon:Package,active:path.startsWith('/stores/'+store.id+'/articles')});
         const settings = role === 'owner' ? '/owner/stores/'+store.id+'/manage' : '/staff/'+store.id+'/settings';
         if (role === 'owner' || permissions.includes('web.manage')) scopedLinks.push({href:settings,label:'Tampilan & pengaturan',section:'channels',icon:Settings2,active:path === settings && tab !== 'staff'});
         if (role === 'owner') scopedLinks.push({href:'/stores/'+store.id+'/closure',label:'Penutupan toko',section:'management',icon:Store,active:path === '/stores/'+store.id+'/closure'});
@@ -161,6 +162,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
                 <main className="workspace-content panel-content">
                     <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{actions && <div className="page-heading-actions">{actions}</div>}</div>
                     {role !== 'admin' && store?.admin_suspended_at && <div className="feedback warning" role="status"><strong>Toko ditangguhkan administrator</strong><p>{store.admin_suspension_reason}</p><p>Layanan bot dan web berhenti. Hubungi administrator untuk tindak lanjut. Masa sewa tetap berjalan.</p></div>}
+                    {store?.sandbox && <div className="feedback warning" role="status"><strong>Sandbox · Mode pengujian</strong><p>Saldo uji terpisah. Pesanan Hanshop dan stok premium disimulasikan; Digiflazz memakai key development. Sewa toko tetap berlaku.</p></div>}
                     {children}
                 </main>
             </div>

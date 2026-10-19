@@ -1,3 +1,9 @@
 @import './digitaltoko.css';
 @import './nebula.css';
 @import './store-design.css';
+@import './aurora.css';
+@import './storefront-polish.css';
+@import './articles.css';
+@import './scrollbars.css';
+
+.sandbox-indicator{position:fixed;bottom:16px;left:16px;z-index:90;display:grid;gap:3px;max-width:min(300px,calc(100vw - 100px));padding:10px 14px;border:1px solid #d9a122;border-radius:12px;background:#fff7d6;color:#684309;box-shadow:0 4px 18px #0002;font-size:12px;pointer-events:none}.sandbox-indicator strong{font-size:13px}

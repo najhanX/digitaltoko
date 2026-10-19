@@ -9,12 +9,13 @@ const money=(v:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency
 const states:Record<string,string>={awaiting_payment:'Menunggu pembayaran',paid:'Lunas · antre diproses',processing:'Diproses',pending:'Pending pemasok',success:'Berhasil',failed:'Gagal',expired:'Kedaluwarsa',review:'Perlu pemeriksaan toko'};
 export function commerceInput(text:string,action:MenuAction|null):boolean{return action==='balance'||action==='status'||typeof action==='object'&&action?.type==='purchase'||/^#(?:beli|pesan|topup)(?:\s|$)/i.test(text);}
 function phone(message:WAMessage):string|null{return readCustomerMessage(message).scope.senderAliases?.find(jid=>/^62[1-9][0-9]{7,12}@s\.whatsapp\.net$/.test(jid))?.split('@')[0] ?? null;}
-type Order={id:string;number:string;status:string;product:string;destination:string;total:number;amount:number;fee:number;unique_code:number;url:string;result?:string|null;qr_image?:string|null;refunded_at?:string|null;refund_amount:number};
+type Order={is_sandbox?:boolean;gateway?:string;id:string;number:string;status:string;product:string;destination:string;total:number;amount:number;fee:number;unique_code:number;url:string;result?:string|null;qr_image?:string|null;refunded_at?:string|null;refund_amount:number};
 export function orderReply(name:string,o:Order):string{return shopReply(name,'PESANAN '+inline(o.number),[
+ ...(o.is_sandbox?['*SANDBOX · PENGUJIAN*','Saldo dan hasil hanya untuk pengujian.','']:[]),
  '*Status* : '+(states[o.status]??'Sedang diperiksa'),'*Produk* : '+inline(o.product),'*Tujuan* : '+inline(o.destination),
  '*Harga* : '+money(o.amount),'*Biaya* : '+money(o.fee),'*Kode unik* : '+money(o.unique_code),'*Total* : '+money(o.total),
  ...(o.refunded_at?['*Refund saldo toko* : '+money(o.refund_amount)]:[]),
- ...(o.status==='success'&&o.result?['','*Hasil pesanan*',o.result]:[]),'','Cek manual : #status '+o.number,'Bukti & pembayaran : '+o.url]);}
+ ...(o.status==='success'&&o.result?['','*Hasil pesanan*',o.result]:[]),'','Cek manual : #status '+o.number,(o.gateway==='sandbox'?'Simulasikan pembayaran di halaman pesanan : ':'Bukti & pembayaran : ')+o.url]);}
 export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:MenuTokens,api:Api,name:string,action:MenuAction|null):Promise<void>{
  const chat=message.key.remoteJid!,number=phone(message),text=readCustomerMessage(message).text;
  if(!number){await sock.sendMessage(chat,{text:shopReply(name,'NOMOR BELUM DIKENALI',['Nomor WhatsApp belum tersedia dari sesi pesan.','Buka akun toko melalui web dan gunakan OTP WhatsApp.'])},{quoted:message});return;}
@@ -28,9 +29,9 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
  try{
   if(action==='balance'){
    const data=await call({action:'balance'});if(!Number.isSafeInteger(data.balance)||Number(data.balance)<0)throw Error('Invalid balance');
-   await sock.sendMessage(chat,{text:shopReply(name,'SALDO PELANGGAN',['Saldo : *'+money(Number(data.balance))+'*','Saldo berlaku khusus di toko ini.','','Topup : #topup 50000','Beli : #beli KODE TUJUAN'])},{quoted:message});
+   await sock.sendMessage(chat,{text:shopReply(name,'SALDO PELANGGAN',['Saldo : *'+money(Number(data.balance))+'*',data.sandbox?'SANDBOX · Saldo pengujian, terpisah dari saldo asli.':'Saldo berlaku khusus di toko ini.','','Topup : #topup 50000','Beli : #beli KODE TUJUAN'])},{quoted:message});
   }else if(action==='status'){
-   const match=text.match(/^#(?:status|cektrx)\s+(DT[A-Z0-9]+)$/i),data=await call({action:'status',...(match?{number:match[1].toUpperCase()}:{})});
+   const match=text.match(/^#(?:status|cektrx)\s+((?:DT|SB)[A-Z0-9]+)$/i),data=await call({action:'status',...(match?{number:match[1].toUpperCase()}:{})});
    const orders=data.orders as Order[];if(!Array.isArray(orders))throw Error('Invalid orders');
    if(match && orders.length)await sendOrder(orders[0]);else await sock.sendMessage(chat,{text:shopReply(name,'RIWAYAT PESANAN',orders.length?[...orders.flatMap(o=>[inline(o.number)+' · '+(states[o.status]??'Diproses'),inline(o.product)+' · '+money(o.total),'Cek : #status '+o.number,'']),'Hanya pesanan untuk nomor WhatsApp Anda yang ditampilkan.']:['Belum ada pesanan untuk nomor WhatsApp Anda.','Cek pesanan : #status NOMOR_PESANAN','Beli : #beli KODE TUJUAN'])},{quoted:message});
   }else if(typeof action==='object' && action?.type==='purchase'){
@@ -57,7 +58,7 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
    }
    const purchase=(payment:'wallet'|'gateway'):PurchaseAction=>({type:'purchase',productId:product.id,code,destination,price,payment,...(inquiryId?{inquiryId}:{})});
    const suffix=inquiryId?'|'+inquiryId:'';
-   await sock.sendMessage(chat,{text:shopReply(name,'PERIKSA PESANAN',[inline(product.name),'Tujuan : '+inline(destination),...billInfo,'Harga : *'+money(price)+'*','','QRIS dapat memiliki fee / kode unik pada invoice.','Saldo : #pesan '+code+'|'+destination+'|saldo|'+price+suffix,'QRIS : #pesan '+code+'|'+destination+'|qris|'+price+suffix,'','Konfirmasi hanya jika produk dan tujuan sudah benar.'])},{quoted:message});
+   await sock.sendMessage(chat,{text:shopReply(name,'PERIKSA PESANAN',[...(quote.sandbox?['*SANDBOX · PENGUJIAN*']:[]),inline(product.name),'Tujuan : '+inline(destination),...billInfo,'Harga : *'+money(price)+'*','',quote.sandbox?'Pembayaran uji tersedia melalui tautan pesanan.':'QRIS dapat memiliki fee / kode unik pada invoice.','Saldo : #pesan '+code+'|'+destination+'|saldo|'+price+suffix,'QRIS : #pesan '+code+'|'+destination+'|qris|'+price+suffix,'','Konfirmasi hanya jika produk dan tujuan sudah benar.'])},{quoted:message});
    await sendControls(sock,message,chat,chat,tokens,[[purchase('wallet'),'Bayar saldo'],[purchase('gateway'),'Bayar QRIS'],['menu','Batal / menu']],'Konfirmasi pemesanan');
   }
  }catch{await sock.sendMessage(chat,{text:shopReply(name,'PERMINTAAN BELUM SELESAI',['Periksa kode produk, tujuan, saldo dan gateway toko.','Jika baru mengonfirmasi pesanan, cek #status terlebih dahulu.','Jangan membuat pesanan baru saat status belum pasti.'])},{quoted:message});}
@@ -69,4 +70,16 @@ export async function deliverNotices(sock:WASocket,api:Api):Promise<void>{
   if(!/^[a-f0-9-]{36}$/i.test(notice.id)||!/^62[1-9][0-9]{7,12}$/.test(notice.phone)||typeof notice.message!=='string'||notice.message.length>40000)continue;
   await sock.sendMessage(notice.phone+'@s.whatsapp.net',{text:notice.message});await api('/api/internal/bot/notices/'+notice.id+'/delivered',{});
  }
+}
+
+export function createNoticePump(socket:()=>WASocket|undefined,api:Api,onError:()=>void){
+ let running=false,requested=false;
+ async function trigger():Promise<void>{
+  if(running){requested=true;return;}
+  if(!socket())return;
+  running=true;
+  try{do{requested=false;const current=socket();if(!current)break;await deliverNotices(current,api);}while(requested);}
+  catch{onError();}finally{running=false;}
+ }
+ return {trigger};
 }

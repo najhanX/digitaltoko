@@ -6,6 +6,7 @@ use App\Models\CatalogCategory;
 use App\Models\CatalogProduct;
 use App\Models\CustomerOrder;
 use App\Models\Store;
+use App\Services\QuickOrderCatalog;
 use App\Services\StoreCatalog;
 use App\Support\ListQuery;
 use App\Support\PlatformHost;
@@ -60,8 +61,8 @@ class HomeController extends Controller
                 'service' => $category->service->name, 'products_count' => $category->products_count,
                 'image' => $store->branding['category_images'][$category->id] ?? null]),
             'categoryPagination' => $categoryPage ? ListQuery::meta($categoryPage) : null,
-            'renderedAt' => (int) now()->format('Uv'),
-            'gaming' => in_array($store->template, ['nebula', 'promo'], true) && $store->acceptsOrders() ? $this->gaming($store, $catalog) : null,
+            'renderedAt' => (int) now()->format('Uv'), 'quickOrderProviders' => in_array($store->template, ['aurora', 'minimal'], true) ? app(QuickOrderCatalog::class)->providers() : [],
+            'gaming' => $store->acceptsOrders() ? $this->gaming($store, $catalog) : null,
         ]);
     }
 
@@ -84,7 +85,7 @@ class HomeController extends Controller
                 ->map(fn ($product) => $catalog->present($product, $store))
                 ->filter(fn ($product) => $product['available'])->values()->all();
         }
-        $orders = CustomerOrder::where('store_id', $store->id)->where('purpose', 'product')
+        $orders = CustomerOrder::where('store_id', $store->id)->where('is_sandbox', $store->sandbox)->where('purpose', 'product')
             ->where('status', 'success')->where('payment_status', 'paid')->whereNull('refunded_at');
         $popular = (clone $orders)->where('completed_at', '>=', now()->subDays(30))->whereNotNull('product_id')
             ->selectRaw('product_id, COUNT(*) as purchases')->groupBy('product_id')->orderByDesc('purchases')->orderBy('product_id')->limit(24)->get();

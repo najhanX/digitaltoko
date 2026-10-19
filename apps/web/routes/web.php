@@ -19,7 +19,10 @@ use App\Http\Controllers\PanelNotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PremiumStockController;
 use App\Http\Controllers\PreviewController;
+use App\Http\Controllers\PublicArticleController;
+use App\Http\Controllers\QuickOrderController;
 use App\Http\Controllers\StaffLoginController;
+use App\Http\Controllers\StoreArticleController;
 use App\Http\Controllers\StoreClosureController;
 use App\Http\Controllers\StoreDesignController;
 use App\Http\Controllers\StorefrontPageController;
@@ -31,7 +34,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::post('/game-identity', GameIdentityController::class)->middleware('throttle:20,1,storefront-game-identity');
+Route::get('/search', [StorefrontPageController::class, 'search'])->middleware('throttle:60,1,storefront-search')->name('storefront.search');
 Route::get('/kategori/{category}', [StorefrontPageController::class, 'category'])->name('storefront.category');
+Route::get('/artikel', [PublicArticleController::class, 'index'])->name('storefront.articles');
+Route::get('/artikel/{slug}', [PublicArticleController::class, 'show'])->where('slug', '[a-z0-9-]+')->name('storefront.article');
+Route::get('/article-media/{store}/{asset}', [PublicArticleController::class, 'asset'])->name('article.media');
 Route::get('/leaderboard', [StorefrontPageController::class, 'leaderboard'])->name('storefront.leaderboard');
 Route::get('/calculator/{calculator?}', [StorefrontPageController::class, 'calculator'])->where('calculator', 'winrate|magic-wheel|zodiac')->name('storefront.calculator');
 Route::get('/storefront-media/{store}/{asset}', [StoreDesignController::class, 'asset'])
@@ -39,12 +46,17 @@ Route::get('/storefront-media/{store}/{asset}', [StoreDesignController::class, '
 Route::get('/checkout', [CustomerOrderController::class, 'checkout']);
 Route::get('/cek-pesanan', [CustomerOrderController::class, 'lookup'])->middleware('throttle:30,1,storefront-order-lookup');
 Route::post('/cek-pesanan/detail', [CustomerOrderController::class, 'lookupDetail'])->middleware('throttle:5,1,storefront-order-detail');
-Route::post('/checkout', [CustomerOrderController::class, 'create'])->middleware('throttle:12,1,commerce-checkout');
+Route::post('/checkout', [CustomerOrderController::class, 'create'])->middleware('throttle:12,1,commerce-checkout')->block(10, 10);
+Route::get('/quick-order/products', [QuickOrderController::class, 'products'])->middleware('throttle:60,1,quick-order-products');
+Route::post('/quick-order/checkout', [QuickOrderController::class, 'checkout'])->middleware('throttle:20,1,quick-order-checkout');
 Route::post('/checkout/inquiry', [CustomerOrderController::class, 'inquiry'])->middleware('throttle:20,1,commerce-checkout-inquiry');
 Route::get('/orders/{order}', [CustomerOrderController::class, 'show']);
+Route::post('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel'])->middleware('throttle:6,1,commerce-order-cancel')->block(10, 10);
+Route::post('/orders/{order}/simulate', [CustomerOrderController::class, 'simulate'])->middleware('throttle:6,1,commerce-simulate');
 Route::post('/orders/{order}/refresh', [CustomerOrderController::class, 'refresh'])->middleware('throttle:6,1,commerce-orders-order-refresh');
 Route::get('/account', [CustomerOrderController::class, 'account']);
 Route::get('/account/login', [CustomerAuthController::class, 'show']);
+Route::get('/account/register', [CustomerAuthController::class, 'show']);
 Route::post('/account/otp', [CustomerAuthController::class, 'otp'])->middleware('throttle:5,1,commerce-account-otp');
 Route::post('/account/verify', [CustomerAuthController::class, 'verify'])->middleware('throttle:10,1,commerce-account-verify');
 Route::post('/account/password', [CustomerAuthController::class, 'password'])->middleware('throttle:6,1,commerce-account-password');
@@ -52,6 +64,13 @@ Route::post('/account/email/otp', [CustomerAuthController::class, 'emailOtp'])->
 Route::post('/account/email/verify', [CustomerAuthController::class, 'emailVerify'])->middleware('throttle:10,1,commerce-account-email-verify');
 Route::post('/account/logout', [CustomerAuthController::class, 'logout']);
 Route::middleware('platform.host')->group(function () {
+    Route::get('/stores/{store}/articles', [StoreArticleController::class, 'index']);
+    Route::post('/stores/{store}/articles/images', [StoreArticleController::class, 'upload'])->middleware('throttle:20,1');
+    Route::get('/stores/{store}/articles/{article}', [StoreArticleController::class, 'show']);
+    Route::post('/stores/{store}/articles', [StoreArticleController::class, 'save']);
+    Route::post('/stores/{store}/articles/{article}', [StoreArticleController::class, 'save']);
+    Route::delete('/stores/{store}/articles/{article}', [StoreArticleController::class, 'delete']);
+
     Route::get('/stores/{store}/design/products', [StoreDesignController::class, 'products']);
     Route::get('/stores/{store}/design/categories', [StoreDesignController::class, 'categories']);
     Route::post('/stores/{store}/design', [StoreDesignController::class, 'save'])->middleware('throttle:12,1');
@@ -72,12 +91,14 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/customers/{customer}/ledger', [CustomerPanelController::class, 'ledger']);
     Route::post('/stores/{store}/customers/{customer}/settle', [CustomerPanelController::class, 'settle'])->middleware('throttle:6,1,commerce-stores-store-customers-customer-settle');
     Route::get('/stores/{store}/sources', [SupplierController::class, 'index']);
+    Route::post('/stores/{store}/sources/{connection}/webhook', [SupplierController::class, 'webhook'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/sources', [SupplierController::class, 'save'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/sources/{connection}/sync', [SupplierController::class, 'sync'])->middleware('throttle:6,1');
     Route::delete('/stores/{store}/sources/{connection}', [SupplierController::class, 'disconnect']);
     Route::get('/stores/{store}/balances', [SupplierController::class, 'balances'])->middleware('throttle:30,1');
     Route::get('/stores/{store}/catalog-structure', [CatalogTaxonomyController::class, 'index'])->name('stores.taxonomy');
     Route::get('/stores/{store}/catalog-structure/options', [CatalogTaxonomyController::class, 'options']);
+    Route::get('/stores/{store}/catalog-structure/destination-profile', [CatalogTaxonomyController::class, 'destinationProfile'])->middleware('throttle:60,1');
     Route::post('/stores/{store}/services', [CatalogTaxonomyController::class, 'service']);
     Route::patch('/stores/{store}/services/{service}', [CatalogTaxonomyController::class, 'service']);
     Route::delete('/stores/{store}/services/{service}', [CatalogTaxonomyController::class, 'deleteService']);
@@ -87,6 +108,9 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/products', [CatalogController::class, 'index']);
     Route::get('/stores/{store}/products/mappings', [CatalogController::class, 'mappings']);
     Route::post('/stores/{store}/products/import', [CatalogController::class, 'import']);
+    Route::post('/stores/{store}/sources/{connection}/import-all', [CatalogController::class, 'importAll']);
+    Route::get('/stores/{store}/sources/{connection}/import-options', [CatalogController::class, 'importOptions']);
+    Route::post('/stores/{store}/products/bulk', [CatalogController::class, 'bulk'])->middleware('throttle:30,1');
     Route::post('/stores/{store}/products', [CatalogController::class, 'save']);
     Route::patch('/stores/{store}/products/{product}', [CatalogController::class, 'save']);
     Route::patch('/stores/{store}/products/{product}/price', [CatalogController::class, 'price']);
@@ -133,6 +157,7 @@ Route::middleware('platform.host')->group(function () {
         Route::get('/owner/stores/create', [StoreManagementController::class, 'create']);
         Route::post('/owner/stores', [StoreManagementController::class, 'store']);
         Route::get('/owner/stores/{store}/manage', [StoreManagementController::class, 'show']);
+        Route::patch('/owner/stores/{store}/environment', [StoreManagementController::class, 'environment']);
         Route::patch('/owner/stores/{store}/manage', [StoreManagementController::class, 'update']);
         Route::post('/owner/stores/{store}/staff', [StoreManagementController::class, 'saveStaff']);
         Route::patch('/owner/stores/{store}/staff/{staff}', [StoreManagementController::class, 'saveStaff'])->whereNumber('staff');

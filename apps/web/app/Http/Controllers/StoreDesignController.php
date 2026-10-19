@@ -57,7 +57,7 @@ class StoreDesignController extends Controller
         $this->authorize($request, $store);
         if (str_contains((string) $request->header('Content-Type'), 'multipart/form-data') && is_array($request->input('design'))) {
             $incoming = $request->input('design');
-            foreach (['banners', 'flash_product_ids', 'trending_product_ids', 'trending_category_ids'] as $key) {
+            foreach (['banners', 'flash_product_ids', 'flash_discounts', 'trending_product_ids', 'trending_category_ids'] as $key) {
                 $incoming[$key] ??= [];
             }
             $request->merge(['design' => $incoming]);
@@ -93,7 +93,9 @@ class StoreDesignController extends Controller
         $file = 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096|dimensions:max_width=6000,max_height=6000';
         $data = $request->validate([
             'revision' => 'required|integer|min:0',
-            'design' => 'required|array:accent,logo,colors,carousel,welcome_ad,customer_service,banners,flash_product_ids,flash_starts_at,flash_ends_at,trending_mode,trending_product_ids,trending_category_ids,sections',
+            'design' => 'required|array:accent,logo,favicon,colors,carousel,welcome_ad,customer_service,banners,flash_product_ids,flash_discounts,flash_starts_at,flash_ends_at,trending_mode,trending_product_ids,trending_category_ids,sections',
+            'design.favicon' => ['sometimes', 'nullable', 'string', 'max:1000', $image],
+            'favicon_file' => 'nullable|image|mimes:png|max:512|dimensions:max_width=512,max_height=512,ratio=1/1',
             'design.trending_category_ids' => 'sometimes|array|max:12',
             'design.trending_category_ids.*' => ['required', 'uuid', 'distinct', Rule::exists('catalog_categories', 'id')->where('store_id', $store->id)],
             'design.accent' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'], 'design.logo' => ['nullable', 'string', 'max:1000', $image],
@@ -122,15 +124,27 @@ class StoreDesignController extends Controller
             'design.banners.*.category' => ['nullable', 'string', 'max:100', Rule::exists('catalog_products', 'category')->where('store_id', $store->id)->where('active', true)],
             'design.banners.*.href' => ['nullable', 'string', 'max:1000', $link],
             'design.banners.*.button' => 'nullable|string|max:40', 'design.banners.*.enabled' => 'required|boolean', 'design.banners.*.overlay' => 'required|boolean',
+            'design.flash_discounts' => 'sometimes|array|max:12',
+            'design.flash_discounts.*' => 'required|array:type,value',
+            'design.flash_discounts.*.type' => 'required|in:percent,fixed',
+            'design.flash_discounts.*.value' => 'required|numeric|min:0|max:100000000|decimal:0,2',
             'design.flash_product_ids' => 'present|array|max:12', 'design.flash_product_ids.*' => $ids,
             'design.flash_starts_at' => 'nullable|date_format:Y-m-d\TH:i:sP',
             'design.flash_ends_at' => ['nullable', 'date_format:Y-m-d\TH:i:sP', Rule::when($request->filled('design.flash_starts_at'), 'after:design.flash_starts_at')],
             'design.trending_mode' => 'required|in:automatic,manual', 'design.trending_product_ids' => 'present|array|max:12', 'design.trending_product_ids.*' => $ids,
-            'design.sections' => 'required|array|size:7', 'design.sections.*' => 'required|array:key,enabled,title',
-            'design.sections.*.key' => ['required', 'distinct', Rule::in(StorefrontDesign::SECTIONS)],
+            'design.sections' => 'required|array|size:'.count(StorefrontDesign::sectionKeys($store->template)), 'design.sections.*' => 'required|array:key,enabled,title',
+            'design.sections.*.key' => ['required', 'distinct', Rule::in(StorefrontDesign::sectionKeys($store->template))],
             'design.sections.*.enabled' => 'required|boolean', 'design.sections.*.title' => 'nullable|string|max:60',
             'ad_file' => $file, 'logo_file' => $file, 'banner_files' => 'sometimes|array|max:5', 'banner_files.*' => $file,
         ]);
+        foreach ($data['design']['flash_discounts'] ?? [] as $id => $discount) {
+            if (! in_array($id, $data['design']['flash_product_ids'], true) || ! CatalogProduct::where('store_id', $store->id)->whereKey($id)->whereIn('kind', ['ppob', 'premium'])->exists()) {
+                throw ValidationException::withMessages(['design.flash_discounts' => 'Diskon hanya boleh untuk produk prabayar/stok yang dipilih pada flash sale toko ini.']);
+            }
+            if (($discount['type'] === 'percent' && (float) $discount['value'] >= 100) || ($discount['type'] === 'fixed' && (float) $discount['value'] !== (float) (int) $discount['value'])) {
+                throw ValidationException::withMessages(['design.flash_discounts' => 'Diskon persen harus kurang dari 100%; diskon rupiah harus bilangan bulat.']);
+            }
+        }
         if (($data['design']['customer_service']['enabled'] ?? false) && empty($data['design']['customer_service']['phone'])) {
             throw ValidationException::withMessages(['design.customer_service.phone' => 'Isi nomor WhatsApp customer service.']);
         }
@@ -172,7 +186,7 @@ class StoreDesignController extends Controller
                     throw ValidationException::withMessages(['revision' => 'Desain telah diubah pengguna lain. Muat ulang halaman sebelum menyimpan kembali.']);
                 }
                 $oldFiles = $designs->assets($branding['design'] ?? [], $store->id);
-                $design = [...$designs->engagementDefaults(), ...$data['design']];
+                $design = [...$designs->engagementDefaults(), 'favicon' => $branding['design']['favicon'] ?? null, ...$data['design']];
                 $design['welcome_ad']['enabled'] = (bool) $design['welcome_ad']['enabled'];
                 $design['customer_service']['enabled'] = (bool) $design['customer_service']['enabled'];
                 $design['carousel'] = ['autoplay' => (bool) ($design['carousel']['autoplay'] ?? true), 'interval' => (int) ($design['carousel']['interval'] ?? 5)];
@@ -191,6 +205,9 @@ class StoreDesignController extends Controller
                 }
                 if ($request->hasFile('logo_file')) {
                     $design['logo'] = $saveFile($request->file('logo_file'));
+                }
+                if ($request->hasFile('favicon_file')) {
+                    $design['favicon'] = $saveFile($request->file('favicon_file'));
                 }
                 foreach ($design['banners'] as &$banner) {
                     $banner['enabled'] = (bool) $banner['enabled'];

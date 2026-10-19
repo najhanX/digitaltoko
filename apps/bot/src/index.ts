@@ -6,7 +6,7 @@ import { mkdir, open, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
 import { MenuTokens } from "./menu.js";
-import { deliverNotices } from "./commerce.js";
+import { createNoticePump } from "./commerce.js";
 import { handleCustomerMessage } from "./customer.js";
 import {
   createAtomicCredentialWriter,
@@ -45,6 +45,7 @@ async function api(path: string, body?: unknown) {
   if (!response.ok) throw new Error(`Backend HTTP ${response.status}`);
   return response.json();
 }
+const noticePump = createNoticePump(()=>config.waEnabled && !stopping && !starting && !paused && state.status==="CONNECTED" ? socket : undefined, api, ()=>logger.warn("Antrean notifikasi pelanggan belum dapat dikirim."));
 async function report(next: typeof state) {
   state = next;
   const payload = {...next, ...(config.connectionId ? {connection_id: config.connectionId} : {})};
@@ -156,6 +157,7 @@ async function startSocket() {
         failures = 0;
         logger.info({store_id: config.storeId}, "Koneksi WhatsApp berhasil.");
         await report({ status: "CONNECTED", ...(phone ? {phone} : {}) });
+        void noticePump.trigger();
       }
       if (update.connection === "close") {
         socketClosed = true;
@@ -235,7 +237,6 @@ const server = app.listen(config.port, "127.0.0.1", async () => {
     process.exitCode = 1;
   }
 });
-let deliveringNotices=false;
 const heartbeat = setInterval(async () => {
   if (!config.waEnabled || stopping || starting) return;
   try {
@@ -249,19 +250,18 @@ const heartbeat = setInterval(async () => {
       await report({ status: "STOPPED" });
     } else if (paused) {paused = false;await startSocket();}
     else await report(state.status === "PAIRING" && state.expires_at && Date.now() >= new Date(state.expires_at).getTime() ? {status:"EXPIRED"} : state);
-    if(socket && state.status==="CONNECTED" && !paused && !deliveringNotices){
-      deliveringNotices=true;
-      try{await deliverNotices(socket,api);}catch{logger.warn("Antrean notifikasi pelanggan belum dapat dikirim.");}finally{deliveringNotices=false;}
-    }
+
   } catch {
     logger.warn("Heartbeat backend belum tersedia.");
   }
 }, 30_000);
+const noticeTimer = setInterval(()=>{void noticePump.trigger();}, 2_000);
 async function shutdown() {
   stopping = true;
   clearTimeout(reconnect);
   clearTimeout(pairingTimer);
   clearInterval(heartbeat);
+  clearInterval(noticeTimer);
   socket?.end(new Error("Worker shutdown"));
   server.close();
   const ownedLock = lockPath;
@@ -277,6 +277,7 @@ process.on("SIGTERM", () => {
 });
 process.on("disconnect", () => {void shutdown();});
 process.on("message", message => {
+  if ((message as {type?: string})?.type === "notifications") {void noticePump.trigger();return;}
   if ((message as {type?: string})?.type !== "logout") return;
   stopping = true;
   clearTimeout(reconnect);

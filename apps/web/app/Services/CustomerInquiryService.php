@@ -7,6 +7,7 @@ use App\Models\ProductMapping;
 use App\Models\Store;
 use App\Support\HanshopIdentity;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -17,7 +18,7 @@ class CustomerInquiryService
         $engine = app(CustomerCommerce::class);
         $engine->ensure($store->acceptsOrders() && ! $engine->settings($store)->closing, 'Toko tidak menerima pesanan baru.');
         $phone = HanshopIdentity::phone($phone);
-        $hash = hash('sha256', json_encode([$store->id, $productId, $destination, $phone]));
+        $hash = hash('sha256', json_encode([...($store->sandbox ? ['sandbox'] : []), $store->id, $productId, $destination, $phone]));
         $requestKey = hash('sha256', $store->id.':'.$key);
 
         return Cache::lock('inquiry:'.$requestKey, 45)->block(3, function () use ($engine, $store, $productId, $destination, $phone, $hash, $requestKey) {
@@ -34,11 +35,11 @@ class CustomerInquiryService
             $engine->ensure(count($candidates) > 0, 'Tagihan memerlukan sumber Digiflazz pascabayar.');
             foreach ($candidates as $position => $candidate) {
                 $mapping = ProductMapping::with('item.connection')->findOrFail($candidate['mapping_id']);
-                $credentials = $mapping->item->connection->credentials;
+                $credentials = app(StoreEnvironment::class)->credentials($mapping->item->connection);
                 $reference = 'DT'.Str::ulid();
                 try {
                     $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)->post('https://api.digiflazz.com/v1/transaction', [
-                        'commands' => 'inq-pasca', 'username' => $credentials['username'], 'buyer_sku_code' => $mapping->item->sku, 'customer_no' => $destination, 'ref_id' => $reference, 'sign' => md5($credentials['username'].$credentials['api_key'].$reference)]);
+                        'testing' => $store->sandbox, 'commands' => 'inq-pasca', 'username' => $credentials['username'], 'buyer_sku_code' => $mapping->item->sku, 'customer_no' => $destination, 'ref_id' => $reference, 'sign' => md5($credentials['username'].$credentials['api_key'].$reference)]);
                     $data = $response->json('data');
                 } catch (\Throwable) {
                     continue;
@@ -57,8 +58,13 @@ class CustomerInquiryService
                 }
                 $engine->ensure($expiry->gt(now()->addSeconds(30)), 'Pemeriksaan tagihan terlalu dekat pergantian hari. Coba setelah tengah malam.');
 
-                return CustomerInquiry::create(['store_id' => $store->id, 'product_id' => $product->id, 'phone' => $phone, 'destination' => $destination, 'reference' => $reference, 'request_key' => $requestKey, 'request_hash' => $hash, 'amount' => $amount, 'cost' => $cost, 'expires_at' => $expiry,
-                    'data' => ['customer_name' => mb_substr((string) ($data['customer_name'] ?? ''), 0, 150), 'period' => mb_substr((string) ($data['periode'] ?? ''), 0, 100), 'admin' => $quote['price'], 'candidates' => array_slice($candidates, $position)]]);
+                return DB::transaction(function () use ($store, $engine, $product, $phone, $destination, $reference, $requestKey, $hash, $amount, $cost, $expiry, $data, $quote, $candidates, $position) {
+                    $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+                    $engine->ensure($locked->sandbox === $store->sandbox, 'Mode toko berubah. Periksa tagihan kembali.');
+
+                    return CustomerInquiry::create(['store_id' => $store->id, 'product_id' => $product->id, 'phone' => $phone, 'destination' => $destination, 'reference' => $reference, 'request_key' => $requestKey, 'request_hash' => $hash, 'amount' => $amount, 'cost' => $cost, 'expires_at' => $expiry,
+                        'data' => ['sandbox' => $store->sandbox, 'customer_name' => mb_substr((string) ($data['customer_name'] ?? ''), 0, 150), 'period' => mb_substr((string) ($data['periode'] ?? ''), 0, 100), 'admin' => $quote['price'], 'candidates' => array_slice($candidates, $position)]]);
+                });
             }
             $engine->ensure(false, 'Tagihan belum dapat diperiksa. Pastikan nomor tujuan benar dan jenis tagihan mendukung format standar.');
         });

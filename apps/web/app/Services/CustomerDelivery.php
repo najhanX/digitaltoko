@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CustomerNotice;
+use App\Support\BotConnection;
 use App\Support\HanshopIdentity;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
@@ -14,7 +15,7 @@ class CustomerDelivery
         Cache::lock('customer-notice:'.$notice->id, 60)->get(function () use ($notice) {
             $notice->refresh();
             $store = $notice->store;
-            if (! $notice->wa_sent_at && ($store->category === 'web' || ! $store->canConnectBot() || $store->bot_status !== 'CONNECTED')) {
+            if (! $notice->wa_sent_at && ($store->category === 'web' || ! $store->canConnectBot() || BotConnection::state($store, false)['status'] !== 'CONNECTED')) {
                 try {
                     app(HanshopIdentity::class)->call('message', ['store_id' => $store->id, 'id_user' => $store->owner->hanshop_user_id, 'access_until' => now()->addMinutes(5)->toIso8601String(), 'phone' => $notice->phone, 'message' => $notice->message]);
                     $notice->update(['wa_sent_at' => now()]);

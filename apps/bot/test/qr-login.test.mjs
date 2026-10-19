@@ -21,6 +21,8 @@ for (const storageFailure of [false, true]) {
         let body='';for await (const chunk of req) body+=chunk;
         events.push(JSON.parse(body));
         res.end(JSON.stringify({status:'SUCCESS'}));
+      } else if (req.url === '/api/internal/bot/notices') {
+        res.end(JSON.stringify({data:[]}));
       } else {
         assert.equal(req.url, '/api/internal/bot/access');
         res.end(JSON.stringify({status:'SUCCESS',data:{can_connect:true,allowed:true,connection_id:connectionId}}));

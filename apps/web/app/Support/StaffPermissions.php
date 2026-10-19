@@ -15,6 +15,7 @@ class StaffPermissions
             'customers.manage' => 'Kelola profil pelanggan', 'payments.view' => 'Lihat pembayaran',
             'payments.policy' => 'Atur fee dan kebijakan kode unik', 'wallet.view' => 'Lihat ledger saldo pelanggan',
             'wallet.settlement' => 'Catat pencairan saat toko berhenti', 'web.manage' => 'Kelola template & branding',
+            'articles.view' => 'Lihat artikel toko', 'articles.manage' => 'Tulis, terbitkan & hapus artikel',
             'checkout.manage' => 'Atur guest / wajib login', 'bot.view' => 'Lihat koneksi WhatsApp',
             'bot.manage' => 'Pairing / reconnect WhatsApp', 'subscription.view' => 'Lihat masa aktif',
             'subscription.renew' => 'Buat invoice perpanjangan'];

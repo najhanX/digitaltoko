@@ -49,6 +49,10 @@ class GameIdentity
 
     public function profile(Store $store, CatalogCategory $category): ?array
     {
+        $destination = $store->branding['category_destinations'][$category->id] ?? [];
+        if (! in_array($destination['type'] ?? 'auto', ['auto', 'game'], true)) {
+            return null;
+        }
         $setting = $store->branding['category_games'][$category->id] ?? [];
         $key = $setting['game'] ?? 'auto';
         if ($key === 'auto') {

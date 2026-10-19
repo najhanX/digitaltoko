@@ -1,9 +1,9 @@
 import { useEffect, type RefObject } from "react";
 
 const targets =
-    "section, .sf-form-card, .sf-section-title, .ng-category-card, .ng-sale-card, .ng-trending-card, .ng-nominal, .ng-ranking li, .ng-benefits>div, .commerce-account-summary, .table-scroll, .ng-calculator-tabs, .ng-footer-grid>div, .sf-footer-bottom";
+    "section, .sf-form-card, .sf-section-title, .sf-product, .ng-category-card, .ng-sale-card, .ng-trending-card, .ng-nominal, .ng-ranking li, .sf-leaderboard-list>li, .ng-benefits>div, .commerce-account-summary, .table-scroll, .ng-calculator-tabs, .ng-footer-grid>div, .sf-footer-bottom, [data-reveal]";
 const staggered =
-    ".ng-category-card, .ng-sale-card, .ng-trending-card, .ng-nominal, .ng-ranking li, .ng-footer-grid>div";
+    ".sf-product, .ng-category-card, .ng-sale-card, .ng-trending-card, .ng-nominal, .sf-leaderboard-list>li, .ng-ranking li, .ng-footer-grid>div, [data-reveal]";
 
 /** Enhance visible content without hiding SSR output or depending on animation support. */
 export default function useStorefrontReveal(
@@ -49,7 +49,7 @@ export default function useStorefrontReveal(
                     { opacity: 1, transform: "none" },
                 ],
                 {
-                    duration: 500,
+                    duration: 550,
                     delay,
                     easing: "cubic-bezier(.25,.46,.45,.94)",
                     fill: "backwards",
@@ -91,7 +91,9 @@ export default function useStorefrontReveal(
             }
         }
         scan();
-        const mutations = new MutationObserver(() => {
+        const mutations = new MutationObserver((records) => {
+            // Text-only updates (timers/status labels) do not add reveal targets.
+            if (!records.some(record => Array.from(record.addedNodes).some(node => node instanceof Element))) return;
             cancelAnimationFrame(frame);
             frame = requestAnimationFrame(scan);
         });

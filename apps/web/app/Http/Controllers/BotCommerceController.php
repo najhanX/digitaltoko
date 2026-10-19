@@ -32,9 +32,9 @@ class BotCommerceController extends Controller
             return Customer::firstOrCreate(['store_id' => $store->id, 'phone' => $phone], ['name' => 'Pelanggan '.substr($phone, -4), 'phone_verified_at' => now()]);
         });
         if ($data['action'] === 'balance') {
-            $result = ['balance' => $customer->balance, 'phone' => $phone];
+            $result = ['balance' => ($store->sandbox ? $customer->sandbox_balance : $customer->balance), 'phone' => $phone];
         } elseif ($data['action'] === 'status') {
-            $query = CustomerOrder::where('store_id', $store->id)->where('phone', $phone);
+            $query = CustomerOrder::where('store_id', $store->id)->where('is_sandbox', $store->sandbox)->where('phone', $phone);
             if (filled($data['number'] ?? null)) {
                 $query->where('number', $data['number']);
             }
@@ -44,7 +44,7 @@ class BotCommerceController extends Controller
             $result = ['inquiry' => $service->present($service->quote($store, $data['product_id'], $data['destination'], $phone, $data['idempotency_key']))];
         } elseif ($data['action'] === 'quote') {
             $product = app(StoreCatalog::class)->query($store)->where('code', strtoupper($data['code']))->firstOrFail();
-            $result = ['product' => app(StoreCatalog::class)->present($product, $store), 'balance' => $customer->balance];
+            $result = ['product' => app(StoreCatalog::class)->present($product, $store), 'balance' => ($store->sandbox ? $customer->sandbox_balance : $customer->balance)];
         } else {
             $order = $commerce->begin($store, [...$data, 'purpose' => $data['action'] === 'topup' ? 'topup' : 'product', 'phone' => $phone, 'destination' => $data['destination'] ?? $phone], $customer, 'bot');
             try {
@@ -55,7 +55,7 @@ class BotCommerceController extends Controller
             $result = ['order' => $commerce->publicData($order->fresh())];
         }
 
-        return response()->json(['status' => 'SUCCESS', 'data' => $result])->header('Cache-Control', 'private, no-store');
+        return response()->json(['status' => 'SUCCESS', 'data' => [...$result, 'sandbox' => $store->sandbox]])->header('Cache-Control', 'private, no-store');
     }
 
     public function notices(Request $request, CustomerAccess $access): JsonResponse

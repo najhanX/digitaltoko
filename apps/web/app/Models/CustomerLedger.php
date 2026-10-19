@@ -15,6 +15,6 @@ class CustomerLedger extends Model
 
     protected function casts(): array
     {
-        return ['metadata' => 'array', 'amount' => 'integer', 'balance_after' => 'integer'];
+        return ['is_sandbox' => 'boolean', 'metadata' => 'array', 'amount' => 'integer', 'balance_after' => 'integer'];
     }
 }

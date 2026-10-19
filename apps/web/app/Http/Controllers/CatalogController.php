@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\CatalogCategory;
 use App\Models\CatalogProduct;
 use App\Models\CatalogService;
+use App\Models\CustomerOrder;
 use App\Models\PremiumStock;
 use App\Models\PricingRule;
 use App\Models\ProductMapping;
 use App\Models\Store;
+use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
+use App\Services\ImportedCategoryImage;
 use App\Services\ProductPricing;
 use App\Services\StoreCatalog;
 use App\Support\CatalogAccess;
@@ -18,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -121,43 +125,157 @@ class CatalogController extends Controller
             CatalogAccess::operational($store);
             $items = SupplierProduct::with('connection')->where('store_id', $store->id)->whereIn('id', $data['ids'])->get();
             abort_unless($items->count() === count($data['ids']), 422);
-            $count = 0;
-            foreach ($items as $item) {
-                abort_unless($item->connection->enabled && CatalogAccess::supports($store, $item->connection->kind), 403);
-                if (ProductMapping::where('store_id', $store->id)->where('supplier_product_id', $item->id)->exists()) {
-                    continue;
-                }
-                $code = ($item->connection->kind === 'digiflazz' ? 'D' : 'H').'-'.strtoupper(substr(preg_replace('/[^a-zA-Z0-9_.-]/', '-', $item->sku), 0, 32)).'-'.strtoupper(substr(hash('sha256', $item->id), 0, 8));
-                $originalCode = $code;
-                while (CatalogProduct::where('store_id', $store->id)->where('code', $code)->exists()) {
-                    $code = $originalCode.'-'.strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
-                }
-                $product = new CatalogProduct(['store_id' => $store->id, 'code' => $code, 'name' => $item->name, 'kind' => $item->kind, 'service' => $item->service, 'category' => $item->category, 'active' => true]);
-                $product->sale_price = $pricing->apply($item->cost, $pricing->resolve($product)['markup']);
-                $product->save();
-                ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'supplier_product_id' => $item->id, 'source' => $item->connection->kind, 'source_key' => 'item:'.$item->id]);
-                $count++;
-            }
 
-            return $count;
+            return $this->importItems($store, $items, $pricing);
         });
         $catalog->reprice($store);
 
         return back()->with('success', $count.' produk baru ditambahkan. Produk yang sudah diparsing dilewati.');
     }
 
+    public function importAll(Request $request, Store $store, SupplierConnection $connection, ProductPricing $pricing): JsonResponse
+    {
+        CatalogAccess::authorize($request, $store, 'products.manage');
+        abort_unless($connection->store_id === $store->id, 404);
+        $data = $request->validate(['through' => 'nullable|uuid', 'scope' => 'sometimes|required|in:all,service,category',
+            'service' => 'required_if:scope,service,category|nullable|string|max:100', 'category' => 'required_if:scope,category|nullable|string|max:100']);
+        $result = DB::transaction(function () use ($store, $connection, $pricing, $data) {
+            $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            CatalogAccess::operational($store);
+            $connection = SupplierConnection::whereKey($connection->id)->firstOrFail();
+            abort_unless($connection->enabled && CatalogAccess::supports($store, $connection->kind), 403);
+            $query = SupplierProduct::where('store_id', $store->id)->where('connection_id', $connection->id);
+            if (in_array($data['scope'] ?? 'all', ['service', 'category'], true)) {
+                $query->where('service', $data['service']);
+                if (($data['scope'] ?? '') === 'category') {
+                    $query->where('category', $data['category']);
+                }
+                if (! (clone $query)->exists()) {
+                    throw ValidationException::withMessages(['scope' => 'Layanan/kategori tidak ditemukan pada sumber ini. Pilih ulang dari katalog pemasok.']);
+                }
+            }
+            $through = $data['through'] ?? (clone $query)->max('id');
+            if (! $through) {
+                return ['imported' => 0, 'remaining' => 0, 'total' => 0, 'through' => null];
+            }
+            $query->where('id', '<=', $through);
+            $total = (clone $query)->count();
+            $query->whereNotIn('id', ProductMapping::where('store_id', $store->id)->whereNotNull('supplier_product_id')->select('supplier_product_id'));
+            $items = (clone $query)->with('connection')->orderBy('id')->limit(100)->get();
+            $count = $this->importItems($store, $items, $pricing);
+
+            return ['imported' => $count, 'remaining' => $query->count(), 'total' => $total, 'through' => $through];
+        });
+
+        return response()->json($result)->header('Cache-Control', 'private, no-store');
+    }
+
+    public function importOptions(Request $request, Store $store, SupplierConnection $connection): JsonResponse
+    {
+        CatalogAccess::authorize($request, $store, 'products.manage');
+        abort_unless($connection->store_id === $store->id, 404);
+        CatalogAccess::operational($store);
+        abort_unless($connection->enabled && CatalogAccess::supports($store, $connection->kind), 403);
+        $data = $request->validate(['type' => 'required|in:services,categories', 'service' => 'required_if:type,categories|nullable|string|max:100']);
+        $column = $data['type'] === 'services' ? 'service' : 'category';
+        $query = SupplierProduct::where('store_id', $store->id)->where('connection_id', $connection->id);
+        if ($column === 'category') {
+            $query->where('service', $data['service']);
+        }
+        $list = new ListQuery($request, [], 5);
+        $query->selectRaw($column.' as id, '.$column.' as name')->groupBy($column);
+        $options = $list->options($list->apply($query, [$column])->orderBy($column));
+
+        return response()->json($options)->header('Cache-Control', 'private, no-store');
+    }
+
+    private function importItems(Store $store, Collection $items, ProductPricing $pricing): int
+    {
+        $count = 0;
+        $knownCategories = array_fill_keys(CatalogCategory::where('store_id', $store->id)->pluck('id')->all(), true);
+        $branding = $store->branding ?? [];
+        $imagesChanged = false;
+        foreach ($items as $item) {
+            abort_unless($item->connection->enabled && CatalogAccess::supports($store, $item->connection->kind), 403);
+            if (ProductMapping::where('store_id', $store->id)->where('supplier_product_id', $item->id)->exists()) {
+                continue;
+            }
+            $code = ($item->connection->kind === 'digiflazz' ? 'D' : 'H').'-'.strtoupper(substr(preg_replace('/[^a-zA-Z0-9_.-]/', '-', $item->sku), 0, 48));
+            $originalCode = $code;
+            $counter = 1;
+            while (CatalogProduct::where('store_id', $store->id)->where('code', $code)->exists()) {
+                $suffix = $item->kind === 'postpaid' ? '-PASCA'.($counter > 1 ? '-'.$counter : '') : '-'.($counter + 1);
+                $code = substr($originalCode, 0, 50 - strlen($suffix)).$suffix;
+                $counter++;
+            }
+            $product = new CatalogProduct(['store_id' => $store->id, 'code' => $code, 'name' => $item->name, 'kind' => $item->kind, 'service' => $item->service, 'category' => $item->category, 'active' => true]);
+            $product->sale_price = $pricing->apply($item->cost, $pricing->resolve($product)['markup']);
+            $product->save();
+            if (! isset($knownCategories[$product->category_id])) {
+                $knownCategories[$product->category_id] = true;
+                $image = app(ImportedCategoryImage::class)->resolve($product->category);
+                if ($image && empty($branding['category_images'][$product->category_id])) {
+                    $branding['category_images'][$product->category_id] = $image;
+                    $branding['category_image_preferences'][$product->category_id] = 'auto';
+                    $imagesChanged = true;
+                }
+            }
+            ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'supplier_product_id' => $item->id, 'source' => $item->connection->kind, 'source_key' => 'item:'.$item->id]);
+            $count++;
+        }
+
+        if ($imagesChanged) {
+            $store->update(['branding' => $branding]);
+        }
+
+        return $count;
+    }
+
     public function delete(Request $request, Store $store, CatalogProduct $product): RedirectResponse
+    {
+        abort_unless($product->store_id === $store->id, 404);
+
+        return $this->bulk($request->merge(['action' => 'delete', 'ids' => [$product->id]]), $store);
+    }
+
+    public function bulk(Request $request, Store $store): RedirectResponse
     {
         CatalogAccess::authorize($request, $store, 'products.manage');
         CatalogAccess::operational($store);
-        abort_unless($product->store_id === $store->id, 404);
-        DB::transaction(function () use ($product) {
-            CatalogProduct::whereKey($product->id)->lockForUpdate()->firstOrFail();
-            abort_if(PremiumStock::where('product_id', $product->id)->where('status', 'sent')->exists(), 422, 'Produk dengan stok terkirim harus dinonaktifkan, bukan dihapus.');
-            $product->delete();
+        $data = $request->validate(['action' => 'required|in:activate,deactivate,delete', 'ids' => 'required|array|min:1|max:100', 'ids.*' => 'required|uuid|distinct']);
+        DB::transaction(function () use ($store, $data) {
+            $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            CatalogAccess::operational($locked);
+            $products = CatalogProduct::where('store_id', $store->id)->whereIn('id', $data['ids'])->orderBy('id')->lockForUpdate()->get();
+            if ($products->count() !== count($data['ids'])) {
+                throw ValidationException::withMessages(['ids' => 'Pilihan produk tidak valid atau sudah berubah. Muat ulang katalog.']);
+            }
+            if ($data['action'] !== 'delete') {
+                CatalogProduct::where('store_id', $store->id)->whereIn('id', $data['ids'])->update(['active' => $data['action'] === 'activate']);
+
+                return;
+            }
+            if (PremiumStock::where('store_id', $store->id)->whereIn('product_id', $data['ids'])->whereIn('status', ['reserved', 'sent'])->exists()) {
+                throw ValidationException::withMessages(['products' => 'Ada produk dengan stok dipesan/terkirim. Nonaktifkan produk tersebut, atau keluarkan dari pilihan hapus.']);
+            }
+            if (CustomerOrder::where('store_id', $store->id)->whereIn('product_id', $data['ids'])->whereIn('status', ['awaiting_payment', 'paid', 'processing', 'pending', 'review'])->exists()) {
+                throw ValidationException::withMessages(['products' => 'Ada produk yang masih dipakai transaksi berjalan. Nonaktifkan produk tersebut, atau tunggu transaksi selesai.']);
+            }
+            CatalogProduct::where('store_id', $store->id)->whereIn('id', $data['ids'])->delete();
+            $branding = $locked->branding ?? [];
+            if (isset($branding['design'])) {
+                foreach (['flash_product_ids', 'trending_product_ids'] as $key) {
+                    $branding['design'][$key] = array_values(array_diff($branding['design'][$key] ?? [], $data['ids']));
+                }
+                $branding['design']['flash_discounts'] = array_diff_key($branding['design']['flash_discounts'] ?? [], array_flip($data['ids']));
+                $branding['design_revision'] = (int) ($branding['design_revision'] ?? 0) + 1;
+                $locked->update(['branding' => $branding]);
+            }
         });
 
-        return back()->with('success', 'Produk, parsing, dan stok ready terkait dihapus.');
+        $verb = ['activate' => 'diaktifkan', 'deactivate' => 'dinonaktifkan', 'delete' => 'dihapus'][$data['action']];
+
+        return back()->with('success', count($data['ids']).' produk berhasil '.$verb.'.');
     }
 
     public function price(Request $request, Store $store, CatalogProduct $product, ProductPricing $pricing, StoreCatalog $catalog): RedirectResponse

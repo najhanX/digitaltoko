@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,7 +28,7 @@ class CustomerPanelController extends Controller
         $list = new ListQuery($request, ['status' => ['awaiting_payment', 'paid', 'processing', 'pending', 'success', 'failed', 'expired', 'review'], 'channel' => ['web', 'bot']], 10);
         $page = $list->paginate($list->apply(CustomerOrder::where('store_id', $store->id), ['number', 'destination'], ['status' => 'status', 'channel' => 'channel'])->latest()->orderByDesc('id'));
 
-        return Inertia::render('Owner/Orders', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'items' => $page->getCollection()->map(fn ($order) => $order->only(['id', 'number', 'snapshot', 'destination', 'channel', 'status', 'payment_status', 'amount', 'total', 'created_at', 'customer_id'])),
+        return Inertia::render('Owner/Orders', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'items' => $page->getCollection()->map(fn ($order) => $order->only(['id', 'number', 'is_sandbox', 'snapshot', 'destination', 'channel', 'status', 'payment_status', 'amount', 'total', 'created_at', 'customer_id'])),
             'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
     }
 
@@ -44,17 +45,29 @@ class CustomerPanelController extends Controller
 
         return Inertia::render('Owner/OrderDetail', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'order' => [...$data, 'customer_id' => $order->customer_id, 'resolution' => $order->resolution],
             'attempts' => $order->attempts()->orderBy('position')->get()->map(fn ($a) => $a->only(['id', 'position', 'source', 'cost', 'status', 'message', 'created_at', 'updated_at'])),
+            'canCancel' => $role === 'owner' && ! $data['cancelled'] && $order->payment_status === 'unpaid' && in_array($order->status, ['awaiting_payment', 'expired'], true),
             'canReview' => $role === 'owner' && $order->status === 'review' && $order->payment_status === 'paid' && ! $order->attempts()->whereNotNull('last_checked_at')->exists(), 'canResolve' => CatalogAccess::has($request, $role, 'guests.resolve'), 'canResend' => CatalogAccess::has($request, $role, 'orders.resend'),
             'canReveal' => CatalogAccess::has($request, $role, 'stock.credentials')]);
     }
 
     public function action(Request $request, Store $store, CustomerOrder $order): RedirectResponse
     {
-        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'note' => 'required_if:action,resolve,review|nullable|string|min:8|max:500']);
-        $permission = ['resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view'][$data['action']];
+        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review,cancel', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'note' => 'required_if:action,resolve,review|nullable|string|min:8|max:500']);
+        $permission = ['resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view', 'cancel' => 'orders.view'][$data['action']];
         $role = CatalogAccess::authorize($request, $store, $permission);
         abort_unless($order->store_id === $store->id, 404);
-        if ($data['action'] === 'review') {
+        if ($data['action'] === 'cancel') {
+            abort_unless($role === 'owner', 403);
+            try {
+                app(CustomerPayments::class)->cancel($order, (int) $request->user('web')->id);
+            } catch (ValidationException $error) {
+                throw $error;
+            } catch (\Throwable) {
+                return back()->withErrors(['payment' => 'Gateway belum dapat mengonfirmasi pembatalan. Pesanan tetap tersimpan; periksa pembayaran lalu coba kembali.']);
+            }
+
+            return back()->with('success', 'Pesanan dibatalkan. Jika tidak ada pesanan lain berjalan, mode toko dapat diganti.');
+        } elseif ($data['action'] === 'review') {
             abort_unless($role === 'owner', 403);
             DB::transaction(function () use ($request, $store, $order, $data) {
                 Store::whereKey($store->id)->lockForUpdate()->first();
@@ -63,7 +76,7 @@ class CustomerPanelController extends Controller
                 $engine->ensure($order->status === 'review' && $order->payment_status === 'paid' && ! $order->attempts()->whereNotNull('last_checked_at')->exists(), 'Transaksi yang sudah dikirim ke pemasok harus menunggu kepastian hasil pemasok.');
                 $order->update(['snapshot' => [...$order->snapshot, 'review_decision' => ['actor' => $request->user('web')->id, 'note' => $data['note'], 'at' => now()->toIso8601String()]]]);
                 if ($order->purpose === 'topup') {
-                    app(CustomerWallet::class)->apply($order->customer, $order->credit_amount, 'order:'.$order->id.':topup', 'topup');
+                    app(CustomerWallet::class)->apply($order->customer, $order->credit_amount, 'order:'.$order->id.':topup', 'topup', [], $order->is_sandbox);
                     $order->update(['status' => 'success', 'completed_at' => now(), 'message' => 'Pembayaran topup telah diperiksa owner dan dikreditkan.']);
                     $engine->notice($order, 'success');
                 } else {
@@ -107,7 +120,7 @@ class CustomerPanelController extends Controller
         $list = new ListQuery($request, [], 10);
         $page = $list->paginate($list->apply(Customer::where('store_id', $store->id), $contacts ? ['name', 'phone', 'email'] : ['name'])->orderBy('name')->orderBy('id'));
 
-        return Inertia::render('Owner/Customers', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'items' => $page->getCollection()->map(fn ($c) => $c->only(['id', 'name', 'balance', 'created_at', ...($contacts ? ['phone', 'email'] : [])])),
+        return Inertia::render('Owner/Customers', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'items' => $page->getCollection()->map(fn ($c) => [...$c->only(['id', 'name', 'created_at', ...($contacts ? ['phone', 'email'] : [])]), 'balance' => $store->sandbox ? $c->sandbox_balance : $c->balance]),
             'filters' => $list->filters, 'pagination' => ListQuery::meta($page), 'canLedger' => CatalogAccess::has($request, $role, 'wallet.view'), 'canSettle' => CatalogAccess::has($request, $role, 'wallet.settlement'), 'stopped' => ! $store->acceptsOrders() || app(CustomerCommerce::class)->settings($store)->closing]);
     }
 
@@ -119,7 +132,7 @@ class CustomerPanelController extends Controller
         DB::transaction(function () use ($request, $role, $store, $customer, $data) {
             $store = Store::whereKey($store->id)->lockForUpdate()->first();
             app(CustomerCommerce::class)->ensure(! $store->acceptsOrders() || app(CustomerCommerce::class)->settings($store)->closing, 'Pencairan hanya dicatat saat toko berhenti.');
-            app(CustomerWallet::class)->apply($customer, -$data['amount'], 'settlement:'.$store->id.':'.$data['reference'], 'settlement', ['note' => $data['note'], 'actor' => $role.':'.$request->user($role === 'staff' ? 'staff' : 'web')->id]);
+            app(CustomerWallet::class)->apply($customer, -$data['amount'], 'settlement:'.$store->id.':'.$data['reference'], 'settlement', ['note' => $data['note'], 'actor' => $role.':'.$request->user($role === 'staff' ? 'staff' : 'web')->id], $store->sandbox);
         });
 
         return back()->with('success', 'Penyelesaian saldo manual tercatat. Tidak ada transfer bank otomatis.');
@@ -130,8 +143,8 @@ class CustomerPanelController extends Controller
         $role = CatalogAccess::authorize($request, $store, 'wallet.view');
         abort_unless($customer->store_id === $store->id, 404);
         $list = new ListQuery($request, [], 10);
-        $page = $list->paginate($list->apply(CustomerLedger::where('store_id', $store->id)->where('customer_id', $customer->id), ['reason'])->latest()->orderByDesc('id'));
+        $page = $list->paginate($list->apply(CustomerLedger::where('store_id', $store->id)->where('is_sandbox', $store->sandbox)->where('customer_id', $customer->id), ['reason'])->latest()->orderByDesc('id'));
 
-        return Inertia::render('Owner/CustomerLedger', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'customer' => $customer->only(['id', 'name', 'balance']), 'items' => $page->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
+        return Inertia::render('Owner/CustomerLedger', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'customer' => [...$customer->only(['id', 'name']), 'balance' => $store->sandbox ? $customer->sandbox_balance : $customer->balance], 'items' => $page->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
     }
 }

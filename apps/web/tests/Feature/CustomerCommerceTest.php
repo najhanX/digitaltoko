@@ -7,6 +7,7 @@ use App\Models\CatalogProduct;
 use App\Models\Customer;
 use App\Models\CustomerLedger;
 use App\Models\CustomerNotice;
+use App\Models\CustomerOrder;
 use App\Models\PremiumStock;
 use App\Models\ProductMapping;
 use App\Models\Store;
@@ -20,6 +21,7 @@ use App\Services\CustomerFulfillment;
 use App\Services\CustomerInquiryService;
 use App\Services\CustomerPayments;
 use App\Services\CustomQris;
+use App\Services\GuestCheckout;
 use App\Support\HanshopIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -120,7 +122,7 @@ class CustomerCommerceTest extends TestCase
         $input = $this->input($p);
         app(CustomerCommerce::class)->begin($s, $input, $c);
         try {
-            app(CustomerCommerce::class)->begin($s, [...$input, 'destination' => 'different'], $c);
+            app(CustomerCommerce::class)->begin($s, [...$input, 'product_id' => $this->product($s)->id], $c);
             $this->fail('Conflict expected');
         } catch (ValidationException) {
         }
@@ -248,6 +250,143 @@ class CustomerCommerceTest extends TestCase
         $this->assertSame('pending', $order->fresh()->status);
         $this->assertNull($order->fresh()->refunded_at);
         $this->assertSame(1, PremiumStock::where('status', 'ready')->count());
+    }
+
+    public function test_guest_session_can_only_create_one_unpaid_order_and_server_rejects_duplicate_keys(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $this->gateway($s);
+        $this->mock(CustomerPayments::class, function ($mock) {
+            $mock->shouldReceive('start')->andReturnNull();
+        });
+        $url = 'http://'.$s->slug.'.localhost/checkout';
+        $this->withSession(['guest_checkout_key' => 'same-browser'])->post($url, $this->input($p, ['payment' => 'gateway']))->assertRedirect();
+        $first = CustomerOrder::firstOrFail();
+        $this->post($url, $this->input($p, ['payment' => 'gateway']))->assertRedirect('/orders/'.$first->id.'?access='.app(CustomerCommerce::class)->token($first));
+        $this->assertDatabaseCount('customer_orders', 1);
+        $this->get($url.'?product='.$p->id)->assertInertia(fn (Page $page) => $page->where('guestPendingOrder.number', $first->number));
+        $this->withSession(['guest_checkout_key' => 'different-browser'])->post($url, $this->input($p, ['payment' => 'gateway']))->assertRedirect();
+        $this->assertDatabaseCount('customer_orders', 2);
+        try {
+            app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway', 'guest_checkout_hash' => hash('sha256', 'same-browser')]), null);
+            $this->fail('Second unpaid guest invoice must be rejected');
+        } catch (ValidationException) {
+        }
+        $first->update(['expires_at' => now()->subMinute()]);
+        $this->withSession(['guest_checkout_key' => 'same-browser'])->post($url, $this->input($p, ['payment' => 'gateway']))->assertRedirect();
+        $this->assertDatabaseCount('customer_orders', 3);
+        $customer = $this->customer($s);
+        for ($i = 0; $i < 2; $i++) {
+            $logged = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway', 'guest_checkout_hash' => hash('sha256', 'same-browser')]), $customer);
+            $this->assertNull($logged->guest_checkout_hash);
+        }
+        $this->assertDatabaseCount('customer_orders', 5);
+    }
+
+    public function test_guest_cancellation_requires_same_session_and_frees_slot_without_reusing_unique_amount(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $this->gateway($s, 'custom');
+        $o = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway', 'guest_checkout_hash' => hash('sha256', 'browser-a')]), null)->fresh();
+        $url = 'http://'.$s->slug.'.localhost/orders/'.$o->id.'/cancel?access='.app(CustomerCommerce::class)->token($o);
+        $this->withSession(['guest_checkout_key' => 'browser-b'])->post($url)->assertForbidden();
+        $this->withSession(['guest_checkout_key' => 'browser-a'])->post($url)->assertSessionHasNoErrors();
+        $this->assertSame('expired', $o->fresh()->status);
+        $this->assertTrue($o->fresh()->snapshot['cancelled_by_customer']);
+        $this->assertNotNull($o->fresh()->active_amount_key);
+        $new = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway', 'guest_checkout_hash' => hash('sha256', 'browser-a')]), null);
+        $this->assertNotSame($o->total, $new->total);
+        $this->assertNull(app(GuestCheckout::class)->pending($this->store(), hash('sha256', 'browser-a')));
+    }
+
+    public function test_midtrans_cancellation_confirms_remote_cancel_and_preserves_settled_payments(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $this->gateway($s);
+        $o = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null)->fresh();
+        $o->update(['provider_id' => 'tx-cancel']);
+        $base = ['order_id' => $o->number, 'gross_amount' => $o->total.'.00', 'transaction_id' => 'tx-cancel', 'status_code' => '200'];
+        $settledResponse = null;
+        Http::fake([
+            '*/status' => function () use ($base, &$settledResponse) {
+                return Http::response($settledResponse ?? [...$base, 'transaction_status' => 'pending']);
+            },
+            '*/cancel' => Http::response([...$base, 'transaction_status' => 'cancel']),
+        ]);
+        app(CustomerPayments::class)->cancel($o);
+        $this->assertTrue($o->fresh()->snapshot['cancelled_by_customer']);
+        Http::assertSent(fn ($request) => $request->method() === 'POST' && str_ends_with($request->url(), '/cancel'));
+        $other = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null)->fresh();
+        $other->update(['provider_id' => 'settled-id']);
+        $settledResponse = ['order_id' => $other->number, 'gross_amount' => $other->total.'.00', 'transaction_id' => 'settled-id', 'status_code' => '200', 'transaction_status' => 'settlement', 'settlement_time' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s')];
+        try {
+            app(CustomerPayments::class)->cancel($other);
+            $this->fail('Paid invoice must not be cancelled');
+        } catch (ValidationException) {
+        }
+        $this->assertSame('paid', $other->fresh()->payment_status);
+        $this->assertSame('paid', $other->fresh()->status);
+    }
+
+    public function test_failed_midtrans_cancellation_does_not_release_guest_slot(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $this->gateway($s);
+        $key = hash('sha256', 'guest-failure');
+        $o = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway', 'guest_checkout_hash' => $key]), null)->fresh();
+        $o->update(['provider_id' => 'tx-retry']);
+        Http::fake([
+            '*/status' => Http::response(['order_id' => $o->number, 'gross_amount' => $o->total.'.00', 'transaction_id' => 'tx-retry', 'status_code' => '201', 'transaction_status' => 'pending']),
+            '*/cancel' => Http::response(['status_code' => '412'], 200),
+            '*/expire' => Http::response(['status_code' => '500'], 500),
+        ]);
+        try {
+            app(CustomerPayments::class)->cancel($o);
+            $this->fail('Unconfirmed cancellation must be rejected');
+        } catch (ValidationException) {
+        }
+        $this->assertSame('awaiting_payment', $o->fresh()->status);
+        $this->assertSame($o->id, app(GuestCheckout::class)->pending($s, $key)->id);
+    }
+
+    public function test_midtrans_cancel_server_error_falls_back_to_confirmed_expiry(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $this->gateway($s);
+        $o = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null)->fresh();
+        $o->update(['provider_id' => 'tx-expire']);
+        $base = ['order_id' => $o->number, 'gross_amount' => $o->total.'.00', 'transaction_id' => 'tx-expire'];
+        Http::fake([
+            '*/status' => Http::response([...$base, 'status_code' => '201', 'transaction_status' => 'pending']),
+            '*/cancel' => Http::response(['status_code' => '500', 'status_message' => 'Recovering'], 500),
+            '*/expire' => Http::response([...$base, 'status_code' => '407', 'transaction_status' => 'expire']),
+        ]);
+        app(CustomerPayments::class)->cancel($o);
+        $this->assertSame('expired', $o->fresh()->status);
+        $this->assertTrue($o->fresh()->snapshot['cancelled_by_customer']);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/expire'));
+    }
+
+    public function test_ambiguous_cancel_response_is_reconciled_from_authoritative_status(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $this->gateway($s);
+        $o = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null)->fresh();
+        $o->update(['provider_id' => 'tx-uncertain']);
+        $base = ['order_id' => $o->number, 'gross_amount' => $o->total.'.00', 'transaction_id' => 'tx-uncertain'];
+        Http::fake([
+            '*/status' => Http::sequence()->push([...$base, 'status_code' => '201', 'transaction_status' => 'pending'])->push([...$base, 'status_code' => '202', 'transaction_status' => 'cancel']),
+            '*/cancel' => Http::response(['status_code' => '500'], 500),
+        ]);
+        app(CustomerPayments::class)->cancel($o);
+        $this->assertTrue($o->fresh()->snapshot['cancelled_by_customer']);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/expire'));
     }
 
     public function test_midtrans_notification_requires_signature_and_authoritative_status(): void
@@ -529,7 +668,7 @@ class CustomerCommerceTest extends TestCase
             })->andReturn([]);
         });
         $base = 'http://'.$s->slug.'.localhost';
-        $this->post($base.'/account/otp', ['phone' => '081234567890', 'name' => 'Customer Dummy'])->assertSessionHasNoErrors();
+        $this->post($base.'/account/otp', ['phone' => '081234567890', 'name' => 'Customer Dummy', 'email' => 'buyer@example.test', 'intent' => 'register', 'password' => 'registration-password-123', 'password_confirmation' => 'registration-password-123'])->assertSessionHasNoErrors();
         $this->post('http://'.$other->slug.'.localhost/account/verify', ['otp' => $otp])->assertSessionHasErrors('otp');
         $this->post($base.'/account/verify', ['otp' => $otp])->assertRedirect('/account');
         $customer = Customer::where('store_id', $s->id)->firstOrFail();
@@ -592,11 +731,16 @@ class CustomerCommerceTest extends TestCase
         $p = $this->product($s);
         $this->gateway($s);
         $o = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null);
-        Http::fake(['api.sandbox.midtrans.com/*' => Http::response(['status_code' => '201', 'order_id' => $o->number, 'gross_amount' => $o->total.'.00', 'transaction_id' => 'test-qris-id'])]);
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aU1EAAAAASUVORK5CYII=');
+        Http::fake([
+            'api.sandbox.midtrans.com/v2/charge' => Http::response(['status_code' => '201', 'order_id' => $o->number, 'gross_amount' => $o->total.'.00', 'transaction_id' => 'test-qris-id', 'actions' => [['name' => 'generate-qr-code', 'method' => 'GET', 'url' => 'https://api.sandbox.midtrans.com/v2/qris/action-id/qr-code']]]),
+            'api.sandbox.midtrans.com/v2/qris/action-id/qr-code' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        ]);
         app(CustomerPayments::class)->start($o);
+        Http::assertSentCount(2);
         app(CustomerPayments::class)->start($o->fresh());
-        Http::assertSentCount(1);
-        $this->assertSame('https://api.sandbox.midtrans.com/v2/qris/test-qris-id/qr-code', $o->fresh()->qr_image);
+        Http::assertSentCount(2);
+        $this->assertSame('data:image/png;base64,'.base64_encode($png), $o->fresh()->qr_image);
         $qris = app(CustomQris::class);
         $dynamic = $qris->amount($this->qris(), 50001);
         $this->assertSame($qris->identity($this->qris()), $qris->identity($dynamic));
@@ -605,6 +749,32 @@ class CustomerCommerceTest extends TestCase
             $this->fail('CRC expected');
         } catch (ValidationException) {
         }
+    }
+
+    public function test_existing_midtrans_qr_is_repaired_without_another_charge_and_failed_images_can_retry(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $this->gateway($s);
+        $o = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null);
+        $o->update(['provider_id' => 'existing-id', 'qr_image' => 'https://outside.invalid/qr-code']);
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aU1EAAAAASUVORK5CYII=');
+        Http::fake(['api.sandbox.midtrans.com/v2/qris/existing-id/qr-code' => Http::sequence()->push(['message' => 'Not ready'], 503)->push($png, 200, ['Content-Type' => 'image/png'])]);
+        $o->refresh();
+        $this->assertSame('midtrans', $o->gateway);
+        $this->assertSame('awaiting_payment', $o->status);
+        $this->assertFalse($o->expires_at->isPast());
+        try {
+            app(CustomerPayments::class)->repairQr($o);
+            $this->fail('Invalid image must be rejected');
+        } catch (ValidationException) {
+        }
+        $this->assertSame('existing-id', $o->fresh()->provider_id);
+        app(CustomerPayments::class)->start($o->fresh());
+        $this->assertSame('data:image/png;base64,'.base64_encode($png), $o->fresh()->qr_image);
+        Http::assertSentCount(2);
+        Http::assertNotSent(fn ($request) => $request->method() !== 'GET' || str_contains($request->url(), 'outside.invalid'));
+        $this->assertDatabaseCount('customer_orders', 1);
     }
 
     public function test_paid_review_can_be_settled_once_by_owner_only_before_supplier_dispatch(): void

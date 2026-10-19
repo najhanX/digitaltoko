@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerWallet
 {
-    public function apply(Customer $customer, int $amount, string $event, string $reason, array $metadata = []): void
+    public function apply(Customer $customer, int $amount, string $event, string $reason, array $metadata = [], bool $sandbox = false): void
     {
         if (DB::transactionLevel() < 1) {
             throw new \LogicException('Wallet mutation requires a database transaction.');
@@ -17,14 +17,15 @@ class CustomerWallet
         $locked = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
         $existing = CustomerLedger::where('event', $event)->first();
         if ($existing) {
-            abort_unless($existing->customer_id === $locked->id && $existing->amount === $amount, 409);
+            abort_unless($existing->customer_id === $locked->id && $existing->amount === $amount && (bool) $existing->is_sandbox === $sandbox, 409);
 
             return;
         }
-        if ($locked->balance + $amount < 0) {
+        $field = $sandbox ? 'sandbox_balance' : 'balance';
+        if ($locked->$field + $amount < 0) {
             throw ValidationException::withMessages(['payment' => 'Saldo pelanggan tidak mencukupi.']);
         }
-        $locked->update(['balance' => $locked->balance + $amount]);
-        CustomerLedger::create(['store_id' => $locked->store_id, 'customer_id' => $locked->id, 'event' => $event, 'reason' => $reason, 'metadata' => $metadata, 'amount' => $amount, 'balance_after' => $locked->balance]);
+        $locked->update([$field => $locked->$field + $amount]);
+        CustomerLedger::create(['store_id' => $locked->store_id, 'customer_id' => $locked->id, 'event' => $event, 'reason' => $reason, 'metadata' => $metadata, 'amount' => $amount, 'balance_after' => $locked->$field, 'is_sandbox' => $sandbox]);
     }
 }

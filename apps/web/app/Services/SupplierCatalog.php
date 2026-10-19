@@ -43,13 +43,13 @@ class SupplierCatalog
     private function account(SupplierConnection $connection): string
     {
         return $connection->kind === 'digiflazz'
-            ? json_encode($connection->credentials)
-            : config('services.hanshop.url').':'.$connection->store->owner->hanshop_user_id;
+            ? json_encode(app(StoreEnvironment::class)->credentials($connection))
+            : config('services.hanshop.url').':'.$connection->store->owner->hanshop_user_id.':'.($connection->store->sandbox ? 'sandbox' : 'production');
     }
 
     private function digi(SupplierConnection $connection, string $path, string $mode): array
     {
-        $credentials = $connection->credentials ?? [];
+        $credentials = app(StoreEnvironment::class)->credentials($connection);
         $username = $credentials['username'] ?? '';
         $key = $credentials['api_key'] ?? '';
         if (! $username || ! $key) {
@@ -68,6 +68,13 @@ class SupplierCatalog
     public function balance(SupplierConnection $connection): array
     {
         CatalogAccess::operational($connection->store);
+        if ($connection->store->sandbox) {
+            if ($connection->kind === 'digiflazz') {
+                app(StoreEnvironment::class)->credentials($connection);
+            }
+
+            return ['amount' => 1000000, 'simulated' => true, 'observed_at' => now()->toIso8601String()];
+        }
         $snapshot = $this->cache->remember($connection->kind, $this->account($connection), 'balance', function () use ($connection) {
             if ($connection->kind === 'digiflazz') {
                 $data = $this->digi($connection, 'cek-saldo', 'prepaid');
@@ -97,6 +104,13 @@ class SupplierCatalog
 
     private function rows(SupplierConnection $connection, string $mode): array
     {
+        if ($connection->kind === 'digiflazz' && $connection->store->sandbox) {
+            app(StoreEnvironment::class)->credentials($connection);
+
+            return $mode === 'pasca'
+                ? [['sku' => 'pln', 'name' => 'PLN Pascabayar · Pengujian', 'kind' => 'postpaid', 'service' => 'Pascabayar', 'category' => 'PLN', 'cost' => 2500, 'available' => true, 'quantity' => null]]
+                : [['sku' => 'xld10', 'name' => 'XL 10.000 · Pengujian', 'kind' => 'ppob', 'service' => 'Pulsa', 'category' => 'XL', 'cost' => 10000, 'available' => true, 'quantity' => null]];
+        }
         if ($connection->kind === 'digiflazz') {
             $data = $this->digi($connection, 'price-list', $mode);
             if (! array_is_list($data) || count($data) > 20000) {
@@ -164,6 +178,7 @@ class SupplierCatalog
                 throw ValidationException::withMessages(['supplier' => 'Pemasok mengirim kode produk duplikat.']);
             }
             DB::transaction(function () use ($connection, $snapshot, $rows, $mode, $account) {
+                Store::whereKey($connection->store_id)->lockForUpdate()->firstOrFail();
                 $locked = SupplierConnection::whereKey($connection->id)->lockForUpdate()->firstOrFail();
                 $locked->load('store.owner');
                 CatalogAccess::operational($locked->store);

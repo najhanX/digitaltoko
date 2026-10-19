@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export type SectionKey='banner'|'benefits'|'flash_sale'|'trending'|'catalog'|'leaderboard'|'guide';
+export type SectionKey='quick_order'|'banner'|'benefits'|'flash_sale'|'trending'|'catalog'|'leaderboard'|'guide';
 export type DesignBanner={id:string;title:string;subtitle:string|null;image:string|null;href:string;button:string|null;enabled:boolean;overlay:boolean;link_type?:'url'|'category'|'none';category?:string|null};
 export type ThemeColors={secondary:string;background:string;surface:string;text:string;muted:string;border:string};
 export type CarouselSettings={autoplay:boolean;interval:number};
@@ -13,10 +13,10 @@ export function customerServiceUrl(settings:CustomerService):string|null {
     let phone=settings.phone.replace(/[\s+-]/g,'');if(phone.startsWith('0'))phone='62'+phone.slice(1);
     return /^628[0-9]{7,13}$/.test(phone)?'https://wa.me/'+phone+'?text='+encodeURIComponent(settings.message ?? ''):null;
 }
-export type ShopDesign={welcome_ad?:WelcomeAd;customer_service?:CustomerService;accent:string;logo:string|null;colors?:ThemeColors;carousel?:CarouselSettings;banners:DesignBanner[];flash_product_ids:string[];flash_starts_at:string|null;flash_ends_at:string|null;trending_mode:'automatic'|'manual';trending_product_ids:string[];trending_category_ids?:string[];sections:{key:SectionKey;enabled:boolean;title:string|null}[]};
+export type ShopDesign={welcome_ad?:WelcomeAd;customer_service?:CustomerService;accent:string;logo:string|null;favicon?:string|null;colors?:ThemeColors;carousel?:CarouselSettings;banners:DesignBanner[];flash_product_ids:string[];flash_discounts?:Record<string,{type:'fixed'|'percent';value:string}>;flash_starts_at:string|null;flash_ends_at:string|null;trending_mode:'automatic'|'manual';trending_product_ids:string[];trending_category_ids?:string[];sections:{key:SectionKey;enabled:boolean;title:string|null}[]};
 export type StoreBranding={design?:ShopDesign;design_revision?:number;gaming_banner_title?:string|null;gaming_banner_subtitle?:string|null;gaming_banner_image?:string|null;gaming_flash_category?:string|null;gaming_flash_ends_at?:string|null;[key:string]:unknown};
 export type DesignProduct={id:string;name:string;code:string;category:string;sale_price:number;active:boolean};
-export const sectionLabels:Record<SectionKey,string>={banner:'Banner utama',benefits:'Keunggulan toko',flash_sale:'Flash sale',trending:'Trending',catalog:'Katalog produk',leaderboard:'Leaderboard & akun',guide:'Cara memesan'};
+export const sectionLabels:Record<SectionKey,string>={quick_order:'Quick Order',banner:'Banner utama',benefits:'Keunggulan toko',flash_sale:'Flash sale',trending:'Trending',catalog:'Katalog produk',leaderboard:'Tautan leaderboard',guide:'Cara memesan'};
 export const themePresets = {
     midnight:{name:'Midnight',accent:'#9c80f6',colors:{secondary:'#f4b65b',background:'#0c101c',surface:'#171d2d',text:'#f2f3fa',muted:'#9ca5b9',border:'#293143'}},
     daylight:{name:'Daylight',accent:'#4f46e5',colors:{secondary:'#0891b2',background:'#f5f7fb',surface:'#ffffff',text:'#17213a',muted:'#61718a',border:'#dce2ed'}},

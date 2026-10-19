@@ -100,6 +100,12 @@ class PanelNotifications
         $message = $level ? $request->session()->get($level) : null;
         if ($level === 'warning') {
             $message = 'Data belum tersimpan. Periksa isian formulir dan coba kembali.';
+            if ($request->is('stores/*/articles', 'stores/*/articles/*')) {
+                $reason = $request->session()->get('errors')?->getBag('default')->first();
+                if (is_string($reason) && $reason !== '') {
+                    $message = mb_substr($reason, 0, 500);
+                }
+            }
         }
         if (! $recipient || ! is_string($message) || $message === '') {
             return null;

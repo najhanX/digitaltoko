@@ -111,6 +111,12 @@ app.post("/qr", async (req,res)=>{
   catch {res.status(422).json({status:"FAILED",message:"Payload QR tidak valid."});}
 });
 app.get("/health", (_req, res) => res.json({status: "SUCCESS", workers: children.size}));
+app.post("/stores/:store/notifications", (req,res)=>{
+  if(!uuid.test(String(req.params.store))){res.sendStatus(422);return;}
+  const child=children.get(String(req.params.store));
+  if(closing || !child?.connected || child.exitCode!==null){res.sendStatus(409);return;}
+  child.send({type:"notifications"},error=>{if(error)res.sendStatus(503);else res.json({status:"SUCCESS"});});
+});
 app.post("/stores/:store/connect", async (req, res) => {
   const entry = {...req.body, store_id: req.params.store};
   if (!valid(entry)) {res.sendStatus(422);return;}

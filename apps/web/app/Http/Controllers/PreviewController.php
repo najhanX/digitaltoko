@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\QuickOrderCatalog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -29,7 +30,7 @@ class PreviewController extends Controller
                     'calculator' => str_contains($page, '/') ? substr($page, strlen('calculator/')) : null]);
             }
 
-            return Inertia::render('Storefront/Home', ['store' => $store, 'available' => false, 'products' => [], 'preview' => true, 'renderedAt' => (int) now()->format('Uv'),
+            return Inertia::render('Storefront/Home', ['store' => $store, 'available' => false, 'products' => [], 'preview' => true, 'renderedAt' => (int) now()->format('Uv'), 'quickOrderProviders' => app(QuickOrderCatalog::class)->providers(),
                 'filters' => ['q' => is_string($request->query('q')) ? mb_substr($request->query('q'), 0, 120) : '', 'per_page' => 10],
                 'page' => in_array($page, ['home', 'catalog', 'order', 'profile', 'lookup'], true) ? $page : 'home']);
         }

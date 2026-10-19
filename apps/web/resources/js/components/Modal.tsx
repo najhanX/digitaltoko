@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { handleModalCancel } from './modalEvents';
 
 export default function Modal({open, title, description, children, footer, onClose, busy = false, wide = false}: {
     open: boolean; title: string; description?: string; children: ReactNode; footer?: ReactNode;
@@ -26,7 +27,7 @@ export default function Modal({open, title, description, children, footer, onClo
     }, [open]);
     return <dialog ref={dialog} className={'panel-dialog interactive-modal '+(wide?'modal-wide':'')}
         aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} aria-busy={busy}
-        onCancel={event => {event.preventDefault();if(!busy)onClose();}}
+        onCancel={event => handleModalCancel(event, busy, onClose)}
         onClick={event => {
             if (busy || event.target !== event.currentTarget) return;
             const bounds = event.currentTarget.getBoundingClientRect();

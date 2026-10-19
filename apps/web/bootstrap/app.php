@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(prepend: [ResolvePlatformHost::class], append: [HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
-        $middleware->trimStrings(except: ['payload', 'entries.*']);
+        $middleware->trimStrings(except: ['payload', 'entries.*', 'content.*.text']);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);
         $middleware->replace(TrustProxies::class, ConfiguredTrustProxies::class);
         $middleware->redirectGuestsTo(function (Request $request): string {

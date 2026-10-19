@@ -8,6 +8,8 @@ use App\Models\ProductMapping;
 use App\Models\Store;
 use App\Models\StoreStaff;
 use App\Models\User;
+use App\Services\CustomerCommerce;
+use App\Services\StoreCatalog;
 use App\Support\StorefrontDesign;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -58,6 +60,70 @@ class StoreDesignTest extends TestCase
         return $product;
     }
 
+    public function test_aurora_quick_order_can_be_reordered_hidden_and_restored_from_legacy_designs(): void
+    {
+        $store = $this->shop();
+        $legacy = $this->payload($store)['design'];
+        $legacy['sections'] = array_map(fn ($section) => [...$section, 'title' => 'Bagian '.$section['key']], array_reverse($legacy['sections']));
+        $store->update(['template' => 'aurora', 'branding' => ['design' => $legacy]]);
+        $data = $this->payload($store);
+        $this->assertCount(8, $data['design']['sections']);
+        $quick = array_shift($data['design']['sections']);
+        $this->assertSame('quick_order', $quick['key']);
+        $this->assertTrue($quick['enabled']);
+        $this->assertSame($legacy['sections'], $data['design']['sections']);
+        $data['design']['sections'][] = [...$quick, 'enabled' => false, 'title' => 'Pesan lebih cepat'];
+        $this->actingAs($store->owner)->post('http://localhost/stores/'.$store->id.'/design', $data)
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->get('http://'.$store->slug.'.localhost/')->assertInertia(fn (Assert $page) => $page
+            ->where('store.branding.design.sections.0.key', 'guide')
+            ->where('store.branding.design.sections.7.key', 'quick_order')
+            ->where('store.branding.design.sections.7.enabled', false)
+            ->where('store.branding.design.sections.7.title', 'Pesan lebih cepat'));
+        $this->assertSame($data['design']['sections'], $this->payload($store)['design']['sections']);
+        $store->update(['template' => 'atlas']);
+        $atlas = $this->payload($store)['design']['sections'];
+        $this->assertCount(7, $atlas);
+        $this->assertNotContains('quick_order', array_column($atlas, 'key'));
+        $this->assertSame($legacy['sections'], $atlas);
+    }
+
+    public function test_all_templates_publish_the_same_design_and_receive_isolated_promotions(): void
+    {
+        foreach (['aurora', 'nebula', 'atlas'] as $template) {
+            $store = $this->shop();
+            $store->update(['template' => $template]);
+            $product = $this->product($store);
+            $foreign = $this->product($this->shop());
+            $data = $this->payload($store);
+            $data['design']['flash_product_ids'] = [$product->id];
+            $data['design']['flash_discounts'] = [$product->id => ['type' => 'percent', 'value' => '10']];
+            $data['design']['trending_mode'] = 'manual';
+            $data['design']['trending_category_ids'] = [$product->category_id];
+            $data['design']['welcome_ad']['enabled'] = true;
+            $data['design']['customer_service'] = ['enabled' => true, 'phone' => '081234567890', 'label' => 'Chat toko', 'message' => 'Halo'];
+            $data['design']['sections'] = array_reverse($data['design']['sections']);
+            $this->actingAs($store->owner)->post('http://localhost/stores/'.$store->id.'/design', $data)->assertSessionHasNoErrors();
+            $store->refresh();
+            $this->get('http://'.$store->slug.'.localhost/')->assertInertia(fn (Assert $page) => $page
+                ->component('Storefront/Home')
+                ->where('store.template', $template)
+                ->where('store.branding.design.sections.0.key', 'guide')
+                ->where('store.branding.design.welcome_ad.enabled', true)
+                ->where('store.branding.design.customer_service.enabled', true)
+                ->has('gaming.flash_sale', 1)
+                ->where('gaming.flash_sale.0.id', $product->id)
+                ->where('gaming.flash_sale.0.price', 13500)
+                ->has('gaming.trending', 1)
+                ->where('gaming.trending.0.category_id', $product->category_id));
+            $this->get('http://'.$store->slug.'.localhost/leaderboard')->assertOk();
+            $this->assertSame(15000, $foreign->fresh()->sale_price);
+            $this->assertSame(array_column($data['design']['sections'], 'key'), array_column($store->branding['design']['sections'], 'key'));
+            $this->get('http://'.$store->slug.'.localhost/kategori/'.$product->category_id)
+                ->assertInertia(fn (Assert $page) => $page->component('Storefront/Category')->where('store.template', $template)->has('destinationProfile'));
+        }
+    }
+
     public function test_owner_publishes_uploaded_banner_logo_and_design_without_domain_pinning(): void
     {
         $store = $this->shop();
@@ -78,6 +144,103 @@ class StoreDesignTest extends TestCase
         $this->get('http://'.$store->slug.'.localhost'.$design['logo'])->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->get('http://'.$store->slug.'.localhost/')->assertInertia(fn (Assert $page) => $page->where('store.branding.design.accent', '#1a9c88')->where('store.branding.design.banners.0.title', 'Weekend gaming'));
         $this->get('http://localhost/owner/stores/'.$store->id.'/manage?tab=design')->assertOk()->assertInertia(fn (Assert $page) => $page->where('designRevision', 1)->where('design.logo', $design['logo']));
+    }
+
+    public function test_favicon_upload_is_tenant_scoped_rendered_on_all_store_pages_and_cleaned_up(): void
+    {
+        $store = $this->shop();
+        $data = $this->payload($store);
+        $data['favicon_file'] = $this->image();
+        $url = 'http://localhost/stores/'.$store->id.'/design';
+        $this->actingAs($store->owner)->post($url, $data)->assertSessionHasNoErrors();
+        $favicon = $store->fresh()->branding['design']['favicon'];
+        $this->assertStringStartsWith('/storefront-media/'.$store->id.'/', $favicon);
+        $this->get('http://'.$store->slug.'.localhost'.$favicon)->assertOk()->assertHeader('Content-Type', 'image/png');
+        foreach (['/', '/cek-pesanan', '/account/login'] as $path) {
+            $this->get('http://'.$store->slug.'.localhost'.$path)->assertOk()->assertSee('<link rel="icon" href="'.$favicon.'">', false);
+        }
+        $other = $this->shop();
+        $this->get('http://'.$other->slug.'.localhost/')->assertDontSee($favicon, false)->assertSee('<link rel="icon" href="/favicon.ico">', false);
+        $data = $this->payload($store);
+        $data['design']['favicon'] = '/storefront-media/'.$other->id.'/'.str_repeat('a', 40).'.png';
+        $this->post($url, $data)->assertSessionHasErrors('design.favicon');
+        $data = $this->payload($store);
+        $data['favicon_file'] = $this->image();
+        $this->post($url, $data)->assertSessionHasNoErrors();
+        $this->get($favicon)->assertNotFound();
+        $favicon = $store->fresh()->branding['design']['favicon'];
+        $data = $this->payload($store);
+        $data['design']['favicon'] = null;
+        $this->post($url, $data)->assertSessionHasNoErrors();
+        $this->get($favicon)->assertNotFound();
+        $this->get('http://'.$store->slug.'.localhost/')->assertSee('<link rel="icon" href="/favicon.ico">', false);
+    }
+
+    public function test_favicon_rejects_unsafe_upload_and_oversized_files(): void
+    {
+        $store = $this->shop();
+        $data = $this->payload($store);
+        $url = 'http://localhost/stores/'.$store->id.'/design';
+        $data['favicon_file'] = UploadedFile::fake()->createWithContent('favicon.svg', '<svg><script>alert(1)</script></svg>');
+        $this->actingAs($store->owner)->post($url, $data)->assertSessionHasErrors('favicon_file');
+        $data['favicon_file'] = UploadedFile::fake()->create('favicon.png', 513, 'image/png');
+        $this->post($url, $data)->assertSessionHasErrors('favicon_file');
+        $this->assertNull($store->fresh()->branding['design']['favicon'] ?? null);
+    }
+
+    public function test_per_product_flash_discount_applies_to_catalog_checkout_and_expires_without_changing_regular_price(): void
+    {
+        $store = $this->shop();
+        $product = $this->product($store);
+        $product->update(['auto_update' => true, 'markup' => '50%']);
+        $data = $this->payload($store);
+        $data['design']['flash_product_ids'] = [$product->id];
+        $data['design']['flash_discounts'] = [$product->id => ['type' => 'percent', 'value' => '10']];
+        $data['design']['flash_starts_at'] = now()->subMinute()->format('Y-m-d\TH:i:sP');
+        $data['design']['flash_ends_at'] = now()->addHour()->format('Y-m-d\TH:i:sP');
+        $this->actingAs($store->owner)->post('/stores/'.$store->id.'/design', $data)->assertSessionHasNoErrors();
+        $store->refresh();
+        $catalog = app(StoreCatalog::class);
+        $quote = $catalog->present($catalog->query($store, false)->findOrFail($product->id), $store);
+        $this->assertSame(13500, $quote['price']);
+        $this->assertSame(15000, $quote['compare_price']);
+        $catalog->reprice($store);
+        $this->assertSame(15000, $product->fresh()->sale_price);
+        app(CustomerCommerce::class)->settings($store)->update(['allow_guest' => true, 'gateway' => 'midtrans', 'credentials' => ['server_key' => 'test-only-key']]);
+        $order = app(CustomerCommerce::class)->begin($store, ['product_id' => $product->id, 'phone' => '6281234567890', 'destination' => '6281234567890', 'destination_id' => '6281234567890', 'idempotency_key' => 'discount-checkout-test', 'expected_price' => 13500], null);
+        $this->assertSame(13500, $order->amount);
+        $this->travel(2)->hours();
+        $quote = $catalog->present($catalog->query($store, false)->findOrFail($product->id), $store);
+        $this->assertSame(15000, $quote['price']);
+        $this->assertNull($quote['compare_price']);
+        $this->assertSame(13500, $order->fresh()->amount);
+        $this->travelBack();
+        $branding = $store->branding;
+        $branding['design']['flash_starts_at'] = now()->addHour()->toIso8601String();
+        $store->update(['branding' => $branding]);
+        $this->assertSame(15000, $catalog->present($catalog->query($store, false)->findOrFail($product->id), $store)['price']);
+    }
+
+    public function test_flash_discount_validation_and_fixed_discount_respect_selected_products_and_cost_floor(): void
+    {
+        $store = $this->shop();
+        $product = $this->product($store);
+        $data = $this->payload($store);
+        $data['design']['flash_product_ids'] = [$product->id];
+        $url = '/stores/'.$store->id.'/design';
+        $data['design']['flash_discounts'] = [$product->id => ['type' => 'percent', 'value' => '100']];
+        $this->actingAs($store->owner)->post($url, $data)->assertSessionHasErrors('design.flash_discounts');
+        $foreign = $this->product($this->shop());
+        $data['design']['flash_discounts'] = [$foreign->id => ['type' => 'fixed', 'value' => '1000']];
+        $this->post($url, $data)->assertSessionHasErrors('design.flash_discounts');
+        $data['design']['flash_discounts'] = [$product->id => ['type' => 'fixed', 'value' => '6000']];
+        $this->post($url, $data)->assertSessionHasNoErrors();
+        $store->refresh();
+        $catalog = app(StoreCatalog::class);
+        $quote = $catalog->present($catalog->query($store, false)->findOrFail($product->id), $store);
+        $this->assertSame(9000, $quote['price']);
+        $this->assertFalse($quote['available']);
+        $this->assertSame(15000, $product->fresh()->sale_price);
     }
 
     public function test_asset_cleanup_retains_shared_references_until_the_last_usage_is_removed(): void
@@ -138,7 +301,7 @@ class StoreDesignTest extends TestCase
     {
         $store = $this->shop();
         $other = $this->shop();
-        $url = '/stores/'.$store->id.'/design';
+        $url = 'http://localhost/stores/'.$store->id.'/design';
         $data = $this->payload($store);
         $this->actingAs($other->owner)->post($url, $data)->assertForbidden();
         auth('web')->logout();
@@ -154,7 +317,7 @@ class StoreDesignTest extends TestCase
         $store = $this->shop();
         $foreign = $this->product($this->shop());
         $data = $this->payload($store);
-        $url = '/stores/'.$store->id.'/design';
+        $url = 'http://localhost/stores/'.$store->id.'/design';
         $this->actingAs($store->owner);
         $invalid = $data;
         $invalid['design']['flash_product_ids'] = [$foreign->id];
@@ -183,7 +346,7 @@ class StoreDesignTest extends TestCase
     {
         $store = $this->shop();
         $data = $this->payload($store);
-        $url = '/stores/'.$store->id.'/design';
+        $url = 'http://localhost/stores/'.$store->id.'/design';
         $this->actingAs($store->owner)->post($url, $data)->assertSessionHasNoErrors();
         $data['logo_file'] = $this->image();
         $this->post($url, $data)->assertSessionHasErrors('revision');
@@ -198,7 +361,7 @@ class StoreDesignTest extends TestCase
         unset($data['design']['banners'], $data['design']['flash_product_ids'], $data['design']['trending_product_ids']);
         $data['revision'] = '0';
         $data['design']['sections'][0]['enabled'] = '0';
-        $url = '/stores/'.$store->id.'/design';
+        $url = 'http://localhost/stores/'.$store->id.'/design';
         $this->actingAs($store->owner)->post($url, $data, ['Content-Type' => 'multipart/form-data; boundary=test'])->assertSessionHasNoErrors();
         $saved = $store->fresh()->branding['design'];
         $this->assertSame([], $saved['banners']);
@@ -245,7 +408,7 @@ class StoreDesignTest extends TestCase
         $foreign->update(['category' => 'Foreign category']);
         $data = $this->payload($store);
         $this->actingAs($store->owner);
-        $url = '/stores/'.$store->id.'/design';
+        $url = 'http://localhost/stores/'.$store->id.'/design';
         foreach ([2, 31, 4.5] as $interval) {
             $invalid = $data;
             $invalid['design']['carousel']['interval'] = $interval;
@@ -322,7 +485,7 @@ class StoreDesignTest extends TestCase
     {
         $store = $this->shop();
         $data = $this->payload($store);
-        $url = '/stores/'.$store->id.'/design';
+        $url = 'http://localhost/stores/'.$store->id.'/design';
         $this->actingAs($store->owner);
         $invalid = $data;
         $invalid['design']['welcome_ad']['href'] = 'javascript:alert(1)';

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {handleCustomerMessage} from '../dist/customer.js';
-import {deliverNotices} from '../dist/commerce.js';
+import {deliverNotices,createNoticePump} from '../dist/commerce.js';
 import {MenuTokens} from '../dist/menu.js';
 const pn='6281234567890@s.whatsapp.net';
 const message=text=>({key:{id:'A'.repeat(21),remoteJid:pn,fromMe:false},message:{conversation:text}});
@@ -31,4 +31,19 @@ test('outbox sends only to the stored customer and acknowledges only after succe
  const sent=[],calls=[];const notice={id:product.id,phone:'6281234567890',message:'Pesanan berhasil'};
  await deliverNotices({sendMessage:async(chat,body)=>{sent.push({chat,body});}},async(path)=>{calls.push(path);return {data:[notice,{...notice,phone:'../other'}]};});assert.equal(sent.length,1);assert.equal(sent[0].chat,pn);assert.equal(calls.at(-1),'/api/internal/bot/notices/'+notice.id+'/delivered');
  let acknowledged=false;await assert.rejects(()=>deliverNotices({sendMessage:async()=>{throw Error('offline');}},async(path)=>{if(path.endsWith('/delivered'))acknowledged=true;return {data:[notice]};}));assert.equal(acknowledged,false);
+});
+
+test('sandbox receipts and balances are labelled and SB references can be checked',async()=>{
+ const h=harness(async(_path,body)=>({data:body.action==='balance'?{balance:50000,sandbox:true}:{orders:[{...order,number:'SBTEST123',is_sandbox:true,gateway:'sandbox'}]}}));
+ await h.run(message('#saldo'));assert.match(h.sent.at(-1).text,/SANDBOX/);
+ await h.run(message('#status SBTEST123'));assert.equal(h.calls.at(-1).body.number,'SBTEST123');assert.match(h.sent.at(-1).text,/SANDBOX/);assert.match(h.sent.at(-1).text,/Simulasikan pembayaran/);
+});
+
+test('notification wake coalesces concurrent requests and retries after a failure without waiting for heartbeat',async()=>{
+ let release,calls=0,errors=0,active=0,max=0;const blocked=new Promise(resolve=>release=resolve);
+ const pump=createNoticePump(()=>({}),async()=>{calls++;active++;max=Math.max(max,active);if(calls===1)await blocked;active--;return {data:[]};},()=>errors++);
+ const first=pump.trigger();await pump.trigger();await pump.trigger();release();await first;assert.equal(calls,2);assert.equal(max,1);
+ const retry=createNoticePump(()=>({}),async()=>{calls++;if(calls===3)throw Error('offline');return {data:[]};},()=>errors++);
+ await retry.trigger();await retry.trigger();assert.equal(errors,1);assert.equal(calls,4);
+ const paused=createNoticePump(()=>undefined,async()=>{throw Error('must not request');},()=>errors++);await paused.trigger();assert.equal(errors,1);
 });

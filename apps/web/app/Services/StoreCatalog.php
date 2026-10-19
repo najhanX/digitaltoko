@@ -30,8 +30,8 @@ class StoreCatalog
                 continue;
             }
             if ($mapping->source === 'stock') {
-                if ($product->kind === 'premium' && $product->ready_stocks_count > 0) {
-                    $candidates[] = ['mapping_id' => $mapping->id, 'source' => 'stock', 'cost' => (int) $product->ready_stocks_min_cost, 'quantity' => (int) $product->ready_stocks_count];
+                if ($product->kind === 'premium' && ($store->sandbox || $product->ready_stocks_count > 0)) {
+                    $candidates[] = ['mapping_id' => $mapping->id, 'source' => 'stock', 'cost' => (int) ($product->ready_stocks_min_cost ?? ($store->sandbox ? $product->sale_price : 0)), 'quantity' => $store->sandbox ? null : (int) $product->ready_stocks_count];
                 }
             } else {
                 $item = $mapping->item;
@@ -51,10 +51,13 @@ class StoreCatalog
         $cost = $candidates[0]['cost'] ?? null;
         $rule = $this->pricing->resolve($product);
         $price = $cost !== null && $rule['auto_update'] ? $this->pricing->apply($cost, $rule['markup']) : $product->sale_price;
+        $regular = $price;
+        $price = app(FlashSalePricing::class)->price($store, $product, $regular);
         $staleSupplier = $staleSupplier && count($candidates) === 0;
         $quantity = count($candidates) ? (in_array(null, array_column($candidates, 'quantity'), true) ? null : array_sum(array_column($candidates, 'quantity'))) : ($staleSupplier ? null : 0);
-        $available = $product->active && count($candidates) > 0 && $price >= $cost && $store->acceptsOrders();
+        $available = $product->active && count($candidates) > 0 && $price > 0 && $price >= $cost && $store->acceptsOrders();
         $public = [...$product->only(['id', 'code', 'name', 'description', 'kind', 'service', 'category', 'category_id']),
+            'regular_price' => $regular, 'compare_price' => $price < $regular ? $regular : null, 'discount_amount' => $regular - $price,
             'category_image' => $store->branding['category_images'][$product->category_id] ?? null, 'price' => $price, 'available' => $available,
             'quantity' => $quantity, 'supplier_stale' => $staleSupplier, 'price_label' => $product->kind === 'postpaid' ? 'Biaya admin' : 'Harga'];
         if (! $private) {
@@ -70,12 +73,15 @@ class StoreCatalog
 
     public function reprice(Store $store): void
     {
+        if ($store->sandbox) {
+            return;
+        }
         $this->pricing->forget();
         $this->query($store, false)->chunkById(100, function ($products) use ($store) {
             foreach ($products as $product) {
                 $quote = $this->present($product, $store, true);
-                if ($quote['rule']['auto_update'] && $quote['cost'] !== null && $product->sale_price !== $quote['price']) {
-                    $product->update(['sale_price' => $quote['price']]);
+                if ($quote['rule']['auto_update'] && $quote['cost'] !== null && $product->sale_price !== $quote['regular_price']) {
+                    $product->update(['sale_price' => $quote['regular_price']]);
                 }
             }
         });

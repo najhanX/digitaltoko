@@ -55,6 +55,23 @@ class ListQuery
         return $result;
     }
 
+    public function options(Builder $query): array
+    {
+        if (! $this->request->has('offset')) {
+            $page = $this->paginate($query);
+
+            return ['items' => $page->getCollection(), 'pagination' => self::meta($page)];
+        }
+        $data = $this->request->validate(['offset' => 'required|integer|min:0|max:1000000']);
+        $offset = (int) $data['offset'];
+        $total = (clone $query)->toBase()->getCountForPagination();
+        $items = $query->skip($offset)->take($this->filters['per_page'])->get();
+        $next = $offset + $items->count();
+
+        return ['items' => $items, 'pagination' => ['total' => $total, 'per_page' => $this->filters['per_page'],
+            'next_offset' => $items->isNotEmpty() && $next < $total ? $next : null]];
+    }
+
     public static function meta(LengthAwarePaginator $page): array
     {
         return ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'per_page' => $page->perPage(),

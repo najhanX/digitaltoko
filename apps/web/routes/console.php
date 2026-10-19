@@ -82,3 +82,6 @@ Schedule::command('digitaltoko:subscriptions')->everyMinute()->withoutOverlappin
 Schedule::command('digitaltoko:catalog-sync')->everyTwoMinutes()->withoutOverlapping();
 
 Schedule::command('digitaltoko:commerce')->everyMinute()->withoutOverlapping();
+Schedule::command('digitaltoko:customer-notices')->everyFiveSeconds()->withoutOverlapping()->runInBackground();
+
+Schedule::command('digitaltoko:prune-article-uploads')->daily()->withoutOverlapping();

@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Models\CatalogCategory;
 use App\Models\CatalogProduct;
 use App\Models\CatalogService;
+use App\Models\PremiumStock;
 use App\Models\PricingRule;
+use App\Models\ProductMapping;
 use App\Models\Store;
 use App\Models\StoreStaff;
 use App\Models\User;
+use App\Services\CategoryDestination;
 use App\Services\ProductPricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +41,33 @@ class CatalogTaxonomyTest extends TestCase
     private function product(Store $store, string $service = 'Pulsa', string $category = 'Telkomsel'): CatalogProduct
     {
         return CatalogProduct::create(['store_id' => $store->id, 'name' => 'Produk tes', 'code' => Str::random(10), 'kind' => 'premium', 'service' => $service, 'category' => $category, 'active' => true, 'sale_price' => 15000]);
+    }
+
+    public function test_category_provider_is_validated_scoped_and_removed_when_moved_or_deleted(): void
+    {
+        $store = $this->shop();
+        $base = '/stores/'.$store->id;
+        $this->actingAs($store->owner)->post($base.'/services', ['name' => 'Paket Data'])->assertSessionHasNoErrors();
+        $service = CatalogService::where('store_id', $store->id)->firstOrFail();
+        $this->post($base.'/categories', ['service_id' => $service->id, 'name' => 'Promo Bulanan', 'provider' => 'xl'])->assertSessionHasNoErrors();
+        $category = CatalogCategory::where('service_id', $service->id)->firstOrFail();
+        $this->assertSame('xl', $store->fresh()->branding['category_providers'][$category->id]);
+        $this->get($base.'/catalog-structure?tab=categories')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('items.0.provider', 'xl')->where('items.0.quick_order_service', 'data')->has('providerOptions', 7));
+        $this->getJson($base.'/catalog-structure/options?type=services')->assertJsonPath('items.0.quick_order_service', 'data');
+        $this->patch($base.'/categories/'.$category->id, ['name' => 'Promo Bulanan', 'provider' => 'unknown'])->assertSessionHasErrors('provider');
+        $this->assertSame('xl', $store->fresh()->branding['category_providers'][$category->id]);
+        $foreign = $this->shop();
+        $this->actingAs($foreign->owner)->patch($base.'/categories/'.$category->id, ['name' => 'Asing', 'provider' => 'tri'])->assertForbidden();
+        $this->actingAs($store->owner)->post($base.'/services', ['name' => 'Game'])->assertSessionHasNoErrors();
+        $game = CatalogService::where('store_id', $store->id)->where('name', 'Game')->firstOrFail();
+        $this->patch($base.'/categories/'.$category->id, ['name' => 'Promo Bulanan', 'service_id' => $game->id, 'provider' => 'xl'])->assertSessionHasErrors('provider');
+        $this->assertSame($service->id, $category->fresh()->service_id);
+        $this->patch($base.'/categories/'.$category->id, ['name' => 'Promo Bulanan', 'service_id' => $game->id, 'provider' => ''])->assertSessionHasNoErrors();
+        $this->assertArrayNotHasKey($category->id, $store->fresh()->branding['category_providers']);
+        $this->patch($base.'/categories/'.$category->id, ['name' => 'Promo Bulanan', 'service_id' => $service->id, 'provider' => 'tri'])->assertSessionHasNoErrors();
+        $this->delete($base.'/categories/'.$category->id)->assertSessionHasNoErrors();
+        $this->assertArrayNotHasKey($category->id, $store->fresh()->branding['category_providers']);
     }
 
     public function test_owner_can_create_structure_and_delete_only_empty_categories_and_services(): void
@@ -79,6 +109,53 @@ class CatalogTaxonomyTest extends TestCase
         $this->getJson($base.'/catalog-structure/options?type=categories&service_id='.$foreign->id)->assertNotFound();
         $store->update(['admin_suspended_at' => now()]);
         $this->post($base.'/services', ['name' => 'Ditangguhkan'])->assertForbidden();
+    }
+
+    public function test_category_can_move_services_with_products_settings_and_inherited_prices(): void
+    {
+        $store = $this->shop();
+        $first = $this->product($store, 'Aplikasi Premium', 'Paket Data XL');
+        $second = $this->product($store, 'Aplikasi Premium', 'Paket Data XL');
+        foreach ([$first, $second] as $product) {
+            ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'source' => 'stock', 'source_key' => 'stock', 'active' => true]);
+            PremiumStock::factory()->create(['store_id' => $store->id, 'product_id' => $product->id, 'status' => 'ready', 'cost' => 10000]);
+        }
+        $second->update(['markup' => '5000', 'auto_update' => false]);
+        $category = $first->taxonomyCategory;
+        $oldService = $category->service;
+        $next = CatalogService::create(['store_id' => $store->id, 'name' => 'Pulsa', 'name_key' => 'pulsa']);
+        PricingRule::create(['store_id' => $store->id, 'scope' => 'service', 'key' => 'aplikasi premium', 'markup' => '10%', 'auto_update' => true]);
+        PricingRule::create(['store_id' => $store->id, 'scope' => 'service', 'key' => 'pulsa', 'markup' => '20%', 'auto_update' => true]);
+        PricingRule::create(['store_id' => $store->id, 'scope' => 'category', 'key' => 'paket data xl', 'markup' => null, 'auto_update' => null]);
+        $store->update(['branding' => ['category_destinations' => [$category->id => ['type' => 'auto', 'columns' => 'auto']], 'category_images' => [$category->id => 'https://example.test/xl.webp']]]);
+        $this->actingAs($store->owner)->patch('/stores/'.$store->id.'/categories/'.$category->id, ['name' => 'Paket Data XL', 'service_id' => $next->id])->assertSessionHasNoErrors();
+        $this->assertSame($next->id, $category->fresh()->service_id);
+        foreach ([$first, $second] as $product) {
+            $this->assertSame($category->id, $product->fresh()->category_id);
+            $this->assertSame('Pulsa', $product->fresh()->service);
+        }
+        $this->assertSame(12000, $first->fresh()->sale_price);
+        $this->assertSame(15000, $second->fresh()->sale_price);
+        $this->assertSame('5000', $second->fresh()->markup);
+        $this->assertDatabaseHas('pricing_rules', ['store_id' => $store->id, 'scope' => 'service', 'key' => 'aplikasi premium', 'markup' => '10%']);
+        $this->assertDatabaseHas('pricing_rules', ['store_id' => $store->id, 'scope' => 'category', 'key' => 'paket data xl']);
+        $this->assertSame(0, $oldService->products()->count());
+        $this->assertSame('https://example.test/xl.webp', $store->fresh()->branding['category_images'][$category->id]);
+        $this->assertSame('phone', app(CategoryDestination::class)->profile($store->fresh(), $category->fresh(), 'premium')['type']);
+    }
+
+    public function test_moving_categories_rejects_foreign_services_and_name_collisions_without_partial_changes(): void
+    {
+        $store = $this->shop();
+        $product = $this->product($store);
+        $category = $product->taxonomyCategory;
+        $conflict = $this->product($store, 'Layanan tujuan', 'Telkomsel')->taxonomyCategory;
+        $foreign = $this->product($this->shop())->taxonomyCategory;
+        $url = '/stores/'.$store->id.'/categories/'.$category->id;
+        $this->actingAs($store->owner)->patch($url, ['name' => 'Telkomsel', 'service_id' => $foreign->service_id])->assertSessionHasErrors('service_id');
+        $this->patch($url, ['name' => 'Telkomsel', 'service_id' => $conflict->service_id])->assertSessionHasErrors('name');
+        $this->assertSame('Pulsa', $product->fresh()->service);
+        $this->assertSame($category->service_id, $category->fresh()->service_id);
     }
 
     public function test_renames_propagate_to_products_and_preserve_pricing_and_bot_navigation(): void
@@ -132,6 +209,35 @@ class CatalogTaxonomyTest extends TestCase
         $this->post('/stores/'.$store->id.'/products', [...$input, 'code' => 'NEW2', 'category_id' => $foreign->id])->assertSessionHasErrors('category_id');
         $this->get('/stores/'.$store->id.'/products?category_id='.$category->id)->assertInertia(fn (AssertableInertia $page) => $page
             ->where('pagination.total', 2)->where('selectedCategory.name', 'Canva')->where('products.0.service_id', $category->service_id));
+    }
+
+    public function test_picker_scroll_loads_five_then_ten_without_skipping_services_or_categories(): void
+    {
+        $store = $this->shop();
+        for ($i = 0; $i < 23; $i++) {
+            $number = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+            $this->product($store, 'Layanan '.$number, 'Kategori '.$number);
+            $this->product($store, 'Layanan 00', 'Kategori '.$number);
+        }
+        $foreign = $this->product($this->shop(), 'Layanan rahasia', 'Kategori rahasia');
+        $service = CatalogService::where('store_id', $store->id)->where('name', 'Layanan 00')->firstOrFail();
+        $base = '/stores/'.$store->id.'/catalog-structure/options?';
+        $this->actingAs($store->owner);
+        foreach (['type=services', 'type=categories&service_id='.$service->id, 'type=pricing_categories'] as $filter) {
+            $ids = [];
+            foreach ([[0, 5, 5, 5], [5, 10, 10, 15], [15, 10, 8, null]] as [$offset, $size, $count, $next]) {
+                $response = $this->getJson($base.$filter.'&offset='.$offset.'&per_page='.$size)->assertOk()
+                    ->assertJsonCount($count, 'items')->assertJsonPath('pagination.total', 23)->assertJsonPath('pagination.next_offset', $next)
+                    ->assertDontSee('rahasia');
+                $ids = [...$ids, ...array_column($response->json('items'), 'id')];
+            }
+            $this->assertCount(23, array_unique($ids));
+            $this->getJson($base.$filter.'&offset=0&per_page=5&q=22')->assertJsonCount(1, 'items')->assertJsonPath('pagination.next_offset', null);
+            $this->getJson($base.$filter.'&offset=23&per_page=10')->assertJsonCount(0, 'items')->assertJsonPath('pagination.next_offset', null);
+        }
+        $this->getJson($base.'type=services&offset=-1')->assertUnprocessable();
+        $this->getJson($base.'type=services&offset=1000001')->assertUnprocessable();
+        $this->getJson($base.'type=categories&offset=0&service_id='.$foreign->service_id)->assertNotFound();
     }
 
     public function test_lists_and_pickers_are_paginated_searchable_and_scoped_to_service(): void

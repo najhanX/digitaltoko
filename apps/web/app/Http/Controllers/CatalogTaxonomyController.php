@@ -7,7 +7,10 @@ use App\Models\CatalogProduct;
 use App\Models\CatalogService;
 use App\Models\Store;
 use App\Services\CatalogTaxonomy;
+use App\Services\CategoryDestination;
 use App\Services\GameIdentity;
+use App\Services\QuickOrderCatalog;
+use App\Services\StoreCatalog;
 use App\Support\CatalogAccess;
 use App\Support\ListQuery;
 use App\Support\StorefrontDesign;
@@ -47,9 +50,14 @@ class CatalogTaxonomyController extends Controller
         }
 
         return Inertia::render('Owner/Taxonomy', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'tab' => $tab,
-            'selectedService' => $service?->only(['id', 'name']), 'canManage' => CatalogAccess::has($request, $role, 'products.manage'),
+            'selectedService' => $service ? [...$service->only(['id', 'name']), 'quick_order_service' => app(QuickOrderCatalog::class)->service($service->name)] : null, 'canManage' => CatalogAccess::has($request, $role, 'products.manage'),
             'gameOptions' => app(GameIdentity::class)->games(),
+            'providerOptions' => app(QuickOrderCatalog::class)->providers(),
             'items' => $page->getCollection()->map(fn ($item) => [...$item->toArray(),
+                'provider' => $store->branding['category_providers'][$item->id] ?? '',
+                'quick_order_service' => $tab === 'categories' ? app(QuickOrderCatalog::class)->service($item->service->name) : null,
+                'destination_type' => $store->branding['category_destinations'][$item->id]['type'] ?? 'auto',
+                'destination_columns' => $store->branding['category_destinations'][$item->id]['columns'] ?? 'auto',
                 'game_validation' => $store->branding['category_games'][$item->id]['game'] ?? 'auto',
                 'destination_format' => $store->branding['category_games'][$item->id]['destination_format'] ?? 'auto',
                 'image' => $tab === 'categories' ? ($store->branding['category_images'][$item->id] ?? null) : null]),
@@ -70,9 +78,32 @@ class CatalogTaxonomyController extends Controller
             $service = CatalogService::where('store_id', $store->id)->findOrFail($data['service_id'] ?? '');
             $query = CatalogCategory::where('store_id', $store->id)->where('service_id', $service->id);
         }
-        $page = $list->paginate($list->apply($query, ['name'])->orderBy('name')->orderBy('id'));
+        $options = $list->options($list->apply($query, ['name'])->orderBy('name')->orderBy('id'));
+        $options['items'] = $options['items']->map(fn ($item) => [...$item->only(['id', 'name']), 'quick_order_service' => $data['type'] === 'services' ? app(QuickOrderCatalog::class)->service($item->name) : null]);
 
-        return response()->json(['items' => $page->getCollection()->map(fn ($item) => $item->only(['id', 'name'])), 'pagination' => ListQuery::meta($page)])->header('Cache-Control', 'private, no-store');
+        return response()->json($options)->header('Cache-Control', 'private, no-store');
+    }
+
+    public function destinationProfile(Request $request, Store $store): JsonResponse
+    {
+        CatalogAccess::authorize($request, $store, 'products.manage');
+        $data = $request->validate(['name' => 'required|string|max:100', 'service_id' => 'required|uuid', 'category_id' => 'nullable|uuid',
+            'game_validation' => ['required', Rule::in(['auto', 'none', ...array_keys(app(GameIdentity::class)->games())])]]);
+        $service = CatalogService::where('store_id', $store->id)->findOrFail($data['service_id']);
+        $kind = null;
+        if (! empty($data['category_id'])) {
+            $category = CatalogCategory::where('store_id', $store->id)->findOrFail($data['category_id']);
+            $kinds = $category->products()->distinct()->pluck('kind');
+            $kind = $kinds->count() === 1 ? $kinds->first() : null;
+        }
+        $category = new CatalogCategory(['id' => 'destination-preview', 'store_id' => $store->id, 'name' => trim($data['name'])]);
+        $category->setRelation('service', $service);
+        $draft = clone $store;
+        $branding = $draft->branding ?? [];
+        $branding['category_games'][$category->id] = ['game' => $data['game_validation'], 'destination_format' => 'auto'];
+        $draft->branding = $branding;
+
+        return response()->json(['profile' => app(CategoryDestination::class)->profile($draft, $category, $kind)])->header('Cache-Control', 'private, no-store');
     }
 
     private function name(Request $request): array
@@ -117,12 +148,13 @@ class CatalogTaxonomyController extends Controller
         CatalogAccess::operational($store);
         abort_if($category && $category->store_id !== $store->id, 404);
         $data = $this->name($request);
-        if (! $category) {
-            $request->validate(['service_id' => ['required', 'uuid', Rule::exists('catalog_services', 'id')->where('store_id', $store->id)]]);
-        }
+        $request->validate(['service_id' => [$category ? 'sometimes' : 'required', 'required', 'uuid', Rule::exists('catalog_services', 'id')->where('store_id', $store->id)]]);
         $appearance = $request->validate(['image_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096|dimensions:max_width=6000,max_height=6000',
+            'provider' => ['sometimes', 'nullable', Rule::in(array_keys(config('mobile_providers')))],
             'image_url' => ['nullable', 'url:https', 'max:2048', 'regex:#^https://[^\s\\\\]+$#'], 'remove_image' => 'sometimes|boolean',
             'game_validation' => ['sometimes', 'required', Rule::in(['auto', 'none', ...array_keys(app(GameIdentity::class)->games())])],
+            'destination_type' => ['sometimes', 'required', Rule::in(CategoryDestination::TYPES)],
+            'destination_columns' => ['sometimes', 'required', Rule::in(['auto', '1', '2'])],
             'destination_format' => ['sometimes', 'required', Rule::in(GameIdentity::FORMATS)]]);
         $newFile = null;
         $oldImage = null;
@@ -130,19 +162,27 @@ class CatalogTaxonomyController extends Controller
             DB::transaction(function () use ($request, $store, $category, $data, $taxonomy, $appearance, &$newFile, &$oldImage) {
                 $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
                 CatalogAccess::operational($locked);
-                $serviceId = $category?->service_id ?? $request->string('service_id')->toString();
-                CatalogService::where('store_id', $store->id)->findOrFail($serviceId);
+                $category?->refresh();
+                $serviceId = $request->input('service_id', $category?->service_id);
+                $service = CatalogService::where('store_id', $store->id)->findOrFail($serviceId);
+                $quickService = app(QuickOrderCatalog::class)->service($service->name);
+                if (! empty($appearance['provider']) && ! $quickService) {
+                    throw ValidationException::withMessages(['provider' => 'Provider hanya tersedia untuk layanan Pulsa, Paket Data, dan Voucher Data.']);
+                }
                 if (CatalogCategory::where('service_id', $serviceId)->where('name_key', $data['name_key'])->when($category, fn ($q) => $q->whereKeyNot($category->id))->exists()) {
                     throw ValidationException::withMessages(['name' => 'Nama kategori sudah digunakan dalam layanan ini.']);
                 }
                 if ($category) {
-                    $category->refresh();
                     $keepOld = CatalogCategory::where('store_id', $store->id)->where('name_key', $category->name_key)->whereKeyNot($category->id)->exists();
                     $taxonomy->preserveRule($store->id, 'category', $category->name, $data['name'], $keepOld);
-                    CatalogProduct::where('store_id', $store->id)->where('category_id', $category->id)->update(['category' => $data['name']]);
-                    $category->update($data);
+                    CatalogProduct::where('store_id', $store->id)->where('category_id', $category->id)->update(['category' => $data['name'], 'service' => $service->name]);
+                    $category->update([...$data, 'service_id' => $serviceId]);
+                    $category->unsetRelation('service');
                 } else {
                     $category = CatalogCategory::create([...$data, 'store_id' => $store->id, 'service_id' => $serviceId]);
+                    $branding = $locked->branding ?? [];
+                    $branding['category_image_preferences'][$category->id] = 'manual';
+                    $locked->update(['branding' => $branding]);
                 }
                 if ($request->hasFile('image_file') || ! empty($appearance['image_url']) || ! empty($appearance['remove_image'])) {
                     $branding = $locked->branding ?? [];
@@ -157,6 +197,7 @@ class CatalogTaxonomyController extends Controller
                     } elseif (! empty($appearance['image_url'])) {
                         $image = $appearance['image_url'];
                     }
+                    $branding['category_image_preferences'][$category->id] = $image ? 'custom' : 'none';
                     if ($image) {
                         $branding['category_images'][$category->id] = $image;
                     } else {
@@ -169,6 +210,25 @@ class CatalogTaxonomyController extends Controller
                     $branding['category_games'][$category->id] = ['game' => $appearance['game_validation'], 'destination_format' => $appearance['destination_format'] ?? 'auto'];
                     $locked->update(['branding' => $branding]);
                 }
+                if (array_key_exists('provider', $appearance) || ! $quickService) {
+                    $branding = $locked->branding ?? [];
+                    if ($quickService && ! empty($appearance['provider'])) {
+                        $branding['category_providers'][$category->id] = $appearance['provider'];
+                    } else {
+                        unset($branding['category_providers'][$category->id]);
+                    }
+                    $locked->update(['branding' => $branding]);
+                }
+                if (isset($appearance['destination_type'])) {
+                    $branding = $locked->branding ?? [];
+                    $branding['category_destinations'][$category->id] = ['type' => $appearance['destination_type'], 'columns' => $appearance['destination_columns'] ?? 'auto'];
+                    $locked->update(['branding' => $branding]);
+                    $game = app(GameIdentity::class)->profile($locked, $category);
+                    if ($game && ($appearance['destination_columns'] ?? 'auto') !== 'auto' && (int) $appearance['destination_columns'] !== ($game['server_label'] ? 2 : 1)) {
+                        throw ValidationException::withMessages(['destination_columns' => 'Jumlah kolom harus sesuai game pengecekan nickname yang dipilih. Gunakan Otomatis atau nonaktifkan pengecekan nickname untuk format manual.']);
+                    }
+                }
+                app(StoreCatalog::class)->reprice($locked);
             });
         } catch (\Throwable $error) {
             if (is_string($newFile)) {
@@ -210,8 +270,8 @@ class CatalogTaxonomyController extends Controller
             $category->delete();
             $branding = $locked->branding ?? [];
             $oldImage = $branding['category_images'][$category->id] ?? null;
-            unset($branding['category_images'][$category->id]);
-            unset($branding['category_games'][$category->id]);
+            unset($branding['category_images'][$category->id], $branding['category_image_preferences'][$category->id]);
+            unset($branding['category_games'][$category->id], $branding['category_destinations'][$category->id], $branding['category_providers'][$category->id]);
             $locked->update(['branding' => $branding]);
         });
         $this->removeUnusedImage($store->fresh(), $oldImage);

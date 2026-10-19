@@ -10,17 +10,24 @@
     },
     "devDependencies": {
         "@inertiajs/vite": "^3.0.0",
-        "@vitejs/plugin-react": "^6.0.0",
         "@types/react": "^19.2.0",
         "@types/react-dom": "^19.2.0",
-        "typescript": "^5.9.3",
+        "@vitejs/plugin-react": "^6.0.0",
         "laravel-vite-plugin": "^3.1",
+        "typescript": "^5.9.3",
         "vite": "^8.0.0"
     },
     "dependencies": {
         "@inertiajs/react": "^3.0.0",
+        "@tiptap/core": "^3.32.0",
+        "@tiptap/extension-image": "^3.32.0",
+        "@tiptap/extension-text-align": "^3.32.0",
+        "@tiptap/extension-text-style": "^3.32.0",
+        "@tiptap/pm": "^3.32.0",
+        "@tiptap/react": "^3.32.0",
+        "@tiptap/starter-kit": "^3.32.0",
+        "lucide-react": "^0.577.0",
         "react": "^19.2.0",
-        "react-dom": "^19.2.0",
-        "lucide-react": "^0.577.0"
+        "react-dom": "^19.2.0"
     }
 }

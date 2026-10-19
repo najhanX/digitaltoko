@@ -13,11 +13,11 @@ class CustomerOrder extends Model
 
     protected $guarded = [];
 
-    protected $hidden = ['payment_credentials', 'qr_payload', 'qr_image', 'result', 'request_hash', 'idempotency_key', 'active_amount_key', 'merchant_key'];
+    protected $hidden = ['guest_checkout_hash', 'payment_credentials', 'qr_payload', 'qr_image', 'result', 'request_hash', 'idempotency_key', 'active_amount_key', 'merchant_key'];
 
     protected function casts(): array
     {
-        return ['snapshot' => 'array', 'resolution' => 'array', 'payment_credentials' => 'encrypted:array', 'result' => 'encrypted', 'amount' => 'integer', 'fee' => 'integer', 'total' => 'integer', 'credit_amount' => 'integer', 'refund_amount' => 'integer', 'expires_at' => 'immutable_datetime', 'paid_at' => 'immutable_datetime', 'completed_at' => 'immutable_datetime', 'refunded_at' => 'immutable_datetime', 'pending_notified_at' => 'immutable_datetime'];
+        return ['is_sandbox' => 'boolean', 'snapshot' => 'array', 'resolution' => 'array', 'payment_credentials' => 'encrypted:array', 'result' => 'encrypted', 'amount' => 'integer', 'fee' => 'integer', 'total' => 'integer', 'credit_amount' => 'integer', 'refund_amount' => 'integer', 'expires_at' => 'immutable_datetime', 'paid_at' => 'immutable_datetime', 'completed_at' => 'immutable_datetime', 'refunded_at' => 'immutable_datetime', 'pending_notified_at' => 'immutable_datetime'];
     }
 
     public function store(): BelongsTo

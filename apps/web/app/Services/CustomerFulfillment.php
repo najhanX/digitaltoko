@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessCustomerOrder;
 use App\Models\CustomerOrder;
 use App\Models\OrderAttempt;
 use App\Models\PremiumStock;
@@ -15,6 +16,58 @@ use Illuminate\Support\Facades\Http;
 
 class CustomerFulfillment
 {
+    private const DIGIFLAZZ_FAILURES = ['01', '02', '40', '41', '42', '43', '44', '45', '47', '51', '52', '53', '54', '55', '57', '58', '59', '60', '61', '62', '63', '66', '67', '68', '69', '70', '71', '72', '73', '74', '80', '81', '82'];
+
+    public function digiflazzCallback(CustomerOrder $order, OrderAttempt $attempt, array $data): void
+    {
+        $lock = Cache::lock('customer-fulfill:'.$order->id, 120);
+        abort_unless($lock->get(), 503, 'Transaksi sedang diproses. Kirim ulang callback.');
+        try {
+            DB::transaction(function () use ($order, $attempt, $data) {
+                Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
+                $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
+                if ($order->payment_status !== 'paid' || $order->purpose !== 'product' || ! in_array($order->status, ['paid', 'processing', 'pending'], true) || ! in_array($attempt->status, ['dispatching', 'pending'], true)) {
+                    return;
+                }
+                $snapshot = $attempt->request_snapshot;
+                if (($snapshot['kind'] ?? '') === 'postpaid' && ! ($snapshot['pay_started'] ?? false)) {
+                    return;
+                }
+                $rc = $data['rc'];
+                $status = $data['status'] === 'Sukses' && $rc === '00' ? 'success' : ($data['status'] === 'Gagal' && in_array($rc, self::DIGIFLAZZ_FAILURES, true) ? 'failed' : 'pending');
+                $this->finish($order, $attempt, ['status' => $status, 'cost' => $data['price'] ?? null, 'result' => (string) ($data['sn'] ?? ''), 'price_changed' => $rc === '69', 'message' => $status === 'failed' ? $this->digiflazzFailureMessage($rc, $order->is_sandbox, $data['message'] ?? null) : 'Status diterima melalui webhook Digiflazz.']);
+                if ($status === 'failed' && $order->fresh()->status !== 'failed') {
+                    if (! $order->attempts()->where('status', '!=', 'failed')->exists()) {
+                        app(CustomerCommerce::class)->fail($order->fresh(), 'Semua sumber produk telah gagal atau tidak tersedia.');
+                    } else {
+                        DB::afterCommit(function () use ($order) {
+                            try {
+                                ProcessCustomerOrder::dispatch($order->id);
+                            } catch (\Throwable $error) {
+                                report($error);
+                            }
+                        });
+                    }
+                }
+            }, 3);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function digiflazzFailureMessage(string $rc, bool $testing, mixed $supplierMessage = null): string
+    {
+        return match ($rc) {
+            '41' => 'Signature Digiflazz ditolak. Periksa username dan key sesuai mode (RC 41).',
+            '42' => 'Username Digiflazz tidak sesuai (RC 42).',
+            '43' => 'SKU Digiflazz tidak ditemukan atau nonaktif (RC 43).',
+            '44' => 'Saldo Digiflazz tidak cukup (RC 44).',
+            '45' => app(DigiflazzNetwork::class)->whitelistMessage($testing, $supplierMessage),
+            default => 'Digiflazz menolak transaksi (RC '.preg_replace('/[^0-9]/', '', $rc).').',
+        };
+    }
+
     public function run(CustomerOrder $order): void
     {
         Cache::lock('customer-fulfill:'.$order->id, 120)->get(function () use ($order) {
@@ -100,6 +153,12 @@ class CustomerFulfillment
             if (! in_array($order->status, ['processing', 'pending'], true) || $attempt->status !== 'dispatching') {
                 return;
             }
+            if ($order->is_sandbox) {
+                $attempt->update(['status' => 'success', 'result' => 'SIMULASI: akun-premium@example.test / sandi-uji']);
+                $this->success($order, $attempt->result);
+
+                return;
+            }
             $stock = PremiumStock::where('store_id', $order->store_id)->where('product_id', $order->product_id)->where('order_reference', $order->number)->first();
             if (! $stock) {
                 $stock = PremiumStock::where('store_id', $order->store_id)->where('product_id', $order->product_id)->where('status', 'ready')->whereNull('order_reference')->orderBy('cost')->orderBy('id')->lockForUpdate()->first();
@@ -124,6 +183,9 @@ class CustomerFulfillment
     private function remote(CustomerOrder $order, OrderAttempt $attempt): array
     {
         $data = $attempt->request_snapshot;
+        if ($order->is_sandbox && $attempt->source === 'hanshop') {
+            return ['status' => 'success', 'cost' => $attempt->cost, 'result' => 'SIMULASI HANSHOP: '.$attempt->reference];
+        }
         if ($attempt->source === 'hanshop') {
             $result = app(HanshopIdentity::class)->call('supplier/transaction', ['id_user' => $data['id_user'], 'store_id' => $order->store_id, 'access_until' => now()->addMinutes(5)->toIso8601String(),
                 'reference' => $attempt->reference, 'kind' => $data['kind'], 'product_code' => $data['sku'], 'destination' => $order->destination, 'max_price' => $order->amount]);
@@ -136,24 +198,29 @@ class CustomerFulfillment
                 'price_changed' => ($result['code'] ?? '') === 'PRICE_CHANGED', 'cost' => $result['price'] ?? null, 'message' => $status === 'FAILED' ? 'Sumber Hanshop menolak transaksi ('.preg_replace('/[^A-Z0-9_]/', '', (string) ($result['code'] ?? 'FAILED')).').' : 'Menunggu hasil Hanshop.'];
         }
         $credentials = $data['credentials'];
+        app(CustomerCommerce::class)->ensure((bool) ($credentials['testing'] ?? false) === $order->is_sandbox, 'Lingkungan credential Digiflazz tidak sesuai pesanan.');
         $username = $credentials['username'];
         $key = $credentials['api_key'];
-        $payload = ['username' => $username, 'buyer_sku_code' => $data['sku'], 'customer_no' => $order->destination, 'ref_id' => $attempt->reference, 'sign' => md5($username.$key.$attempt->reference)];
+        $payload = ['testing' => $order->is_sandbox, 'username' => $username, 'buyer_sku_code' => $data['sku'], 'customer_no' => $order->destination, 'ref_id' => $attempt->reference, 'sign' => md5($username.$key.$attempt->reference)];
         $postpaid = ($data['kind'] ?? '') === 'postpaid';
         if ($postpaid && ! ($data['pay_started'] ?? false)) {
             if (! $order->created_at->timezone('Asia/Jakarta')->isSameDay(now()->timezone('Asia/Jakarta'))) {
                 return ['status' => 'failed', 'message' => 'Tagihan harus diperiksa ulang karena hari pembayaran telah berganti.'];
             }
             $inquiryResponse = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)->post('https://api.digiflazz.com/v1/transaction', [...$payload, 'commands' => 'inq-pasca']);
-            if (! $inquiryResponse->successful()) {
+            $inquiry = $inquiryResponse->json('data');
+            $inquiryFailure = is_array($inquiry) && ($inquiry['status'] ?? '') === 'Gagal' && in_array((string) ($inquiry['rc'] ?? ''), self::DIGIFLAZZ_FAILURES, true);
+            if (! $inquiryResponse->successful() && ! ($inquiryResponse->status() === 400 && $inquiryFailure)) {
                 return ['status' => 'pending', 'message' => 'Pemeriksaan tagihan belum dapat dipastikan.'];
             }
-            $inquiry = $inquiryResponse->json('data');
             if (! is_array($inquiry) || ($inquiry['ref_id'] ?? '') !== $attempt->reference || ($inquiry['buyer_sku_code'] ?? '') !== $data['sku'] || ($inquiry['customer_no'] ?? '') !== $order->destination) {
                 return ['status' => 'pending', 'message' => 'Pemeriksaan tagihan belum memperoleh hasil pasti.'];
             }
+            if ($inquiryFailure) {
+                return ['status' => 'failed', 'message' => $this->digiflazzFailureMessage((string) $inquiry['rc'], $order->is_sandbox, $inquiry['message'] ?? null)];
+            }
             if (($inquiry['status'] ?? '') !== 'Sukses' || ($inquiry['rc'] ?? '') !== '00') {
-                return ['status' => 'failed', 'message' => 'Tagihan belum dapat dibayarkan. Silakan periksa ulang.'];
+                return ['status' => 'pending', 'message' => 'Pemeriksaan tagihan belum memperoleh hasil pasti.'];
             }
             if (! is_numeric($inquiry['price'] ?? null) || (int) $inquiry['price'] <= 0) {
                 return ['status' => 'pending', 'message' => 'Nominal tagihan belum valid.'];
@@ -171,18 +238,19 @@ class CustomerFulfillment
             $payload['max_price'] = $order->amount;
         }
         $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)->post('https://api.digiflazz.com/v1/transaction', $payload);
-        if (! $response->successful()) {
-            return ['status' => 'pending', 'message' => 'Pemasok belum memberi respons server yang valid.'];
-        }
         $body = $response->json('data');
+        $terminalFailure = is_array($body) && ($body['status'] ?? '') === 'Gagal' && in_array((string) ($body['rc'] ?? ''), self::DIGIFLAZZ_FAILURES, true);
+        if (! $response->successful() && ! ($response->status() === 400 && $terminalFailure)) {
+            return ['status' => 'pending', 'message' => 'Respons Digiflazz belum dapat dipastikan (HTTP '.$response->status().').'];
+        }
         if (! is_array($body) || ($body['ref_id'] ?? '') !== $attempt->reference || ($body['buyer_sku_code'] ?? '') !== $data['sku'] || ($body['customer_no'] ?? '') !== $order->destination) {
             return ['status' => 'pending', 'message' => 'Respons pemasok belum dapat dipastikan.'];
         }
         $status = $body['status'] ?? '';
         $rc = (string) ($body['rc'] ?? '');
-        $final = $status === 'Sukses' && $rc === '00' ? 'success' : ($status === 'Gagal' && in_array($rc, ['01', '02', '40', '41', '42', '43', '44', '45', '47', '51', '52', '53', '54', '55', '57', '58', '59', '60', '61', '62', '63', '66', '67', '68', '69', '70', '71', '72', '73', '74', '80', '81', '82'], true) ? 'failed' : 'pending');
+        $final = $status === 'Sukses' && $rc === '00' ? 'success' : ($status === 'Gagal' && in_array($rc, self::DIGIFLAZZ_FAILURES, true) ? 'failed' : 'pending');
 
-        return ['status' => $final, 'result' => (string) ($body['sn'] ?? ''), 'cost' => $body['price'] ?? null, 'price_changed' => $rc === '69', 'message' => $final === 'failed' ? 'Digiflazz menolak transaksi (RC '.preg_replace('/[^0-9]/', '', $rc).').' : 'Menunggu hasil Digiflazz.'];
+        return ['status' => $final, 'result' => (string) ($body['sn'] ?? ''), 'cost' => $body['price'] ?? null, 'price_changed' => $rc === '69', 'message' => $final === 'failed' ? $this->digiflazzFailureMessage($rc, $order->is_sandbox, $body['message'] ?? null) : 'Menunggu hasil Digiflazz.'];
     }
 
     private function finish(CustomerOrder $order, OrderAttempt $attempt, array $outcome): void

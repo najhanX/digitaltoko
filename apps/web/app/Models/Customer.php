@@ -16,7 +16,7 @@ class Customer extends Authenticatable
 
     protected function casts(): array
     {
-        return ['password' => 'hashed', 'balance' => 'integer', 'phone_verified_at' => 'immutable_datetime', 'email_verified_at' => 'immutable_datetime'];
+        return ['password' => 'hashed', 'balance' => 'integer', 'sandbox_balance' => 'integer', 'phone_verified_at' => 'immutable_datetime', 'email_verified_at' => 'immutable_datetime'];
     }
 
     public function store(): BelongsTo
