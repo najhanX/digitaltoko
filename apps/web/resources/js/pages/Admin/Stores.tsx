@@ -18,8 +18,8 @@ export default function Stores({stores,pagination,filters,counts,selectedOwner}:
                 <td><Link className="text-link" href={'/admin/stores/'+store.id}>{store.name}</Link><small>{store.slug}</small><small>{store.domain?.hostname ?? 'Subdomain platform'}</small></td>
                 <td><Link className="text-link" href={'/admin/stores?owner='+store.owner.id}>{store.owner.name}</Link><small>{store.owner.phone ?? store.owner.email ?? 'Belum ada kontak'}</small></td>
                 <td><strong>{store.is_trial?'Trial ':''}{packageName(store.category,store.plan)}</strong><small>{serviceOptions[store.category as keyof typeof serviceOptions]}</small></td>
-                <td><span className={'store-status '+(store.admin_suspended_at?'suspended_manual':store.status)}>{store.admin_suspended_at?'Ditangguhkan admin':storeStatuses[store.status] ?? store.status}</span>{store.admin_suspended_at && <small>Langganan: {storeStatuses[store.status]}</small>}</td>
-                <td>{date(store.expires_at)}</td><td><Link className="button secondary" href={'/admin/stores/'+store.id}>Kelola <ArrowRight size={14}/></Link></td>
+                <td className="table-cell-center"><span className={'store-status '+(store.admin_suspended_at?'suspended_manual':store.status)}>{store.admin_suspended_at?'Ditangguhkan admin':storeStatuses[store.status] ?? store.status}</span>{store.admin_suspended_at && <small>Langganan: {storeStatuses[store.status]}</small>}</td>
+                <td>{date(store.expires_at)}</td><td className="table-cell-center"><Link className="button secondary" href={'/admin/stores/'+store.id}>Kelola <ArrowRight size={14}/></Link></td>
             </tr>)}</tbody></table></div>
             {!stores.length && <div className="empty-state"><Store size={32}/><h3>Tidak ada toko yang cocok</h3><p>Ubah kata pencarian atau reset filter.</p></div>}
             <Pagination meta={pagination} onPage={list.go} busy={list.busy}/>

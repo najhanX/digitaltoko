@@ -1,0 +1,79 @@
+/* Shared reading scale. Keep browser zoom and user font preferences intact. */
+:root {
+    --text-small: .875rem;
+    --text-body: .9375rem;
+    --text-input: 1rem;
+    font-size: 100%;
+}
+
+body {
+    font-size: var(--text-body);
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+#app small { font-size: var(--text-small); }
+
+button, input, select, textarea {
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+#app :is(input:not([type=checkbox]):not([type=radio]):not([type=color]), select, textarea) {
+    font-size: var(--text-input);
+}
+
+#app :is(button, .button, .sf-button, .ng-button, .nav-item, .sidebar-section-toggle,
+    .sf-store-navigation>a, .ng-nav>a, .ng-calculator-menu>summary, label, legend) {
+    font-weight: 600;
+}
+
+#app :is(label, legend, dt, th) {
+    line-height: 1.5;
+}
+
+#app :is(th, td) {
+    line-height: 1.6;
+}
+
+#app :is(small, .field-help, .form-error, .feedback, .status, .pill) {
+    line-height: 1.6;
+}
+
+#app :is(.status, .pill, .store-status, .sf-account-order-status) { white-space: nowrap; }
+.article-panel-table { min-width: 1060px; }
+.article-panel-table .article-status-column { width: 110px; }
+.article-panel-table .article-author-column { width: 140px; }
+.article-panel-table .article-date-column { width: 170px; }
+
+#app :is(h1, h2, h3, h4) {
+    font-weight: 700;
+}
+
+.panel-surface { --muted: #586780; }
+[data-panel-theme=dark] .panel-surface { --muted: #adbbd1; }
+
+/* Allow longer labels at the larger scale without compressing adjacent controls. */
+.workspace-shell .nav-item, .sidebar-section-toggle {
+    min-height: 44px;
+    white-space: normal;
+    line-height: 1.5;
+}
+.workspace-shell .sidebar-section-links .nav-item { min-height: 40px; }
+.topbar-location, .account-menu, .sf-customer-menu { min-width: 0; }
+.sf-navbar-search-copy, .sf-customer-dropdown, .ng-ranking>div { min-width: 0; }
+.ng-site .ng-brand small { letter-spacing: .04em; }
+.ng-site .ng-benefits strong, .sf-site .sf-assurances strong { line-height: 1.5; }
+.sf-site .ng-category-card h3, .sf-site .sf-product-info h3 { line-height: 1.5; }
+.sf-site.sf-aurora .au-header-space { height: calc(var(--au-header-height, 68px) + 30px); }
+.sf-site.sf-aurora { --sf-header-offset: calc(var(--au-header-height, 68px) + 40px); }
+.sf-aurora :is(#catalog, #quick-order) { scroll-margin-top: var(--sf-header-offset); }
+
+@media (max-width: 700px) {
+    .topbar { height: auto; min-height: 84px; gap: 16px; flex-wrap: wrap; padding-block: 16px; }
+    .topbar nav { gap: 16px; flex-wrap: wrap; }
+    .sf-site.ng-site .ng-nav { flex-wrap: wrap; justify-content: flex-start; gap: 0 22px; padding-block: 4px; }
+    .sf-site.ng-site .ng-nav>a, .sf-site.ng-site .ng-calculator-menu>summary { gap: 7px; min-height: 44px; }
+    .sf-site.ng-site .ng-nav>a>svg { flex-shrink: 0; }
+    .sandbox-indicator { max-width: min(300px, calc(100vw - 100px)); }
+}

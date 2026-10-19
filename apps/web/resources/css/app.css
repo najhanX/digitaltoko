@@ -5,5 +5,21 @@
 @import './storefront-polish.css';
 @import './articles.css';
 @import './scrollbars.css';
+@import './typography.css';
 
-.sandbox-indicator{position:fixed;bottom:16px;left:16px;z-index:90;display:grid;gap:3px;max-width:min(300px,calc(100vw - 100px));padding:10px 14px;border:1px solid #d9a122;border-radius:12px;background:#fff7d6;color:#684309;box-shadow:0 4px 18px #0002;font-size:12px;pointer-events:none}.sandbox-indicator strong{font-size:13px}
+.sandbox-indicator{position:fixed;bottom:16px;left:16px;z-index:90;display:grid;gap:3px;max-width:min(300px,calc(100vw - 100px));padding:10px 14px;border:1px solid #d9a122;border-radius:12px;background:#fff7d6;color:#684309;box-shadow:0 4px 18px #0002;font-size:var(--text-small);pointer-events:none}.sandbox-indicator strong{font-size:var(--text-body)}
+
+#app table thead th{text-align:center;font-weight:600}
+
+#app table tbody td.table-cell-center{text-align:center;vertical-align:middle}
+#app table tbody td.table-cell-center .row-actions{justify-content:center}
+
+#app table{border-collapse:separate;border-spacing:0;border:1px solid var(--sf-line,var(--border,#e2e8f0));border-radius:12px;overflow:hidden}
+#app table :is(th,td){border:0;border-inline-end:1px solid var(--sf-line,var(--border,#e2e8f0));border-bottom:1px solid var(--sf-line,var(--border,#e2e8f0))}
+#app table tr>:is(th,td):last-child{border-inline-end:0}
+#app table tbody:last-child>tr:last-child>:is(th,td){border-bottom:0}
+#app table thead:first-child>tr:first-child>:first-child{border-start-start-radius:11px}
+#app table thead:first-child>tr:first-child>:last-child{border-start-end-radius:11px}
+#app table tbody:last-child>tr:last-child>:first-child{border-end-start-radius:11px}
+#app table tbody:last-child>tr:last-child>:last-child{border-end-end-radius:11px}
+#app :is(.table-scroll,.staff-table){border-radius:12px}

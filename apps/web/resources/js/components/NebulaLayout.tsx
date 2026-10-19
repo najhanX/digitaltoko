@@ -1,4 +1,5 @@
 import StorefrontSearch from './StorefrontSearch';
+import useStorefrontHeaderSize from './useStorefrontHeaderSize';
 import StorefrontAccountMenu from './StorefrontAccountMenu';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -9,6 +10,7 @@ import type { StoreBranding } from './storefrontDesign';
 
 type Store = { name:string;slug:string;branding:StoreBranding|null;preview?:boolean };
 export default function NebulaLayout({store,children,home=false,preview=false,previewHref}:{store:Store;children:ReactNode;home?:boolean;preview?:boolean;previewHref?:(page:'home'|'catalog'|'order'|'profile'|'lookup')=>string}) {
+    const header = useStorefrontHeaderSize('--ng-header-height');
     const [scrolled,setScrolled]=useState(false);
     const pageUrl=usePage().url;
     const url=pageUrl.split('?')[0];
@@ -25,7 +27,7 @@ export default function NebulaLayout({store,children,home=false,preview=false,pr
     const brand=<Link href={root} className="sf-brand ng-brand">{store.branding?.design?.logo?<img src={store.branding.design.logo} alt="" width={43} height={43} className="sf-custom-logo"/>:<span className="ng-brand-symbol"><Gamepad2 size={24}/></span>}<span>{store.name}<small>YOUR GAMING DESTINATION</small></span></Link>;
     return <><NebulaEngagement slug={store.slug} home={home} ad={store.branding?.design?.welcome_ad} service={store.branding?.design?.customer_service}/>
         <div className="ng-header-space"/>
-        <header className={'ng-header ng-header-fixed'+(scrolled?' ng-header-scrolled':'')}>
+        <header ref={header} className={'ng-header ng-header-fixed'+(scrolled?' ng-header-scrolled':'')}>
             <div className="sf-container ng-header-main">{brand}<StorefrontSearch preview={isPreview} template="nebula"/><div className="ng-header-actions"><span className="ng-currency"><span/>ID / IDR</span><StorefrontAccountMenu href={account} preview={isPreview}/></div></div>
             <div className="ng-nav-border"><nav className="sf-container ng-nav" aria-label="Navigasi toko game"><Link className={home || url.startsWith('/kategori/')?'selected':''} href={root}><Gamepad2 size={17}/>Top up</Link><Link className={url==='/cek-pesanan'?'selected':''} href={lookup}><ReceiptText size={17}/>Cek pesanan</Link><Link className={url==='/leaderboard'?'selected':''} href={leaderboard}><Trophy size={17}/>Leaderboard</Link>{!isPreview && <Link className={url.startsWith('/artikel')?'selected':''} href="/artikel"><Newspaper size={17}/>Artikel</Link>}<details className="ng-calculator-menu"><summary className={url.startsWith('/calculator')?'selected':''}><Calculator size={17}/>Kalkulator<ChevronDown size={14}/></summary><div>{[['winrate','Win Rate'],['magic-wheel','Magic Wheel'],['zodiac','Zodiac']].map(([key,label])=><Link key={key} href={isPreview?href('calculator/'+key):'/calculator/'+key} onClick={event=>event.currentTarget.closest('details')?.removeAttribute('open')}>{label}</Link>)}</div></details><span><ShieldCheck size={14}/>Pembayaran aman</span></nav></div>
         </header>
