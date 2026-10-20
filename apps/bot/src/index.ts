@@ -30,6 +30,7 @@ let starting = false,
 let lockPath: string | undefined;
 let pairingTimer: ReturnType<typeof setTimeout> | undefined;
 let halt = false, paused = false;
+let notificationAccess = false;
 let reports = Promise.resolve();
 
 async function api(path: string, body?: unknown) {
@@ -61,6 +62,7 @@ async function startSocket() {
   starting = true;
   try {
     const access = await api("/api/internal/bot/access");
+    notificationAccess = access.data.can_connect === true;
     if (stopping) return;
     if (!access.data.can_connect) {
       paused = true;
@@ -232,8 +234,10 @@ const server = app.listen(config.port, "127.0.0.1", async () => {
     await file.writeFile(String(process.pid));
     await file.close();
     await startSocket();
-  } catch {
-    logger.error("Worker WA gagal start atau sesi dikunci proses lain.");
+  } catch (error) {
+    const text = error instanceof Error ? error.message : "";
+    const reason = text === "Session is in use" ? "SESSION_IN_USE" : /^Backend HTTP \d{3}$/.test(text) ? text.replaceAll(" ", "_").toUpperCase() : "START_FAILED";
+    logger.error({reason}, reason === "SESSION_IN_USE" ? "Sesi WhatsApp sedang digunakan worker lain. Jalankan satu bot manager saja." : "Worker WA belum dapat dimulai. Periksa koneksi backend dan konfigurasi worker.");
     await shutdown();
     process.exitCode = 1;
   }
@@ -242,6 +246,7 @@ const heartbeat = setInterval(async () => {
   if (!config.waEnabled || stopping || starting) return;
   try {
     const access = await api("/api/internal/bot/access");
+    notificationAccess = access.data.can_connect === true;
     if (stopping) return;
     if (!access.data.can_connect) {
       paused = true;
@@ -280,7 +285,7 @@ process.on("disconnect", () => {void shutdown();});
 process.on("message", message => {
   if (validDirectMessage(message)) {
     const active = config.waEnabled && !stopping && !starting && !paused && state.status === "CONNECTED" ? socket : undefined;
-    void deliverDirectMessage(message, active, api).then(success => {
+    void deliverDirectMessage(message, active, notificationAccess).then(success => {
       if (process.connected) process.send?.({type:"store-message-result",id:message.id,success});
     });
     return;

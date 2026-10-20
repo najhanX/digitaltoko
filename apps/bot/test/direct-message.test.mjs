@@ -8,10 +8,10 @@ import { MenuTokens } from '../dist/menu.js';
 const input={type:'store-message',id:'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',phone:'6281234567890',message:'Kode OTP Toko A: 123456'};
 test('notification-only web worker can send OTP but refuses when connection entitlement is revoked',async()=>{
  const sent=[];const socket={sendMessage:async(...args)=>{sent.push(args);}};
- assert.equal(await deliverDirectMessage(input,socket,async()=>({data:{can_connect:true,allowed:false}})),true);
+ assert.equal(await deliverDirectMessage(input,socket,true),true);
  assert.deepEqual(sent,[[input.phone+'@s.whatsapp.net',{text:input.message}]]);
- assert.equal(await deliverDirectMessage(input,socket,async()=>({data:{can_connect:false,allowed:true}})),false);
- assert.equal(await deliverDirectMessage(input,undefined,async()=>({data:{can_connect:true}})),false);
+ assert.equal(await deliverDirectMessage(input,socket,false),false);
+ assert.equal(await deliverDirectMessage(input,undefined,true),false);
  assert.equal(sent.length,1);
 });
 test('manager waits for acknowledgement from the selected worker and matching request id',async()=>{

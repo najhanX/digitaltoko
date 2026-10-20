@@ -67,3 +67,13 @@ Status: rencana disetujui; checkpoint ini dibuat sebelum mengubah modul notifika
 - Email bawaan memakai `MAIL_*` milik platform. SMTP toko sendiri harus memakai alamat pengirim yang diizinkan penyedia (SPF/DKIM sesuai penyedia jika menggunakan domain sendiri). Status "Terkonfigurasi" bukan bukti email sudah sampai; tersedia tombol email uji untuk pengelola toko.
 - Tidak mengubah konfigurasi SMTP nyata, tidak mengganti pilihan pengirim toko yang ada, dan tidak mengklaim pengiriman layanan nyata sudah diuji.
 - Source API Hanshop tidak diubah; tidak ada migrasi MySQL manual untuk API Hanshop pada tahap ini.
+
+## Perbaikan OTP lokal dan benturan manager
+
+- Ditemukan siklus tunggu: request OTP Laravel menunggu manager, sementara worker memanggil endpoint akses Laravel kembali. Server `php artisan serve` lokal memakai satu proses, sehingga panggilan balik gagal saat request awal belum selesai.
+- Pengiriman langsung kini memakai otorisasi request Laravel dan hak notifikasi yang sudah dibaca worker saat koneksi/heartbeat; tidak ada panggilan balik Laravel dalam pengiriman OTP. Pemeriksaan nomor, kondisi socket, status worker, dan lisensi tetap berlaku.
+- Timeout acknowledgement worker 15 detik dan HTTP Laravel 20 detik; error membedakan manager versi lama, worker belum aktif, dan pengiriman yang belum dikonfirmasi.
+- Benturan port manager kini menghasilkan pesan bahwa manager lain sudah berjalan. Error startup worker tidak lagi selalu menyebut sesi terkunci; kondisi sesi terpakai memiliki alasan `SESSION_IN_USE` sendiri.
+- Manager tambahan yang sebelumnya dijalankan agen dihentikan agar tidak berbenturan dengan terminal pengguna. Tidak menghapus sesi WhatsApp; pengguna menjalankan satu `npm run manager:dev` di `apps/bot`.
+- 40 tes backend terkait lulus (540 assertions) dan 43 tes worker lulus. Tes runtime worker mengirim OTP melalui transport simulasi ketika backend sengaja tidak dapat menerima panggilan akses; pengiriman berhasil tanpa request balik. Tes manager juga memverifikasi proses kedua tidak merusak manager pertama saat port berbenturan.
+- Tidak melakukan pengiriman OTP ke nomor nyata dalam pemeriksaan ini.

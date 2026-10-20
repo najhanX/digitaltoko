@@ -23,7 +23,7 @@ export default function makeSocket({auth}) {
   const ev = new EventEmitter();
   const emitClose = code => ev.emit('connection.update', {connection:'close',lastDisconnect:{error:{output:{statusCode:code}}}});
   ev.on('creds.update', update => Object.assign(auth.creds, update));
-  const sock = {ev, authState:auth, user:auth.creds.me, end:()=>emitClose(428), logout:async()=>emitClose(401)};
+  const sock = {ev, authState:auth, user:auth.creds.me, end:()=>emitClose(428), logout:async()=>emitClose(401), sendMessage:async()=>({key:{id:'fixture-message'}})};
   queueMicrotask(() => {
     if (current === 1) {
       ev.emit('connection.update', {qr:'simulation-qr-not-a-real-session'});

@@ -9,6 +9,7 @@ use App\Models\CustomerNotice;
 use App\Models\Store;
 use App\Models\StoreStaff;
 use App\Models\User;
+use App\Services\BotManager;
 use App\Services\CustomerCommerce;
 use App\Services\CustomerDelivery;
 use App\Services\StoreMail;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Page;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 use Tests\TestCase;
@@ -242,5 +244,19 @@ class StoreNotificationsTest extends TestCase
         $store = $this->shop();
         app(StoreMail::class)->send($store, 'buyer@example.com', new CustomerOtpMail($store->name, '123456'));
         Mail::assertSent(CustomerOtpMail::class, fn ($mail) => $mail->from[0]['address'] === 'platform@example.com' && $mail->from[0]['name'] === $store->name && $mail->storeName === $store->name);
+    }
+
+    public function test_otp_transport_failure_distinguishes_old_manager_offline_worker_and_unconfirmed_send(): void
+    {
+        $store = $this->shop();
+        Http::fake(['127.0.0.1:3099/*' => Http::sequence()->push([], 404)->push([], 409)->push([], 503)]);
+        foreach ([404 => 'versi lama', 409 => 'belum aktif', 503 => 'belum mengonfirmasi'] as $status => $text) {
+            try {
+                app(BotManager::class)->command($store, 'message', ['phone' => '6281234567890', 'message' => 'Test only']);
+                $this->fail('Unsuccessful OTP cannot be acknowledged as sent.');
+            } catch (ValidationException $error) {
+                $this->assertStringContainsString($text, $error->errors()['connection'][0]);
+            }
+        }
     }
 }

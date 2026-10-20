@@ -161,6 +161,13 @@ const server = app.listen(port, "127.0.0.1", () => {
   console.info(`Bot manager siap di 127.0.0.1:${port}.`);
   for (const entry of [...entries.values()].slice(0, maxWorkers)) void start(entry).catch(() => {});
 });
+server.on("error", error => {
+  closing = true;
+  process.exitCode = 1;
+  console.error((error as NodeJS.ErrnoException).code === "EADDRINUSE"
+    ? `Port ${port} sudah dipakai bot manager lain. Hentikan manager yang lama; jangan menjalankan dua manager untuk sesi yang sama.`
+    : "Bot manager gagal membuka port. Periksa konfigurasi layanan.");
+});
 async function shutdown() {
   if (closing) return;
   closing = true;

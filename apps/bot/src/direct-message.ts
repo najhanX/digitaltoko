@@ -26,7 +26,7 @@ export function sendDirectMessage(child: ChildProcess, phone: string, message: s
             if (result?.type === 'store-message-result' && result.id === input.id) done(result.success === true);
         };
         const stopped = () => done(false);
-        const timer = setTimeout(stopped, 6000);
+        const timer = setTimeout(stopped, 15_000);
         child.on('message', receive);
         child.once('exit', stopped);
         child.once('disconnect', stopped);
@@ -34,11 +34,10 @@ export function sendDirectMessage(child: ChildProcess, phone: string, message: s
     });
 }
 
-export async function deliverDirectMessage(input: unknown, socket: WASocket | undefined, api: (path: string) => Promise<unknown>): Promise<boolean> {
-    if (!validDirectMessage(input) || !socket) return false;
+export async function deliverDirectMessage(input: unknown, socket: WASocket | undefined, canSend: boolean): Promise<boolean> {
+    // Laravel already authorized this IPC request. Calling it again would deadlock artisan serve.
+    if (!validDirectMessage(input) || !socket || canSend !== true) return false;
     try {
-        const access = await api('/api/internal/bot/access') as { data?: { can_connect?: boolean } };
-        if (access.data?.can_connect !== true) return false;
         await socket.sendMessage(input.phone + '@s.whatsapp.net', { text: input.message });
         return true;
     } catch { return false; }

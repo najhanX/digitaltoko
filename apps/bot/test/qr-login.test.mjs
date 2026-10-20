@@ -14,6 +14,7 @@ for (const storageFailure of [false, true]) {
     const directory = await mkdtemp(join(tmpdir(),'digitaltoko-qr-login-'));
     const storeId = randomUUID(), connectionId = randomUUID(), token = randomBytes(32).toString('hex');
     const events = [];
+    let otpInFlight = false, reentrantAccessRequests = 0;
     const backend = createServer(async (req,res) => {
       assert.equal(req.headers.authorization, 'Bearer '+token);
       res.setHeader('Content-Type','application/json');
@@ -25,12 +26,13 @@ for (const storageFailure of [false, true]) {
         res.end(JSON.stringify({data:[]}));
       } else {
         assert.equal(req.url, '/api/internal/bot/access');
+        if (otpInFlight) {reentrantAccessRequests++;res.statusCode=503;res.end('{}');return;}
         res.end(JSON.stringify({status:'SUCCESS',data:{can_connect:true,allowed:true,connection_id:connectionId}}));
       }
     });
     await new Promise(resolve => backend.listen(0,'127.0.0.1',resolve));
     const child = spawn(process.execPath,['--import','./test/fixtures/qr-login-loader.mjs','dist/index.js'], {
-      cwd:resolve('.'),windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,
+      cwd:resolve('.'),windowsHide:true,stdio:['ignore','pipe','pipe','ipc'],env:{...process.env,
         STORE_ID:storeId,CONNECTION_ID:connectionId,WORKER_TOKEN:token,WA_ENABLED:'true',PAIRING_METHOD:'qr',BOT_PHONE:'6281234567890',
         PORT:'0',WEB_BASE_URL:`http://127.0.0.1:${backend.address().port}`,SESSION_ROOT:directory,
         QR_TEST_STORAGE_FAILURE:String(storageFailure),LOG_LEVEL:'silent'},
@@ -56,6 +58,16 @@ for (const storageFailure of [false, true]) {
         const accepted = events.findIndex(event=>event.status==='PAIRING');
         assert.equal(events[accepted+1].status,'CONNECTING');
         assert.equal(events[accepted+1].qr_image,undefined);
+        otpInFlight = true;
+        const id = randomUUID();
+        const reply = new Promise((resolve,reject)=>{
+          const deadline=setTimeout(()=>reject(new Error('OTP must finish without calling the busy Laravel backend')),1500);
+          child.on('message',message=>{if(message.type==='store-message-result' && message.id===id){clearTimeout(deadline);resolve(message);}});
+        });
+        child.send({type:'store-message',id,phone:'6281234567890',message:'OTP fixture only'});
+        assert.equal((await reply).success,true);
+        assert.equal(reentrantAccessRequests,0,'OTP delivery cannot re-enter a single-process Laravel request');
+        otpInFlight = false;
       }
     } finally {
       const stopped = new Promise(resolve => child.once('exit',resolve));

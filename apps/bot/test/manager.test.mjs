@@ -45,6 +45,13 @@ test('manager authenticates, isolates sessions, starts idempotently and resumes 
   async function connect(entry){return fetch(base+`/stores/${entry.store_id}/connect`,{method:'POST',headers,body:JSON.stringify(entry)});}
   try{
     await startManager();
+    const duplicate=spawn(process.execPath,['dist/manager.js'],{cwd:resolve('.'),windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,BOT_MANAGER_TOKEN:token,MANAGER_PORT:String(managerPort),SESSION_ROOT:root,WEB_BASE_URL:`http://127.0.0.1:${backend.address().port}`}});
+    let duplicateOutput='';duplicate.stderr.on('data',chunk=>{duplicateOutput+=chunk;});
+    const duplicateDeadline=setTimeout(()=>duplicate.kill('SIGKILL'),5000);
+    const duplicateExit=await new Promise(resolve=>duplicate.once('exit',resolve));clearTimeout(duplicateDeadline);
+    assert.equal(duplicateExit,1);
+    assert.match(duplicateOutput,/sudah dipakai bot manager lain/);
+    assert.equal((await fetch(base+'/health',{headers})).status,200,'original manager must remain usable');
     assert.equal((await fetch(base+'/health')).status,401);
     assert.equal((await fetch(base+'/qr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload:'000201010211TEST-ONLY'})})).status,401);
     assert.equal((await fetch(base+'/qr',{method:'POST',headers,body:JSON.stringify({payload:'short'})})).status,422);
