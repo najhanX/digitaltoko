@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import Brand from './Brand';
 import ThemeToggle from './ThemeToggle';
 import PreviewBar from './PreviewBar';
@@ -12,7 +12,7 @@ const sidebarOffsets = new Map<string, number>();
 type NavSection = 'catalog' | 'sales' | 'channels' | 'management';
 type NavLink = { href: string; label: string; icon: LucideIcon; active: boolean; section?: NavSection };
 
-function SidebarSection({label, icon: Icon, links, storageKey, children}: {label:string; icon:LucideIcon; links:NavLink[]; storageKey:string; children:ReactNode}) {
+function SidebarSection({label, icon: Icon, links, storageKey, collapsed, onExpand, children}: {label:string; icon:LucideIcon; links:NavLink[]; storageKey:string; collapsed:boolean; onExpand:()=>void; children:ReactNode}) {
     const id = useId();
     const activeHref = links.find(link => link.active)?.href;
     const [open, setOpen] = useState(() => {
@@ -21,15 +21,16 @@ function SidebarSection({label, icon: Icon, links, storageKey, children}: {label
     });
     useEffect(() => { if (activeHref) setOpen(true); }, [activeHref]);
     function toggle() {
-        const next = !open;
+        const next = collapsed || !open;
+        if (collapsed) onExpand();
         setOpen(next);
         try { sessionStorage.setItem(storageKey, next ? 'open' : 'closed'); } catch { /* Navigation remains usable without browser storage. */ }
     }
     return <div className={'sidebar-section '+(activeHref?'has-active':'')}>
-        <button type="button" className="sidebar-section-toggle" aria-expanded={open} aria-controls={id} onClick={toggle}>
-            <Icon size={17}/><span>{label}</span><ChevronDown size={15} className={open?'is-open':''}/>
+        <button type="button" className="sidebar-section-toggle" aria-label={label} title={label} aria-expanded={!collapsed && open} aria-controls={id} onClick={toggle}>
+            <Icon size={17} aria-hidden="true"/><span>{label}</span><ChevronDown size={15} aria-hidden="true" className={open?'is-open':''}/>
         </button>
-        <div id={id} className="sidebar-section-links" hidden={!open}>{children}</div>
+        <div id={id} className="sidebar-section-links" hidden={collapsed || !open}>{children}</div>
     </div>;
 }
 export default function WorkspaceLayout({ title, description, role = 'owner', canCreate: _canCreate, children, actions, eyebrow, breadcrumb, preview = false }: {
@@ -43,6 +44,16 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     const store = stores.find(item => item.id === context?.currentStoreId);
     const permissions = context?.permissions ?? [];
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const collapseKey = 'digitaltoko.sidebar.collapsed.'+role;
+    useLayoutEffect(() => {
+        try { setSidebarCollapsed(localStorage.getItem(collapseKey) === '1'); } catch { /* Expanded navigation is the fallback when storage is unavailable. */ }
+    }, [collapseKey]);
+    function changeSidebarCollapsed(next: boolean) {
+        saveSidebarScroll();
+        setSidebarCollapsed(next);
+        try { localStorage.setItem(collapseKey, next?'1':'0'); } catch { /* The current page can still change its sidebar width. */ }
+    }
     const navigationRef = useRef<HTMLElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const path = page.url.split('?')[0];
@@ -53,20 +64,20 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     function saveSidebarScroll() {
         const sidebar = navigationRef.current;
         if (!sidebar || sidebar.clientHeight === 0) return;
-        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop');
+        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop'+(sidebarCollapsed?'.collapsed':''));
         sidebarOffsets.set(key, sidebar.scrollTop);
         try { sessionStorage.setItem(key, String(sidebar.scrollTop)); } catch { /* In-memory restoration remains available when storage is blocked. */ }
     }
     useLayoutEffect(() => {
         const sidebar = navigationRef.current;
         if (!sidebar || sidebar.clientHeight === 0) return;
-        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop');
+        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop'+(sidebarCollapsed?'.collapsed':''));
         let offset = sidebarOffsets.get(key);
         if (offset === undefined) {
             try { const saved = sessionStorage.getItem(key); if (saved !== null) offset = Number(saved); } catch { /* Storage can be unavailable in private browser settings. */ }
         }
         if (offset !== undefined && Number.isFinite(offset) && offset >= 0) sidebar.scrollTop = offset;
-    }, [sidebarScrollKey, page.url, mobileOpen]);
+    }, [sidebarScrollKey, page.url, mobileOpen, sidebarCollapsed]);
     useEffect(() => { setMobileOpen(false); }, [page.url]);
     useEffect(() => {
         if (!mobileOpen) return;
@@ -129,34 +140,35 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     function navigation(links: NavLink[]) {
         return links.map(({href,label,icon:Icon,active}) => preview ?
             <div key={label} className={'nav-item '+(label === 'Ringkasan'?'selected':'')}><Icon size={18}/><span>{label}</span></div> :
-            <Link key={label} onBefore={saveSidebarScroll} href={href} className={'nav-item '+(active?'selected':'')} aria-current={active?'page':undefined}><Icon size={18}/><span>{label}</span></Link>);
+            <Link key={label} onBefore={saveSidebarScroll} href={href} className={'nav-item '+(active?'selected':'')} aria-label={label} title={label} aria-current={active?'page':undefined}><Icon size={18}/><span>{label}</span></Link>);
     }
     return <>
         <Head title={title}/>
         {preview && <PreviewBar/>}
-        <div className={'panel-layout panel-surface workspace-shell '+(role!=='admin'?'compact-navigation ':'')+(mobileOpen?'nav-open':'')}>
+        <div className={'panel-layout panel-surface workspace-shell '+(role!=='admin'?'compact-navigation ':'')+(mobileOpen?'nav-open ':'')+(sidebarCollapsed?'sidebar-collapsed':'')}>
             {mobileOpen && <button type="button" className="sidebar-backdrop" aria-label="Tutup menu navigasi" tabIndex={-1} onClick={() => setMobileOpen(false)}/>}
             <aside ref={navigationRef} onScroll={saveSidebarScroll} className="sidebar workspace-sidebar" id="workspace-navigation" aria-label="Navigasi panel" role={mobileOpen?'dialog':undefined} aria-modal={mobileOpen?true:undefined}>
-                <div className="sidebar-brand"><Brand/><button type="button" className="icon-button mobile-only" aria-label="Tutup menu" onClick={() => setMobileOpen(false)}><X size={20}/></button></div>
+                <div className="sidebar-brand"><Brand/><Link className="sidebar-mini-brand" href="/" aria-label="DigitalToko" title="DigitalToko"><img src="/brand/digitaltoko-mark.png" alt="" width={48} height={48}/></Link><button type="button" className="icon-button mobile-only" aria-label="Tutup menu" onClick={() => setMobileOpen(false)}><X size={20}/></button></div>
                 <div className="sidebar-label">{role === 'admin'?'ADMIN PLATFORM':role === 'staff'?'RUANG STAFF':'RUANG OWNER'}</div>
                 <nav className="workspace-nav">{navigation(globalLinks)}</nav>
                 {role !== 'admin' && !preview && <>
                     <div className="sidebar-label">{role === 'owner'?'RUANG TOKO':'TOKO ANDA'}</div>
+                    {role === 'owner' && stores.length > 0 && <button type="button" className="icon-button sidebar-store-shortcut" aria-label={store?'Pilih toko: '+store.name:'Pilih toko'} title={store?.name ?? 'Pilih toko'} onClick={() => changeSidebarCollapsed(false)}><Store size={19}/></button>}
                     {role === 'owner' && stores.length > 0 && <label className="store-switcher"><span className="sr-only">Pilih toko</span><select aria-label="Pilih toko" value={store?.id ?? ''} onChange={event => {saveSidebarScroll();if(event.target.value === '__browse')router.get('/owner/stores');else if(event.target.value)router.get('/owner/stores/'+event.target.value);}}><option value="">Pilih toko</option>{stores.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}<option value="__browse">Cari di semua toko…</option></select></label>}
-                    {role === 'staff' && store && <div className="sidebar-store"><Store size={18}/><strong>{store.name}</strong></div>}
+                    {role === 'staff' && store && <div className="sidebar-store" title={store.name}><Store size={18}/><strong>{store.name}</strong></div>}
                     {store ? <nav className="workspace-nav workspace-store-nav" aria-label="Menu toko">
                         {navigation(scopedLinks.filter(link => !link.section))}
                         {sections.map(section => {
                             const links = scopedLinks.filter(link => link.section === section.id);
-                            return links.length > 0 && <SidebarSection key={store.id+':'+section.id} label={section.label} icon={section.icon} links={links} storageKey={sidebarScrollKey+'.groups.'+store.id+'.'+section.id}>{navigation(links)}</SidebarSection>;
+                            return links.length > 0 && <SidebarSection key={store.id+':'+section.id} label={section.label} icon={section.icon} links={links} collapsed={sidebarCollapsed && !mobileOpen} onExpand={() => changeSidebarCollapsed(false)} storageKey={sidebarScrollKey+'.groups.'+store.id+'.'+section.id}>{navigation(links)}</SidebarSection>;
                         })}
                     </nav> : <p className="sidebar-hint">{stores.length?'Pilih toko untuk membuka langganan dan pengaturannya.':'Toko yang Anda buat akan muncul di sini.'}</p>}
                 </>}
-                <div className="sidebar-bottom"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><div><strong>{viewer?.name ?? 'DigitalToko'}</strong><small>{role === 'staff'?'Staff toko':role === 'admin'?'Administrator':'Pemilik toko'}</small></div></div>
+                <div className="sidebar-bottom" title={viewer?.name}><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><div><strong>{viewer?.name ?? 'DigitalToko'}</strong><small>{role === 'staff'?'Staff toko':role === 'admin'?'Administrator':'Pemilik toko'}</small></div></div>
             </aside>
             <div className="panel-main">
                 <header className="panel-top workspace-topbar">
-                    <div className="topbar-location"><button ref={menuButtonRef} type="button" className="icon-button mobile-only" aria-label="Buka menu" aria-controls="workspace-navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21}/></button><span>{role === 'owner'?'Panel owner':role === 'staff'?'Panel staff':'Panel admin'} <span className="breadcrumb-separator">/</span> <strong>{breadcrumb ?? (scoped?store?.name:null) ?? 'DigitalToko'}</strong></span></div>
+                    <div className="topbar-location"><button type="button" className="icon-button sidebar-collapse-toggle" aria-label={sidebarCollapsed?'Perluas sidebar':'Perkecil sidebar'} title={sidebarCollapsed?'Perluas sidebar':'Perkecil sidebar'} aria-controls="workspace-navigation" aria-expanded={!sidebarCollapsed} onClick={() => changeSidebarCollapsed(!sidebarCollapsed)}>{sidebarCollapsed?<PanelLeftOpen size={20}/>:<PanelLeftClose size={20}/>}</button><button ref={menuButtonRef} type="button" className="icon-button mobile-only" aria-label="Buka menu" aria-controls="workspace-navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21}/></button><span>{role === 'owner'?'Panel owner':role === 'staff'?'Panel staff':'Panel admin'} <span className="breadcrumb-separator">/</span> <strong>{breadcrumb ?? (scoped?store?.name:null) ?? 'DigitalToko'}</strong></span></div>
                     <div className="panel-top-right"><ThemeToggle/><NotificationBell summary={notificationSummary} preview={preview}/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div><Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
                 </header>
                 <main className="workspace-content panel-content">

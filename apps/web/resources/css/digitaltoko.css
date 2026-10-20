@@ -501,3 +501,59 @@
 @media(max-width:640px){.store-settings-grid{gap:14px}.store-settings-grid>.onboarding-card{padding:17px}.store-settings-card-heading{gap:8px;margin-bottom:17px}.store-settings-grid h2{font-size:var(--text-body)}.store-settings-details>div{grid-template-columns:85px minmax(0,1fr);gap:12px}.store-settings-template-preview{gap:14px}.store-settings-template-preview>.template-mini{width:115px;height:90px;grid-template-rows:6px 27px 1fr;padding:8px}.store-settings-mode{align-items:flex-start}.store-settings-mode p{padding-left:0}.store-settings-mode .store-status{font-size:var(--text-small)}}
 
 .store-settings-grid dl.store-settings-details{display:block;margin:0}
+
+/* Consistent inset for the tables in Produk & harga, including both catalog tabs. */
+.catalog-data-card{display:grid;gap:18px;padding:24px;min-width:0}
+.catalog-data-card>.data-table-header{padding:0;border:0}
+.catalog-data-card>.list-filters,.catalog-data-card>.list-pagination{margin:0}
+.catalog-data-card>.catalog-bulk-toolbar{padding:0}
+.catalog-data-card>.table-scroll{width:100%;min-width:0;margin:0}
+@media(max-width:700px){.catalog-data-card{padding:16px;gap:16px}}
+
+/* Page sections remain visibly clickable in both panel themes. */
+.workspace-content>.content-tabs{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;width:fit-content;max-width:100%;padding:6px;margin-bottom:24px;border:1px solid var(--border);border-radius:14px;background:var(--panel-soft)}
+.workspace-content>.content-tabs>a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 18px;border:1px solid var(--border);border-radius:9px;background:var(--panel-card);color:var(--panel-text);font-size:var(--text-body);font-weight:600;line-height:1.4;text-align:center;transition:background .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease}
+.workspace-content>.content-tabs>a:hover{border-color:var(--primary);color:var(--primary)}
+.workspace-content>.content-tabs>a.selected{background:var(--primary);border-color:var(--primary);color:var(--panel-card);box-shadow:0 2px 5px #17244012}
+.workspace-content>.content-tabs>a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media(max-width:700px){.workspace-content>.content-tabs{width:100%}.workspace-content>.content-tabs>a{flex:1 1 auto;padding:10px 12px}}
+@media(prefers-reduced-motion:reduce){.workspace-content>.content-tabs>a{transition:none}}
+
+/* Clickable accordion rows and a persistent desktop icon rail. */
+.sidebar-section-toggle{cursor:pointer;position:relative;isolation:isolate}
+.sidebar-section-toggle>*{pointer-events:none}
+.sidebar-mini-brand,.sidebar-store-shortcut{display:none}
+.sidebar-collapse-toggle{flex-shrink:0}
+@media(min-width:701px){
+.panel-surface.workspace-shell{--sidebar-motion:280ms cubic-bezier(.22,1,.36,1);transition:grid-template-columns var(--sidebar-motion)}
+.panel-surface.workspace-shell.sidebar-collapsed{grid-template-columns:80px minmax(0,1fr)}
+.workspace-shell .workspace-sidebar{transition:padding-inline var(--sidebar-motion)}
+.workspace-shell.sidebar-collapsed .workspace-sidebar{padding-inline:10px}
+.workspace-shell .sidebar-brand{position:relative;height:56px;isolation:isolate}
+.workspace-shell.compact-navigation .sidebar-brand{height:48px}
+.workspace-shell .sidebar-brand>.brand{flex-shrink:0;transition:opacity 140ms ease 90ms;white-space:nowrap}
+.workspace-shell .sidebar-mini-brand{display:grid;place-items:center;position:absolute;left:0;top:50%;width:48px;height:48px;transform:translateY(-50%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 140ms ease,visibility 140ms}
+.sidebar-mini-brand img{display:block;width:48px;height:48px;object-fit:contain}
+.sidebar-collapsed .sidebar-brand>.brand{opacity:0;visibility:hidden;pointer-events:none;transition-delay:0ms}
+.workspace-shell.sidebar-collapsed .sidebar-mini-brand{left:6px;opacity:1;visibility:visible;pointer-events:auto;transition-delay:80ms}
+.workspace-shell .sidebar-label{height:18px;line-height:18px;white-space:nowrap;overflow:hidden;transition:opacity 120ms ease}
+.workspace-shell.sidebar-collapsed .sidebar-label{opacity:0}
+.workspace-shell .nav-item,.workspace-shell .sidebar-section-toggle{height:44px;min-height:44px;flex-wrap:nowrap;overflow:hidden;transition:background .18s,color .18s,gap var(--sidebar-motion)}
+.workspace-shell .nav-item>svg,.workspace-shell .sidebar-section-toggle>svg:first-child{flex-shrink:0;width:18px;height:18px}
+.workspace-shell .nav-item>span,.workspace-shell .sidebar-section-toggle>span,.workspace-shell .sidebar-bottom>div,.workspace-shell .sidebar-store>strong{white-space:nowrap;overflow:hidden;transition:opacity 140ms ease 90ms;opacity:1}
+.workspace-shell .sidebar-bottom .avatar,.workspace-shell .sidebar-store>svg{flex-shrink:0}
+.workspace-shell.sidebar-collapsed .workspace-nav{grid-template-columns:minmax(0,1fr);width:44px;min-width:0;margin-inline:8px 0}
+.workspace-shell.sidebar-collapsed .sidebar-section{min-width:0}
+.workspace-shell.sidebar-collapsed .nav-item,.workspace-shell.sidebar-collapsed .sidebar-section-toggle{position:relative;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;justify-content:center;gap:0;border-radius:10px}
+.workspace-shell.sidebar-collapsed .nav-item>span,.workspace-shell.sidebar-collapsed .sidebar-section-toggle>span,.workspace-shell.sidebar-collapsed .sidebar-section-toggle>svg:last-child{position:absolute;width:0;min-width:0;overflow:hidden}
+.sidebar-collapsed .nav-item>span,.sidebar-collapsed .sidebar-section-toggle>span,.sidebar-collapsed .sidebar-section-toggle>svg:last-child,.sidebar-collapsed .sidebar-bottom>div,.sidebar-collapsed .sidebar-store>strong{opacity:0;visibility:hidden;pointer-events:none;transition-delay:0ms}
+.sidebar-collapsed .sidebar-section-links{display:none}
+.sidebar-collapsed .store-switcher,.sidebar-collapsed .sidebar-hint{display:none}
+.sidebar-collapsed .sidebar-store-shortcut{display:flex;width:44px;height:44px;padding:0;justify-content:center;margin:0 0 10px 8px;min-height:44px;border-radius:10px}
+.sidebar-collapsed .sidebar-store{overflow:hidden}
+.workspace-shell .sidebar-bottom{overflow:hidden}
+.workspace-shell .sidebar-bottom>div{flex-shrink:0}
+.workspace-shell.sidebar-collapsed .sidebar-bottom{padding-left:13px}
+}
+@media(max-width:700px){.sidebar-collapse-toggle{display:none}}
+@media(prefers-reduced-motion:reduce){.panel-surface.workspace-shell,.workspace-shell .workspace-sidebar,.workspace-shell .sidebar-brand>.brand,.workspace-shell .sidebar-mini-brand,.workspace-shell .sidebar-label,.workspace-shell .nav-item,.workspace-shell .sidebar-section-toggle,.workspace-shell .nav-item>span,.workspace-shell .sidebar-section-toggle>span,.workspace-shell .sidebar-bottom>div,.workspace-shell .sidebar-store>strong{transition:none}}

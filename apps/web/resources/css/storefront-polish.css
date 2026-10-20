@@ -82,6 +82,13 @@
 .sf-site .ng-hero-copy { padding: 32px; }
 .sf-site .ng-hero-copy h1 { font-size: clamp(30px,3.8vw,49px); line-height: 1.12; }
 .sf-site .ng-hero-copy>p { font-size:var(--text-small); line-height: 1.85; max-width: 450px; }
+.sf-site .ng-carousel-frame .ng-hero-copy { display:flex;flex-direction:column;align-items:flex-start;gap:10px;height:calc(100% - 54px);max-height:calc(100% - 54px);padding:24px 28px;overflow:hidden; }
+.sf-site .ng-carousel-frame .ng-hero-copy :is(h1,h2) { display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;flex-shrink:0;margin:0;font-size:clamp(26px,3.2vw,42px);line-height:1.12;overflow-wrap:anywhere; }
+.sf-site .ng-carousel-frame .ng-hero-copy>p { display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:0;margin:0;line-height:1.6; }
+.sf-site .ng-carousel-frame .ng-hero-copy>.ng-eyebrow { flex-shrink:0;font-size:12px;line-height:1.4; }
+.sf-site .ng-carousel-frame .ng-hero-copy>.ng-button { flex-shrink:0;min-height:40px;padding:10px 16px; }
+.sf-site .ng-carousel-frame .ng-hero-copy>.ng-hero-caption { flex-shrink:0;margin-top:0; }
+@media(max-width:700px){.sf-site .ng-carousel-frame .ng-hero-copy{padding:20px;gap:9px}.sf-site .ng-carousel-frame .ng-hero-copy>.ng-hero-caption{display:none}}
 .sf-site .ng-benefits { padding: 22px 8px; gap: 18px; }
 .sf-site .ng-flash { padding: 21px; margin-top: 28px; }
 .sf-site .ng-section-heading { margin-bottom: 18px; }
