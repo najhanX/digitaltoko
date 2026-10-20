@@ -18,7 +18,7 @@ class BotConnectionController extends Controller
     public function show(Request $request, Store $store, BotManager $manager): Response
     {
         $role = BotConnection::access($request, $store);
-        abort_unless(in_array($store->category, ['bot', 'full'], true), 404);
+        abort_unless(in_array($store->category, ['bot', 'web', 'full'], true), 404);
         $canManage = $role === 'owner' || in_array('bot.manage', $request->user('staff')->permissions ?? [], true);
 
         Inertia::encryptHistory();

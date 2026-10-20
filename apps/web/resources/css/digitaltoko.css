@@ -557,3 +557,5 @@
 }
 @media(max-width:700px){.sidebar-collapse-toggle{display:none}}
 @media(prefers-reduced-motion:reduce){.panel-surface.workspace-shell,.workspace-shell .workspace-sidebar,.workspace-shell .sidebar-brand>.brand,.workspace-shell .sidebar-mini-brand,.workspace-shell .sidebar-label,.workspace-shell .nav-item,.workspace-shell .sidebar-section-toggle,.workspace-shell .nav-item>span,.workspace-shell .sidebar-section-toggle>span,.workspace-shell .sidebar-bottom>div,.workspace-shell .sidebar-store>strong{transition:none}}
+
+.notification-settings-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:24px}.notification-settings-grid .card-section-heading{flex-wrap:wrap}.notification-settings-grid .card-section-heading h2{font-size:19px}.notification-settings-grid .card-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}@media(max-width:900px){.notification-settings-grid{grid-template-columns:1fr}}

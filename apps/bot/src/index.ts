@@ -8,6 +8,7 @@ import { loadConfig } from "./config.js";
 import { MenuTokens } from "./menu.js";
 import { createNoticePump } from "./commerce.js";
 import { handleCustomerMessage } from "./customer.js";
+import { deliverDirectMessage, validDirectMessage } from "./direct-message.js";
 import {
   createAtomicCredentialWriter,
   createCredentialSaver,
@@ -277,6 +278,13 @@ process.on("SIGTERM", () => {
 });
 process.on("disconnect", () => {void shutdown();});
 process.on("message", message => {
+  if (validDirectMessage(message)) {
+    const active = config.waEnabled && !stopping && !starting && !paused && state.status === "CONNECTED" ? socket : undefined;
+    void deliverDirectMessage(message, active, api).then(success => {
+      if (process.connected) process.send?.({type:"store-message-result",id:message.id,success});
+    });
+    return;
+  }
   if ((message as {type?: string})?.type === "notifications") {void noticePump.trigger();return;}
   if ((message as {type?: string})?.type !== "logout") return;
   stopping = true;

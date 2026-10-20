@@ -27,6 +27,7 @@ use App\Http\Controllers\StoreClosureController;
 use App\Http\Controllers\StoreDesignController;
 use App\Http\Controllers\StorefrontPageController;
 use App\Http\Controllers\StoreManagementController;
+use App\Http\Controllers\StoreNotificationController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\VerificationController;
@@ -62,6 +63,8 @@ Route::post('/account/verify', [CustomerAuthController::class, 'verify'])->middl
 Route::post('/account/password', [CustomerAuthController::class, 'password'])->middleware('throttle:6,1,commerce-account-password');
 Route::post('/account/email/otp', [CustomerAuthController::class, 'emailOtp'])->middleware('throttle:3,1,commerce-account-email-otp');
 Route::post('/account/email/verify', [CustomerAuthController::class, 'emailVerify'])->middleware('throttle:10,1,commerce-account-email-verify');
+Route::post('/account/phone/otp', [CustomerAuthController::class, 'phoneOtp'])->middleware('throttle:3,1');
+Route::post('/account/phone/verify', [CustomerAuthController::class, 'phoneVerify'])->middleware('throttle:10,1');
 Route::post('/account/logout', [CustomerAuthController::class, 'logout']);
 Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/articles', [StoreArticleController::class, 'index']);
@@ -169,6 +172,9 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/owner/stores', [PanelController::class, 'stores'])->middleware('auth:web');
     Route::get('/owner/stores/{store}', [PanelController::class, 'store'])->middleware('auth:web');
     Route::get('/stores/{store}/bot-state', BotStateController::class)->middleware('throttle:60,1');
+    Route::get('/stores/{store}/notifications', [StoreNotificationController::class, 'show']);
+    Route::patch('/stores/{store}/notifications', [StoreNotificationController::class, 'update']);
+    Route::post('/stores/{store}/notifications/test', [StoreNotificationController::class, 'test'])->middleware('throttle:3,1');
     Route::get('/stores/{store}/bot', [BotConnectionController::class, 'show'])->name('stores.bot');
     Route::post('/stores/{store}/bot/connect', [BotConnectionController::class, 'connect'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/bot/disconnect', [BotConnectionController::class, 'disconnect'])->middleware('throttle:6,1');

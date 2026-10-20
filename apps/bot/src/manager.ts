@@ -6,6 +6,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { mkdir, readFile, rename, rm, writeFile, unlink } from "node:fs/promises";
 import { resolve, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { sendDirectMessage } from "./direct-message.js";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Entry = {store_id: string; connection_id: string; phone: string; method: "qr" | "code"; worker_token: string};
@@ -111,6 +112,13 @@ app.post("/qr", async (req,res)=>{
   catch {res.status(422).json({status:"FAILED",message:"Payload QR tidak valid."});}
 });
 app.get("/health", (_req, res) => res.json({status: "SUCCESS", workers: children.size}));
+app.post("/stores/:store/message", async (req,res)=>{
+  if(!uuid.test(String(req.params.store)) || !/^62[1-9][0-9]{7,12}$/.test(req.body?.phone) || typeof req.body?.message!=="string" || !req.body.message.length || req.body.message.length>6000){res.sendStatus(422);return;}
+  const child=children.get(String(req.params.store));
+  if(closing || !child?.connected || child.exitCode!==null){res.sendStatus(409);return;}
+  try {await sendDirectMessage(child,req.body.phone,req.body.message);res.json({status:"SUCCESS"});}
+  catch {res.status(503).json({status:"FAILED"});}
+});
 app.post("/stores/:store/notifications", (req,res)=>{
   if(!uuid.test(String(req.params.store))){res.sendStatus(422);return;}
   const child=children.get(String(req.params.store));

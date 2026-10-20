@@ -72,16 +72,17 @@ class CustomerNoticeDispatchTest extends TestCase
         $this->assertNull($notice->fresh()->wa_sent_at);
     }
 
-    public function test_web_store_uses_fallback_job_without_waiting_for_commerce_scheduler(): void
+    public function test_web_store_signals_its_own_worker_without_using_platform_fallback(): void
     {
         $store = $this->shop('web');
         $notice = $this->notice($store);
-        $this->mock(HanshopIdentity::class, function ($mock) use ($store) {
-            $mock->shouldReceive('call')->once()->with('message', \Mockery::on(fn ($data) => $data['store_id'] === $store->id))->andReturn(['status' => 'SUCCESS']);
+        $this->mock(HanshopIdentity::class, function ($mock) {
+            $mock->shouldNotReceive('call');
         });
+        Http::fake(['127.0.0.1:3099/*' => Http::response(['status' => 'SUCCESS'])]);
         (new SendCustomerNotice($notice->id))->handle(app(CustomerDelivery::class), app(BotManager::class));
-        $this->assertNotNull($notice->fresh()->wa_sent_at);
-        Http::assertNothingSent();
+        $this->assertNull($notice->fresh()->wa_sent_at);
+        Http::assertSent(fn ($request) => $request->url() === 'http://127.0.0.1:3099/stores/'.$store->id.'/notifications');
     }
 
     public function test_manager_failure_keeps_outbox_for_retry_and_does_not_undo_business_transaction(): void

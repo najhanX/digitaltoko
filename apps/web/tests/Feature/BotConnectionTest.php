@@ -100,16 +100,13 @@ class BotConnectionTest extends TestCase
         Http::assertSentCount(2);
     }
 
-    public function test_draft_web_expired_and_suspended_stores_cannot_start_a_worker(): void
+    public function test_draft_expired_and_suspended_stores_cannot_start_a_worker(): void
     {
         foreach (['draft', 'expired', 'suspended', 'purging'] as $status) {
             $store = $this->store($status);
             $this->actingAs($store->owner)->post($this->url($store, '/connect'), ['phone' => '6281234567890', 'method' => 'qr'])->assertSessionHasErrors('connection');
             $this->assertNull($store->fresh()->worker_token_hash);
         }
-        $store = $this->store('active', 'web');
-        $this->actingAs($store->owner)->get($this->url($store))->assertNotFound();
-        $this->post($this->url($store, '/connect'), ['phone' => '6281234567890', 'method' => 'qr'])->assertSessionHasErrors('connection');
         Http::assertNothingSent();
     }
 

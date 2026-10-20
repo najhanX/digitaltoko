@@ -17,7 +17,8 @@ class StaffPermissions
             'wallet.settlement' => 'Catat pencairan saat toko berhenti', 'web.manage' => 'Kelola template & branding',
             'articles.view' => 'Lihat artikel toko', 'articles.manage' => 'Tulis, terbitkan & hapus artikel',
             'checkout.manage' => 'Atur guest / wajib login', 'bot.view' => 'Lihat koneksi WhatsApp',
-            'bot.manage' => 'Pairing / reconnect WhatsApp', 'subscription.view' => 'Lihat masa aktif',
+            'bot.manage' => 'Pairing / reconnect WhatsApp', 'notifications.view' => 'Lihat pengaturan notifikasi & email',
+            'notifications.manage' => 'Kelola pengirim email & kirim email uji', 'subscription.view' => 'Lihat masa aktif',
             'subscription.renew' => 'Buat invoice perpanjangan'];
     }
 }

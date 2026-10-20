@@ -29,9 +29,9 @@ class SendCustomerNotice implements ShouldQueue
             return;
         }
         $store = $notice->store;
+        $delivery->send($notice);
         if (! $notice->wa_sent_at && $store->canConnectBot() && BotConnection::state($store, false)['status'] === 'CONNECTED' && $manager->configured()) {
             $manager->command($store, 'notifications');
         }
-        $delivery->send($notice);
     }
 }

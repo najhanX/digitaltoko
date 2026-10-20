@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Mail\OwnerOtpMail;
+use App\Mail\CustomerOtpMail;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
 use App\Models\CustomerLedger;
@@ -15,6 +15,7 @@ use App\Models\StoreStaff;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Models\User;
+use App\Services\BotManager;
 use App\Services\CommerceModules;
 use App\Services\CustomerCommerce;
 use App\Services\CustomerFulfillment;
@@ -24,6 +25,7 @@ use App\Services\CustomQris;
 use App\Services\GuestCheckout;
 use App\Support\HanshopIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -660,12 +662,15 @@ class CustomerCommerceTest extends TestCase
         $s = $this->store();
         $other = $this->store();
         $otp = null;
-        $this->mock(HanshopIdentity::class, function ($mock) use (&$otp) {
-            $mock->shouldReceive('call')->once()->withArgs(function ($path, $data) use (&$otp) {
-                $otp = $data['otp'];
+        Cache::put('bot:'.$s->id.':state', ['status' => 'CONNECTED'], 90);
+        $this->mock(BotManager::class, function ($mock) use (&$otp) {
+            $mock->shouldReceive('configured')->andReturn(true);
+            $mock->shouldReceive('command')->once()->withArgs(function ($store, $action, $data) use (&$otp) {
+                preg_match('/\b([0-9]{6})\b/', $data['message'], $match);
+                $otp = $match[1];
 
-                return $path === 'otp';
-            })->andReturn([]);
+                return $action === 'message';
+            });
         });
         $base = 'http://'.$s->slug.'.localhost';
         $this->post($base.'/account/otp', ['phone' => '081234567890', 'name' => 'Customer Dummy', 'email' => 'buyer@example.test', 'intent' => 'register', 'password' => 'registration-password-123', 'password_confirmation' => 'registration-password-123'])->assertSessionHasNoErrors();
@@ -676,9 +681,10 @@ class CustomerCommerceTest extends TestCase
         $this->assertNotNull($customer->phone_verified_at);
         $this->assertSame(0, $customer->balance);
         $this->post($base.'/account/verify', ['otp' => $otp])->assertSessionHasErrors('otp');
+        config(['mail.default' => 'smtp']);
         Mail::fake();
         $this->post($base.'/account/email/otp', ['email' => 'buyer@example.test'])->assertRedirect()->assertSessionHasNoErrors();
-        $mail = Mail::sent(OwnerOtpMail::class)->first();
+        $mail = Mail::sent(CustomerOtpMail::class)->first();
         $this->post($base.'/account/email/verify', ['otp' => $mail->code, 'password' => 'password-test-only', 'password_confirmation' => 'password-test-only'])->assertSessionHasNoErrors();
         $this->post($base.'/account/logout');
         $this->post($base.'/account/password', ['email' => 'buyer@example.test', 'password' => 'password-test-only'])->assertRedirect('/account');

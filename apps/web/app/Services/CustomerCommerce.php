@@ -69,7 +69,7 @@ class CustomerCommerce
             }
             $setting = $this->settings($store);
             $this->ensure($store->acceptsOrders() && ! $setting->closing, 'Toko tidak menerima pesanan atau topup baru.');
-            $this->ensure(! $customer || ($customer->store_id === $store->id && $customer->phone_verified_at), 'Akun pelanggan tidak sesuai toko.');
+            $this->ensure(! $customer || ($customer->store_id === $store->id && ($customer->phone_verified_at || $customer->email_verified_at)), 'Akun pelanggan tidak sesuai toko.');
             $this->ensure($customer || ($purpose === 'product' && $setting->allow_guest), 'Masuk ke akun pelanggan terlebih dahulu.');
             $this->ensure($purpose !== 'topup' || ($customer && $pay === 'gateway'), 'Topup wajib memakai akun pelanggan dan gateway toko.');
             $inquiry = null;

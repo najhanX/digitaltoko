@@ -20,7 +20,7 @@ class CustomerAccess
     public function customer(Request $request, Store $store, bool $required = false): ?Customer
     {
         $customer = $request->user('customer');
-        $customer = $customer && $customer->store_id === $store->id && $customer->phone_verified_at ? $customer : null;
+        $customer = $customer && $customer->store_id === $store->id && ($customer->phone_verified_at || $customer->email_verified_at) ? $customer : null;
         if ($required) {
             abort_unless($customer, 401);
         }
@@ -32,7 +32,7 @@ class CustomerAccess
     {
         $customer = $this->customer($request, $store);
 
-        return $customer ? [...$customer->only(['id', 'name', 'phone', 'email', 'email_verified_at']), 'balance' => $store->sandbox ? $customer->sandbox_balance : $customer->balance, 'has_password' => filled($customer->password)] : null;
+        return $customer ? [...$customer->only(['id', 'name', 'phone', 'phone_verified_at', 'email', 'email_verified_at']), 'balance' => $store->sandbox ? $customer->sandbox_balance : $customer->balance, 'has_password' => filled($customer->password)] : null;
     }
 
     public function order(Request $request, CustomerOrder $order): void

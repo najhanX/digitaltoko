@@ -37,3 +37,33 @@
 5. Uji isolasi toko, routing pengirim, kerahasiaan kredensial, lisensi bot, OTP salah/kedaluwarsa/sekali pakai, serta jalur email; jalankan build web/worker dan pemeriksaan panel.
 
 Status: rencana disetujui; checkpoint ini dibuat sebelum mengubah modul notifikasi.
+
+## Implementasi selesai setelah checkpoint
+
+- Commit checkpoint: `76251f7`.
+- OTP pelanggan memiliki challenge/cache/rate limit sendiri per toko, kanal, dan tujuan. Kode tidak lagi memakai transport identitas Hanshop atau pesan "Kode OTP DigitalToko".
+- WhatsApp OTP dikirim ke worker toko melalui manager loopback yang terautentikasi. HTTP baru sukses setelah worker mengonfirmasi pengiriman; OTP tidak dicetak ke log atau dimasukkan ke antrean notifikasi pesanan.
+- Paket Web dapat pairing QR/kode untuk OTP/notifikasi, termasuk staf dengan izin koneksi. Endpoint transaksi/katalog bot dan handler pesan tetap menolak paket Web.
+- Notifikasi pesanan tidak memakai fallback WhatsApp Hanshop. Antrean tetap tersedia untuk worker toko; email menggunakan konfigurasi pengirim toko. Pengiriman email tetap dicoba ketika sinyal worker gagal.
+- Menu Kanal & tampilan → Notifikasi & email menyediakan pengirim bawaan platform atau SMTP toko. Penyuntingan dan pengiriman email uji memakai modal.
+- SMTP disimpan dalam kolom terenkripsi dan disembunyikan dari serialisasi model. Password tidak dikembalikan ke browser; input kosong mempertahankan password. Transport dibuat per pengiriman tanpa mengganti mailer global, dengan TLS wajib dan tujuan SMTP publik yang dipin ke IP tervalidasi agar tidak terhubung ulang melalui resolusi DNS berbeda.
+- Izin staf `notifications.view` dan `notifications.manage` terpisah dari izin pairing WhatsApp dan branding.
+- Pelanggan baru tetap mengisi email, nomor WhatsApp, dan password; dapat memilih OTP WhatsApp toko atau email. Login otomatis email/password dipertahankan, dengan opsi OTP email untuk alamat yang sudah terverifikasi.
+- Verifikasi email tidak dianggap sebagai verifikasi nomor WhatsApp. Akun tersebut dapat memakai web/saldo; untuk akses saldo melalui bot harus membuktikan nomor lewat modal verifikasi WhatsApp pada profil. Email yang belum diverifikasi pada akun WhatsApp lama tidak dapat dipakai untuk mengambil alih akun tersebut.
+- OTP owner/platform tetap memakai jalur sebelumnya.
+
+## Validasi dan migrasi
+
+- 94 tes backend terkait lulus, 1268 assertions: autentikasi/pendaftaran, transaksi, isolasi toko, izin staf, pengirim SMTP, pembatasan bot, dan antrean notifikasi.
+- 43 tes worker lulus, termasuk acknowledgement pesan, pengiriman notifikasi pada paket Web, dan penolakan perintah chat tanpa lisensi.
+- 21 tes frontend lulus; build TypeScript/Vite web dan TypeScript worker berhasil; Pint dijalankan.
+- Migrasi `2026_10_20_071258_add_notification_settings_to_stores_table.php` diterapkan ke MySQL lokal setelah backup `storage/app/private/backups/before-store-notifications-20261020-072315.sql` (diabaikan Git). Fixture SQLite UI juga dicadangkan dan dimigrasikan secara terpisah.
+- Browser diperiksa pada data simulasi: modal SMTP, halaman koneksi paket Web, pendaftaran pilihan email, dan pergantian login email/password. Tidak mengirim WhatsApp/email ke penerima nyata. Bukti panel: `assets/store-notifications-panel.png`.
+
+## Pengoperasian dan batas verifikasi
+
+- Setelah deploy, jalankan `php artisan migrate --force`, build web/worker, restart bot manager beserta worker melalui pengelola proses, dan restart queue worker agar memuat kode baru. Jangan menghapus folder sesi WhatsApp.
+- Bot manager lokal yang sudah berjalan perlu dimulai ulang untuk memuat endpoint pesan baru; sesi yang tersimpan tetap dipakai.
+- Email bawaan memakai `MAIL_*` milik platform. SMTP toko sendiri harus memakai alamat pengirim yang diizinkan penyedia (SPF/DKIM sesuai penyedia jika menggunakan domain sendiri). Status "Terkonfigurasi" bukan bukti email sudah sampai; tersedia tombol email uji untuk pengelola toko.
+- Tidak mengubah konfigurasi SMTP nyata, tidak mengganti pilihan pengirim toko yang ada, dan tidak mengklaim pengiriman layanan nyata sudah diuji.
+- Source API Hanshop tidak diubah; tidak ada migrasi MySQL manual untuk API Hanshop pada tahap ini.

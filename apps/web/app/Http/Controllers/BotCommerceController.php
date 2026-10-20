@@ -29,7 +29,10 @@ class BotCommerceController extends Controller
         $customer = DB::transaction(function () use ($store, $phone) {
             Store::whereKey($store->id)->lockForUpdate()->first();
 
-            return Customer::firstOrCreate(['store_id' => $store->id, 'phone' => $phone], ['name' => 'Pelanggan '.substr($phone, -4), 'phone_verified_at' => now()]);
+            $customer = Customer::firstOrCreate(['store_id' => $store->id, 'phone' => $phone], ['name' => 'Pelanggan '.substr($phone, -4), 'phone_verified_at' => now()]);
+            abort_unless($customer->phone_verified_at, 403, 'Verifikasi nomor WhatsApp melalui akun web terlebih dahulu.');
+
+            return $customer;
         });
         if ($data['action'] === 'balance') {
             $result = ['balance' => ($store->sandbox ? $customer->sandbox_balance : $customer->balance), 'phone' => $phone];

@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Mail\OwnerOtpMail;
+use App\Mail\CustomerOtpMail;
 use App\Models\Customer;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BotManager;
 use App\Services\CustomerCommerce;
-use App\Support\HanshopIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -31,19 +31,23 @@ class CustomerRegistrationTest extends TestCase
         $this->freezeTime();
         config(['platform.domain' => 'localhost', 'app.url' => 'http://localhost', 'cache.default' => 'array', 'inertia.ssr.enabled' => false]);
         Http::preventStrayRequests();
-        $this->mock(HanshopIdentity::class, function ($mock) {
-            $mock->shouldReceive('ready')->andReturn(true);
-            $mock->shouldReceive('call')->with('otp', \Mockery::on(function ($data) {
-                $this->otpCode = $data['otp'];
+        $this->mock(BotManager::class, function ($mock) {
+            $mock->shouldReceive('configured')->andReturn(true);
+            $mock->shouldReceive('command')->withArgs(function ($store, $action, $data) {
+                preg_match('/\b([0-9]{6})\b/', $data['message'], $match);
+                $this->otpCode = $match[1];
 
-                return preg_match('/^62[1-9][0-9]{7,12}$/', $data['phone']) === 1;
-            }))->andReturn(['sent' => true]);
+                return $action === 'message' && str_contains($data['message'], $store->name);
+            });
         });
     }
 
     private function shop(): Store
     {
-        return Store::create(['owner_id' => User::factory()->create(['role' => 'owner'])->id, 'name' => 'Register shop', 'slug' => Str::lower(Str::random(10)), 'category' => 'full', 'plan' => 'galaxy', 'template' => 'nebula', 'status' => 'active', 'expires_at' => now()->addMonth()]);
+        $store = Store::create(['owner_id' => User::factory()->create(['role' => 'owner'])->id, 'name' => 'Register shop', 'slug' => Str::lower(Str::random(10)), 'category' => 'full', 'plan' => 'galaxy', 'template' => 'nebula', 'status' => 'active', 'expires_at' => now()->addMonth()]);
+        Cache::put('bot:'.$store->id.':state', ['status' => 'CONNECTED'], 90);
+
+        return $store;
     }
 
     private function url(Store $store, string $path): string
@@ -208,7 +212,7 @@ class CustomerRegistrationTest extends TestCase
         $this->requestOtp($shop, ['password_confirmation' => 'different-password'])->assertSessionHasErrors('password');
         $this->assertNull($this->otpCode);
         $this->requestOtp($shop)->assertSessionHasNoErrors();
-        $challenge = Cache::get('owner-challenge:'.session('owner_challenge_customer-'.$shop->id.'-login'));
+        $challenge = Cache::get('customer-challenge:'.session('customer_challenge_customer-'.$shop->id.'-login'));
         $this->assertArrayNotHasKey('password', $challenge['payload']);
         $this->assertArrayNotHasKey('password_confirmation', $challenge['payload']);
         $this->assertTrue(Hash::check('registration-password-123', $challenge['payload']['password_hash']));
@@ -226,9 +230,10 @@ class CustomerRegistrationTest extends TestCase
         Auth::guard('customer')->logout();
         $this->post($this->url($shop, 'password'), ['email' => $customer->email, 'password' => 'registration-password-123'])->assertSessionHasErrors('commerce');
         $this->actingAs($customer, 'customer');
+        config(['mail.default' => 'smtp']);
         Mail::fake();
         $this->post($this->url($shop, 'email/otp'), ['email' => $customer->email])->assertSessionHasNoErrors();
-        $code = Mail::sent(OwnerOtpMail::class)->first()->code;
+        $code = Mail::sent(CustomerOtpMail::class)->first()->code;
         $this->post($this->url($shop, 'email/verify'), ['otp' => $code])->assertSessionHasNoErrors();
         $this->assertSame($hash, $customer->fresh()->password);
         $this->assertNotNull($customer->fresh()->email_verified_at);

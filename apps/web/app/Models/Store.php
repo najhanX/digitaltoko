@@ -15,11 +15,11 @@ class Store extends Model
 
     protected $attributes = ['sandbox' => false];
 
-    protected $hidden = ['worker_token_hash'];
+    protected $hidden = ['worker_token_hash', 'notification_settings'];
 
     protected function casts(): array
     {
-        return ['sandbox' => 'boolean', 'admin_suspended_at' => 'immutable_datetime', 'subscription' => 'array', 'starts_at' => 'immutable_datetime', 'ready_at' => 'immutable_datetime', 'trial_requested_at' => 'immutable_datetime', 'branding' => 'array', 'expires_at' => 'immutable_datetime', 'is_trial' => 'boolean'];
+        return ['notification_settings' => 'encrypted:array', 'sandbox' => 'boolean', 'admin_suspended_at' => 'immutable_datetime', 'subscription' => 'array', 'starts_at' => 'immutable_datetime', 'ready_at' => 'immutable_datetime', 'trial_requested_at' => 'immutable_datetime', 'branding' => 'array', 'expires_at' => 'immutable_datetime', 'is_trial' => 'boolean'];
     }
 
     public function owner(): BelongsTo
@@ -45,7 +45,7 @@ class Store extends Model
 
     public function canConnectBot(): bool
     {
-        return ! $this->admin_suspended_at && in_array($this->category, ['bot', 'full'], true)
+        return ! $this->admin_suspended_at && in_array($this->category, ['bot', 'web', 'full'], true)
             && ($this->status === 'provisioning' || $this->acceptsOrders());
     }
 }
