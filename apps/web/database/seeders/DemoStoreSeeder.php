@@ -43,7 +43,7 @@ class DemoStoreSeeder extends Seeder
                 ['demo-atlas', 'Atlas Premium Demo', 'web', 'space', 'active', 'atlas', 30, false],
                 ['demo-grace', 'Toko Masa Tenggang Demo', 'full', 'galaxy', 'grace', 'aurora', -3, false],
                 ['demo-expired', 'Toko Kedaluwarsa Demo', 'full', 'galaxy', 'suspended', 'nebula', -10, false],
-                ['demo-trial', 'Bot Trial Demo', 'bot', 'galaxy', 'active', 'aurora', 7, true],
+                ['demo-bot', 'Bot Digital Demo', 'bot', 'galaxy', 'active', 'aurora', 30, false],
                 ['demo-draft', 'Toko Draft Demo', 'full', 'galaxy', 'draft', 'atlas', null, false],
             ];
             foreach ($scenarios as [$slug, $name, $category, $plan, $status, $template, $days, $trial]) {

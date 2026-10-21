@@ -7,11 +7,13 @@ use App\Models\CommerceReceipt;
 use App\Models\Customer;
 use App\Models\CustomerLedger;
 use App\Models\CustomerOrder;
+use App\Models\DiscountVoucher;
 use App\Models\PremiumStock;
 use App\Models\ProductMapping;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\CustomerCommerce;
+use App\Services\Vouchers;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -32,7 +34,7 @@ class CustomerCommerceMysqlTest extends TestCase
         DB::connection('commerce_admin')->statement('CREATE DATABASE `'.$name.'`');
         try {
             $configuration = [...$original, 'database' => $name, 'url' => null];
-            config(['database.default' => 'mysql', 'database.connections.mysql' => $configuration]);
+            config(['database.default' => 'mysql', 'database.connections.mysql' => $configuration, 'queue.default' => 'database']);
             DB::purge('mysql');
             Artisan::call('migrate', ['--force' => true, '--no-interaction' => true]);
             Http::preventStrayRequests();
@@ -86,6 +88,36 @@ class CustomerCommerceMysqlTest extends TestCase
             $this->assertSame(135000, $customer->fresh()->balance);
             $this->assertSame(1, CustomerLedger::where('reason', 'topup')->count());
             $this->assertSame(1, CommerceReceipt::count());
+            $remoteOrder = CustomerOrder::where('status', 'failed')->firstOrFail();
+            $remoteOrder->attempts()->create(['position' => 2, 'source' => 'digiflazz', 'reference' => 'DT'.Str::ulid(), 'status' => 'failed', 'cost' => 10000, 'last_checked_at' => now(), 'request_snapshot' => ['kind' => 'ppob']]);
+            $customer->update(['balance' => 1000]);
+            $success = ['status' => 'Sukses', 'rc' => '00', 'sn' => 'CONCURRENT-SN', 'price' => 10000];
+            $callback = [...$payload, 'mode' => 'callback', 'order' => $remoteOrder->id, 'callback' => $success];
+            $this->assertSame(['success', 'success'], $run([$callback, $callback]));
+            $this->assertSame(-14000, $customer->fresh()->balance);
+            $this->assertSame(1, CustomerLedger::where('reason', 'refund_reversal')->count());
+            $failed = [...$callback, 'callback' => ['status' => 'Gagal', 'rc' => '02', 'price' => 10000]];
+            $this->assertSame(['failed', 'failed'], $run([$failed, $failed]));
+            $this->assertSame(1000, $customer->fresh()->balance);
+            $this->assertSame(2, CustomerLedger::where('reason', 'refund')->count());
+
+            $customer->update(['balance' => 100000]);
+            for ($i = 0; $i < 2; $i++) {
+                PremiumStock::create(['store_id' => $store->id, 'product_id' => $product->id, 'cost' => 10000, 'payload' => 'VOUCHER TEST ONLY']);
+            }
+            $voucher = DiscountVoucher::factory()->create(['store_id' => $store->id, 'scope_key' => $store->id, 'usage_limit' => 1]);
+            $voucherInput = [...$input, 'voucher_code' => $voucher->code, 'idempotency_key' => (string) Str::uuid()];
+            $results = $run([[...$payload, 'mode' => 'voucher', 'input' => $voucherInput], [...$payload, 'mode' => 'voucher', 'input' => [...$voucherInput, 'idempotency_key' => (string) Str::uuid()]]]);
+            $this->assertSame(1, count(array_filter($results, fn ($value) => $value === 'QUOTA_REJECTED')));
+            $this->assertSame(1, app(Vouchers::class)->used($voucher));
+            $this->assertSame(86000, $customer->fresh()->balance);
+
+            $otherStore = Store::create(['owner_id' => $owner->id, 'name' => 'Other fixture', 'slug' => 'other-fixture', 'category' => 'full', 'plan' => 'galaxy', 'status' => 'active', 'template' => 'aurora', 'expires_at' => now()->addMonth()]);
+            $platformVoucher = DiscountVoucher::factory()->create(['usage_limit' => 1]);
+            $results = $run([[...$payload, 'mode' => 'platform_voucher', 'code' => $platformVoucher->code], [...$payload, 'store' => $otherStore->id, 'mode' => 'platform_voucher', 'code' => $platformVoucher->code]]);
+            $this->assertSame(1, count(array_filter($results, fn ($value) => $value === 'QUOTA_REJECTED')));
+            $this->assertSame(1, app(Vouchers::class)->used($platformVoucher));
+
         } finally {
             DB::disconnect('mysql');
             $this->assertMatchesRegularExpression('/^dt_commerce_test_[a-f0-9]{32}$/', $name);

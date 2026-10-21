@@ -28,6 +28,8 @@ class DemoStoreSeederTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->assertDatabaseCount('users', 3);
         $this->assertDatabaseCount('stores', 8);
+        $this->assertSame(0, Store::where('is_trial', true)->count());
+        $this->assertDatabaseHas('stores', ['slug' => 'demo-bot', 'is_trial' => false]);
         $this->assertDatabaseCount('store_staff', 21);
         $this->assertSame('Nama yang diedit', $store->fresh()->name);
         $this->assertTrue($expiry->equalTo($store->fresh()->expires_at));

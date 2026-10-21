@@ -1,84 +1,86 @@
-# DigitalToko web foundation
+# DigitalToko web
 
-Laravel 13.35 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff dan storefront berada dalam satu runtime Laravel. Bot terpisah di ../bot.
+Status source lokal: **21 Oktober 2026**. Laravel 13 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff, landing dan storefront dijalankan satu Laravel. Worker WhatsApp berada di `../bot`.
 
-## Local
+## Menjalankan lokal
 
-1. composer install
-2. Salin .env.example ke .env jika belum ada, php artisan key:generate.
-3. php artisan migrate, npm ci, npm run build.
-4. php artisan serve --host=127.0.0.1 --port=8000.
+Dari folder `apps/web`:
 
-APP_URL=http://localhost:8000 dan PLATFORM_DOMAIN=localhost. Untuk pratinjau lokal set PLATFORM_PREVIEW_ENABLED=true. /preview/admin, /preview/owner, /preview/staff dan /preview/storefront hanya terbuka pada APP_ENV=local; tetap 404 di production walaupun flag true. Pratinjau adalah data contoh dan bukan login/impersonasi.
+```powershell
+composer install
+# Hanya jika belum ada .env: salin .env.example dan buat APP_KEY baru.
+php artisan migrate
+npm ci
+npm run build
+php artisan serve --host=127.0.0.1 --port=8000
+```
 
-### Data dummy lokal
+Pertahankan APP_KEY yang sudah dipakai agar credential, stok dan data profil terenkripsi tetap dapat dibaca. Backup database sebelum migrasi pada lingkungan berisi data. Jangan memakai `migrate:fresh` untuk memperbarui instalasi existing.
 
-Jalankan `php artisan db:seed --no-interaction` dari apps/web setelah migrate. DatabaseSeeder memanggil DemoStoreSeeder (termasuk PackagePlanSeeder) dan CatalogDemoSeeder; keduanya untuk local/testing dan seeder demo menolak production termasuk dengan --force. Tidak perlu migrate:fresh (perintah tersebut menghapus data).
+Atur `APP_URL=http://localhost:8000`, `PLATFORM_DOMAIN=localhost`; alias loopback hanya berlaku saat local. `/login` untuk owner OTP, `/admin/login` untuk admin lokal, `/staff/{UUID_TOKO}/login` untuk staff lokal. Perubahan konfigurasi dapat memerlukan `php artisan optimize:clear` dan restart proses long-lived.
 
-Seeder membuat admin `demo-admin@example.test`, dua owner lokal, delapan toko, dan tiga staff pada masing-masing dari tujuh toko owner utama. Password awal admin/staff: `DigitalToko-Demo2026!`. Admin masuk di `/admin/login`; staff di `/staff/{UUID-toko}/login` (URL lengkap dicetak seeder). Username `manager` mendapat semua permission staff, `viewer` hanya baca, dan `nonaktif` ditolak login. Akun staff tetap terpisah per toko meskipun username/email sama.
+Jalankan pada terminal/service terpisah:
 
-Tiga toko aktif `demo-aurora`, `demo-nebula`, `demo-atlas` memakai tiga template berbeda, ditambah `demo-grace` (expiry -3 hari), `demo-expired` (-10 hari), `demo-trial` (bot 7 hari), `demo-draft`, dan draft owner kedua. Expiry dihitung saat pertama dibuat. Buka subdomain sesuai PLATFORM_DOMAIN, misalnya `http://demo-aurora.localhost:8000`. Jika subdomain lokal tidak ter-resolve, tambahkan hostname tersebut ke hosts dengan IP 127.0.0.1.
+```powershell
+php artisan queue:work
+php artisan schedule:work
+```
 
-Seeder tidak mereset perubahan/password/expiry record existing saat diulang. Owner dummy tidak ditautkan ke Hanshop dan tidak memiliki password login; login owner asli tetap melalui OTP, sedangkan `/preview/owner` tersedia untuk preview lokal. Status verifikasi dummy adalah fixture tanpa dokumen KTP/nomor WA/NIK asli. Tidak ada panggilan Hanshop, OTP, pembayaran atau provisioning bot. CatalogDemoSeeder menambahkan 18 produk simulasi per toko demo utama/trial dan stok premium palsu sesuai paket. Produk PPOB demo tanpa parsing pemasok tampil tidak tersedia. Seeder tidak mengisi API key atau saldo pemasok. Data dummy jangan disalin ke database production.
+Pastikan driver queue/cache/DB pada `.env` sesuai lingkungan. Queue dan scheduler dapat memproses pesanan lunas sungguhan; gunakan database fixture atau toko Pengujian untuk simulasi. Manager bot dijalankan dari `../bot`, bukan menggandakan proses pada port yang sama.
 
-Pada APP_ENV=local, localhost dan 127.0.0.1 sama-sama diterima untuk root/panel agar URL bawaan php artisan serve tidak 404. PLATFORM_DOMAIN kosong mengikuti host APP_URL. Alias loopback otomatis ini tidak berlaku di production. Jika mengubah .env/config, jalankan php artisan optimize:clear; gunakan port yang benar-benar ditampilkan artisan serve.
+Untuk Redis: `REDIS_CLIENT=predis`, `SUPPLIER_CACHE_STORE=redis`, `SUPPLIER_CACHE_SECONDS=120`, serta host/port/password sesuai layanan. Paket Predis tersedia. Cache pemasok dibatasi 60–180 detik per akun/operasi, dilindungi lock. Jika cache gagal tidak ada bypass request langsung ke pemasok.
 
-## Yang tersedia
+Preview `/preview/admin`, `/preview/owner`, `/preview/staff`, `/preview/storefront` hanya APP_ENV=local dengan `PLATFORM_PREVIEW_ENABLED=true`; ini data contoh, bukan autentikasi atau akun nyata.
 
-- Migrasi users platform, stores, satu custom domain per toko, dan store_staff lokal.
-- Host resolver berdasarkan slug + configured platform domain atau custom hostname active/verified.
-- Role gate admin/owner dan auth guard staff, akses lintas toko ditolak; login staff password dengan rate limit.
-- Halaman panel admin/owner/staff dengan tema terang, gelap, dan sistem yang tersimpan di browser; landing dan tiga varian storefront memakai Inertia React.
-- Panel owner/staff memakai navigasi bersama, pilihan toko yang tersimpan dalam sesi, menu ponsel, dan tombol sesuai permission. `/owner/stores` menampilkan seluruh toko; pembuatan toko langsung menuju pemilihan paket, pembayaran, persiapan layanan, lalu konfirmasi aktivasi. Pengaturan toko dan pengelolaan staff memiliki halaman/tab terpisah.
-- Staff hanya melihat menu yang diizinkan. Login diarahkan ke halaman pertama yang dapat dibuka; staff tanpa izin halaman mendapat petunjuk untuk menghubungi owner. Logout dan sesi kedaluwarsa pada route staff kembali ke login toko tersebut.
-- Daftar toko, penawaran admin, invoice sewa, pengajuan verifikasi, dan riwayat invoice memiliki pencarian/filter serta pagination melalui Inertia. Data diambil per halaman (5/10/20/50, maksimal 50); ringkasan total tetap mencakup seluruh toko milik owner. Invoice berjalan dipisahkan dari riwayat agar tetap terlihat saat riwayat difilter. Dropdown toko memuat maksimal 20 pilihan awal ditambah toko terpilih, dengan akses ke pencarian seluruh toko. Staff (maksimal lima akun) dan katalog ilustrasi memakai pagination/filter lokal.
-- Penawaran paket per kategori dan sumber produk dapat diatur admin. Owner terverifikasi dapat membeli, memperpanjang, meningkatkan, atau menurunkan paket per toko; staff berizin dapat memperpanjang paket yang sama.
-- Invoice sewa QRIS melalui gateway Hanshop, rekonsiliasi terjadwal, trial bot sekali per owner, aktivasi setelah toko siap, dan masa tenggang tujuh hari untuk paket berbayar.
-- Koneksi WhatsApp per toko melalui modal nomor dan metode QR/kode; kontrol hubungkan ulang/lepas, token worker privat, status/cache pendek, dan bot manager dengan sesi terpisah. Staff `bot.manage` dapat pairing; `bot.view` hanya melihat status.
-- Session host-only dan proxy allowlist. Tidak ada domain produksi tertanam dalam route/client.
+## Data dummy
 
-## Belum tersedia
+```powershell
+php artisan db:seed --no-interaction
+```
 
-OTP owner dan pendaftaran Hanshop, verifikasi email dan KTP, toko draft, CRUD staff, langganan/trial, serta koneksi WhatsApp dari panel tersedia. Admin memakai login password lokal di /admin/login; owner memakai OTP di /login. Pengiriman sungguhan membutuhkan bridge Hanshop dan SMTP. Jalankan bot manager terpisah untuk QR/kode; panduan di `../bot/README.md` dan `../../docs/DEPLOYMENT.md`. OTP pembeli, checkout pembeli, pembayaran Midtrans/QRIS untuk checkout produk, otomatisasi domain, penyelesaian invoice yang perlu pemeriksaan manual, penghapusan toko setelah masa retensi, dan hardening auth worker produksi masih tahap berikutnya. DB onboarding bukan schema bisnis final.
+DatabaseSeeder menjalankan DemoStoreSeeder/PackagePlanSeeder dan CatalogDemoSeeder. Seeder demo menolak lingkungan selain local/testing, termasuk `--force`. Admin demo `demo-admin@example.test`, password awal admin/staff `DigitalToko-Demo2026!`; username staff manager/viewer/nonaktif lokal per toko. Owner dummy tidak ditautkan ke Hanshop dan tetap tidak dapat melewati OTP owner asli.
 
-SQLite hanya untuk development/tests. Deployment VPS memakai database aplikasi MySQL sendiri; jangan gunakan database Hanshop sebagai DB Laravel. Bridge Hanshop untuk identitas dan invoice sewa memerlukan token server-to-server. Jalankan migrasi tambahan Hanshop `scripts/migrations/20261013_digitaltoko_identity.sql` dan `scripts/migrations/20261013_digitaltoko_billing.sql` pada lingkungan tujuan setelah backup, lalu jalankan `php artisan migrate --force` di aplikasi web. Aktifkan Laravel scheduler agar invoice, trial, dan masa tenggang diperbarui otomatis. Penawaran dummy dari seeder tidak aktif sampai admin mengisi harga sesungguhnya dan mengaktifkannya.
+Toko demo: demo-aurora, demo-nebula, demo-atlas, demo-grace, demo-expired, **demo-bot** (bot berlangganan biasa), demo-draft dan demo-owner-two. Tidak membuat trial baru. Record existing tidak direset/dihapus saat seeder diulang, termasuk demo-trial lama bila pernah dibuat. CatalogDemoSeeder menambahkan katalog/stok simulasi tanpa memanggil pemasok. Produk tanpa parsing eligible dapat tampil tidak tersedia.
 
-Tests: php artisan test. Frontend: npm run build. Deployment dan migrasi domain: ../../docs/DEPLOYMENT.md.
+## Modul yang tersedia
 
-CSS utama adalah entry Vite tersendiri, dimuat sebagai stylesheet di head sebelum markup Inertia/SSR tampil. Jangan memindahkannya hanya ke import JavaScript karena pada dev SSR dapat muncul flash halaman tanpa style. Navigasi internal memakai Link Inertia; perpindahan ke domain storefront yang berbeda tetap anchor biasa. Setelah mengubah vite.config.js, restart npm run dev bila server tidak reload otomatis.
+- Owner: identitas/daftar Hanshop, profil dan email, KTP manual, toko draft, staff maksimal lima termasuk nonaktif. Admin password lokal dan guard staff terpisah.
+- Admin: ringkasan, verifikasi, kelola/detail toko, koreksi paket/masa aktif, suspend/pulihkan dengan audit, paket/harga, pembayaran, voucher, harga modul custom.
+- Langganan: invoice sewa Hanshop, aktivasi pertama dan otomatis 24 jam setelah siap, renewal/upgrade/downgrade, grace tujuh hari. Trial baru dihapus; voucher platform dapat membuat invoice gratis.
+- Produk: sumber Digiflazz/Hanshop, saldo pemasok, layanan/kategori/produk, impor semua/layanan/kategori/pilihan, parsing, aktif/nonaktif/hapus massal, markup nominal/persen/kombinasi dan stok privat.
+- Penjualan: pesanan, detail/hasil, keputusan manual Digiflazz eligible, callback koreksi status/SN, pelanggan/wallet/ledger, pencairan manual saat berhenti, gateway dan voucher.
+- Pembayaran: wallet, Midtrans merchant toko, QRIS custom berlisensi per toko; inquiry pasca, guest checkout, pembatalan invoice belum dibayar, topup/refund dan snapshot fee/kode unik.
+- Sandbox toko: development key Digiflazz, saldo uji, sumber Hanshop/stok simulasi, bayar simulasi lokal atau Midtrans Sandbox. Perubahan mode ditolak bila masih ada pesanan/inquiry berjalan.
+- Kanal: WA toko untuk OTP/notifikasi termasuk paket Web, email platform atau SMTP toko, branding pesan per toko. Transaksi chat hanya paket Bot/Full.
+- Storefront: Aurora/Nebula/Atlas, kategori/checkout, quick order, nickname/tujuan kategori, banner/warna/logo/favicon/section, flash sale, trending, iklan, CS, leaderboard, kalkulator, artikel dan akun pelanggan.
+- Artikel: Tiptap lazy-loaded, JSON tervalidasi, draf/terbit, revisi konflik, media privat sesuai akses, tags/share/related. Warna isi publik mengikuti tema; editor memiliki latar putih.
+- UI: sidebar compact/collapsed, terang/gelap/sistem, modal aksi, pencarian dan pagination tabel utama atas/bawah. Picker popup memakai dropdown overlay dan pemuatan lanjutan saat scroll. Staff maksimal lima tanpa filter/pagination. Notifikasi lonceng memakai infinite scroll; aksi menghasilkan toast.
 
-## Sumber dan katalog toko (14 Oktober 2026)
+Katalog publik dan bot memakai proyeksi yang sama tanpa credential/modal/stok rahasia. Sinkronisasi manual: `php artisan digitaltoko:catalog-sync --store=UUID_TOKO`; tanpa opsi store untuk semua koneksi eligible. Refresh pembaca mempertahankan snapshot saat gagal; sumber remote default lebih dari 600 detik tidak dapat dipesan. Harga pasca pada katalog merupakan biaya admin, bukan total tagihan.
 
-Owner memilih toko → **Sumber produk** → hubungkan Digiflazz atau akun Hanshop tertaut → sinkronkan → pilih produk dan impor → **Katalog & harga** untuk nama, parsing, status, serta markup → **Stok premium** untuk stok privat. Satu produk dapat memakai beberapa parsing dengan jenis yang sama. Koneksi credential hanya owner; staff mengikuti permission produk/harga/stok. Saldo Hanshop global hanya terlihat owner, saldo Digiflazz membutuhkan `suppliers.balance`.
+## Integrasi dan callback
 
-`predis/predis` sudah tersedia. Atur `REDIS_CLIENT=predis`, `SUPPLIER_CACHE_STORE=redis`, `SUPPLIER_CACHE_SECONDS=120` (dibatasi 60–180), dan Redis sesuai server. Cache memakai fingerprint akun: dua toko dengan akun pemasok sama berbagi snapshot; akun berbeda terpisah. Jangan mengganti APP_KEY: credential dan payload stok tersimpan terenkripsi. Jika Redis/pemasok gagal, tidak ada bypass request langsung; snapshot lama dipertahankan, tetapi setelah 600 detik sumber remote tidak dianggap tersedia.
+- Bridge server-only Hanshop memakai `HANSHOP_API_URL` + `HANSHOP_IDENTITY_TOKEN`, cocok dengan `DIGITALTOKO_IDENTITY_TOKEN` API Hanshop. Tidak memberikan token bridge ke tenant/browser.
+- DB Laravel harus terpisah dari DB Hanshop. Migrasi identitas/billing API Hanshop dijalankan manual dari `scripts/migrations/20261013_digitaltoko_identity.sql` dan `20261013_digitaltoko_billing.sql` setelah backup; Laravel memakai `php artisan migrate`.
+- `BOT_MANAGER_URL`/`BOT_MANAGER_TOKEN` cocok dengan manager. WA customer dikirim melalui worker tokonya; owner/platform tetap jalur identitas Hanshop. Jalur OTP tidak melakukan HTTP balik worker ke Laravel agar server local satu proses tidak deadlock.
+- Email bawaan memakai MAIL_* platform. Menu Notifikasi & email mengatur SMTP toko terenkripsi dan email uji. Status tersimpan bukan bukti pengiriman diterima.
+- Payload URL Digiflazz adalah URL platform `/api/commerce/digiflazz`, tidak memakai UUID toko. Secret/signature dan referensi attempt menentukan penerimaan callback. Salin URL yang ditampilkan panel; hostname publik/ngrok harus diterima konfigurasi platform.
+- Midtrans `/api/commerce/midtrans/{store}` dan Hans Forward `/api/commerce/forward/{store}` per toko; gunakan URL dan token dari panel. Status browser tidak melunasi invoice.
 
-Jalankan `php artisan schedule:work` untuk development atau cron `schedule:run` setiap menit di VPS. Katalog disinkronkan setiap dua menit. Sinkron manual: `php artisan digitaltoko:catalog-sync --store=UUID_TOKO` (tanpa opsi untuk semua koneksi yang memenuhi syarat). Mode Digiflazz prabayar/pasca dipisah; sinkronkan mode yang ingin dipakai satu kali melalui panel agar scheduler melanjutkannya. Harga pascabayar adalah **biaya admin**, bukan nominal tagihan.
+## Batas yang belum selesai
 
-Hanshop memerlukan build API terbaru yang memuat `/internal/digitaltoko/supplier/balance` dan `/supplier/catalog`; URL/token mengikuti bridge identitas existing. Endpoint ini hanya membaca saldo akun tertaut serta snapshot katalog, tanpa menyentuh saldo/checkout atau memanggil pemasok.
+Belum ada otomatisasi DNS/TLS/custom-host provider, purge seluruh data toko setelah 30 hari, penghapusan sesi/file/provider terkoordinasi, refund sewa gagal provisioning otomatis, dan hardening sesi WA multi-host. Pembersihan KTP ditolak, upload artikel, dan endpoint membersihkan profil owner ketika tidak ada toko tersedia, berbeda dari purge toko. Panel topup saldo Hanshop owner belum memiliki alur tersendiri. Label `customers.manage` belum menyediakan CRUD profil customer penuh.
 
-Web publik ketiga template dan `#produk`, `#produk canva`, `#produk 2` memakai katalog toko yang sama. Pemesanan, pembayaran pelanggan, fallback saat dispatch, dan pengiriman stok merupakan tahap berikutnya. Restart worker yang sedang berjalan setelah build bot agar handler baru termuat; sesi WhatsApp tetap dipertahankan.
+Penutupan manual dan pemeriksaan kewajiban tersedia; pencairan hanya mencatat transfer yang dilakukan toko. Keputusan manual produk dibatasi Digiflazz eligible, bukan pembatalan sembarang request pemasok ambigu. Callback terverifikasi tetap dapat mengoreksi hasil.
 
-Dummy katalog lokal dapat diulang dengan `php artisan db:seed --class=CatalogDemoSeeder --no-interaction`; tidak memakai `migrate:fresh`. Verifikasi: `php artisan test --compact`, `npm run test:frontend`, `npm run build`, serta `npm test` di apps/bot.
+## Pengujian dan referensi
 
-Jika koneksi Hanshop gagal, perhatikan penyebab yang muncul: API tidak terjangkau berarti proses API/URL perlu diperiksa; token ditolak berarti token bridge harus sama di kedua aplikasi; endpoint 404 berarti proses API perlu memakai source terbaru. Gangguan ini diberi jeda retry 15 detik. Hanya respons HTTP 429 Hanshop yang memakai pesan pembatasan permintaan dan jeda 120 detik. Cache snapshot pemasok tetap aktif.
+```powershell
+php artisan test --compact
+npm run test:frontend
+npm run build
+```
 
-## Sembilan paket planet
+Test integrasi MySQL tertentu bersifat opt-in/terisolasi; jangan mengarahkannya ke DB produksi. Bukti historis tidak sama dengan hasil pemeriksaan ulang hari ini. Lihat [arsitektur](../../docs/ARCHITECTURE.md), [aturan bisnis](../../docs/BUSINESS_RULES.md), [deployment](../../docs/DEPLOYMENT.md), [checkpoint](../../docs/NOTIFICATION_PROGRESS.md) dan [riwayat validasi](../../docs/FOUNDATION_VALIDATION.md).
 
-Mercury = bot/stok; Venus = bot/Digiflazz; Terra = web/stok; Mars = web/Digiflazz; Jupiter = bot/keduanya; Saturn = web/keduanya; Uranus = bot+web/stok; Neptune = bot+web/Digiflazz; Andromeda = bot+web/keduanya. Semua paket aktif termasuk Hanshop. Satu katalog JSON dipakai admin, owner/staff, landing, seeder dan filter paket. Trial Bot penuh bernama Jupiter.
-
-`php artisan db:seed --class=PackagePlanSeeder --no-interaction` memperbarui nama legacy tanpa mengubah harga, durasi, status aktif, ID atau snapshot langganan/invoice. Penawaran khusus tetap tersimpan. Kombinasi yang belum ada mendapat penawaran dummy Rp50.000/30 hari nonaktif. Pada 15 Oktober 2026 seeder dijalankan pada MySQL lokal setelah backup privat: sembilan nama berubah, jumlah penawaran tetap sembilan, dan invariant komersial/snapshot lulus pemeriksaan.
-
-### Pengelolaan toko administrator
-
-Buka `/admin/stores` setelah login administrator. Cari/filter toko atau klik nama owner untuk melihat tokonya. Detail toko menyediakan modal edit, ubah paket, koreksi masa aktif, tangguhkan/pulihkan, riwayat tindakan dengan alasan wajib, dan tautan pembayaran toko. Penangguhan admin terpisah dari langganan: masa aktif tetap berjalan dan pembayaran tidak mencabut penangguhan. Koreksi masa aktif hanya tersedia untuk langganan berbayar yang sudah aktif, tanpa invoice atau perubahan paket yang masih berjalan. Jalankan `php artisan migrate` saat memasang pembaruan pada server lain.
-
-Perubahan paket oleh admin merupakan koreksi langsung tanpa tagihan/refund otomatis. Pilih salah satu dari sembilan paket, isi alasan, lalu simpan. Masa aktif dan invoice historis tetap; kategori, sumber produk, dan fitur pada snapshot langganan diperbarui bersama. Trial, tahap aktivasi, penghapusan, serta invoice pending/paid/review memblokir perubahan ini. Toko draft dapat diganti pilihannya tanpa otomatis aktif. Data produk/stok/sesi tetap disimpan, dan penangguhan admin tetap berlaku.
-
-### Layanan dan kategori utama toko
-
-Pilih toko → **Layanan & kategori** → **Tambah layanan** → buka jumlah kategori pada layanan tersebut → **Tambah kategori utama**. Setelah itu buka produk pada kategori tersebut atau **Katalog & harga** → **Tambah produk**, lalu pilih layanan dan kategori utama. Form tambah/edit memakai modal; daftar dan pemilih memiliki pencarian serta pagination atas/bawah.
-
-Owner dapat mengelola struktur. Staff membutuhkan izin **Kelola layanan, kategori, produk & parsing** (`products.manage`); izin baca katalog hanya menampilkan daftar. Penggantian nama memperbarui produk terkait dan mempertahankan aturan markup. Layanan yang masih memiliki kategori dan kategori yang masih dipakai produk tidak dapat dihapus.
-
-Jalankan `php artisan migrate` pada lingkungan lain untuk tabel `catalog_services`, `catalog_categories`, dan relasi kategori produk. Migrasi menautkan produk lama berdasarkan layanan/kategori existing tanpa mengubah kolom lama atau aturan harga. Impor pemasok tetap membuat struktur sesuai label pemasok; struktur kosong hanya terlihat di panel, sedangkan katalog bot/web menampilkan bagian yang memiliki produk aktif.
+CSS `resources/css/app.css` adalah entry Vite di head Blade, bukan hanya import JS, untuk menghindari flash tanpa style. Navigasi internal memakai Link Inertia; perpindahan hostname memakai anchor. `public/hot` mengarahkan browser ke dev Vite bila ada; pastikan dev server berjalan atau pakai build sesuai lingkungan.

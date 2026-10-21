@@ -1,4 +1,6 @@
-# Worker WhatsApp Hansbot
+# Worker WhatsApp DigitalToko
+
+Status source: **21 Oktober 2026**. Bagian pengujian bertanggal adalah riwayat, bukan hasil uji live terbaru. Katalog, saldo, topup, checkout, status dan notifikasi sudah terhubung ke Laravel. Trial baru sudah dihapus.
 
 Worker TypeScript + Express + Baileys 7.0.0-rc14. Helper persistence/version dan patch Baileys diadaptasi dari bot_wa_v2; project bot lama tidak diubah.
 
@@ -16,13 +18,13 @@ Manager membuat worker, token, port loopback sementara, dan folder `sessions/<uu
 
 Mode worker manual tetap tersedia: isi STORE_ID dan WORKER_TOKEN melalui `php artisan digitaltoko:worker-token <uuid-store>`, lalu `npm start`. Jangan merotasi token manual pada toko yang sedang dikelola manager; lakukan hubungkan ulang melalui panel. `npm test` menguji pairing/manager dengan transport lokal, tanpa menautkan akun WhatsApp nyata.
 
-WA_ENABLED=false tetap menjadi default mode manual. Manager mengaktifkan WhatsApp hanya untuk worker toko yang diminta dari panel. Worker memeriksa akses langganan sebelum membuka socket: toko provisioning, aktif, atau masa tenggang berbayar; draft dan trial kedaluwarsa tidak diizinkan. QR dibuat sebagai PNG lokal dengan `qrcode`; kode pairing diminta melalui Baileys setelah event QR dari server. Event connecting awal belum menjamin socket siap. Metode kode memakai `Browsers.macOS("Chrome")` seperti bot_wa_v2 agar companion_platform_id adalah CHROME (1); QR tetap memakai identitas `Google Chrome` yang sudah berjalan. Startup membersihkan metadata me/pairingCode hanya pada permintaan pairing yang belum mempunyai identitas akun bertanda tangan. Identitas QR yang sudah diterima tetap dipertahankan meskipun registered masih false. Timeout permintaan kode 60 detik mengikuti default query Baileys. Nomor tertaut harus sesuai nomor yang dimasukkan. Pairing memiliki batas waktu, event menggunakan ID percobaan, dan token lama ditolak setelah hubungkan ulang. Lock sesi mencegah dua proses menggunakan auth sama; lock dengan PID yang sudah mati dapat dilepas otomatis. PID yang masih hidup tidak ditimpa.
+WA_ENABLED=false tetap menjadi default mode manual. Manager mengaktifkan WhatsApp hanya untuk worker toko yang diminta dari panel. Worker memeriksa akses langganan sebelum membuka socket: toko provisioning non-trial, aktif, atau masa tenggang berbayar; draft, trial yang belum dimulai dan trial kedaluwarsa tidak diizinkan. Paket Web boleh koneksi OTP/notifikasi, tetapi command transaksi chat tetap ditolak. QR dibuat sebagai PNG lokal dengan `qrcode`; kode pairing diminta melalui Baileys setelah event QR dari server. Event connecting awal belum menjamin socket siap. Metode kode memakai `Browsers.macOS("Chrome")` seperti bot_wa_v2 agar companion_platform_id adalah CHROME (1); QR tetap memakai identitas `Google Chrome` yang sudah berjalan. Startup membersihkan metadata me/pairingCode hanya pada permintaan pairing yang belum mempunyai identitas akun bertanda tangan. Identitas QR yang sudah diterima tetap dipertahankan meskipun registered masih false. Timeout permintaan kode 60 detik mengikuti default query Baileys. Nomor tertaut harus sesuai nomor yang dimasukkan. Pairing memiliki batas waktu, event menggunakan ID percobaan, dan token lama ditolak setelah hubungkan ulang. Lock sesi mencegah dua proses menggunakan auth sama; lock dengan PID yang sudah mati dapat dilepas otomatis. PID yang masih hidup tidak ditimpa.
 
 ## Batas implementasi
 
-Menu #menu/#start menyediakan teks dan quick reply untuk perangkat mobile yang dikenali; desktop/unknown memakai teks. Tombol menggunakan token terikat chat/sender, expiry 15 menit, dan konsumsi satu kali. Perangkat nyata belum diuji; relay berhasil tidak membuktikan tombol tampil.
+Menu #menu/#start menyediakan teks dan quick reply untuk perangkat mobile yang dikenali; desktop/unknown memakai teks. Tombol menggunakan token terikat chat/sender, expiry 15 menit, dan konsumsi satu kali. Pengujian perangkat yang pernah dilaporkan dibatasi oleh catatan bertanggal; relay berhasil tidak membuktikan tombol tampil pada semua klien.
 
-Koneksi QR/kode, hubungkan ulang, dan lepas koneksi sudah tersedia di panel. Mengubah nomor/metode melepas sesi sebelumnya; menghubungkan ulang dengan pilihan yang sama mencoba memakai sesi yang tersimpan. Jika logout remote gagal karena jaringan, sesi lokal tetap dilepas dan perangkat harus dihapus juga melalui HP. Katalog toko sudah tersedia melalui #produk; saldo pelanggan, checkout, dan status transaksi produk belum tersedia. Handler katalog tidak membuat transaksi pemasok. Pada 14 Oktober 2026, pengguna mengonfirmasi pairing kode berhasil terhubung dan pengujian pesan/balasan dasar berjalan normal. Tampilan tombol native pada berbagai perangkat masih memerlukan pemeriksaan tersendiri.
+Koneksi QR/kode, hubungkan ulang, dan lepas koneksi sudah tersedia di panel. Mengubah nomor/metode melepas sesi sebelumnya; menghubungkan ulang dengan pilihan yang sama mencoba memakai sesi yang tersimpan. Jika logout remote gagal karena jaringan, sesi lokal tetap dilepas dan perangkat harus dihapus juga melalui HP. Katalog #produk, saldo #saldo, topup #topup, pembelian #beli/#pesan dan status #status sudah tersedia. Handler katalog sendiri tetap tidak membuat transaksi pemasok. Pada 14 Oktober 2026, pengguna mengonfirmasi pairing kode berhasil terhubung dan pengujian pesan/balasan dasar berjalan normal. Tampilan tombol native pada berbagai perangkat masih memerlukan pemeriksaan tersendiri.
 
 Fondasi auth sesi masih file per toko dengan writer atomic untuk creds; penyimpanan key/auth production, pemulihan crash, dan operasi multi-host memerlukan milestone hardening sebelum dipakai penyewa.
 
@@ -40,7 +42,7 @@ Baileys rc14 mengirim me/account pada pair-success sebelum registered berubah. W
 
 ## Format pesan dan respons tombol — 15 Oktober 2026
 
-Menu/katalog/info saldo/status memakai heading nama toko dan pemisah bergaya bot Hanshop. Respons saldo dan status dibedakan dan menyebut fitur belum aktif tanpa menampilkan nominal palsu. Command #menu/#start/#help/#bantuan/#format membuka menu; #produk tetap utama, #list/#stok menjadi alias katalog. Pencarian tetap terbawa saat paging teks maupun tombol.
+Menu/katalog/info saldo/status memakai heading nama toko dan pemisah bergaya bot Hanshop. Respons saldo/status memakai data commerce backend; jangan mengembalikan nominal palsu ketika layanan gagal. Command #menu/#start/#help/#bantuan/#format membuka menu; #produk tetap utama, #list/#stok menjadi alias katalog. Pencarian tetap terbawa saat paging teks maupun tombol.
 
 readCustomerMessage menormalisasi wrapper Baileys (ephemeral/view-once), membaca native id/selected_row_id serta balasan legacy button/template/list. Token tetap acak, sekali pakai, 15 menit, dan terikat penerima. Alternate PN/LID hanya berasal dari key yang diberikan Baileys; isi pesan tidak dapat memasok alias/command. Klik invalid/expired/terpakai mendapat petunjuk dan tombol membuka menu baru. Format plain text dikirim lebih dahulu; desktop/unknown tetap bisa mengetik command ketika kontrol native tidak dirender.
 
@@ -48,7 +50,7 @@ Build dan 28 tes bot lulus, termasuk payload quick_reply Baileys asli yang diamb
 
 ## Navigasi layanan → kategori utama → produk — 15 Oktober 2026
 
-`#list` dan `#produk` tanpa parameter membuka layanan. `#list "Aplikasi Premium"` menampilkan kategori utama dalam layanan tersebut. `#stok "Canva" --layanan "Aplikasi Premium"` menampilkan produk kategori yang dipilih. Jika nama kategori hanya ada di satu layanan, `#stok Canva` cukup; jika ada di beberapa layanan, bot meminta pilihan layanan agar tidak mencampur produk. Nama mengikuti kolom service/category produk toko, tanpa membuat taksonomi/salinan produk lain.
+`#list` dan `#produk` tanpa parameter membuka layanan. `#list "Aplikasi Premium"` menampilkan kategori utama dalam layanan tersebut. `#stok "Canva" --layanan "Aplikasi Premium"` menampilkan produk kategori yang dipilih. Jika nama kategori hanya ada di satu layanan, `#stok Canva` cukup; jika ada di beberapa layanan, bot meminta pilihan layanan agar tidak mencampur produk. Nama mengikuti layanan/kategori katalog toko. Struktur CatalogService/CatalogCategory sudah dikelola panel; proyeksi publik hanya menampilkan katalog yang sesuai akses dan produk aktif.
 
 Mobile menerima daftar pilihan single_select untuk layanan/kategori dan quick_reply sebelumnya/berikutnya/kembali. Daftar maksimal sepuluh item per halaman; fallback teks selalu memuat perintah yang dapat dipakai. Parameter `--halaman 2` mempertahankan konteks layanan/kategori. Pencarian global `#produk canva` dan paging `#produk 2 canva` tetap tersedia. Endpoint protected `/api/internal/bot/catalog` membaca data aktif milik store dari token worker, mengagregasi/paginate SQL, dan memakai proyeksi harga/ketersediaan yang sama dengan web. Nama dengan spasi didukung melalui tanda kutip.
 
@@ -62,3 +64,13 @@ Perintah `#beli KODE TUJUAN`, konfirmasi tombol Saldo/QRIS (atau `#pesan` sesuai
 Heartbeat worker mengambil outbox dan mengirim status/hasil ke penerima asli, lalu mengakui pengiriman. Gangguan sesudah WhatsApp menerima pesan sebelum ACK dapat menyebabkan pemberitahuan ulang, tetapi tidak membuat pesanan/debit/fulfillment baru. Produk premium tidak dikirim ke grup. Status pending dikirim sekali setelah lima menit melalui scheduler; hasil berubah tetap mengirim notifikasi. Receipt link bersifat privat.
 
 Manager menyediakan POST `/qr` pada loopback dengan bearer manager existing untuk encoding QRIS lokal. Endpoint ini tidak membutuhkan sesi WhatsApp dan tidak mengganti endpoint pairing. Jangan membuka port manager/worker ke internet. Jalankan scheduler Laravel dan build/restart manager/worker existing agar handler commerce aktif tanpa menghapus sesi.
+
+
+## OTP, voucher dan outbox saat ini
+
+- Manager `/stores/:store/message` mengirim OTP/customer message langsung ke worker toko dan menunggu ACK. Jalur ini tidak melakukan HTTP balik worker ke Laravel untuk memeriksa akses pada request yang sama; ini menghindari deadlock local artisan serve satu proses. Token manager dan akses notifikasi worker tetap diperiksa.
+- Semua paket termasuk Web boleh WA notifikasi. Worker memisahkan akses notifikasi dari capability transaksi bot; Web tidak boleh menjalankan command saldo/katalog/beli.
+- CustomerDelivery memberi sinyal `/stores/:store/notifications` setelah data tersimpan. Worker mengambil outbox segera; pemeriksaan berkala tetap cadangan. Kegagalan sesudah send sebelum ACK dapat mengulang notifikasi, bukan debit/order.
+- Voucher pembelian: `#beli KODE TUJUAN | KODEVOUCHER`. Tombol dan konfirmasi teks mempertahankan kode; Laravel memeriksa sasaran/kuota/harga. Voucher customer tidak membuat harga produk Rp0; voucher sewa/modul 100% berada di panel platform, bukan checkout produk bot.
+- Jalankan tepat satu manager per registry/sesi; kesalahan port terpakai dan SESSION_IN_USE dibedakan. Jangan menghapus auth/session untuk sekadar memuat kode baru. Build dan restart melalui supervisor proses yang dipakai operator.
+- Source auth masih file per toko; hardening durability/multi-host/purge belum lengkap. Status source ini tidak membuktikan pengiriman WhatsApp nyata di server tujuan.

@@ -1,131 +1,86 @@
-# Rancangan Hansbot
+# Arsitektur DigitalToko
 
-Status: aturan bisnis dan fondasi implementasi lokal. Modul bisnis belum lengkap; belum ada deployment/WhatsApp live.
+Status source lokal: **21 Oktober 2026**. Dokumen ini menggantikan rancangan awal yang masih menyebut skeleton, trial baru, dan checkout sebagai pekerjaan berikutnya. Catatan pengujian/deployment tidak disimpulkan dari keberadaan kode.
 
-Brand publik: DigitalToko. Domain yang dipilih: `digitaltoko.com`; pembelian dan konfigurasi belum diverifikasi. Warna yang dipilih: Indigo #4F46E5, Cyan #06B6D4, Navy #0F172A, dengan latar putih. Ringkasan keputusan dan hal yang belum ditetapkan ada di `docs/DECISIONS.md`.
+## Runtime dan batas aplikasi
 
-Keputusan bisnis lanjutan untuk pembayaran, akun/saldo Hanshop bersama, fallback, template, staff, serta KTP ada di `docs/BUSINESS_RULES.md`. Dokumen ini menjadi acuan detail kebutuhan pengguna terbaru.
+`apps/web` memakai Laravel 13, Inertia 3, React 19/TypeScript dan Vite. Panel dan storefront berada dalam satu aplikasi. Database Laravel terpisah dari database API Hanshop; MySQL menjadi target deployment, SQLite dipakai untuk development/test tertentu.
 
-## Tujuan
+`apps/bot` memakai Node/TypeScript dan Baileys 7.0.0-rc14. Satu manager pada loopback (default 3099) menjalankan child worker per toko dengan port loopback dinamis, token serta direktori auth sendiri. Registry dan session adalah file privat, bukan state browser.
 
-Panel admin/owner/staff dan storefront memakai satu Laravel + Inertia React di apps/web. Worker Node/TypeScript + Baileys terpisah apps/bot. Deploy VPS/domain awal hansdigi.biz.id lalu digitaltoko.com; URL/config domain/alias dan mapping custom host tidak menanam domain produksi dalam kode.
+API Hanshop adalah backend Node/Express + MySQL/Redis di proyek terpisah. Bot `bot_wa_v2` melayani toko Hanshop sendiri. HansDev Forwarder (Flutter + Java Android) hanya menangkap/mengirim notifikasi pembayaran; server yang memvalidasi dan menyelesaikan invoice.
 
-## Peran
+## Peta source
 
-- Admin platform mengelola toko, akun owner, paket, masa aktif, suspend, provisioning, dan dukungan. Aksi bantuan pada data toko dicatat dalam audit.
-- Owner mengelola toko yang menjadi hak aksesnya: koneksi WhatsApp, produk, harga, stok, pelanggan, transaksi, dan konfigurasi pembayaran.
-- Pelanggan bertransaksi melalui WhatsApp toko tanpa memiliki akses admin panel.
+| Alur | Source utama |
+| --- | --- |
+| Routing toko berdasarkan host | `apps/web/app/Support/PlatformHost.php`, middleware `ResolvePlatformHost` / `RequirePlatformHost` |
+| Identitas owner dan KTP | controller OwnerAuth/OwnerOnboarding/Verification, `Support/HanshopIdentity.php` |
+| Hak toko dan staff | `Models/Store.php`, `Support/CatalogAccess.php`, `Support/StaffPermissions.php`, controller terkait |
+| Langganan | `Services/SubscriptionService.php`, `SubscriptionController.php`, `PlanOption`, `SubscriptionInvoice` |
+| Pemasok dan harga | `SupplierCatalog`, `SupplierCache`, `StoreCatalog`, `ProductPricing`, `CatalogTaxonomy`, `CategoryDestination` |
+| Pesanan dan pembayaran | `CustomerCommerce`, `CustomerInquiryService`, `CustomerPayments`, `CustomerFulfillment`, job `ProcessCustomerOrder` |
+| Wallet dan koreksi hasil | `CustomerWallet`, `CustomerOrderDecision`, `CustomerLedger`, `DigiflazzWebhookController` |
+| OTP/notifikasi | `CustomerOtp`, `CustomerDelivery`, `StoreMail`, `BotManager`, `CustomerNotice`, `PanelNotifications` |
+| Voucher | `Vouchers`, `DiscountVoucher`, `VoucherController`, `CommerceModules` |
+| Storefront | `resources/js/pages/Storefront`, komponen desain/banner/checkout bersama |
+| Artikel | StoreArticle/PublicArticle controller, `ArticleContent`, Tiptap editor dan `ArticleBody` |
+| Worker WhatsApp | `apps/bot/src/manager.ts`, `index.ts`, `commerce.ts`, `catalog.ts`, `direct-message.ts` |
 
-## Paket publik (15 Oktober 2026)
+## Paket dan capability
 
-| Urutan | Paket | Kanal | Sumber sendiri |
-| --- | --- | --- | --- |
-| 1 | Mercury | Bot WhatsApp | Stok premium |
-| 2 | Venus | Bot WhatsApp | Digiflazz |
-| 3 | Terra | Web toko | Stok premium |
-| 4 | Mars | Web toko | Digiflazz |
-| 5 | Jupiter | Bot WhatsApp | Stok premium + Digiflazz |
-| 6 | Saturn | Web toko | Stok premium + Digiflazz |
-| 7 | Uranus | Bot + Web | Stok premium |
-| 8 | Neptune | Bot + Web | Digiflazz |
-| 9 | Andromeda | Bot + Web | Stok premium + Digiflazz |
+| Paket | Kanal transaksi | Sumber sendiri |
+| --- | --- | --- |
+| Mercury | Bot | Stok premium |
+| Venus | Bot | Digiflazz |
+| Terra | Web | Stok premium |
+| Mars | Web | Digiflazz |
+| Jupiter | Bot | Keduanya |
+| Saturn | Web | Keduanya |
+| Uranus | Bot + Web | Stok premium |
+| Neptune | Bot + Web | Digiflazz |
+| Andromeda | Bot + Web | Keduanya |
 
-Semua paket aktif termasuk integrasi API Hanshop. Definisi nama/rincian bersumber dari apps/web/resources/js/packageCatalog.json, digunakan frontend dan config/package_catalog.php. Kode sumber internal orbit/space/galaxy tetap berarti Digiflazz/stok/keduanya, dikombinasikan dengan kategori bot/web/full; nama publik kini unik per kombinasi sehingga hak langganan lama tetap sesuai snapshot.
+Semua paket aktif termasuk akses sumber Hanshop. Nama/rincian bersumber dari `apps/web/resources/js/packageCatalog.json`. Kode internal `category=bot/web/full` dan `plan=space/orbit/galaxy` dipertahankan untuk stok/Digiflazz/keduanya. Hak sumber dan kanal diperiksa backend, bukan hanya menyembunyikan menu. Snapshot subscription menjaga hak yang sudah diberikan.
 
-## Web toko untuk penyewa
+Semua kanal dapat menghubungkan satu nomor WhatsApp toko untuk OTP/notifikasi. Paket Web tidak boleh menggunakan command katalog/saldo/pemesanan chat. Trial baru tidak tersedia; promo memakai voucher platform, termasuk 100%. Penanda trial lama dipertahankan untuk kompatibilitas.
 
-Web toko publik berbeda dari panel tetapi memakai Laravel/Inertia React yang sama, di apps/web/resources/js/pages/Storefront. apps/storefront hanya catatan, bukan runtime kedua. Tiga template utuh Aurora/Nebula/Atlas memakai katalog nyata yang sama; checkout pelanggan merupakan tahap berikutnya.
+## Data multi-store
 
-Pisahkan hak sumber (`own_digiflazz`, `own_premium_stock`, `hanshop_api`) dari hak kanal (`whatsapp_bot`, `web_storefront`) dan domain (`custom_domain`). Pengguna sudah menetapkan tiga kategori sewa: Web Topup saja, Bot WhatsApp saja, dan Paket Lengkap (Web Topup + Bot WhatsApp). Sembilan kombinasi mempunyai nama unik Mercury sampai Andromeda seperti tabel di atas. Semua kategori memiliki panel pengelolaan. Harga, durasi, limit, dan nama publik kategori selain deskripsi fungsinya belum ditetapkan.
+Satu database aplikasi menyimpan data banyak toko dengan scope `store_id`, bukan satu database atau salinan frontend per toko. Owner global dapat memiliki banyak toko; staff dan customer lokal hanya memiliki konteks toko masing-masing. Host publik memetakan toko; sesi/permission/token menentukan otorisasi.
 
-Katalog, harga, saldo pelanggan, persediaan, dan pesanan menggunakan sumber kebenaran backend yang sama untuk web dan WhatsApp. Satu stok tidak boleh terjual dua kali lewat kanal berbeda. Identitas pelanggan web dan WhatsApp hanya digabung setelah kepemilikan nomor diverifikasi, bukan karena pengunjung memasukkan nomor yang sama.
+Produk, stok, ledger, order, invoice, media, credential, notifikasi dan job harus membawa konteks toko. Customer dengan nomor sama di toko berbeda memiliki wallet berbeda. Cache pemasok merupakan pengecualian yang disengaja: data baca dibagikan hanya untuk akun pemasok dan operasi/mode yang sama, bukan credential atau wallet tenant.
 
-Tema, logo, warna, banner, dan domain toko adalah konfigurasi tenant; bukan salinan aplikasi/deployment untuk setiap penyewa. Checkout web tidak memerlukan koneksi WhatsApp untuk diproses. Penyelesaian pesanan dan notifikasi menggunakan kanal yang tersedia.
+## Alur owner dan langganan
 
-Rancangan domain dan onboarding ada di `docs/DOMAINS.md`. Nama domain dalam contoh hanyalah placeholder; belum ada pembelian, konfigurasi DNS, hosting, atau penerbitan SSL.
+Owner OTP → profil dan verifikasi email → review KTP approved → toko draft → pilih paket/durasi/voucher → invoice → provisioning → siap → aktivasi owner atau otomatis setelah 24 jam siap.
 
-Harga/durasi admin. Tiap toko satu nomor WA, lima staff lokal, satu subdomain tetap dan satu custom domain gratis. Jumlah toko owner tanpa batas; tiap toko sewa sendiri. Trial Bot WA Jupiter tujuh hari sekali per owner, langsung berhenti tanpa grace; retensi/hold tetap berlaku. Konversi paid sebelum habis langsung mulai tanpa tambah sisa trial. Nilai harga/durasi admin belum diisi.
+Invoice berbayar diterbitkan/diperiksa melalui bridge billing Hanshop dan tidak mengkredit saldo Hanshop. Invoice voucher Rp0 dilunasi lokal tanpa gateway. Pembelian pertama tetap menunggu aktivasi. Web siap berdasarkan slug; Bot/Full juga memerlukan WA CONNECTED. Ini tidak membuktikan DNS/TLS custom domain sudah siap.
 
-Paket memiliki capability sumber sendiri `own_digiflazz` dan `own_premium_stock`, bukan build bot yang berbeda. Akses `hanshop_api` tersedia pada setiap paket aktif. Pembatasan sumber sendiri tidak membatasi jenis produk yang dapat ditarik dari Hanshop; katalog yang tersedia mengikuti akses partner Hanshop. Langganan menyimpan versi paket atau snapshot capability dan limit; perubahan definisi paket tidak diam-diam mengubah hak pelanggan lama.
+Renew aktif menambah dari expiry, renew setelah habis dari paid_at. Upgrade/perubahan efektif memakai harga penuh paket tujuan dan masa aktif baru. Pengurangan fitur yang masih aktif dijadwalkan pada akhir periode. Grace tujuh hari masih menerima pesanan; penangguhan admin terpisah dan tidak hilang karena pembayaran. Lifecycle sebenarnya berada di `SubscriptionService` dan `Store::acceptsOrders()`.
 
-Menu panel dan WhatsApp mengikuti capability. Backend juga wajib menolak pembuatan transaksi dan mutasi stok yang tidak diizinkan. Menyembunyikan menu saja tidak cukup. Pemeriksaan paket berlaku untuk command teks, wizard, request panel, dan dispatch job transaksi baru.
+## Katalog dan fulfillment
 
-## Status yang dipisahkan
+Owner menghubungkan Digiflazz atau identitas Hanshop → sync snapshot → impor/mapping layanan-kategori-produk → konfigurasi parsing/harga/stok. Impor tidak membeli barang pemasok. Markup dan auto-update diwariskan secara independen: produk → kategori → layanan; aturan tidak dijumlahkan antarlevel.
 
-- Status toko: ACTIVE atau SUSPENDED.
-- Status langganan/lifecycle toko: ACTIVE, GRACE, SUSPENDED_EXPIRED, DELETION_DUE, DELETION_HOLD, PURGING, atau DELETED, dengan waktu mulai/berakhir dan alasan; CANCELLED/manual suspend tetap dibedakan.
-- Status koneksi WhatsApp: DISCONNECTED, CONNECTING, PAIRING, atau CONNECTED.
-- Status pesanan dan status pengiriman pesan disimpan terpisah.
+`SupplierCache` memakai cache Redis default 120 detik (dibatasi 60–180), fingerprint akun HMAC, lock dan cooldown error. Scheduler memperbarui katalog setiap dua menit; pembacaan katalog juga meminta refresh bila perlu. Kegagalan refresh mempertahankan snapshot, tetapi sumber remote melebihi batas umur default 600 detik tidak eligible untuk pemesanan.
 
-Koneksi WhatsApp terhubung tidak berarti toko berhak membuat transaksi. Backend membaca status toko, tanggal masa aktif, dan capability saat menerima pesanan baru; tidak hanya mengandalkan scheduler atau state worker.
+Checkout web/bot membuat snapshot harga, tujuan, gateway, voucher dan referensi idempotensi. Pesanan wallet didebit atomik; gateway menunggu pembayaran terverifikasi. Setelah commit, fulfillment dijadwalkan melalui queue. Stok ready diklaim atomik; sumber remote memakai parsing termurah dan fallback hanya setelah kegagalan yang pasti. Timeout/hasil ambigu tetap pending dan tidak boleh membeli ulang tanpa kepastian.
 
-Semua tanggal subscription dan lifecycle berscope `store_id`. Satu owner dapat memiliki toko dengan tanggal expiry berbeda; grace, suspend, dan penghapusan hanya diterapkan pada toko yang bersangkutan. Pembayaran perpanjangan harus menunjuk toko tertentu, bukan mengaktifkan seluruh toko owner.
+Callback Digiflazz: satu URL platform `/api/commerce/digiflazz`, validasi signature dan hubungan attempt dengan pesanan. Midtrans dan Forwarder menggunakan URL per toko. Status/SN baru Digiflazz dapat mengoreksi hasil terminal/manual; refund yang sudah diberikan dapat ditarik kembali, termasuk menjadi saldo minus. Ini bukan fitur keputusan manual universal untuk semua pemasok.
 
-Aktivasi pertama setelah provisioning dan konfirmasi owner. Renewal aktif dari expiry; expired dari pembayaran sukses. Upgrade penuh memulai ulang durasi; downgrade periode berikutnya. Grace tujuh hari bertransaksi lalu web/bot diblokir. Hari ke-30 saldo pelanggan/transaksi/refund belum selesai menahan purge (DELETION_HOLD), bukan dipaksa gagal. Pelanggan bersaldo mendapat notifikasi WA/email. Rancangan renewal sebelum purge memulihkan data/paket/lisensi existing, membatalkan reminder/purge lama, tanpa duplikasi pesanan/refund. Tanpa kewajiban/renewal, data toko dipurge; akun/saldo/riwayat owner Hanshop dipertahankan. Setelah purge mulai ulang termasuk lisensi baru.
+## Pemisahan uang dan notifikasi
 
-## Pemisahan data
+Empat domain berbeda: saldo Hanshop owner, saldo customer toko, pembayaran produk/topup customer, dan pembayaran sewa/modul. Tidak ada wallet tenant yang menjadi salinan saldo Hanshop.
 
-Data tenant memakai `store_id`: produk toko, stok, pelanggan, pesanan, pembayaran, saldo/ledger, konfigurasi, sesi, dan event pengiriman. Backend menentukan toko dari sesi pengguna atau credential worker yang terautentikasi, lalu memeriksa keanggotaan; ID toko dari request tidak dipercaya sebagai otorisasi.
+OTP owner/platform tetap lewat jalur identitas platform. OTP customer memakai WA toko atau email bermerek toko, tanpa fallback WA pusat tersembunyi. Pengiriman email memakai platform atau SMTP tenant terenkripsi. CustomerNotice menyimpan outbox; manager diberi sinyal setelah commit, polling worker dan scheduler menjadi cadangan. Gangguan antara pengiriman WA dan ACK dapat menyebabkan notifikasi ulang, bukan pesanan/debit baru.
 
-Query, cache, file, event realtime, background job, dan constraint database harus mengikuti scope toko. Nomor pelanggan yang sama pada dua toko menjadi dua hubungan pelanggan yang terpisah. Pengiriman hasil transaksi selalu menggunakan toko dan bot asal pesanan.
+## Mode pengujian
 
-Stok premium milik toko diambil secara atomik dan tidak boleh diklaim oleh dua pesanan. Data akun disimpan dengan perlindungan secret, tidak masuk log, dan hanya ditampilkan/dikirim kepada pihak yang berwenang.
+`StoreEnvironment` menyimpan sandbox per toko; perubahan ditolak jika ada order berjalan atau inquiry yang masih valid. Digiflazz memakai development key dan testing. Hanshop/stok premium disimulasikan, wallet uji terpisah, pembayaran lokal dapat disimulasikan atau memakai Midtrans Sandbox. Mode sandbox toko berbeda dari setting sandbox merchant; jangan menganggap QRIS Sandbox dapat dibayar dengan uang nyata.
 
-## Integrasi transaksi
+## Proses berkala dan batas tersisa
 
-API Hanshop menjadi sumber produk yang dapat dihubungkan oleh penyewa selama paketnya aktif. Hansbot menyimpan katalog pilihan toko, harga jual, dan pesanan lokal. Identitas toko dipetakan ke `store_id` dan akun Hanshop owner. Saldo akun Hanshop yang sama digunakan bot Hanshop dan transaksi sumber Hanshop toko; tidak dibuat saldo pemasok baru yang independen. Partner per toko, bila digunakan, ditautkan ke akun yang sama untuk scope/audit. Secret disimpan di backend, bukan browser atau credential internal bot pribadi.
+`routes/console.php` menjadwalkan invoice/langganan dan commerce tiap menit, sinkron katalog tiap dua menit, outbox notice tiap lima detik, purge KTP ditolak tiap menit, dan pembersihan upload artikel harian. Queue worker menjalankan job setelah pembayaran/commit.
 
-## Akses pemasok Hanshop dari paket
-
-Alur panel: owner membuka Integrasi Hanshop, menghubungkan identitas partner tokonya, menarik katalog yang diizinkan, memilih produk untuk dijual, lalu menentukan markup atau harga jual. Jika onboarding partner nantinya dikelola otomatis, owner cukup mengaktifkan integrasi tanpa menyalin secret ke browser.
-
-Menarik katalog hanya menyimpan mapping SKU pemasok dan konfigurasi produk toko. Tindakan ini tidak membeli produk, memotong saldo, atau memindahkan stok Hanshop ke stok lokal. Ketersediaan dan harga pembelian diperiksa kembali pada checkout; perubahan harga yang memengaruhi persetujuan pelanggan memerlukan konfirmasi ulang.
-
-Sumber produk disimpan terpisah dari jenis produk: PPOB atau PREMIUM adalah jenis, sedangkan OWN_DIGIFLAZZ, HANSHOP, atau LOCAL_STOCK adalah sumber. Produk dari Hanshop dipenuhi melalui pembelian API ketika ada pesanan; produk premium lokal memakai stok toko sendiri. Jangan menggandakan credential stok pemasok ketika sinkronisasi katalog.
-
-Ketentuan yang disepakati: ada dua jalur sumber. Jalur milik toko mengikuti paket: Digiflazz sendiri saja, stok premium sendiri saja, atau keduanya. Jalur API Hanshop dapat digunakan ketika salah satu paket aktif, termasuk untuk produk berbeda jenis dari sumber sendiri yang diizinkan paket. Contoh: toko dengan paket Digiflazz sendiri tetap dapat menjual premium dari Hanshop, tetapi tidak dapat mengelola stok premium lokal; toko dengan paket stok sendiri dapat menjual PPOB Hanshop, tetapi tidak dapat menghubungkan akun Digiflazz sendiri.
-
-Enforcement harus berlaku pada kedua server: Hansbot memeriksa langganan/capability pada impor dan pembelian baru, sedangkan API Hanshop memeriksa identitas partner, kategori yang diizinkan, serta entitlement sewa yang masih berlaku. Menonaktifkan tombol panel saja tidak mencegah pemakaian credential secara langsung. Implementasi enforcement lintas aplikasi belum tersedia dalam struktur awal ini.
-
-Saat paket habis, hentikan impor katalog dan pembelian baru melalui akses sewa. Pembacaan status pesanan lama, rekonsiliasi, dan delivery hasil tetap tersedia. Bila partner juga memiliki kontrak API tersendiri di luar sewa Hansbot, hak tersebut harus dimodelkan terpisah agar expiry sewa tidak mencabut kontrak lain secara keliru.
-
-Partner API bukan pengganti backend multi-toko. Stok premium penyewa dikelola Hansbot; stok Hanshop tidak dianggap stok milik penyewa. Bot Hanshop pribadi tetap memiliki jalur internal yang terpisah.
-
-Pembayaran pembeli memakai satu gateway aktif (Midtrans merchant toko atau custom QRIS), dengan fee dapat disetting oleh role berpermission. Pembayaran platform memakai API Hanshop + HansDev Forwarder. Owner login OTP nomor Hanshop dan melengkapi data diri/email; email juga disimpan Hanshop. KTP manual wajib disetujui sebelum pilih/bayar paket, berlaku semua toko owner. Staff hanya lokal toko. Checkout guest/wajib login diatur toko. Web memiliki tiga template, branding/section terbatas, order/profil seragam, serta Powered by DigitalToko wajib. Parsing memilih modal termurah, fallback aman, habis kandidat gagal; pending menunggu supplier aktif dan memberi cek status. Policy modal naik dikelola per produk/kategori/layanan.
-
-Keputusan terbaru: pendaftaran langsung sekaligus akun Hanshop; pembeli WA OTP/email-password; saldo pelanggan dapat topup dan pencairan hanya saat toko berhenti. Fee Midtrans sesuai provider/merchant, custom QRIS kode unik dengan policy refund produk/termasuk kode unik. Kenaikan modal saat request di atas jual membuat pesanan gagal, auto-update katalog opsional; satu pending reminder dan notif saat status berubah. Toko siap auto-aktif setelah 24 jam bila owner belum mengaktifkan. KTP rejected file hapus 72 jam, approved disimpan selama toko masih ada; pembersihan owner setelah semua toko dihapus dengan akun/ledger Hanshop tetap dipertahankan. Admin menangani kewajiban setelah 30 hari dengan kontak owner, bukan membuka KTP pelanggan.
-
-Markup nominal/persen/kombinasi dipilih satu aturan produk > kategori > layanan. Refund Midtrans produk saja tanpa fee. Lisensi custom nonrefund/nontransfer. Manual tutup menolak order baru dan menyelesaikan saldo/pending sebelum final. Readiness bot harus WA terhubung; web domain ditentukan dan subdomain/provisioning berfungsi, custom hostname tetap verifikasi DNS/TLS. Admin memperbaiki gagal provisioning terlebih dahulu.
-
-Keputusan penutup aturan bisnis: refund sewa jika perbaikan provisioning tetap gagal sebelum layanan diberikan; source saldo kurang dilewati, modal sama jual boleh margin nol; pending sekali setelah lima menit; profil owner wajib nama KTP, WA/email verified, alamat. Detail teknis rutin didelegasikan pengembang.
-
-Tagihan sewa, saldo pembelian toko dari pemasok, saldo pelanggan pada toko, dan pembayaran pesanan adalah domain berbeda. Harga pembelian dan harga jual disimpan sebagai snapshot pada pesanan. Request dan callback berulang diproses idempotent; timeout pemasok tidak otomatis berarti transaksi gagal atau aman diulang sebagai transaksi baru.
-
-Owner memakai nomor HP/ID user/email Hanshop dengan OTP WA/email; staff lokal username/email + password. Pembeli wajib WA, email opsional. Guest gagal diselesaikan toko melalui ulang/refund manual; pesanan login terminal gagal dibayar direfund ke saldo per toko secara idempotent. Saldo/kewajiban pelanggan belum selesai menahan purge; penyelesaian uang tunai oleh toko dicatat.
-
-## Koneksi melalui panel
-
-Owner login ke web, membuka koneksi WhatsApp, dan meminta QR/pairing code. Backend memeriksa hak toko, kemudian memerintahkan worker. Event QR/kode/status hanya dipublikasikan ke sesi panel toko yang berwenang. Kode memiliki masa berlaku dan tidak dipersistenkan dalam log.
-
-Worker berjalan di server meskipun browser ditutup. Credential auth WhatsApp tetap di sisi server dengan penyimpanan durable. Tahap awal memakai satu proses per toko untuk menyesuaikan bot lama yang masih memakai state socket global. Provisioning harus mencegah dua proses menggunakan sesi yang sama.
-
-## Tahapan implementasi
-
-1. Pilih stack web dan model pemasok/pembayaran. Tetapkan kontrak web-backend-worker.
-2. Implementasikan login, keanggotaan toko, paket/langganan, audit, dan pemeriksaan scope tenant.
-3. Adaptasikan satu worker per toko: konfigurasi, isolasi sesi/cache, pairing panel, dan lifecycle.
-4. Implementasikan katalog dan stok premium, pesanan, claim atomik, serta pengiriman hasil.
-5. Implementasikan adapter Digiflazz milik toko dan API Hanshop, saldo pembelian, callback, idempotensi, dan rekonsiliasi.
-6. Implementasikan penagihan sewa, perubahan paket, monitoring, backup, dan pemulihan.
-
-Validasi wajib sebelum layanan dipakai: owner A tidak dapat membaca/mengubah toko B; sumber sendiri yang tidak termasuk paket ditolak; setiap paket aktif dapat mengakses Hanshop tanpa pembatasan jenis produk dari paket sumber sendiri; expiry/downgrade tidak menghilangkan penyelesaian pesanan lama; worker restart tidak menggandakan transaksi/pengiriman tanpa kendali; pembelian premium bersamaan tidak memakai stok yang sama.
-
-## Modul sumber dan katalog yang tersedia — 14 Oktober 2026
-
-Laravel menyimpan supplier_connections terenkripsi dan supplier_products sebagai snapshot per toko/mode/SKU. Cache Redis 120 detik (60–180) memakai HMAC fingerprint akun pemasok, shared lintas toko dengan akun sama, dengan lock dan cooldown kegagalan. Sync memvalidasi payload utuh sebelum upsert transactional; pembaca storefront/bot tidak melakukan I/O provider. Scheduler setiap dua menit memperbarui mode yang pernah disinkronkan. Snapshot remote >600 detik tidak eligible.
-
-CatalogProduct memiliki beberapa ProductMapping jenis sama. StoreCatalog menghitung kandidat aktif/eligible berdasarkan paket dan sumber, mengurutkan modal termurah, kemudian menerapkan ProductPricing. Markup nominal/persen/kombinasi serta auto_update diwariskan secara independen: produk → kategori → layanan; nilai 0 eksplisit bukan inherit. Harga jual di bawah modal membuat produk tidak tersedia. Fallback transaksi akan memakai kandidat ini pada milestone pemesanan; saat ini belum ada dispatch.
-
-PremiumStock menyimpan payload terenkripsi, terpisah per toko; daftar hanya metadata, reveal memerlukan stock.credentials dan respons no-store. Stok sent immutable. Public projection yang sama digunakan web/bot, tidak memuat modal, credential, parsing privat, atau payload akun. Koneksi pemasok owner-only; products.manage, pricing.manage, stock.manage dan stock.credentials terpisah. Saldo Hanshop global tidak tersedia untuk staff.
-
-Integrasi Hanshop memakai endpoint internal read-only pada bridge tepercaya existing: owner id tertaut, store UUID, access_until. Kredensial layanan tidak diberikan ke tenant. Pembacaan harga mengikuti tier akun existing dan tidak memanggil provider/mengubah saldo. Endpoint transaksi Partner API tetap memakai kontrak HMAC/scope/IP tersendiri dan tidak dipakai tahap katalog.
+Belum ada purge otomatis seluruh data toko hari ke-30, penghapusan sesi/domain/provider lintas aplikasi, provisioning DNS/TLS otomatis, refund sewa gagal provisioning otomatis, atau operasi worker multi-host. Mapping custom host verified sudah ada; workflow Cloudflare for SaaS masih rancangan. Detail konfigurasi dan batasnya di DEPLOYMENT.md/DOMAINS.md.

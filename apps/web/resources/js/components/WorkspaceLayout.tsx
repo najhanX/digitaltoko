@@ -33,9 +33,9 @@ function SidebarSection({label, icon: Icon, links, storageKey, collapsed, onExpa
         <div id={id} className="sidebar-section-links" hidden={collapsed || !open}>{children}</div>
     </div>;
 }
-export default function WorkspaceLayout({ title, description, role = 'owner', canCreate: _canCreate, children, actions, eyebrow, breadcrumb, preview = false }: {
+export default function WorkspaceLayout({ title, description, role = 'owner', canCreate: _canCreate, children, actions, eyebrow, breadcrumb, preview = false, contentClassName = '' }: {
     title: string; description?: string; role?: 'owner'|'admin'|'staff'; canCreate?: boolean;
-    children: ReactNode; actions?: ReactNode; eyebrow?: string; breadcrumb?: string; preview?: boolean;
+    children: ReactNode; actions?: ReactNode; eyebrow?: string; breadcrumb?: string; preview?: boolean; contentClassName?: string;
 }) {
     const page = usePage();
     const context = page.props.workspace as WorkspaceContext | null;
@@ -104,6 +104,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         {href:'/admin/verifications',label:'Verifikasi owner',icon:ShieldCheck,active:path === '/admin/verifications'},
         {href:'/admin/plans',label:'Paket & harga',icon:Package,active:path === '/admin/plans'},
         {href:'/admin/billing',label:'Pembayaran sewa',icon:CreditCard,active:path === '/admin/billing'},
+        {href:'/admin/vouchers',label:'Voucher promo',icon:CreditCard,active:path.startsWith('/admin/vouchers')},
         {href:'/admin/commerce',label:'Modul pembayaran',icon:CreditCard,active:path === '/admin/commerce'},
     ] : role === 'owner' ? [
         {href:'/owner',label:'Ringkasan',icon:LayoutDashboard,active:path === '/owner'},
@@ -120,7 +121,8 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
             scopedLinks.push({href:'/stores/'+store.id+'/catalog-structure',label:'Layanan & kategori',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/catalog-structure'});
             scopedLinks.push({href:'/stores/'+store.id+'/products',label:'Katalog & harga',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/products'});
         }
-        if(role==='owner' || permissions.some(value=>['orders.view','orders.resend','guests.resolve'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/orders',label:'Transaksi pelanggan',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/orders')});
+        if(role==='owner' || permissions.some(value=>['vouchers.view','vouchers.manage'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/vouchers',label:'Voucher diskon',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/vouchers')});
+        if(role==='owner' || permissions.some(value=>['orders.view','orders.manage','orders.resend','guests.resolve'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/orders',label:'Transaksi pelanggan',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/orders')});
         if(role==='owner' || permissions.some(value=>['customers.view','customers.contacts','wallet.view','wallet.settlement'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/customers',label:'Pelanggan & saldo',section:'sales',icon:Users,active:path.startsWith('/stores/'+store.id+'/customers')});
         if(role==='owner' || permissions.some(value=>['payments.view','payments.policy','checkout.manage'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/payments',label:'Pembayaran pelanggan',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/payments')});
         if (role === 'owner' || permissions.some(value=>['stock.view','stock.manage','stock.credentials'].includes(value))) scopedLinks.push({href:'/stores/'+store.id+'/stock',label:'Stok premium',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/stock'});
@@ -172,7 +174,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
                     <div className="topbar-location"><button type="button" className="icon-button sidebar-collapse-toggle" aria-label={sidebarCollapsed?'Perluas sidebar':'Perkecil sidebar'} title={sidebarCollapsed?'Perluas sidebar':'Perkecil sidebar'} aria-controls="workspace-navigation" aria-expanded={!sidebarCollapsed} onClick={() => changeSidebarCollapsed(!sidebarCollapsed)}>{sidebarCollapsed?<PanelLeftOpen size={20}/>:<PanelLeftClose size={20}/>}</button><button ref={menuButtonRef} type="button" className="icon-button mobile-only" aria-label="Buka menu" aria-controls="workspace-navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21}/></button><span>{role === 'owner'?'Panel owner':role === 'staff'?'Panel staff':'Panel admin'} <span className="breadcrumb-separator">/</span> <strong>{breadcrumb ?? (scoped?store?.name:null) ?? 'DigitalToko'}</strong></span></div>
                     <div className="panel-top-right"><ThemeToggle/><NotificationBell summary={notificationSummary} preview={preview}/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div><Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
                 </header>
-                <main className="workspace-content panel-content">
+                <main className={'workspace-content panel-content '+(role==='admin'?'catalog-workspace admin-workspace ':'')+contentClassName}>
                     <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{actions && <div className="page-heading-actions">{actions}</div>}</div>
                     {role !== 'admin' && store?.admin_suspended_at && <div className="feedback warning" role="status"><strong>Toko ditangguhkan administrator</strong><p>{store.admin_suspension_reason}</p><p>Layanan bot dan web berhenti. Hubungi administrator untuk tindak lanjut. Masa sewa tetap berjalan.</p></div>}
                     {store?.sandbox && <div className="feedback warning" role="status"><strong>Sandbox · Mode pengujian</strong><p>Saldo uji terpisah. Pesanan Hanshop dan stok premium disimulasikan; Digiflazz memakai key development. Sewa toko tetap berlaku.</p></div>}

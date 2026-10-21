@@ -47,3 +47,10 @@ test('notification wake coalesces concurrent requests and retries after a failur
  await retry.trigger();await retry.trigger();assert.equal(errors,1);assert.equal(calls,4);
  const paused=createNoticePump(()=>undefined,async()=>{throw Error('must not request');},()=>errors++);await paused.trigger();assert.equal(errors,1);
 });
+
+test('voucher is quoted before confirmation and preserved in native and typed purchase actions',async()=>{
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product,...(body.voucher_code?{voucher:{code:'HEMAT10',discount:1500,total:13500}}:{})}:{order}}));
+ await h.run(message('#beli SKU1 08123456789 | HEMAT10'));assert.equal(h.calls.at(-1).body.voucher_code,'HEMAT10');assert.match(h.sent[0].text,/13.500/);assert.match(h.sent[0].text,/15000\|\|HEMAT10/);
+ const buttons=h.relays.at(-1).viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons,id=JSON.parse(buttons[0].buttonParamsJson).id;const click=message('');click.key.id='VOUCHER-CONFIRM';click.message={buttonsResponseMessage:{selectedButtonId:id}};await h.run(click);assert.equal(h.calls.at(-1).body.voucher_code,'HEMAT10');assert.equal(h.calls.at(-1).body.expected_price,15000);
+ await h.run(message('#pesan SKU1|08123456789|qris|15000||HEMAT10'));assert.equal(h.calls.at(-1).body.voucher_code,'HEMAT10');assert.equal(h.calls.at(-1).body.inquiry_id,undefined);
+});

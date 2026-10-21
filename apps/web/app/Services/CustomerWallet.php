@@ -11,6 +11,17 @@ class CustomerWallet
 {
     public function apply(Customer $customer, int $amount, string $event, string $reason, array $metadata = [], bool $sandbox = false): void
     {
+        $this->change($customer, $amount, $event, $reason, $metadata, $sandbox, false);
+    }
+
+    public function reverseRefund(Customer $customer, int $amount, string $event, array $metadata = [], bool $sandbox = false): void
+    {
+        abort_unless($amount > 0, 422);
+        $this->change($customer, -$amount, $event, 'refund_reversal', $metadata, $sandbox, true);
+    }
+
+    private function change(Customer $customer, int $amount, string $event, string $reason, array $metadata, bool $sandbox, bool $allowNegative): void
+    {
         if (DB::transactionLevel() < 1) {
             throw new \LogicException('Wallet mutation requires a database transaction.');
         }
@@ -22,7 +33,7 @@ class CustomerWallet
             return;
         }
         $field = $sandbox ? 'sandbox_balance' : 'balance';
-        if ($locked->$field + $amount < 0) {
+        if ($amount < 0 && ! $allowNegative && $locked->$field + $amount < 0) {
             throw ValidationException::withMessages(['payment' => 'Saldo pelanggan tidak mencukupi.']);
         }
         $locked->update([$field => $locked->$field + $amount]);

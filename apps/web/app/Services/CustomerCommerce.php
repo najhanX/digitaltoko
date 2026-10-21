@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessCustomerOrder;
 use App\Models\CatalogProduct;
 use App\Models\CommerceReceipt;
 use App\Models\Customer;
@@ -32,6 +33,19 @@ class CustomerCommerce
         }
     }
 
+    public function purchaseBlocked(Store $store, ?Customer $customer, string $phone): bool
+    {
+        $query = Customer::where('store_id', $store->id);
+        $customer ? $query->whereKey($customer->id) : $query->where('phone', HanshopIdentity::phone($phone));
+        if (DB::transactionLevel() > 0) {
+            $query->lockForUpdate();
+        }
+        $current = $query->first();
+        $field = $store->sandbox ? 'sandbox_balance' : 'balance';
+
+        return $current && $current->$field < 0;
+    }
+
     public function begin(Store $store, array $input, ?Customer $customer, string $channel = 'web'): CustomerOrder
     {
         $this->ensure(in_array($channel, ['web', 'bot'], true), 'Kanal pesanan tidak valid.');
@@ -49,8 +63,9 @@ class CustomerCommerce
         }
         $this->ensure($destination !== '' && mb_strlen($destination) <= 255 && ! preg_match('/[\r\n]/', $destination), 'Tujuan transaksi wajib diisi.');
         $email = $customer?->email ?? ($input['email'] ?? null);
-        $hash = hash('sha256', json_encode([...($store->sandbox ? ['sandbox'] : []), $purpose, $input['product_id'] ?? null, $input['amount'] ?? null, $destination, $phone, $email, $customer?->id, $pay, $channel, $input['inquiry_id'] ?? null]));
+        $hash = hash('sha256', json_encode([...($store->sandbox ? ['sandbox'] : []), ...(Vouchers::code($input['voucher_code'] ?? '') !== '' ? ['voucher', Vouchers::code($input['voucher_code'])] : []), $purpose, $input['product_id'] ?? null, $input['amount'] ?? null, $destination, $phone, $email, $customer?->id, $pay, $channel, $input['inquiry_id'] ?? null]));
         if ($purpose === 'product') {
+            $this->ensure(! $this->purchaseBlocked($store, $customer, $phone), 'Saldo akun minus. Topup hingga saldo minimal Rp0 sebelum membeli produk kembali.');
             app(SupplierCatalog::class)->refreshForStore($store);
         }
 
@@ -77,6 +92,7 @@ class CustomerCommerce
             $candidates = [];
             $product = null;
             if ($purpose === 'product') {
+                $this->ensure(! $this->purchaseBlocked($store, $customer, $phone), 'Saldo akun minus. Topup hingga saldo minimal Rp0 sebelum membeli produk kembali.');
                 $product = app(StoreCatalog::class)->query($store, false)->whereKey($input['product_id'] ?? '')->firstOrFail();
                 $quote = app(StoreCatalog::class)->present($product, $store, true);
                 $this->ensure($quote['available'], 'Produk tidak tersedia atau harga jual di bawah modal.');
@@ -105,6 +121,13 @@ class CustomerCommerce
             }
             $this->ensure(! isset($input['expected_price']) || (int) $input['expected_price'] === $amount, 'Harga berubah. Periksa harga terbaru sebelum mengonfirmasi pesanan.');
             $this->ensure($amount > 0 && $amount <= 100000000, 'Nominal pesanan tidak valid.');
+            $voucher = null;
+            if (filled($input['voucher_code'] ?? null)) {
+                $this->ensure($purpose === 'product', 'Voucher tidak berlaku untuk topup saldo.');
+                $voucher = app(Vouchers::class)->quote($store, $input['voucher_code'], $amount, $product, lock: true);
+                $snapshot = [...$snapshot, 'subtotal' => $amount, 'voucher' => $voucher];
+                $amount = $voucher['total'];
+            }
             $gateway = $pay === 'wallet' ? 'wallet' : app(StoreEnvironment::class)->gateway($store, $setting);
             $this->ensure($gateway === 'wallet' ? $customer !== null : in_array($gateway, ['midtrans', 'custom', 'sandbox'], true), 'Gateway pembayaran toko belum disiapkan.');
             $credentials = $setting->credentials ?? [];
@@ -137,6 +160,7 @@ class CustomerCommerce
                 'amount' => $amount, 'fee' => $fee, 'unique_code' => $unique, 'total' => $total, 'credit_amount' => $purpose === 'topup' ? $amount + ($gateway === 'custom' && $setting->topup_unique ? $unique : 0) : 0,
                 'refund_amount' => $amount + ($gateway === 'custom' && $setting->refund_unique ? $unique : 0), 'merchant_key' => $merchant, 'active_amount_key' => $active,
                 'payment_credentials' => in_array($gateway, ['wallet', 'sandbox'], true) ? null : $credentials, 'expires_at' => $inquiry?->expires_at ?? now()->addMinutes(15)]);
+            app(Vouchers::class)->redeem($voucher, 'order', $order->id, $order->is_sandbox);
             foreach ($candidates as $index => $candidate) {
                 $mapping = ProductMapping::with('item.connection')->findOrFail($candidate['mapping_id']);
                 $connection = $mapping->item?->connection;
@@ -147,6 +171,7 @@ class CustomerCommerce
             if ($gateway === 'wallet') {
                 app(CustomerWallet::class)->apply($customer, -$amount, 'order:'.$order->id.':debit', 'purchase', [], $order->is_sandbox);
                 $order->update(['payment_status' => 'paid', 'status' => 'paid', 'paid_at' => now()]);
+                $this->queueFulfillment($order);
                 $this->notice($order, 'paid');
             } elseif ($channel === 'web') {
                 $this->notice($order, 'awaiting_payment');
@@ -185,8 +210,24 @@ class CustomerCommerce
                 app(CustomerWallet::class)->apply($order->customer, $order->credit_amount, 'order:'.$order->id.':topup', 'topup', [], $order->is_sandbox);
                 $order->update(['status' => 'success', 'completed_at' => now()]);
             }
+            $this->queueFulfillment($order);
             $this->notice($order, $order->status);
         }, 3);
+    }
+
+    private function queueFulfillment(CustomerOrder $order): void
+    {
+        if ($order->purpose !== 'product' || $order->payment_status !== 'paid' || $order->status !== 'paid') {
+            return;
+        }
+        $id = $order->id;
+        DB::afterCommit(function () use ($id): void {
+            try {
+                ProcessCustomerOrder::dispatch($id);
+            } catch (\Throwable $error) {
+                report($error);
+            }
+        });
     }
 
     public function fail(CustomerOrder $order, string $message): void
@@ -213,7 +254,7 @@ class CustomerCommerce
         return rtrim(app(PlatformHost::class)->storeUrl($order->store), '/').'/orders/'.$order->id.'?access='.$this->token($order);
     }
 
-    public function notice(CustomerOrder $order, string $status): void
+    public function notice(CustomerOrder $order, string $status, ?string $revision = null): void
     {
         $labels = ['awaiting_payment' => 'Pesanan dibuat · menunggu pembayaran', 'paid' => 'Pembayaran diterima', 'pending' => 'Transaksi masih pending. Silakan cek status pesanan secara berkala', 'success' => 'Pesanan berhasil', 'failed' => 'Pesanan gagal', 'review' => 'Pesanan memerlukan pemeriksaan toko'];
         $message = ($order->is_sandbox ? '[PENGUJIAN] ' : '').$order->store->name.' · '.$order->number.'\n'.($labels[$status] ?? $status).'\n'.($order->message ?? '');
@@ -227,8 +268,9 @@ class CustomerCommerce
             $message .= '\nHubungi toko untuk tindak lanjut pembelian ulang atau refund manual.';
         }
         $message .= '\n'.$this->url($order);
-        CustomerNotice::firstOrCreate(['event' => 'order:'.$order->id.':'.$status], ['store_id' => $order->store_id, 'order_id' => $order->id, 'phone' => $order->phone, 'email' => $order->email, 'message' => str_replace('\n', "\n", $message)]);
-        app(PanelNotifications::class)->forStore($order->store, 'Pesanan '.$order->number, $labels[$status] ?? $status, $status === 'failed' ? 'warning' : 'info', 'order:'.$order->id.':'.$status, 'orders.view');
+        $event = 'order:'.$order->id.':'.$status.($revision ? ':'.$revision : '');
+        CustomerNotice::firstOrCreate(['event' => $event], ['store_id' => $order->store_id, 'order_id' => $order->id, 'phone' => $order->phone, 'email' => $order->email, 'message' => str_replace('\n', "\n", $message)]);
+        app(PanelNotifications::class)->forStore($order->store, 'Pesanan '.$order->number, $labels[$status] ?? $status, $status === 'failed' ? 'warning' : 'info', $event, 'orders.view');
     }
 
     public function publicData(CustomerOrder $order): array
@@ -237,6 +279,6 @@ class CustomerCommerce
             'can_simulate_payment' => app(CustomerPayments::class)->canSimulate($order), 'simulated_payment' => ($order->snapshot['payment_simulation']['method'] ?? null) === 'local',
             'midtrans_sandbox' => $order->gateway === 'midtrans' && (bool) ($order->snapshot['sandbox'] ?? true),
             'sandbox_qr_url' => $order->gateway === 'midtrans' && ($order->snapshot['sandbox'] ?? true) && is_string($order->provider_id) && preg_match('/^[a-zA-Z0-9-]{1,100}$/', $order->provider_id) ? 'https://api.sandbox.midtrans.com/v2/qris/'.rawurlencode($order->provider_id).'/qr-code' : null,
-            'cancelled' => (bool) ($order->snapshot['cancelled_by_customer'] ?? false) || filled($order->snapshot['cancelled_by_owner'] ?? null), 'product' => $order->snapshot['name'], 'game_account' => $order->snapshot['game_account'] ?? null, 'phone' => $order->phone, 'result' => $order->status === 'success' ? $order->result : null, 'payment_url' => $order->payment_url, 'qr_image' => $order->qr_image, 'url' => $this->url($order)];
+            'voucher' => $order->snapshot['voucher'] ?? null, 'subtotal' => $order->snapshot['subtotal'] ?? $order->amount, 'cancelled' => (bool) ($order->snapshot['cancelled_by_customer'] ?? false) || filled($order->snapshot['cancelled_by_owner'] ?? null), 'product' => $order->snapshot['name'], 'game_account' => $order->snapshot['game_account'] ?? null, 'phone' => $order->phone, 'result' => $order->status === 'success' ? $order->result : null, 'payment_url' => $order->payment_url, 'qr_image' => $order->qr_image, 'url' => $this->url($order)];
     }
 }

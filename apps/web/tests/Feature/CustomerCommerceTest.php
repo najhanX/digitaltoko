@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessCustomerOrder;
 use App\Mail\CustomerOtpMail;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -42,6 +44,7 @@ class CustomerCommerceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Queue::fake([ProcessCustomerOrder::class]);
         $this->withoutVite();
         config(['platform.domain' => 'localhost', 'app.url' => 'http://localhost', 'inertia.ssr.enabled' => false]);
         Http::preventStrayRequests();
@@ -822,5 +825,63 @@ class CustomerCommerceTest extends TestCase
         $this->assertSame('failed', $o->fresh()->status);
         $this->assertSame(115000 + $o->unique_code, $c->fresh()->balance);
         $this->assertSame(1, CustomerLedger::where('reason', 'refund')->count());
+    }
+
+    public function test_wallet_purchase_queues_fulfillment_after_commit_once_and_not_on_rollback(): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $product = $this->product($store);
+        $engine = app(CustomerCommerce::class);
+        $input = $this->input($product);
+        DB::beginTransaction();
+        $order = $engine->begin($store, $input, $customer);
+        Queue::assertNotPushed(ProcessCustomerOrder::class);
+        DB::commit();
+        Queue::assertPushed(ProcessCustomerOrder::class, fn ($job) => $job->orderId === $order->id);
+        $engine->begin($store, $input, $customer);
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+        DB::beginTransaction();
+        $rolledBack = $engine->begin($store, $this->input($product), $customer);
+        DB::rollBack();
+        Queue::assertNotPushed(ProcessCustomerOrder::class, fn ($job) => $job->orderId === $rolledBack->id);
+        $this->assertSame('paid', $order->fresh()->status);
+        $this->assertSame('ready', $order->attempts()->firstOrFail()->status);
+    }
+
+    public function test_gateway_product_payment_queues_once_while_topup_and_late_payment_do_not(): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $product = $this->product($store);
+        $this->gateway($store);
+        $engine = app(CustomerCommerce::class);
+        $order = $engine->begin($store, $this->input($product, ['payment' => 'gateway']), $customer);
+        Queue::assertNotPushed(ProcessCustomerOrder::class);
+        $engine->paid($order, 'test:product-payment', $order->total, now());
+        $engine->paid($order, 'test:product-payment', $order->total, now());
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+        Queue::assertPushed(ProcessCustomerOrder::class, fn ($job) => $job->orderId === $order->id);
+        $topup = $engine->begin($store, ['purpose' => 'topup', 'amount' => 50000, 'phone' => $customer->phone, 'payment' => 'gateway', 'idempotency_key' => (string) Str::uuid()], $customer);
+        $engine->paid($topup, 'test:topup-payment', $topup->total, now());
+        $late = $engine->begin($store, $this->input($product, ['payment' => 'gateway']), $customer);
+        $late->update(['expires_at' => now()->subMinute()]);
+        $engine->paid($late, 'test:late-payment', $late->total, now());
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+        $this->assertSame('success', $topup->fresh()->status);
+        $this->assertSame('review', $late->fresh()->status);
+    }
+
+    public function test_queued_wallet_job_processes_stock_without_waiting_for_scheduler(): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($this->product($store)), $customer);
+        $job = Queue::pushed(ProcessCustomerOrder::class)->first();
+        $job->handle(app(CustomerFulfillment::class));
+        $job->handle(app(CustomerFulfillment::class));
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(85000, $customer->fresh()->balance);
+        $this->assertSame(1, PremiumStock::where('status', 'sent')->count());
     }
 }

@@ -1,5 +1,8 @@
 # Checkpoint UI dan pemisahan notifikasi — 20 Oktober 2026
 
+> Checkpoint historis. Status source terkini dan koreksi trial/voucher 100% ada pada bagian sinkronisasi 21 Oktober di akhir dokumen serta ARCHITECTURE.md. Bagian rencana sebelum checkpoint bukan status implementasi terakhir.
+
+
 ## Selesai sebelum checkpoint
 
 - Kartu tabel Produk & harga memiliki padding yang konsisten.
@@ -77,3 +80,28 @@ Status: rencana disetujui; checkpoint ini dibuat sebelum mengubah modul notifika
 - Manager tambahan yang sebelumnya dijalankan agen dihentikan agar tidak berbenturan dengan terminal pengguna. Tidak menghapus sesi WhatsApp; pengguna menjalankan satu `npm run manager:dev` di `apps/bot`.
 - 40 tes backend terkait lulus (540 assertions) dan 43 tes worker lulus. Tes runtime worker mengirim OTP melalui transport simulasi ketika backend sengaja tidak dapat menerima panggilan akses; pengiriman berhasil tanpa request balik. Tes manager juga memverifikasi proses kedua tidak merusak manager pertama saat port berbenturan.
 - Tidak melakukan pengiriman OTP ke nomor nyata dalam pemeriksaan ini.
+
+
+## Kelanjutan 20 Oktober 2026: katalog, artikel, dan voucher
+
+- Menyelesaikan perapihan empat halaman produk (sumber, layanan/kategori, katalog/harga, stok), modal, bantuan ringkas, dan dropdown mengambang. Perubahan sebelumnya tetap dipertahankan; tidak mereset data atau sesi WhatsApp.
+- Badge lonceng memakai ukuran tersendiri agar pembesaran tipografi panel tidak mengubah bentuk/posisinya.
+- Renderer artikel mengikuti warna teks tema storefront; warna foreground/background inline lama tidak lagi menimpa tema. Format huruf, tautan, daftar, dan gambar dipertahankan. Editor tetap putih; kontrol warna manual dihapus agar konsisten dengan hasil publik. Tabel artikel menggunakan warna sel/header panel yang sama dengan tabel lain (putih pada tema terang).
+- Modul **Voucher diskon** berada di Penjualan toko; staff memerlukan `vouchers.view` atau `vouchers.manage`. Admin memiliki **Voucher promo** di sidebar platform. Form tambah/edit berbentuk modal; sasaran memakai dropdown pencarian, multi-pilih dan pemuatan saat scroll; tabel utama memakai filter dan pagination atas/bawah.
+- Voucher toko mendukung semua produk atau gabungan beberapa layanan, kategori, dan produk (cocok salah satu sasaran). Voucher platform mendukung Bot, Web, Bot+Web, beberapa paket/durasi, serta modul QRIS custom. Kode uppercase unik per ruang toko/platform. Kode yang dihapus tidak dipakai ulang; invoice lama tetap memakai snapshot.
+- Potongan nominal/persen, batas maksimum potongan, minimum belanja, jadwal, status aktif, dan kuota tersedia. Satu voucher per invoice; potongan setelah flash sale; tidak berlaku untuk topup saldo. Promo ditanggung toko dan tidak menurunkan batas harga pemasok yang sudah dikutip. Refund berdasarkan harga setelah diskon, ditambah kode unik hanya jika kebijakan toko mengizinkannya; fee gateway mengikuti aturan sebelumnya.
+- Invoice pending menahan kuota hingga dibatalkan/terkonfirmasi expired. Pembayaran produk yang sudah gagal tetap mengonsumsi voucher. Kuota simulasi toko dipisah dari produksi. Row lock dan current read menjaga kuota pada MySQL repeatable-read, termasuk permintaan platform dari toko berbeda. Total produk harus positif; tagihan layanan DigitalToko minimal Rp1.000 mengikuti API billing Hanshop.
+- Input voucher tersedia di checkout bersama seluruh template, modal pembelian langganan, dan modul QRIS. Bot mendukung `#beli KODE TUJUAN | KODEVOUCHER`; konfirmasi tombol maupun teks membawa kode yang sama, harga dihitung ulang di server.
+- Migrasi `2026_10_20_122931_create_discount_vouchers` sudah diterapkan pada MySQL lokal setelah dump penuh ke `storage/app/private/backups/before-vouchers-20261020-124436.sql`. Fixture UI SQLite dicadangkan dan dimigrasikan secara terpisah. Tidak ada perubahan database/source API Hanshop.
+- Validasi: 132 tes backend (1.358 assertions), tes MySQL terisolasi dengan proses bersamaan (41 assertions), 44 tes bot, 21 tes frontend, Pint, TypeScript dan build web lulus. Tes voucher terakhir setelah perapihan: 9 tes/62 assertions lulus.
+- Pemeriksaan browser memakai data simulasi: membuat voucher kategori, memilih sasaran, pratinjau potongan Rp10.000 menjadi Rp9.000 tanpa membuat pesanan, panel admin, badge lonceng, tabel artikel tema terang, dan warna artikel lama mengikuti `--sf-text`. Bukti: `assets/voucher-panel-preview.png` dan `assets/voucher-checkout-preview.png`. Tidak mengirim pembayaran/OTP/WhatsApp/email nyata.
+- Deploy: backup lalu `php artisan migrate --force`, build web dan bot, restart queue worker serta satu bot manager untuk memuat parser voucher. Jangan menghapus sesi WhatsApp.
+
+
+## Sinkronisasi dokumentasi — 21 Oktober 2026
+
+- Source terbaru menghapus route/tombol trial dan requestTrial. Trial aktif lama dihormati sampai expiry tanpa grace; trial belum dimulai kembali draft. Seeder demo-bot menggantikan skenario trial tanpa menghapus record existing.
+- Voucher platform dapat melunasi invoice sewa/modul Rp0 secara lokal tanpa QRIS/API billing. Pembelian awal tetap provisioning/aktivasi; renewal/change/downgrade mengikuti lifecycle normal. Request checkout langganan membawa request_id; replay invoice yang sama tidak menggandakan durasi atau kuota. Voucher produk customer tetap harus menyisakan harga positif; total platform berbayar minimal Rp1.000. Ini menggantikan keterangan minimal Rp1.000 tanpa pengecualian pada checkpoint sebelumnya.
+- Admin dan seluruh Penjualan owner/staff sudah memakai perapihan tabel/modal/kontrol; tab modal, tombol sekunder/ikon/retry dan pilihan storefront diberi permukaan sesuai tema. Bukti serta hasil pengujian saat perubahan dibuat ada di UI_READABILITY_AUDIT.md.
+- Katalog/checkout/OTP/notifikasi bukan lagi skeleton. README root/web/bot/storefront, arsitektur, keputusan, domain, hak staff dan panduan deployment diperbarui untuk memisahkan implementasi dari rencana. Custom-domain self-service/DNS/TLS dan purge toko penuh tetap belum tersedia. Endpoint cleanup profil owner tanpa toko sudah ada; file KTP privat tidak sama dengan enkripsi file aplikasi.
+- Pembaruan dokumentasi ini tidak mengubah source aplikasi, dependensi, database, konfigurasi layanan, atau deployment. Pemeriksaan berupa konsistensi route/command/permission, path/tautan dan diff; tidak menjalankan pembayaran/OTP/pembelian pemasok atau mengklaim rerun tes historis.

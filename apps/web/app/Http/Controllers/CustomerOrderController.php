@@ -110,7 +110,7 @@ class CustomerOrderController extends Controller
     {
         $store = $access->store($request);
         $data = $request->validate(['idempotency_key' => 'required|string|max:128', 'purpose' => 'required|in:product,topup', 'product_id' => 'nullable|uuid',
-            'phone' => 'required|string|max:30', 'email' => 'nullable|email:rfc|max:255', 'destination' => 'nullable|string|max:255', 'destination_id' => 'nullable|string|max:100', 'destination_server' => 'nullable|string|max:64', 'payment' => 'required|in:gateway,wallet', 'amount' => 'nullable|integer|min:5000|max:100000000', 'expected_price' => 'nullable|integer|min:1|max:100000000', 'inquiry_id' => 'nullable|uuid', 'game_verification' => 'nullable|string|max:4096']);
+            'phone' => 'required|string|max:30', 'email' => 'nullable|email:rfc|max:255', 'destination' => 'nullable|string|max:255', 'destination_id' => 'nullable|string|max:100', 'destination_server' => 'nullable|string|max:64', 'payment' => 'required|in:gateway,wallet', 'amount' => 'nullable|integer|min:5000|max:100000000', 'voucher_code' => 'nullable|string|max:40', 'expected_price' => 'nullable|integer|min:1|max:100000000', 'inquiry_id' => 'nullable|uuid', 'game_verification' => 'nullable|string|max:4096']);
         abort_unless($data['purpose'] === 'topup' || $store->supportsWeb(), 403);
         $customer = $access->customer($request, $store);
         if (! $customer) {

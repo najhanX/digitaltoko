@@ -1,3 +1,4 @@
+import CatalogHelp from '../../components/CatalogHelp';
 import { Link, useForm, usePage } from "@inertiajs/react";
 import { useEffect, useState } from "react";
 import {
@@ -309,12 +310,11 @@ export default function Catalog({
     }
     return (
         <WorkspaceLayout
+            contentClassName="catalog-workspace"
             role={role}
             title="Katalog & harga"
             description={
-                "Produk " +
-                store.name +
-                " digunakan bersama oleh web toko dan bot WhatsApp."
+                "Kelola produk dan harga jual untuk web serta bot " + store.name + "."
             }
             actions={
                 <>
@@ -361,18 +361,13 @@ export default function Catalog({
                     Aturan harga
                 </Link>
             </nav>
-            <div className="summary-note">
-                <strong>
-                    {tab === "products"
-                        ? "Satu produk dapat memiliki beberapa parsing"
-                        : "Prioritas markup: produk → kategori → layanan"}
-                </strong>
+            <CatalogHelp title={tab === "products" ? "Cara kerja sumber dan harga produk" : "Prioritas aturan: produk → kategori → layanan"}>
                 <p>
                     {tab === "products"
                         ? "Sumber aktif dengan modal termurah menjadi dasar harga. Modal melebihi harga jual membuat produk tidak tersedia sampai harganya diperbaiki atau pembaruan otomatis diaktifkan."
                         : "Markup dan pembaruan otomatis diatur terpisah. Masing-masing mengikuti urutan produk → kategori → layanan. Jika tidak ada aturan, markup 0 dan pembaruan otomatis nonaktif."}
                 </p>
-            </div>
+            </CatalogHelp>
             {selectedCategory && (
                 <div className="summary-note admin-owner-filter">
                     <span>
@@ -963,6 +958,21 @@ export default function Catalog({
                                     </select>
                                 </label>
                             </div>
+<TaxonomySelect
+                            storeId={store.id}
+                            enabled={productOpen}
+                            value={{
+                                service_id: product.data.service_id,
+                                category_id: product.data.category_id,
+                                service: product.data.service,
+                                category: product.data.category,
+                            }}
+                            onChange={(value) => {
+                                product.clearErrors("category_id");
+                                product.setData({ ...product.data, ...value });
+                            }}
+                        />
+                            <CatalogHelp title="Deskripsi tambahan (opsional)">
                             <label>
                                 Deskripsi
                                 <textarea
@@ -976,7 +986,7 @@ export default function Catalog({
                                         )
                                     }
                                 />
-                            </label>
+                            </label></CatalogHelp>
                             <label className="checkbox-label">
                                 <input
                                     type="checkbox"
@@ -992,29 +1002,11 @@ export default function Catalog({
                             </label>
                         </>
                     )}
-                    {canManage && productTab === "identity" && (
-                        <TaxonomySelect
-                            storeId={store.id}
-                            enabled={productOpen}
-                            value={{
-                                service_id: product.data.service_id,
-                                category_id: product.data.category_id,
-                                service: product.data.service,
-                                category: product.data.category,
-                            }}
-                            onChange={(value) => {
-                                product.clearErrors("category_id");
-                                product.setData({ ...product.data, ...value });
-                            }}
-                        />
-                    )}
                     {canPrice && productTab === "price" && (
                         <section className="catalog-form-section">
                             <h3>Harga jual</h3>
                             <p>
-                                Harga tetap dipakai ketika pembaruan otomatis
-                                nonaktif. Pada produk baru, kolom kosong
-                                menghitung harga awal dari markup.
+                                Harga tetap digunakan saat pembaruan otomatis nonaktif. Kosongkan pada produk baru untuk menghitung dari markup.
                             </p>
                             <div className="field-grid">
                                 <label>
@@ -1073,9 +1065,7 @@ export default function Catalog({
                         <section className="catalog-form-section">
                             <h3>Parsing produk</h3>
                             <p>
-                                Pilih maksimal 20 produk pemasok dengan jenis
-                                yang sama. Beberapa parsing akan diurutkan
-                                berdasarkan modal termurah.
+                                Pilih hingga 20 sumber sejenis. Sistem mendahulukan modal termurah.
                             </p>
                             {product.data.kind === "premium" && (
                                 <label className="checkbox-label">

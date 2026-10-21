@@ -15,6 +15,6 @@ class ModulePurchase extends Model
 
     protected function casts(): array
     {
-        return ['amount' => 'integer', 'total' => 'integer', 'expires_at' => 'immutable_datetime', 'paid_at' => 'immutable_datetime'];
+        return ['snapshot' => 'array', 'amount' => 'integer', 'total' => 'integer', 'expires_at' => 'immutable_datetime', 'paid_at' => 'immutable_datetime'];
     }
 }

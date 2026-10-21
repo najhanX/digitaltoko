@@ -122,7 +122,6 @@ class PanelNotifications
             $request->is('stores/*/bot/connect') => 'Permintaan koneksi WhatsApp',
             $request->is('stores/*/bot/disconnect') => 'Koneksi WhatsApp dilepas',
             $request->is('stores/*/subscription/activate') => 'Toko diaktifkan',
-            $request->is('stores/*/subscription/trial') => 'Trial disiapkan',
             $request->is('stores/*/subscription/checkout') => 'Invoice sewa disiapkan',
             $request->is('stores/*/subscription/*/refresh') => 'Pembayaran diperiksa',
             $request->is('owner/profile/*') => 'Profil dan verifikasi',

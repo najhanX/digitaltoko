@@ -1,27 +1,52 @@
-# DigitalToko (workspace Hansbot)
+# DigitalToko — workspace Hansbot
 
-Platform penyewaan bot WhatsApp untuk toko produk digital. Setiap toko memiliki owner, konfigurasi, produk, stok, pelanggan, transaksi, sesi WhatsApp, dan langganannya sendiri.
+Dokumentasi disinkronkan dengan source lokal pada **21 Oktober 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
 
-## Struktur awal
+DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk digital, bot WhatsApp, atau keduanya. Satu owner dapat memiliki banyak toko; setiap toko memiliki langganan, katalog, stok, pelanggan, wallet, pesanan, konfigurasi, dan sesi WhatsApp sendiri.
 
-- `apps/web/`: Laravel 13 + Inertia 3 + React 19/TypeScript untuk admin/owner/staff panel dan storefront, dengan fondasi akses role/toko.
-- `apps/bot/`: Node/TypeScript + Baileys 7.0.0-rc14, QR session per toko, quick reply dengan fallback teks, token chat/sender, dan HTTP loopback.
-- `apps/storefront/`: catatan; storefront di apps/web/resources/js/pages/Storefront, bukan app/deployment terpisah.
-- `docs/ARCHITECTURE.md`: rancangan pemisahan aplikasi, paket, akses toko, dan urutan implementasi.
-- `docs/DOMAINS.md`: rancangan subdomain bawaan dan domain custom toko.
-- `docs/DECISIONS.md`: keputusan pengguna dan hal yang masih terbuka.
-- `docs/BUSINESS_RULES.md`: detail pembayaran, akun/saldo Hanshop, parsing, stok, template, staff, dan verifikasi owner.
-- `docs/STAFF_PERMISSIONS.md`: rancangan permission staff toko (maksimal lima akun lokal per toko).
+## Peta proyek
 
-## Menjalankan dan deployment
+| Folder / proyek | Tanggung jawab |
+| --- | --- |
+| `apps/web` | Laravel + Inertia React: landing, admin, owner, staff, storefront, backend bisnis dan scheduler |
+| `apps/bot` | Node/TypeScript + Baileys: satu manager dan worker/sesi terpisah per toko |
+| `apps/storefront` | Catatan lokasi; halaman publik dijalankan oleh `apps/web`, bukan deployment kedua |
+| `assets` | Logo/branding dan bukti tampilan lokal |
+| `deploy` | Contoh Nginx dan PM2; harus disesuaikan dengan server tujuan |
+| `../API Hanshop` | Backend Hanshop: identitas/saldo owner, sumber produk, bridge dan pembayaran sewa |
+| `../bot_wa_v2` | Bot toko Hanshop sendiri, terpisah dari worker tenant |
+| `android-listener` | Proyek eksternal HansDev Forwarder di direktori HansDev/projects: notifikasi pembayaran HP ke server |
 
-Ikuti apps/web/README.md dan apps/bot/README.md. Preview lokal http://localhost:8000/preview/owner hanya local+flag preview, bukan autentikasi. Migrasi SQLite lokal dan frontend build telah dijalankan. Bot default WA_ENABLED=false, tanpa token/session live.
+## Implementasi yang tersedia
 
-Onboarding owner tersedia: login/daftar OTP melalui bridge identitas Hanshop, verifikasi email, pengajuan dan review KTP manual, toko draft, serta CRUD staff dan permission per toko. Langganan/trial dan koneksi WhatsApp mandiri lewat QR/kode sudah tersedia. Bot manager menjalankan worker terpisah per toko dan menjaga akses sesuai langganan. Sumber Digiflazz/Hanshop, saldo pemasok, katalog bersama bot/web, aturan harga, dan stok premium privat sudah tersedia. Checkout/pemesanan pelanggan web-bot, wallet/topup/refund per toko, Midtrans/QRIS custom berlisensi, fulfillment stok/pemasok, dan panel transaksi sudah tersedia. Retensi/purge toko dan hardening sesi produksi masih pekerjaan berikutnya. Pengiriman OTP nyata memerlukan konfigurasi bridge Hanshop dan SMTP; koneksi WhatsApp nyata memerlukan penautan di HP.
+- Onboarding owner lewat bridge identitas Hanshop, profil/email, KTP manual, toko draft, serta maksimal lima staff lokal per toko.
+- Sembilan paket Mercury sampai Andromeda, harga/durasi admin, invoice sewa, aktivasi pertama, renewal, perubahan paket dan masa tenggang per toko. **Trial baru dihapus**; voucher platform mendukung diskon 100% tanpa gateway.
+- Admin mengelola toko, paket, verifikasi, pembayaran, voucher dan harga modul. Penangguhan admin dan koreksi paket/masa aktif memiliki audit.
+- Sumber Digiflazz/Hanshop, cache akun bersama Redis, layanan → kategori → produk, impor semua/per layanan/per kategori/pilihan, parsing, markup dan stok premium privat.
+- Checkout web dan bot, inquiry pascabayar, akun pelanggan, wallet/topup/refund, guest checkout, Midtrans merchant toko dan QRIS custom berlisensi.
+- Webhook Digiflazz dan rekonsiliasi status/SN, keputusan manual yang dibatasi transaksi Digiflazz eligible, koreksi refund, serta blok pembelian bagi pelanggan bersaldo minus.
+- WhatsApp toko untuk OTP/notifikasi termasuk paket Web. Perintah transaksi chat tetap memerlukan paket Bot/Full. Email memakai pengirim platform atau SMTP toko.
+- Aurora, Nebula dan Atlas memakai katalog/checkout bersama: desain warna/section/banner, flash sale, trending, artikel, leaderboard, cek pesanan, profil dan pengecekan akun game sesuai konfigurasi.
+- Mode pengujian per toko: Digiflazz development, pembayaran simulasi atau Midtrans Sandbox, wallet/kuota uji terpisah; sumber Hanshop dan stok premium disimulasikan.
+- UI panel responsif, tema terang/gelap, sidebar collapsed, modal aksi, tabel berfilter/pagination, notifikasi lonceng dengan infinite scroll dan toast.
 
-Domain configurable melalui APP_URL/PLATFORM_DOMAIN; domain aliases mendukung transisi, custom domain verified dipetakan per toko. DNS/TLS, sender email, callback provider dan WEB_BASE_URL bot tetap perlu dikonfigurasi. Belum ada perubahan VPS/DNS produksi. Panduan: docs/DEPLOYMENT.md, contoh Nginx/worker di deploy/.
+## Menjalankan
 
-Paket publik kini terdiri dari Mercury, Venus, Terra, Mars, Jupiter, Saturn, Uranus, Neptune, dan Andromeda, dengan rincian kanal/sumber unik per paket. Pemetaan lengkap ada di docs/ARCHITECTURE.md; pembaruan nama melalui PackagePlanSeeder mempertahankan harga, durasi, serta langganan/invoice existing.
+Ikuti [web](apps/web/README.md) dan [bot](apps/bot/README.md). Web memerlukan database aplikasi sendiri, cache/lock, queue worker dan scheduler; integrasi membutuhkan konfigurasi layanan terkait. Jangan menjalankan manager kedua pada port/sesi yang sama.
 
+Domain memakai `APP_URL`, `PLATFORM_DOMAIN`, alias, dan mapping custom host verified; pergantian domain tidak memerlukan salinan frontend per toko. Wildcard DNS, TLS dan onboarding custom domain tetap pekerjaan infrastruktur.
 
-Modul transaksi pelanggan memerlukan scheduler Laravel, konfigurasi gateway merchant toko, serta build/restart API Hanshop dan manager/worker bot. Panduan ada di `docs/DEPLOYMENT.md`, bukti pengujian dan checkpoint di `docs/FOUNDATION_VALIDATION.md`. Uji otomatis tidak melakukan pembayaran atau pembelian pemasok nyata.
+## Batas saat ini
+
+Penghapusan otomatis seluruh data toko setelah retensi, pengelolaan backup/purge lintas aplikasi, otomatisasi DNS/TLS, refund sewa gagal provisioning, dan hardening worker multi-host belum merupakan alur lengkap. Panel topup saldo Hanshop owner juga belum tersedia; jangan menyamakannya dengan topup wallet pelanggan yang sudah tersedia.
+
+Source di working tree dapat lebih baru daripada commit/deployment. Pengujian historis tercatat dengan tanggal dan lingkungannya; keberadaan source/test tidak membuktikan layanan produksi sudah diperbarui.
+
+## Dokumentasi
+
+- [Arsitektur dan alur source](docs/ARCHITECTURE.md)
+- [Aturan bisnis dan batas implementasi](docs/BUSINESS_RULES.md)
+- [Keputusan dan pekerjaan terbuka](docs/DECISIONS.md)
+- [Hak akses staff](docs/STAFF_PERMISSIONS.md)
+- [Domain](docs/DOMAINS.md) dan [deployment](docs/DEPLOYMENT.md)
+- [Riwayat validasi](docs/FOUNDATION_VALIDATION.md), [checkpoint notifikasi/voucher](docs/NOTIFICATION_PROGRESS.md), [audit UI](docs/UI_READABILITY_AUDIT.md)

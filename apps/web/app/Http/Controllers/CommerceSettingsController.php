@@ -100,7 +100,8 @@ class CommerceSettingsController extends Controller
             abort_unless($invoice->store_id === $store->id, 404);
             app(CommerceModules::class)->sync($invoice);
         } else {
-            app(CommerceModules::class)->buy($store);
+            $data = $request->validate(['voucher_code' => 'nullable|string|max:40']);
+            app(CommerceModules::class)->buy($store, $data['voucher_code'] ?? null);
         }
 
         return back()->with('success', 'Invoice modul diperiksa. Lisensi melekat pada toko setelah pembayaran sah.');

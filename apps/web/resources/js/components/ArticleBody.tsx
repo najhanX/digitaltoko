@@ -28,7 +28,7 @@ function render(node:ArticleNode,index:number):ReactNode {
             else if(mark.type==='underline')value=<u>{value}</u>;
             else if(mark.type==='strike')value=<s>{value}</s>;
             else if(mark.type==='link')value=<a href={mark.attrs?.href ?? undefined} target="_blank" rel="noopener noreferrer nofollow">{value}</a>;
-            else if(mark.type==='textStyle')value=<span style={{fontSize:mark.attrs?.fontSize ?? undefined,fontFamily:mark.attrs?.fontFamily ?? undefined,color:mark.attrs?.color ?? undefined,backgroundColor:mark.attrs?.backgroundColor ?? undefined,lineHeight:mark.attrs?.lineHeight ?? undefined}}>{value}</span>;
+            else if(mark.type==='textStyle')value=<span style={{fontSize:mark.attrs?.fontSize ?? undefined,fontFamily:mark.attrs?.fontFamily ?? undefined,lineHeight:mark.attrs?.lineHeight ?? undefined}}>{value}</span>;
         }
         return <span key={index}>{value}</span>;
     }

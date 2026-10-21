@@ -52,7 +52,7 @@ class BotConnectionController extends Controller
         try {
             $store->refresh();
             if (! $store->canConnectBot()) {
-                throw ValidationException::withMessages(['connection' => 'Bayar paket atau mulai trial terlebih dahulu. Untuk toko kedaluwarsa, perpanjang langganan.']);
+                throw ValidationException::withMessages(['connection' => 'Selesaikan pembelian paket terlebih dahulu. Untuk toko kedaluwarsa, perpanjang langganan.']);
             }
             $token = bin2hex(random_bytes(32));
             $store->update(['bot_phone' => $phone, 'bot_method' => $data['method'], 'bot_connection_id' => (string) Str::uuid(), 'worker_token_hash' => hash('sha256', $token), 'ready_at' => $store->status === 'provisioning' ? null : $store->ready_at]);

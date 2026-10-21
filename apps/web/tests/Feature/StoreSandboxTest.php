@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessCustomerOrder;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
 use App\Models\CustomerLedger;
@@ -22,6 +23,7 @@ use App\Services\SupplierCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Page;
@@ -34,6 +36,7 @@ class StoreSandboxTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Queue::fake([ProcessCustomerOrder::class]);
         $this->withoutVite();
         config(['platform.domain' => 'localhost', 'app.url' => 'http://localhost', 'inertia.ssr.enabled' => false, 'suppliers.cache_store' => 'array', 'cache.default' => 'array']);
         Http::preventStrayRequests();

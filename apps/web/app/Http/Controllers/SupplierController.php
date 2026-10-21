@@ -97,6 +97,16 @@ class SupplierController extends Controller
         return back()->with('success', 'Koneksi pemasok dinonaktifkan dan credential dihapus.');
     }
 
+    public function webhookSecret(Request $request, Store $store, SupplierConnection $connection): JsonResponse
+    {
+        abort_unless(CatalogAccess::authorize($request, $store) === 'owner', 403);
+        abort_unless($connection->store_id === $store->id && $connection->kind === 'digiflazz', 404);
+        $secret = $connection->credentials['webhook_secret'] ?? null;
+        abort_unless(is_string($secret) && strlen($secret) >= 16, 404, 'Secret webhook belum dikonfigurasi.');
+
+        return response()->json(['secret' => $secret])->header('Cache-Control', 'private, no-store');
+    }
+
     public function webhook(Request $request, Store $store, SupplierConnection $connection): RedirectResponse
     {
         abort_unless(CatalogAccess::authorize($request, $store) === 'owner', 403);

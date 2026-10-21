@@ -29,7 +29,7 @@ class DigiflazzWebhookController extends Controller
         $order = CustomerOrder::findOrFail($attempt->order_id);
         $connection = SupplierConnection::whereKey($snapshot['connection_id'] ?? null)->where('store_id', $order->store_id)->where('kind', 'digiflazz')->first();
         $secret = $connection?->credentials['webhook_secret'] ?? '';
-        abort_unless(is_string($secret) && strlen($secret) >= 16 && hash_equals('sha1='.hash_hmac('sha1', $request->getContent(), $secret), (string) $request->header('X-Hub-Signature')), 401);
+        abort_unless(is_string($secret) && strlen($secret) >= 16 && hash_equals('sha1='.hash_hmac('sha1', $request->getContent(), $secret), (string) $request->header('X-Hub-Signature')), 401, 'Signature webhook Digiflazz tidak cocok. Samakan Secret ID Digiflazz dengan secret webhook tersimpan pada koneksi toko.');
         $data = $request->validate(['data' => 'required|array', 'data.ref_id' => 'required|string', 'data.buyer_sku_code' => 'required|string', 'data.customer_no' => 'required|string', 'data.status' => 'required|in:Sukses,Gagal,Pending', 'data.rc' => 'required|string|max:4', 'data.price' => 'nullable|numeric|min:0', 'data.sn' => 'nullable|string|max:20000']);
         abort_unless($data['data']['buyer_sku_code'] === ($snapshot['sku'] ?? null) && $data['data']['customer_no'] === $order->destination, 422);
         abort_unless((bool) ($snapshot['testing'] ?? false) === $order->is_sandbox, 409);

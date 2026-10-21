@@ -9,16 +9,20 @@ use App\Models\Customer;
 use App\Models\CustomerNotice;
 use App\Models\ProductMapping;
 use App\Models\Store;
+use App\Models\StoreStaff;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Models\User;
 use App\Services\CustomerCommerce;
 use App\Services\CustomerFulfillment;
+use App\Services\CustomerWallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class DigiflazzWebhookTest extends TestCase
@@ -74,16 +78,16 @@ class DigiflazzWebhookTest extends TestCase
         $this->assertDatabaseCount('customer_ledgers', 4);
     }
 
-    public function test_success_is_idempotent_and_late_failure_cannot_reverse_it(): void
+    public function test_automatic_success_is_idempotent_and_late_failure_refunds_it(): void
     {
         [$store, $customer, $connection, $order, $attempt, $body] = $this->pending();
         $success = [...$body, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'SERIAL-TEST'];
         $this->sendCallback($success)->assertOk();
         $this->sendCallback($success)->assertOk();
         $this->sendCallback($body)->assertOk();
-        $this->assertSame('success', $order->fresh()->status);
-        $this->assertSame('SERIAL-TEST', $order->fresh()->result);
-        $this->assertSame(85000, $customer->fresh()->sandbox_balance);
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame('', $order->fresh()->result);
+        $this->assertSame(100000, $customer->fresh()->sandbox_balance);
         $this->assertSame(1, CustomerNotice::where('event', 'order:'.$order->id.':success')->count());
         Http::assertNothingSent();
     }
@@ -155,6 +159,7 @@ class DigiflazzWebhookTest extends TestCase
         $next->status = 'ready';
         $next->save();
         $this->sendCallback($body)->assertOk();
+        $this->sendCallback($body)->assertOk();
         $this->assertSame('failed', $attempt->fresh()->status);
         $this->assertSame('ready', $next->fresh()->status);
         $this->assertNull($order->fresh()->refunded_at);
@@ -190,5 +195,273 @@ class DigiflazzWebhookTest extends TestCase
         $this->assertSame('dev-secret', $connection->fresh()->credentials['development_key']);
         $this->sendCallback($body)->assertOk();
         $this->actingAs($store->owner)->post($url, ['webhook_secret' => 'new-secret-123456789'])->assertSessionHasNoErrors();
+    }
+
+    private function manualUrl($store, $order): string
+    {
+        return '/stores/'.$store->id.'/orders/'.$order->id;
+    }
+
+    public function test_manual_failure_refund_is_reconciled_by_callback_and_repeated_callbacks_are_idempotent(): void
+    {
+        foreach ([true, false] as $sandbox) {
+            [$store, $customer, $connection, $order, $attempt, $body] = $this->pending($sandbox);
+            $url = $this->manualUrl($store, $order);
+            $this->actingAs($store->owner)->post($url, ['action' => 'manual', 'status' => 'failed', 'note' => 'Diperiksa langsung oleh toko'])->assertSessionHasNoErrors();
+            $this->assertSame('failed', $order->fresh()->status);
+            $field = $sandbox ? 'sandbox_balance' : 'balance';
+            $this->assertSame(100000, $customer->fresh()->$field);
+            $this->post($url, ['action' => 'manual', 'status' => 'failed', 'note' => 'Ulang keputusan yang sama'])->assertSessionHasErrors();
+            $success = [...$body, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'ACTUAL-SN'];
+            $this->sendCallback($success)->assertOk();
+            $this->sendCallback($success)->assertOk();
+            $this->assertSame('success', $order->fresh()->status);
+            $this->assertSame('ACTUAL-SN', $order->fresh()->result);
+            $this->assertNull($order->fresh()->refunded_at);
+            $this->assertSame(85000, $customer->fresh()->$field);
+            $this->sendCallback([...$success, 'sn' => 'CORRECTED-SN'])->assertOk();
+            $this->assertSame('CORRECTED-SN', $order->fresh()->result);
+            $this->assertSame(85000, $customer->fresh()->$field);
+            $this->sendCallback($body)->assertOk();
+            $this->sendCallback($body)->assertOk();
+            $this->assertSame('failed', $order->fresh()->status);
+            $this->assertSame(100000, $customer->fresh()->$field);
+            $this->assertCount(4, $order->fresh()->snapshot['decision_history']);
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_manual_success_can_be_replaced_by_failed_callback_and_stops_other_parsing(): void
+    {
+        [$store, $customer, $connection, $order, $attempt, $body] = $this->pending();
+        $queuedBefore = Queue::pushed(ProcessCustomerOrder::class)->count();
+        $next = $attempt->replicate();
+        $next->reference = 'DT'.Str::ulid();
+        $next->position = 2;
+        $next->status = 'ready';
+        $next->last_checked_at = null;
+        $next->save();
+        $this->actingAs($store->owner)->post($this->manualUrl($store, $order), ['action' => 'manual', 'status' => 'success', 'result' => 'MANUAL-SN', 'note' => 'Sudah diperiksa oleh toko'])->assertSessionHasNoErrors();
+        $this->assertSame('MANUAL-SN', $order->fresh()->result);
+        $this->sendCallback([...$body, 'status' => 'Pending', 'rc' => '03'])->assertOk();
+        $this->assertSame('pending', $order->fresh()->status);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->sendCallback($body)->assertOk();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame('ready', $next->fresh()->status);
+        $this->assertSame($queuedBefore, Queue::pushed(ProcessCustomerOrder::class)->count());
+        $this->assertSame(100000, $customer->fresh()->sandbox_balance);
+        Http::assertNothingSent();
+        $this->actingAs($store->owner)->post('/stores/'.$store->id.'/sources/'.$connection->id.'/webhook', ['webhook_secret' => 'new-secret-123456789'])->assertSessionHasNoErrors();
+        $this->sendCallback([...$body, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'NEW-KEY-SN'], 'new-secret-123456789')->assertOk();
+        $this->assertSame('success', $order->fresh()->status);
+    }
+
+    public function test_manual_callback_can_reverse_refund_into_negative_balance_once(): void
+    {
+        [$store, $customer, $connection, $order, $attempt, $body] = $this->pending();
+        $this->actingAs($store->owner)->post($this->manualUrl($store, $order), ['action' => 'manual', 'status' => 'failed', 'note' => 'Diperiksa langsung oleh toko'])->assertSessionHasNoErrors();
+        $customer->update(['sandbox_balance' => 0]);
+        $success = [...$body, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'DELIVERED'];
+        $this->sendCallback($success)->assertOk();
+        $this->sendCallback($success)->assertOk();
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame('success', $attempt->fresh()->status);
+        $this->assertSame('DELIVERED', $order->fresh()->result);
+        $this->assertSame(-15000, $customer->fresh()->sandbox_balance);
+        $this->assertNull($order->fresh()->refunded_at);
+    }
+
+    public function test_manual_action_is_scoped_and_requires_explicit_staff_permission(): void
+    {
+        [$store, $customer, $connection, $order] = $this->pending();
+        $url = $this->manualUrl($store, $order);
+        $payload = ['action' => 'manual', 'status' => 'failed', 'note' => 'Diperiksa langsung oleh toko'];
+        $this->actingAs(User::factory()->create(['role' => 'owner']))->post($url, $payload)->assertForbidden();
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Operator', 'username' => 'operator', 'email' => 'operator@example.test', 'password' => 'password', 'permissions' => ['orders.view']]);
+        $this->actingAs($staff, 'staff')->post($url, $payload)->assertForbidden();
+        $staff->update(['permissions' => ['orders.manage']]);
+        $this->actingAs($staff, 'staff')->post($url, [...$payload, 'note' => ''])->assertSessionHasErrors('note');
+        $this->post($url, $payload)->assertSessionHasNoErrors();
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame('staff:'.$staff->id, $order->fresh()->snapshot['manual_decision']['actor']);
+    }
+
+    public function test_manual_action_does_not_mark_unpaid_or_unsent_order_as_success(): void
+    {
+        foreach (['unpaid', 'ready'] as $scenario) {
+            [$store, $customer, $connection, $order, $attempt] = $this->pending();
+            if ($scenario === 'unpaid') {
+                $order->update(['payment_status' => 'unpaid']);
+            } else {
+                $attempt->update(['status' => 'ready', 'last_checked_at' => null]);
+            }
+            $this->actingAs($store->owner)->post($this->manualUrl($store, $order), ['action' => 'manual', 'status' => 'success', 'note' => 'Coba keputusan yang tidak sah'])->assertSessionHasErrors();
+            $this->assertSame('pending', $order->fresh()->status);
+        }
+    }
+
+    public function test_manual_decision_waits_for_fulfillment_lock_and_rejects_other_attempt_callback(): void
+    {
+        [$store, $customer, $connection, $order, $attempt, $body] = $this->pending();
+        $url = $this->manualUrl($store, $order);
+        $payload = ['action' => 'manual', 'status' => 'failed', 'note' => 'Diperiksa langsung oleh toko'];
+        $lock = Cache::lock('customer-fulfill:'.$order->id, 120);
+        $lock->get();
+        $this->actingAs($store->owner)->post($url, $payload)->assertSessionHasErrors();
+        $this->assertSame('pending', $order->fresh()->status);
+        $lock->release();
+        $this->post($url, $payload)->assertSessionHasNoErrors();
+        $other = $attempt->replicate();
+        $other->reference = 'DT'.Str::ulid();
+        $other->position = 2;
+        $other->status = 'ready';
+        $other->last_checked_at = null;
+        $other->save();
+        $this->sendCallback([...$body, 'ref_id' => $other->reference, 'status' => 'Sukses', 'rc' => '00'])->assertOk();
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->sendCallback([...$body, 'status' => 'Sukses', 'rc' => '00'], 'wrong-secret-123456789')->assertUnauthorized();
+        $this->assertSame('failed', $order->fresh()->status);
+    }
+
+    public function test_manual_guest_failure_does_not_credit_wallet_and_new_callback_notifies_again(): void
+    {
+        [$store, $customer, $connection, $order, $attempt, $body] = $this->pending();
+        $order->update(['customer_id' => null]);
+        $this->actingAs($store->owner)->post($this->manualUrl($store, $order), ['action' => 'manual', 'status' => 'failed', 'note' => 'Diperiksa langsung oleh toko'])->assertSessionHasNoErrors();
+        $this->assertNull($order->fresh()->refunded_at);
+        $this->assertSame(85000, $customer->fresh()->sandbox_balance);
+        $this->sendCallback([...$body, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'GUEST-SN'])->assertOk();
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(2, CustomerNotice::where('order_id', $order->id)->where('event', 'like', '%:decision:%')->count());
+        $this->post($this->manualUrl($store, $order), ['action' => 'resend'])->assertSessionHasNoErrors();
+        $this->get($this->manualUrl($store, $order))->assertInertia(fn ($page) => $page->where('canManual', false)->has('decisions', 2));
+    }
+
+    public function test_automatic_failure_then_success_reclaims_refund_and_later_sn_changes_do_not_charge_again(): void
+    {
+        foreach ([true, false] as $sandbox) {
+            [$store, $customer, $connection, $order, $attempt, $body] = $this->pending($sandbox);
+            $this->sendCallback($body)->assertOk();
+            $this->assertSame('failed', $order->fresh()->status);
+            $field = $sandbox ? 'sandbox_balance' : 'balance';
+            $customer->update([$field => 1000]);
+            $success = [...$body, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'FIRST-SN'];
+            $this->sendCallback($success)->assertOk();
+            $this->sendCallback($success)->assertOk();
+            $this->assertSame('success', $order->fresh()->status);
+            $this->assertSame(-14000, $customer->fresh()->$field);
+            $this->assertNull($order->fresh()->refunded_at);
+            $this->sendCallback([...$success, 'sn' => 'CORRECTED-SN'])->assertOk();
+            $this->assertSame('CORRECTED-SN', $order->fresh()->result);
+            $this->assertSame(-14000, $customer->fresh()->$field);
+            $this->sendCallback($body)->assertOk();
+            $this->sendCallback($body)->assertOk();
+            $this->assertSame(1000, $customer->fresh()->$field);
+            $this->assertSame('failed', $order->fresh()->status);
+            $this->assertSame(100000, $sandbox ? $customer->fresh()->balance : $customer->fresh()->sandbox_balance);
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_negative_customer_is_blocked_from_wallet_gateway_bot_and_guest_but_can_top_up_in_parts(): void
+    {
+        foreach ([true, false] as $sandbox) {
+            [$store, $customer, $connection, $order] = $this->pending($sandbox);
+            $field = $sandbox ? 'sandbox_balance' : 'balance';
+            $customer->update([$field => -15000]);
+            $engine = app(CustomerCommerce::class);
+            foreach (['bot', 'web'] as $channel) {
+                foreach (['wallet', 'gateway'] as $payment) {
+                    try {
+                        $engine->begin($store, ['product_id' => $order->product_id, 'phone' => $customer->phone, 'destination' => $order->destination, 'payment' => $payment, 'idempotency_key' => (string) Str::uuid()], $customer, $channel);
+                        $this->fail('Negative customer purchase must be denied.');
+                    } catch (ValidationException $error) {
+                        $this->assertStringContainsString('minus', $error->getMessage());
+                    }
+                }
+            }
+            try {
+                $engine->begin($store, ['product_id' => $order->product_id, 'phone' => $customer->phone, 'destination' => $order->destination, 'payment' => 'gateway', 'idempotency_key' => (string) Str::uuid()], null, 'web');
+                $this->fail('Guest cannot bypass a negative account with its registered phone.');
+            } catch (ValidationException $error) {
+                $this->assertStringContainsString('minus', $error->getMessage());
+            }
+            $settings = $engine->settings($store);
+            $settings->update(['gateway' => 'midtrans', 'credentials' => ['server_key' => 'fake-test-server-key']]);
+            $topup = $engine->begin($store, ['purpose' => 'topup', 'amount' => 5000, 'phone' => $customer->phone, 'payment' => 'gateway', 'idempotency_key' => (string) Str::uuid()], $customer);
+            $engine->paid($topup, 'test-topup:'.$topup->id, $topup->total, now());
+            $this->assertSame(-10000, $customer->fresh()->$field);
+            $this->assertTrue($engine->purchaseBlocked($store, $customer, $customer->phone));
+            $next = $engine->begin($store, ['purpose' => 'topup', 'amount' => 10000, 'phone' => $customer->phone, 'payment' => 'gateway', 'idempotency_key' => (string) Str::uuid()], $customer);
+            $engine->paid($next, 'test-topup:'.$next->id, $next->total, now());
+            $this->assertSame(0, $customer->fresh()->$field);
+            $this->assertFalse($engine->purchaseBlocked($store, $customer, $customer->phone));
+            $recovered = $engine->begin($store, ['product_id' => $order->product_id, 'phone' => $customer->phone, 'destination' => $order->destination, 'payment' => 'gateway', 'idempotency_key' => (string) Str::uuid()], $customer, 'bot');
+            $this->assertSame('awaiting_payment', $recovered->fresh()->status);
+        }
+    }
+
+    public function test_old_failed_parsing_callback_does_not_overwrite_successful_newer_parsing(): void
+    {
+        [$store, $customer, $connection, $order, $attempt, $body] = $this->pending();
+        $next = $attempt->replicate();
+        $next->reference = 'DT'.Str::ulid();
+        $next->position = 2;
+        $next->status = 'pending';
+        $next->save();
+        $this->sendCallback([...$body, 'ref_id' => $next->reference, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'LATEST-SN'])->assertOk();
+        $this->sendCallback($body)->assertOk();
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame('LATEST-SN', $order->fresh()->result);
+        $this->assertSame('failed', $attempt->fresh()->status);
+        $this->assertSame(85000, $customer->fresh()->sandbox_balance);
+    }
+
+    public function test_negative_debt_is_isolated_per_store_and_environment_and_ordinary_debits_cannot_overdraw(): void
+    {
+        [$store, $customer] = $this->pending();
+        $customer->update(['balance' => -15000, 'sandbox_balance' => 0]);
+        $engine = app(CustomerCommerce::class);
+        $this->assertFalse($engine->purchaseBlocked($store, $customer, $customer->phone));
+        $store->update(['sandbox' => false]);
+        $this->assertTrue($engine->purchaseBlocked($store, $customer, $customer->phone));
+        [$another] = $this->pending(false);
+        $this->assertFalse($engine->purchaseBlocked($another, null, $customer->phone));
+        try {
+            DB::transaction(fn () => app(CustomerWallet::class)->apply($customer, -1000, 'test:ordinary-debit', 'purchase'));
+            $this->fail('Normal debit must not increase debt.');
+        } catch (ValidationException $error) {
+            $this->assertStringContainsString('tidak mencukupi', $error->getMessage());
+        }
+        $this->assertSame(-15000, $customer->fresh()->balance);
+    }
+
+    public function test_only_store_owner_can_load_webhook_secret_without_changing_pending_orders(): void
+    {
+        [$store, $customer, $connection, $order] = $this->pending();
+        $url = '/stores/'.$store->id.'/sources/'.$connection->id.'/webhook-secret';
+        $this->postJson($url)->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'owner']))->postJson($url)->assertForbidden();
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Operator', 'username' => 'secret-operator', 'email' => 'operator@example.test', 'password' => 'password', 'permissions' => ['products.manage']]);
+        $this->actingAs($staff, 'staff')->postJson($url)->assertForbidden();
+        $response = $this->actingAs($store->owner, 'web')->postJson($url)->assertOk()->assertJsonPath('secret', 'test-webhook-secret-123456789');
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $this->get('/stores/'.$store->id.'/sources')->assertDontSee('test-webhook-secret-123456789');
+        [$otherStore, $otherCustomer, $otherConnection] = $this->pending();
+        $this->postJson('/stores/'.$store->id.'/sources/'.$otherConnection->id.'/webhook-secret')->assertNotFound();
+        $this->post('/stores/'.$store->id.'/sources/'.$connection->id.'/webhook', ['webhook_secret' => str_repeat('x', 256)])->assertSessionHasErrors('webhook_secret');
+        $this->assertArrayNotHasKey('webhook_secret', session('_old_input', []));
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame('test-webhook-secret-123456789', $connection->fresh()->credentials['webhook_secret']);
+    }
+
+    public function test_signature_rejection_explains_secret_mismatch_and_does_not_mutate_order(): void
+    {
+        [$store, $customer, $connection, $order, $attempt, $body] = $this->pending();
+        $this->sendCallback($body, 'incorrect-secret-123456789')->assertUnauthorized()->assertJsonPath('message', 'Signature webhook Digiflazz tidak cocok. Samakan Secret ID Digiflazz dengan secret webhook tersimpan pada koneksi toko.');
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame(85000, $customer->fresh()->sandbox_balance);
     }
 }

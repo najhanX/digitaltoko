@@ -31,6 +31,7 @@ use App\Http\Controllers\StoreNotificationController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -44,6 +45,7 @@ Route::get('/leaderboard', [StorefrontPageController::class, 'leaderboard'])->na
 Route::get('/calculator/{calculator?}', [StorefrontPageController::class, 'calculator'])->where('calculator', 'winrate|magic-wheel|zodiac')->name('storefront.calculator');
 Route::get('/storefront-media/{store}/{asset}', [StoreDesignController::class, 'asset'])
     ->where('asset', '[a-zA-Z0-9_-]{20,80}\.(jpg|jpeg|png|webp)')->name('storefront.media');
+Route::post('/checkout/voucher', [VoucherController::class, 'preview'])->middleware('throttle:20,1');
 Route::get('/checkout', [CustomerOrderController::class, 'checkout']);
 Route::get('/cek-pesanan', [CustomerOrderController::class, 'lookup'])->middleware('throttle:30,1,storefront-order-lookup');
 Route::post('/cek-pesanan/detail', [CustomerOrderController::class, 'lookupDetail'])->middleware('throttle:5,1,storefront-order-detail');
@@ -67,6 +69,18 @@ Route::post('/account/phone/otp', [CustomerAuthController::class, 'phoneOtp'])->
 Route::post('/account/phone/verify', [CustomerAuthController::class, 'phoneVerify'])->middleware('throttle:10,1');
 Route::post('/account/logout', [CustomerAuthController::class, 'logout']);
 Route::middleware('platform.host')->group(function () {
+    Route::get('/admin/vouchers', [VoucherController::class, 'index']);
+    Route::get('/admin/vouchers/options', [VoucherController::class, 'options']);
+    Route::post('/admin/vouchers', [VoucherController::class, 'save']);
+    Route::patch('/admin/vouchers/{voucher}', [VoucherController::class, 'save']);
+    Route::delete('/admin/vouchers/{voucher}', [VoucherController::class, 'delete']);
+
+    Route::get('/stores/{store}/vouchers', [VoucherController::class, 'index']);
+    Route::get('/stores/{store}/vouchers/options', [VoucherController::class, 'options']);
+    Route::post('/stores/{store}/vouchers', [VoucherController::class, 'save']);
+    Route::patch('/stores/{store}/vouchers/{voucher}', [VoucherController::class, 'save']);
+    Route::delete('/stores/{store}/vouchers/{voucher}', [VoucherController::class, 'delete']);
+
     Route::get('/stores/{store}/articles', [StoreArticleController::class, 'index']);
     Route::post('/stores/{store}/articles/images', [StoreArticleController::class, 'upload'])->middleware('throttle:20,1');
     Route::get('/stores/{store}/articles/{article}', [StoreArticleController::class, 'show']);
@@ -95,6 +109,7 @@ Route::middleware('platform.host')->group(function () {
     Route::post('/stores/{store}/customers/{customer}/settle', [CustomerPanelController::class, 'settle'])->middleware('throttle:6,1,commerce-stores-store-customers-customer-settle');
     Route::get('/stores/{store}/sources', [SupplierController::class, 'index']);
     Route::post('/stores/{store}/sources/{connection}/webhook', [SupplierController::class, 'webhook'])->middleware('throttle:6,1');
+    Route::post('/stores/{store}/sources/{connection}/webhook-secret', [SupplierController::class, 'webhookSecret'])->middleware('throttle:6,1,supplier-webhook-secret');
     Route::post('/stores/{store}/sources', [SupplierController::class, 'save'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/sources/{connection}/sync', [SupplierController::class, 'sync'])->middleware('throttle:6,1');
     Route::delete('/stores/{store}/sources/{connection}', [SupplierController::class, 'disconnect']);
@@ -137,7 +152,6 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/subscription', [SubscriptionController::class, 'show']);
     Route::post('/stores/{store}/subscription/checkout', [SubscriptionController::class, 'checkout'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/subscription/{invoice}/refresh', [SubscriptionController::class, 'refresh'])->middleware('throttle:12,1');
-    Route::post('/stores/{store}/subscription/trial', [SubscriptionController::class, 'trial'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/subscription/activate', [SubscriptionController::class, 'activate'])->middleware('throttle:6,1');
 
     Route::get('/login', [OwnerAuthController::class, 'create'])->name('login');

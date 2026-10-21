@@ -1,5 +1,8 @@
 # Validasi fondasi 13 Oktober 2026
 
+> Riwayat pengujian bertanggal, bukan inventaris fitur saat ini. Untuk kondisi source per 21 Oktober 2026 gunakan ARCHITECTURE.md, BUSINESS_RULES.md dan README aplikasi. Pernyataan lama seperti fitur belum tersedia, trial, renderer artikel berwarna manual, atau pengiriman customer lewat bot pusat dapat sudah digantikan revisi berikutnya. Jumlah tes di sini adalah hasil saat catatan dibuat, bukan rerun pada pembaruan dokumentasi.
+
+
 Implementasi lokal di workspace Hansbot; tidak ada deploy VPS, perubahan DNS, transaksi live, atau koneksi WhatsApp pelanggan.
 
 - Laravel 13.35.0, PHP lokal 8.5.5; composer check-platform-reqs berhasil.

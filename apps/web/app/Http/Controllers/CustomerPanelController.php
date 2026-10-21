@@ -8,6 +8,7 @@ use App\Models\CustomerNotice;
 use App\Models\CustomerOrder;
 use App\Models\Store;
 use App\Services\CustomerCommerce;
+use App\Services\CustomerOrderDecision;
 use App\Services\CustomerPayments;
 use App\Services\CustomerWallet;
 use App\Support\CatalogAccess;
@@ -47,15 +48,22 @@ class CustomerPanelController extends Controller
             'attempts' => $order->attempts()->orderBy('position')->get()->map(fn ($a) => $a->only(['id', 'position', 'source', 'cost', 'status', 'message', 'created_at', 'updated_at'])),
             'canCancel' => $role === 'owner' && ! $data['cancelled'] && $order->payment_status === 'unpaid' && in_array($order->status, ['awaiting_payment', 'expired'], true),
             'canReview' => $role === 'owner' && $order->status === 'review' && $order->payment_status === 'paid' && ! $order->attempts()->whereNotNull('last_checked_at')->exists(), 'canResolve' => CatalogAccess::has($request, $role, 'guests.resolve'), 'canResend' => CatalogAccess::has($request, $role, 'orders.resend'),
+            'canManual' => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerOrderDecision::class)->eligible($order),
+            'decisions' => $order->snapshot['decision_history'] ?? [],
             'canReveal' => CatalogAccess::has($request, $role, 'stock.credentials')]);
     }
 
     public function action(Request $request, Store $store, CustomerOrder $order): RedirectResponse
     {
-        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review,cancel', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'note' => 'required_if:action,resolve,review|nullable|string|min:8|max:500']);
-        $permission = ['resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view', 'cancel' => 'orders.view'][$data['action']];
+        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review,cancel,manual', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'status' => 'required_if:action,manual|in:success,failed', 'result' => 'nullable|string|max:20000', 'note' => 'required_if:action,resolve,review,manual|nullable|string|min:8|max:500']);
+        $permission = ['manual' => 'orders.manage', 'resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view', 'cancel' => 'orders.view'][$data['action']];
         $role = CatalogAccess::authorize($request, $store, $permission);
         abort_unless($order->store_id === $store->id, 404);
+        if ($data['action'] === 'manual') {
+            app(CustomerOrderDecision::class)->decide($order, $data['status'], $data['note'], $data['result'] ?? '', $role.':'.$request->user($role === 'staff' ? 'staff' : 'web')->id);
+
+            return back()->with('success', 'Keputusan manual disimpan. Webhook Digiflazz berikutnya tetap dapat memperbarui hasil.');
+        }
         if ($data['action'] === 'cancel') {
             abort_unless($role === 'owner', 403);
             try {
@@ -92,7 +100,7 @@ class CustomerPanelController extends Controller
             });
         } elseif ($data['action'] === 'resend') {
             app(CustomerCommerce::class)->ensure($order->status === 'success', 'Hasil hanya dikirim ulang untuk pesanan sukses.');
-            $notice = CustomerNotice::where('event', 'order:'.$order->id.':success')->firstOrFail();
+            $notice = CustomerNotice::where('order_id', $order->id)->where(fn ($query) => $query->where('event', 'order:'.$order->id.':success')->orWhere('event', 'like', 'order:'.$order->id.':success:decision:%'))->latest()->firstOrFail();
             $notice->update(['wa_sent_at' => null, 'email_sent_at' => null]);
         } else {
             try {

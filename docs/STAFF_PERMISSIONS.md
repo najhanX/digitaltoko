@@ -1,39 +1,51 @@
-# Staff toko DigitalToko
+# Hak akses staff toko
 
-Rancangan permission didelegasikan pengguna kepada pengembang. Maksimal lima staff per toko, di luar owner. Staff lokal toko tidak didaftarkan ke API Hanshop. Login memakai username/email dan password dengan konteks toko; hash password tidak dapat dibaca kembali. Reset password dan hitungan staff nonaktif belum dirinci.
+Disinkronkan dengan `apps/web/app/Support/StaffPermissions.php` dan controller pada **21 Oktober 2026**. Maksimal lima akun lokal per toko, termasuk nonaktif; owner tidak dihitung. Login memakai username/email dan password dengan konteks toko. Staff tidak didaftarkan ke Hanshop.
 
-## Prinsip
+## Aturan akses
 
-- Default tanpa permission; owner memberi hak per akun. Scope selalu satu toko. Backend memeriksa permission setiap request/mutasi, bukan hanya menu.
-- Akun dengan username sama pada dua toko bukan identitas global yang otomatis mendapat akses keduanya.
-- Pengelolaan owner/staff/permission, data diri/KTP, credential pemasok/Midtrans/perangkat QRIS, domain, aktivasi pertama, dan pembelian/change kategori paket adalah owner-only pada rancangan awal.
-- Staff tidak membaca total saldo Hanshop owner, credential pemasok, atau riwayat pribadi/toko lain. Pembelian customer melalui proses normal tetap dapat memakai source yang sudah dikonfigurasi owner; bukan endpoint debit saldo bebas.
-- Permission perpanjangan bisa didelegasikan, tanpa memberi permission upgrade/downgrade atau belanja bebas dari saldo owner. Metode pembayaran renewal mengikuti invoice platform.
+Owner terverifikasi mengelola akun/grant staff. Backend selalu memeriksa store_id, guard dan izin; label/menu bukan otorisasi. Izin kelola tertentu mengimplikasikan baca melalui CatalogAccess; izin sensitif tetap terpisah. Staff tidak membaca saldo Hanshop global atau mengganti credential pemasok/gateway owner.
 
-## Permission yang dapat dipilih owner
+Owner-only: pengelolaan staff, identitas/KTP, credential pemasok dan gateway, pembelian modul, domain, aktivasi pertama, perubahan paket, pembatalan order dari panel dan penyelesaian pembayaran review. Staff `subscription.renew` hanya memperpanjang kanal/sumber yang sama; trial historis tidak dapat dikonversi oleh staff. `orders.manage` adalah keputusan manual Digiflazz eligible, bukan semua pemasok.
 
-| Grup | Permission |
+## Allowlist source
+
+| Permission | Label panel |
 | --- | --- |
-| Ringkasan | Lihat dashboard dan laporan toko |
-| Produk | Lihat produk; tambah/edit/nonaktifkan produk; atur parsing source yang sudah dihubungkan |
-| Harga | Atur harga/markup; atur policy modal naik per produk/kategori/layanan |
-| Stok | Lihat jumlah/status; tambah stok; edit/hapus stok ready; lihat credential stok (hak terpisah) |
-| Transaksi | Lihat/cek status pesanan; kirim ulang bukti/hasil ke penerima asli (hak terpisah) |
-| Tindak lanjut guest | Hubungi nomor WA pesanan; catat penyelesaian/refund manual; buat pembelian ulang terkontrol (hak terpisah) |
-| Pelanggan | Lihat pelanggan; lihat kontak (hak terpisah); kelola profil pelanggan dalam toko |
-| Pembayaran | Lihat invoice/payment; atur policy kode unik topup dan refund produk (hak terpisah); ganti gateway yang telah dikonfigurasi owner; konfigurasi Midtrans mengikuti provider |
-| Saldo pelanggan | Lihat topup/refund/ledger pelanggan toko; catat bukti pencairan saat toko berhenti (hak sensitif terpisah) |
-| Web | Ganti template/branding; atur section/banner; preview/publish |
-| Checkout | Atur guest/wajib login dan kontak bukti transaksi |
-| WhatsApp | Lihat koneksi; mulai pairing/logout/reconnect (hak terpisah, satu sesi toko) |
-| Langganan | Lihat status/deadline; buat invoice perpanjangan |
+| `vouchers.view` | Lihat voucher diskon |
+| `vouchers.manage` | Buat, ubah & hapus voucher diskon |
+| `dashboard.view` | Lihat ringkasan toko |
+| `products.view` | Lihat produk |
+| `products.manage` | Kelola layanan, kategori, produk & parsing |
+| `pricing.manage` | Kelola harga & markup |
+| `stock.view` | Lihat jumlah stok |
+| `stock.manage` | Kelola stok ready |
+| `stock.credentials` | Lihat credential stok |
+| `suppliers.balance` | Lihat saldo Digiflazz toko |
+| `orders.view` | Lihat & cek transaksi |
+| `orders.manage` | Putuskan sukses/gagal transaksi Digiflazz manual |
+| `orders.resend` | Kirim ulang hasil ke penerima asli |
+| `guests.resolve` | Tindak lanjut pesanan guest |
+| `customers.view` | Lihat pelanggan |
+| `customers.contacts` | Lihat kontak pelanggan |
+| `customers.manage` | Kelola profil pelanggan |
+| `payments.view` | Lihat pembayaran |
+| `payments.policy` | Atur fee dan kebijakan kode unik |
+| `wallet.view` | Lihat ledger saldo pelanggan |
+| `wallet.settlement` | Catat pencairan saat toko berhenti |
+| `web.manage` | Kelola template & branding |
+| `articles.view` | Lihat artikel toko |
+| `articles.manage` | Tulis, terbitkan & hapus artikel |
+| `checkout.manage` | Atur guest / wajib login |
+| `bot.view` | Lihat koneksi WhatsApp |
+| `bot.manage` | Pairing / reconnect WhatsApp |
+| `notifications.view` | Lihat pengaturan notifikasi & email |
+| `notifications.manage` | Kelola pengirim email & kirim email uji |
+| `subscription.view` | Lihat masa aktif |
+| `subscription.renew` | Buat invoice perpanjangan |
 
-Refund terminal gagal pembeli login ke saldo toko dilakukan sistem, tidak membutuhkan permission staff. Pencatatan penyelesaian/refund manual guest dapat didelegasikan dengan audit; itu tidak otomatis membuktikan transfer uang sudah dilakukan. Konfirmasi manual pembayaran, adjustment saldo bebas, dan pengiriman pesan bebas belum termasuk permission awal. Label panel membedakan lihat stok dari lihat credential dan lihat payment dari ubah fee.
+`customers.manage` tercantum pada allowlist, tetapi belum menyediakan endpoint CRUD profil pelanggan penuh. Jangan menjanjikan fitur hanya karena label izin sudah ada. `stock.credentials` dipakai untuk membuka isi stok/hasil; `customers.contacts` untuk kontak; `wallet.settlement` hanya mencatat pencairan yang sudah dilakukan ketika toko berhenti. Tidak ada transfer uang otomatis dari permission tersebut.
 
-Owner tidak dapat memberi staff akses admin platform/Hanshop. Notifikasi grace tampil ke seluruh staff walaupun mereka tidak mendapat hak renewal.
+Refund terminal customer login dijalankan sistem tanpa menunggu staff. Callback Digiflazz dapat mengoreksi keputusan manual dan menarik refund kembali; status/riwayat tetap dapat diperiksa meskipun saldo minus membatasi pembelian baru.
 
-Implementasi onboarding: owner-only CRUD staff di /owner/stores/{store}/staff. Nama/username/email/hash password, aktif/nonaktif, dan daftar permission disimpan per toko. Semua akun (termasuk nonaktif) dihitung dalam batas lima; owner dapat menghapus akun untuk menggantinya. Validasi permission memakai allowlist, sehingga admin/platform/credential supplier tidak dapat disisipkan lewat payload. Dashboard memerlukan dashboard.view; endpoint QR/koneksi yang tersedia memeriksa bot.manage. Permission untuk katalog/payment/langganan belum membuat modul tersebut aktif sebelum implementasinya.
-
-Login staff menghapus sesi web owner/admin pada browser itu; login owner/admin menghapus sesi staff. Auth route owner/admin menggunakan guard web secara eksplisit. Edit password staff bersifat opsional; input kosong mempertahankan hash lama. Akun owner harus mempunyai KTP approved untuk mengelola toko/staff.
-
-Implementasi katalog (14 Oktober 2026): `products.view` membaca katalog/sumber; `products.manage` mengimpor dan mengubah produk/parsing sumber existing; `pricing.manage` mengatur harga dan aturan; `stock.view` membaca metadata; `stock.manage` menambah/edit/hapus stok ready; `stock.credentials` membuka isi stok secara terpisah; `suppliers.balance` membaca saldo Digiflazz toko. Staff tidak menghubungkan/mengganti credential pemasok dan tidak membaca saldo Hanshop global. Permission pengelolaan mengimplikasikan akses baca halaman terkait.
+Login staff menghapus sesi web owner/admin di browser itu, dan sebaliknya. Password staff kosong saat edit mempertahankan hash lama; reset password mandiri belum menjadi alur lengkap. Lihat BUSINESS_RULES.md dan ARCHITECTURE.md untuk lifecycle serta pemisahan wallet.

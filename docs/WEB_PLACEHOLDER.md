@@ -1,7 +1,5 @@
-# Web app Hansbot
+# Lokasi aplikasi web DigitalToko
 
-Tempat panel admin platform, panel owner toko, dan backend bisnis Hansbot. Implementasi framework belum dimulai.
+Dokumen placeholder awal sudah tidak berlaku. Per **21 Oktober 2026**, panel admin/owner/staff, storefront dan backend bisnis tersedia di `apps/web` memakai Laravel + Inertia React.
 
-Backend bertanggung jawab atas autentikasi, otorisasi toko, paket/langganan, katalog dan harga jual, stok premium, pelanggan, pesanan, pembayaran, serta integrasi pemasok.
-
-Frontend hanya berkomunikasi melalui backend yang memeriksa sesi dan akses toko. Secret pemasok dan credential WhatsApp tidak dikirim ke browser. QR/pairing code hanya ditampilkan kepada pengguna yang berwenang pada toko tersebut.
+Gunakan [README web](../apps/web/README.md) untuk menjalankan aplikasi dan [ARCHITECTURE.md](ARCHITECTURE.md) untuk alur source. `apps/storefront` bukan aplikasi kedua. Batas implementasi, integrasi dan pekerjaan produksi dijelaskan pada dokumen tersebut; file ini dipertahankan agar tautan lama tidak putus.

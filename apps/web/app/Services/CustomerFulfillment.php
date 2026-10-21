@@ -18,6 +18,11 @@ class CustomerFulfillment
 {
     private const DIGIFLAZZ_FAILURES = ['01', '02', '40', '41', '42', '43', '44', '45', '47', '51', '52', '53', '54', '55', '57', '58', '59', '60', '61', '62', '63', '66', '67', '68', '69', '70', '71', '72', '73', '74', '80', '81', '82'];
 
+    public static function isDefinitiveFailure(string $rc): bool
+    {
+        return in_array($rc, self::DIGIFLAZZ_FAILURES, true);
+    }
+
     public function digiflazzCallback(CustomerOrder $order, OrderAttempt $attempt, array $data): void
     {
         $lock = Cache::lock('customer-fulfill:'.$order->id, 120);
@@ -27,11 +32,25 @@ class CustomerFulfillment
                 Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
                 $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
-                if ($order->payment_status !== 'paid' || $order->purpose !== 'product' || ! in_array($order->status, ['paid', 'processing', 'pending'], true) || ! in_array($attempt->status, ['dispatching', 'pending'], true)) {
+                if ($order->payment_status !== 'paid' || $order->purpose !== 'product' || ! $attempt->last_checked_at || ! in_array($attempt->status, ['dispatching', 'pending', 'success', 'failed'], true)) {
                     return;
                 }
                 $snapshot = $attempt->request_snapshot;
                 if (($snapshot['kind'] ?? '') === 'postpaid' && ! ($snapshot['pay_started'] ?? false)) {
+                    return;
+                }
+                $latest = $order->attempts()->whereNotNull('last_checked_at')->where('status', '!=', 'ready')->orderByDesc('position')->first();
+                if ($latest?->id !== $attempt->id) {
+                    $attempt->update(['status' => $data['status'] === 'Sukses' && $data['rc'] === '00' ? 'success' : ($data['status'] === 'Gagal' && self::isDefinitiveFailure($data['rc']) ? 'failed' : 'pending'), 'result' => mb_substr((string) ($data['sn'] ?? ''), 0, 20000), 'message' => 'Callback parsing sebelumnya dicatat; pesanan mengikuti parsing terakhir yang telah dikirim.']);
+
+                    return;
+                }
+                if (empty($order->snapshot['manual_decision']) && empty($order->snapshot['supplier_reconciled']) && in_array($order->status, ['paid', 'processing', 'pending'], true) && $attempt->status === 'failed' && $data['status'] === 'Gagal' && self::isDefinitiveFailure($data['rc'])) {
+                    return;
+                }
+                if (! empty($order->snapshot['manual_decision']) || ! empty($order->snapshot['supplier_reconciled']) || in_array($order->status, ['success', 'failed', 'review'], true) || in_array($attempt->status, ['success', 'failed'], true)) {
+                    app(CustomerOrderDecision::class)->callback($order, $attempt, $data);
+
                     return;
                 }
                 $rc = $data['rc'];
@@ -100,7 +119,13 @@ class CustomerFulfillment
         return DB::transaction(function () use ($order) {
             Store::whereKey($order->store_id)->lockForUpdate()->first();
             $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
-            if ($order->payment_status !== 'paid' || $order->purpose !== 'product' || ! in_array($order->status, ['paid', 'processing', 'pending'], true)) {
+            if (! empty($order->snapshot['manual_decision']) || ! empty($order->snapshot['supplier_reconciled']) || $order->payment_status !== 'paid' || $order->purpose !== 'product' || ! in_array($order->status, ['paid', 'processing', 'pending'], true)) {
+                return null;
+            }
+            if ($order->customer_id && app(CustomerCommerce::class)->purchaseBlocked($order->store, $order->customer, $order->phone)) {
+                $order->update(['status' => 'review', 'message' => 'Pembelian ditahan karena saldo pelanggan minus. Pulihkan saldo terlebih dahulu.']);
+                app(CustomerCommerce::class)->notice($order, 'review');
+
                 return null;
             }
             $attempt = $order->attempts()->whereNotIn('status', ['failed'])->orderBy('position')->lockForUpdate()->first();
@@ -131,7 +156,7 @@ class CustomerFulfillment
                     return null;
                 }
                 $current = $attempt->source === 'stock' ? null : SupplierProduct::where('connection_id', $data['connection_id'])->where('sku', $data['sku'])->first();
-                if ($attempt->cost > $order->amount || ($current && $current->cost > $order->amount)) {
+                if ($attempt->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount) || ($current && $current->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
                     app(CustomerCommerce::class)->fail($order, 'Modal pemasok naik melebihi harga jual pesanan.');
 
                     return null;
@@ -168,7 +193,7 @@ class CustomerFulfillment
 
                 return;
             }
-            if ($stock->cost > $order->amount) {
+            if ($stock->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount)) {
                 $attempt->update(['status' => 'failed', 'message' => 'Modal stok naik.']);
                 app(CustomerCommerce::class)->fail($order, 'Modal stok naik melebihi harga jual pesanan.');
 
@@ -188,7 +213,7 @@ class CustomerFulfillment
         }
         if ($attempt->source === 'hanshop') {
             $result = app(HanshopIdentity::class)->call('supplier/transaction', ['id_user' => $data['id_user'], 'store_id' => $order->store_id, 'access_until' => now()->addMinutes(5)->toIso8601String(),
-                'reference' => $attempt->reference, 'kind' => $data['kind'], 'product_code' => $data['sku'], 'destination' => $order->destination, 'max_price' => $order->amount]);
+                'reference' => $attempt->reference, 'kind' => $data['kind'], 'product_code' => $data['sku'], 'destination' => $order->destination, 'max_price' => (int) ($order->snapshot['subtotal'] ?? $order->amount)]);
             if (($result['reference'] ?? '') !== $attempt->reference || ($result['id_user'] ?? '') !== $data['id_user']) {
                 return ['status' => 'pending', 'message' => 'Referensi hasil pemasok belum cocok.'];
             }
@@ -225,7 +250,7 @@ class CustomerFulfillment
             if (! is_numeric($inquiry['price'] ?? null) || (int) $inquiry['price'] <= 0) {
                 return ['status' => 'pending', 'message' => 'Nominal tagihan belum valid.'];
             }
-            if ((int) $inquiry['price'] > $order->amount) {
+            if ((int) $inquiry['price'] > (int) ($order->snapshot['subtotal'] ?? $order->amount)) {
                 return ['status' => 'failed', 'price_changed' => true, 'message' => 'Modal tagihan melebihi harga pesanan.'];
             }
             // Persist before I/O: after a crash or uncertain response only status-pasca is permitted.
@@ -235,7 +260,7 @@ class CustomerFulfillment
         } elseif ($postpaid) {
             $payload['commands'] = 'status-pasca';
         } else {
-            $payload['max_price'] = $order->amount;
+            $payload['max_price'] = (int) ($order->snapshot['subtotal'] ?? $order->amount);
         }
         $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)->post('https://api.digiflazz.com/v1/transaction', $payload);
         $body = $response->json('data');
@@ -264,7 +289,7 @@ class CustomerFulfillment
             }
             $status = $outcome['status'];
             $cost = $outcome['cost'] ?? null;
-            if ($status === 'success' && (! is_numeric($cost) || (int) $cost < 0 || (int) $cost > $order->amount)) {
+            if ($status === 'success' && (! is_numeric($cost) || (int) $cost < 0 || (int) $cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
                 $attempt->update(['status' => 'pending', 'result' => mb_substr((string) ($outcome['result'] ?? ''), 0, 20000), 'message' => 'Harga hasil pemasok perlu ditinjau.']);
                 $order->update(['status' => 'review', 'message' => 'Hasil pemasok perlu diperiksa toko.']);
                 app(CustomerCommerce::class)->notice($order, 'review');

@@ -55,3 +55,23 @@ Ukuran teks operasional juga diperiksa dari computed style pada halaman desktop 
 - Bukti UI sebelumnya: `assets/staff-panel-clean.png`, `assets/store-closure-clean.png`, `assets/store-settings-clean.png`. Gambar staff merupakan tahap sebelum filter/pagination dihapus; implementasi final sudah menghapus keduanya.
 
 Server pemeriksaan sementara dihentikan setelah audit; server development milik pengguna tidak dihentikan. Pembungkus responsif sementara hanya berada pada fixture yang diabaikan Git dan telah dihapus setelah pemeriksaan.
+
+
+## 20 Oktober 2026 — konsistensi seluruh panel admin
+
+- Ringkasan, kelola/detail toko, verifikasi owner, paket/harga, pembayaran sewa, voucher, modul pembayaran, dan login admin memakai skala kontrol serta jarak yang konsisten dengan panel owner/staff.
+- Filter dan pagination atas disatukan dengan tabel dalam kartu berpadding. Pagination bawah, header semibold/rata tengah, pemisah sel, radius, pencarian, serta scroll tabel dipertahankan. Identifier panjang dapat membungkus; pembayaran kini memiliki tautan langsung ke toko.
+- Paket ditampilkan dalam tabel untuk membandingkan harga/durasi; rincian fitur tersedia di modal. Modal paket, tindakan toko, verifikasi, dan harga QRIS diringkas dengan kelompok isian dan bantuan yang dapat dibuka. Peringatan penangguhan dan kewajiban alasan tetap terlihat.
+- Gaya admin dibatasi melalui `admin-workspace` di WorkspaceLayout dan `admin-panel.css`; halaman owner/staff tetap memakai gayanya masing-masing. Login admin mendapat penyelarasan kartu, spasi, dan indikator pemrosesan.
+- Browser diperiksa dengan fixture SQLite dan HTTP simulasi pada tema terang/gelap, sidebar terbuka/tertutup, serta viewport 390 × 844. Tabel lebar tetap di dalam area scroll tanpa membuat halaman melebar; modal ponsel tetap dapat dijangkau. Tidak menyimpan keputusan verifikasi, perubahan paket/harga, atau mengirim notifikasi nyata.
+- 72 tes backend terkait (1.320 assertions), 21 tes frontend, TypeScript, build produksi, serta `git diff --check` lulus. Tidak ada dependency atau migrasi database baru pada perapihan admin ini.
+- Bukti tampilan akhir: `assets/admin-panel-clean-preview.png`.
+
+
+### Penjualan owner/staff dan tombol aksi — 20 Oktober 2026
+
+- Diseragamkan: voucher, transaksi, detail transaksi, pelanggan, mutasi saldo, serta pembayaran pelanggan. Kartu/tabel memakai padding, filter, pagination atas-bawah dan ukuran kontrol yang sama dengan katalog.
+- Detail pesanan memisahkan ringkasan dan tindakan. Pengaturan pembayaran memakai kartu gateway utama dan tiga kartu ringkas untuk biaya, checkout dan lisensi QRIS. Modal tetap digunakan untuk perubahan data.
+- Tombol aksi teks diberi kelas tombol sekunder; tab modal, tombol ikon dan aksi berbahaya memiliki latar, fokus, hover dan status nonaktif yang jelas. Pilihan quick order Aurora dan kategori Atlas mengikuti warna storefront.
+- Pemeriksaan lokal memakai database simulasi terpisah: owner/staff, desktop/ponsel, terang/gelap, modal gateway/kebijakan/voucher; audit tombol beranda Aurora/Nebula/Atlas dan modal voucher admin. Tidak ada pembayaran atau pengiriman notifikasi nyata.
+- Validasi: 61 tes fitur (734 assertions), 21 tes frontend, TypeScript/Vite build dan git diff --check lulus.

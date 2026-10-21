@@ -13,6 +13,7 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class SubscriptionTest extends TestCase
@@ -117,46 +118,67 @@ class SubscriptionTest extends TestCase
         $this->assertSame('applied', $down->fresh()->status);
     }
 
-    public function test_trial_requires_connection_is_once_per_owner_and_has_no_grace(): void
+    public function test_new_trial_route_is_removed_and_panel_does_not_offer_trial(): void
     {
         $owner = $this->owner();
-        $s = $this->store($owner, 'bot');
-        $this->service()->requestTrial($s);
-        $this->assertNull($owner->fresh()->trial_used_at);
-        try {
-            $this->service()->activate($s);
-            $this->fail('Must connect');
-        } catch (ValidationException) {
-        }
-        Cache::put('bot:'.$s->id.':state', ['status' => 'CONNECTED'], 90);
-        $this->service()->activate($s);
-        $s->refresh();
-        $this->assertNotNull($owner->fresh()->trial_used_at);
-        $this->assertSame('galaxy', $s->plan);
-        $this->travelTo($s->expires_at);
-        $this->service()->tick($s);
-        $this->assertFalse($s->fresh()->acceptsOrders());
-        $this->assertSame('expired', $s->fresh()->status);
-        $this->expectException(ValidationException::class);
-        $this->service()->requestTrial($this->store($owner, 'bot'));
+        $store = $this->store($owner, 'bot');
+        $this->actingAs($owner)->post('/stores/'.$store->id.'/subscription/trial')->assertNotFound();
+        $this->get('/stores/'.$store->id.'/subscription')->assertInertia(fn (AssertableInertia $page) => $page->missing('trialAvailable'));
+        $this->assertSame('draft', $store->fresh()->status);
+        $this->assertFalse($store->fresh()->is_trial);
+        $this->assertDatabaseCount('subscription_invoices', 0);
     }
 
-    public function test_only_one_trial_reservation_per_owner_and_paid_conversion_drops_trial_remainder(): void
+    public function test_unstarted_legacy_trial_cannot_activate_or_pair_and_returns_to_purchase(): void
     {
         $owner = $this->owner();
-        $s = $this->store($owner, 'bot');
-        $this->service()->requestTrial($s);
+        $store = $this->store($owner, 'bot');
+        $owner->forceFill(['trial_store_id' => $store->id])->save();
+        $store->update(['status' => 'provisioning', 'is_trial' => true, 'trial_requested_at' => now()->subDays(2), 'ready_at' => now()->subDays(2), 'branding' => ['name' => 'Keep settings']]);
+        Cache::put('bot:'.$store->id.':state', ['status' => 'CONNECTED'], 90);
+        $this->assertFalse($store->canConnectBot());
         try {
-            $this->service()->requestTrial($this->store($owner, 'bot'));
-            $this->fail('Second reservation denied');
+            $this->service()->activate($store);
+            $this->fail('Old trial must not activate');
         } catch (ValidationException) {
         }
-        Cache::put('bot:'.$s->id.':state', ['status' => 'CONNECTED'], 90);
-        $this->service()->activate($s);
+        $this->assertNull($store->fresh()->expires_at);
+        $this->service()->tick($store);
+        $this->service()->tick($store->fresh());
+        $this->assertSame('draft', $store->fresh()->status);
+        $this->assertFalse($store->fresh()->is_trial);
+        $this->assertNull($store->fresh()->trial_requested_at);
+        $this->assertNull($store->fresh()->ready_at);
+        $this->assertNull($owner->fresh()->trial_store_id);
+        $this->assertSame('Keep settings', $store->fresh()->branding['name']);
+        $this->assertDatabaseCount('subscription_invoices', 0);
+    }
+
+    public function test_active_legacy_trial_is_honored_until_its_original_expiry_without_grace(): void
+    {
+        $owner = $this->owner();
+        $store = $this->store($owner, 'bot');
+        $expiry = now()->startOfSecond()->addDays(3);
+        $store->update(['status' => 'active', 'is_trial' => true, 'starts_at' => now()->subDays(4), 'expires_at' => $expiry, 'trial_requested_at' => now()->subDays(4)]);
+        $this->service()->tick($store);
+        $this->assertTrue($store->fresh()->acceptsOrders());
+        $this->assertTrue($store->fresh()->canConnectBot());
+        $this->assertTrue($expiry->equalTo($store->fresh()->expires_at));
+        $this->travelTo($expiry);
+        $this->service()->tick($store->fresh());
+        $this->assertSame('expired', $store->fresh()->status);
+        $this->assertFalse($store->fresh()->acceptsOrders());
+    }
+
+    public function test_paid_conversion_of_legacy_trial_does_not_add_the_trial_remainder(): void
+    {
+        $owner = $this->owner();
+        $store = $this->store($owner, 'bot');
+        $store->update(['status' => 'active', 'plan' => 'galaxy', 'is_trial' => true, 'starts_at' => now()->subDay(), 'expires_at' => now()->addDays(6), 'trial_requested_at' => now()->subDay()]);
         $this->gatewayStatus = 'PAID';
-        $i = $this->service()->checkout($s, $this->plan('bot', 'galaxy'));
-        $this->assertFalse($s->fresh()->is_trial);
-        $this->assertTrue($s->fresh()->expires_at->equalTo($i->paid_at->addDays(30)));
+        $invoice = $this->service()->checkout($store, $this->plan('bot', 'galaxy'));
+        $this->assertFalse($store->fresh()->is_trial);
+        $this->assertTrue($store->fresh()->expires_at->equalTo($invoice->paid_at->addDays(30)));
     }
 
     public function test_auto_activation_after_24_hours_and_grace_boundary_are_per_store(): void

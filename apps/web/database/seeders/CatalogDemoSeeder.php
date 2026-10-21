@@ -24,7 +24,7 @@ class CatalogDemoSeeder extends Seeder
             $this->call(DemoStoreSeeder::class);
         }
         $owner = User::where('email', 'demo-owner@example.test')->firstOrFail();
-        foreach (['demo-aurora', 'demo-nebula', 'demo-atlas', 'demo-trial'] as $slug) {
+        foreach (['demo-aurora', 'demo-nebula', 'demo-atlas', 'demo-bot'] as $slug) {
             DB::transaction(function () use ($owner, $slug) {
                 $store = Store::where('slug', $slug)->lockForUpdate()->firstOrFail();
                 if ($store->owner_id !== $owner->id) {

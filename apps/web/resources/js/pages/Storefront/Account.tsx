@@ -9,7 +9,7 @@ import RupiahInput from '../../components/RupiahInput';
 
 type Item={id:string;number?:string;status?:string;amount:number;snapshot?:{name:string};reason?:string;balance_after?:number;created_at:string};
 type Customer={name:string;phone:string;phone_verified_at:string|null;email:string|null;email_verified_at:string|null;balance:number;has_password:boolean};
-const ledgerLabels:Record<string,string>={purchase:'Pembelian produk',payment:'Pembayaran pesanan',topup:'Topup saldo',refund:'Pengembalian dana',withdrawal:'Pencairan saldo'};
+const ledgerLabels:Record<string,string>={purchase:'Pembelian produk',payment:'Pembayaran pesanan',topup:'Topup saldo',refund:'Pengembalian dana',refund_reversal:'Penarikan kembali refund',withdrawal:'Pencairan saldo'};
 export default function Account({store,customer,items,tab,filters,pagination,accepting}:{store:Shop;customer:Customer;items:Item[];tab:string;filters:ListFilters;pagination:PageMeta;accepting:boolean}) {
     const list=useServerList(filters,['items','filters','pagination']);
     const page=usePage();
@@ -27,7 +27,7 @@ export default function Account({store,customer,items,tab,filters,pagination,acc
     function openEmail(){email.setData('email',customer.email ?? '');email.clearErrors();verify.reset();verify.clearErrors();setEmailStep('request');setChangePassword(false);setDialog('email');}
     function closeEmail(){setDialog(null);verify.reset();verify.clearErrors();}
     return <ShopLayout store={store} title="Akun saya">
-        <div className="sf-account">
+        <div className="sf-account">{customer.balance<0 && <div className="feedback error" role="alert">Saldo Anda minus. Pembelian produk diblokir sementara. Topup hingga saldo minimal Rp0 untuk dapat bertransaksi kembali.</div>}
             <section className="sf-account-overview" aria-label="Ringkasan akun">
                 <div className="sf-form-card sf-account-identity"><span className="sf-account-avatar"><UserRound size={23}/></span><div><small>Akun pelanggan</small><h2>{customer.name}</h2><p>{customer.phone}</p></div><span className="sf-account-badge"><ShieldCheck size={13}/>{customer.phone_verified_at?'WhatsApp terverifikasi':customer.email_verified_at?'Email terverifikasi':'Kontak belum diverifikasi'}</span></div>
                 <div className="sf-form-card sf-account-wallet"><div><span><Wallet size={16}/>Saldo toko</span><strong>{money(customer.balance)}</strong><small>Hanya berlaku di {store.name}</small></div><button className="button" disabled={!accepting} onClick={()=>{topup.clearErrors();topup.setData('idempotency_key',crypto.randomUUID());setDialog('topup');}}>Topup saldo</button></div>

@@ -46,6 +46,6 @@ class Store extends Model
     public function canConnectBot(): bool
     {
         return ! $this->admin_suspended_at && in_array($this->category, ['bot', 'web', 'full'], true)
-            && ($this->status === 'provisioning' || $this->acceptsOrders());
+            && (($this->status === 'provisioning' && ! $this->is_trial && ! $this->trial_requested_at) || $this->acceptsOrders());
     }
 }

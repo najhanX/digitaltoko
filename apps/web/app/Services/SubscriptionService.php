@@ -26,24 +26,41 @@ class SubscriptionService
         return array_values(array_filter([$category !== 'web' ? 'bot' : null, $category !== 'bot' ? 'web' : null, $plan !== 'space' ? 'digiflazz' : null, $plan !== 'orbit' ? 'stock' : null, 'hanshop']));
     }
 
-    public function checkout(Store $store, PlanOption $option): SubscriptionInvoice
+    public function checkout(Store $store, PlanOption $option, ?string $voucherCode = null, ?string $requestId = null): SubscriptionInvoice
     {
-        $invoice = DB::transaction(function () use ($store, $option) {
+        $invoice = DB::transaction(function () use ($store, $option, $voucherCode, $requestId) {
             $owner = User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
             $option = PlanOption::whereKey($option->id)->lockForUpdate()->firstOrFail();
             $this->ensure($owner->verification_status === 'approved' && $owner->email_verified_at && $owner->phone_verified_at && (bool) $owner->hanshop_user_id, 'Lengkapi verifikasi owner terlebih dahulu.');
             $this->ensure($option->active, 'Paket tidak tersedia.');
             $this->ensure(! $store->admin_suspended_at && ! in_array($store->status, ['purging', 'suspended_manual'], true), 'Toko ini perlu ditinjau admin.');
+            if ($requestId) {
+                $previous = SubscriptionInvoice::where('store_id', $store->id)->where('snapshot->request_id', $requestId)->lockForUpdate()->first();
+                if ($previous) {
+                    $this->ensure((int) ($previous->snapshot['option_id'] ?? 0) === $option->id && Vouchers::code($previous->snapshot['voucher']['code'] ?? '') === Vouchers::code($voucherCode), 'Permintaan sudah dipakai untuk pilihan lain. Muat ulang halaman.');
+
+                    return $previous;
+                }
+            }
             $open = SubscriptionInvoice::where('store_id', $store->id)->whereIn('status', ['pending', 'paid', 'review'])->first();
             if ($open) {
-                $this->ensure($open->status === 'pending' && $open->snapshot === $option->snapshot(), 'Selesaikan invoice atau perubahan paket yang masih berjalan.');
+                $this->ensure($open->status === 'pending' && array_intersect_key([...$open->snapshot, 'price' => $open->snapshot['base_price'] ?? $open->snapshot['price']], $option->snapshot()) === $option->snapshot() && Vouchers::code($open->snapshot['voucher']['code'] ?? '') === Vouchers::code($voucherCode), 'Selesaikan invoice atau perubahan paket yang masih berjalan.');
 
                 return $open;
             }
             $purpose = $this->purpose($store, $option);
 
-            return SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $owner->id, 'snapshot' => $option->snapshot(), 'purpose' => $purpose]);
+            $voucher = app(Vouchers::class)->quote(null, $voucherCode, $option->price, plan: $option, lock: true);
+            $this->ensure(! $voucher || $voucher['total'] > 0 || filled($requestId), 'Muat ulang halaman sebelum menggunakan voucher gratis.');
+            $snapshot = [...$option->snapshot(), 'option_id' => $option->id, 'request_id' => $requestId];
+            if ($voucher) {
+                $snapshot = [...$snapshot, 'base_price' => $option->price, 'price' => $voucher['total'], 'voucher' => $voucher];
+            }
+            $invoice = SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $owner->id, 'snapshot' => $snapshot, 'purpose' => $purpose]);
+            app(Vouchers::class)->redeem($voucher, 'subscription', $invoice->id);
+
+            return $invoice;
         });
 
         return $this->sync($invoice);
@@ -71,7 +88,8 @@ class SubscriptionService
             return $invoice;
         }
         $owner = User::findOrFail($invoice->owner_id);
-        $result = app(HanshopIdentity::class)->call('billing/invoice', ['invoice_id' => $invoice->id, 'id_user' => $owner->hanshop_user_id, 'amount' => $invoice->snapshot['price']]);
+        $free = (int) $invoice->snapshot['price'] === 0 && (int) ($invoice->snapshot['voucher']['discount'] ?? 0) > 0;
+        $result = $free ? ['invoice' => ['invoice_id' => $invoice->id, 'id_user' => $owner->hanshop_user_id, 'amount' => 0, 'total' => 0, 'id_payment' => 'VOUCHER-'.$invoice->id, 'status' => 'PAID', 'paid_at' => now()->toIso8601String(), 'expires_at' => now()->toIso8601String(), 'qr_url' => null]] : app(HanshopIdentity::class)->call('billing/invoice', ['invoice_id' => $invoice->id, 'id_user' => $owner->hanshop_user_id, 'amount' => $invoice->snapshot['price']]);
         $data = $result['invoice'] ?? [];
         validator($data, ['invoice_id' => 'required|in:'.$invoice->id, 'id_user' => 'required|in:'.$owner->hanshop_user_id,
             'amount' => 'required|integer|in:'.$invoice->snapshot['price'], 'id_payment' => 'required|string|max:64',
@@ -81,14 +99,14 @@ class SubscriptionService
         if ($data['status'] === 'PAID') {
             $this->ensure(! empty($data['paid_at']) && Carbon::parse($data['paid_at'])->lte(now()->addMinute()), 'Waktu pembayaran tidak valid.');
         }
-        DB::transaction(function () use ($invoice, $data) {
+        DB::transaction(function () use ($invoice, $data, $free) {
             $owner = User::whereKey($invoice->owner_id)->lockForUpdate()->firstOrFail();
             $store = Store::whereKey($invoice->store_id)->lockForUpdate()->firstOrFail();
             $locked = SubscriptionInvoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== 'pending') {
                 return;
             }
-            $locked->update(['provider_id' => $data['id_payment'], 'total' => $data['total'], 'qr_url' => $data['qr_url'] ?? null, 'expires_at' => $data['expires_at'],
+            $locked->update(['provider_id' => $free ? null : $data['id_payment'], 'total' => $data['total'], 'qr_url' => $data['qr_url'] ?? null, 'expires_at' => $data['expires_at'],
                 'status' => ['PENDING' => 'pending', 'PAID' => 'paid', 'EXPIRED' => 'expired', 'REVIEW' => 'review'][$data['status']], 'paid_at' => $data['paid_at'] ?? null, 'last_error' => null]);
             if ($locked->status !== 'pending') {
                 $title = match ($locked->status) {
@@ -133,21 +151,6 @@ class SubscriptionService
         return ($store->category === 'web' || ($bot['status'] ?? null) === 'CONNECTED') && filled($store->slug);
     }
 
-    public function requestTrial(Store $store): void
-    {
-        DB::transaction(function () use ($store) {
-            $owner = User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
-            $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
-            $this->ensure($owner->verification_status === 'approved' && $owner->email_verified_at && $owner->phone_verified_at, 'Lengkapi verifikasi owner.');
-            $this->ensure(! $owner->trial_used_at && (! $owner->trial_store_id || $owner->trial_store_id === $store->id), 'Trial hanya sekali per owner.');
-            $this->ensure(! $store->admin_suspended_at && $store->category === 'bot' && $store->status === 'draft' && ! $store->expires_at, 'Trial hanya untuk toko bot baru yang tidak ditangguhkan.');
-            $this->ensure(! SubscriptionInvoice::where('store_id', $store->id)->whereIn('status', ['pending', 'paid', 'review'])->exists(), 'Selesaikan invoice terlebih dahulu.');
-            $owner->forceFill(['trial_store_id' => $store->id])->save();
-            $store->update(['plan' => 'galaxy', 'trial_requested_at' => now(), 'status' => 'provisioning', 'is_trial' => true]);
-        });
-        $this->tick($store->fresh());
-    }
-
     public function activate(Store $store): void
     {
         DB::transaction(function () use ($store) {
@@ -158,14 +161,10 @@ class SubscriptionService
                 return;
             }
             $this->ensure($store->status === 'provisioning' && $this->ready($store), 'Toko belum siap. Hubungkan WhatsApp untuk layanan bot.');
-            if ($store->trial_requested_at) {
-                $this->ensure(! $owner->trial_used_at && $owner->trial_store_id === $store->id, 'Hak trial sudah digunakan.');
-                $owner->forceFill(['trial_used_at' => now()])->save();
-                $store->update(['status' => 'active', 'is_trial' => true, 'starts_at' => now(), 'expires_at' => now()->addDays(7)]);
-            } else {
-                $invoice = SubscriptionInvoice::where('store_id', $store->id)->where('purpose', 'initial')->where('status', 'paid')->lockForUpdate()->firstOrFail();
-                $this->grant($store, $invoice, now());
-            }
+            $this->ensure(! $store->is_trial && ! $store->trial_requested_at, 'Trial tidak tersedia. Pilih paket dan gunakan voucher promo jika ada.');
+            $invoice = SubscriptionInvoice::where('store_id', $store->id)->where('purpose', 'initial')->where('status', 'paid')->lockForUpdate()->first();
+            $this->ensure($invoice !== null, 'Selesaikan pembelian paket sebelum mengaktifkan toko.');
+            $this->grant($store, $invoice, now());
         });
     }
 
@@ -177,6 +176,10 @@ class SubscriptionService
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
             if ($store->admin_suspended_at || in_array($store->status, ['suspended_manual', 'purging'], true)) {
                 return;
+            }
+            if ($store->is_trial && ! $store->starts_at && ! $store->expires_at) {
+                $store->update(['status' => 'draft', 'is_trial' => false, 'trial_requested_at' => null, 'ready_at' => null]);
+                User::whereKey($store->owner_id)->whereNull('trial_used_at')->where('trial_store_id', $store->id)->update(['trial_store_id' => null]);
             }
             if ($store->status === 'provisioning') {
                 if ($this->ready($store)) {

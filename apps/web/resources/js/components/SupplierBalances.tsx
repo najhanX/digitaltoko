@@ -37,7 +37,7 @@ export default function SupplierBalances({staff}:{staff:boolean}) {
             <p>{status==='choose'?'Pilih toko pada sidebar untuk melihat sumber dan saldonya.':status==='restricted'?kind==='hanshop'?'Saldo Hanshop bersama hanya ditampilkan kepada owner.':'Owner belum memberi hak melihat saldo Digiflazz.':balance?.simulated?'Saldo uji, bukan saldo asli pemasok. Tidak digunakan untuk transaksi produksi.':balance?.message ?? (status==='connected'?(kind==='hanshop'?'Saldo akun Hanshop owner, dipakai bersama pada toko yang terhubung.':'Saldo dari akun Digiflazz toko.'):'Hubungkan sumber melalui menu Sumber produk pada toko ini.')}</p>
             <span className="supplier-caption"><ArrowDownLeft size={15}/>{kind==='digiflazz'?'Sumber transaksi PPOB':'Sumber produk API Hanshop'}</span>
             {balance?.observed_at && status==='connected' && <small>Snapshot: {new Date(balance.observed_at).toLocaleString('id-ID')}</small>}
-            {!restricted && storeId && <button type="button" className="text-link" disabled={busy} onClick={()=>setRefresh(value=>value+1)}><RefreshCw size={13}/>Perbarui saldo</button>}
+            {!restricted && storeId && <button type="button" className="button secondary small" disabled={busy} onClick={()=>setRefresh(value=>value+1)}><RefreshCw size={13}/>Perbarui saldo</button>}
         </article>;
     })}</section>;
 }

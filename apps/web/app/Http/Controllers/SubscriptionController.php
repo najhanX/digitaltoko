@@ -44,7 +44,7 @@ class SubscriptionController extends Controller
             'plans' => PlanOption::where('active', true)->orderBy('duration_days')->orderBy('price')->get()
                 ->map(fn ($plan) => [...$plan->toArray(), 'purpose' => $service->purpose($store, $plan)]),
             'invoices' => $page->items(), 'currentInvoice' => $current, 'historyPagination' => ListQuery::meta($page), 'historyFilters' => $list->filters,
-            'ready' => $service->ready($store), 'trialAvailable' => ! $store->owner->trial_used_at && (! $store->owner->trial_store_id || $store->owner->trial_store_id === $store->id),
+            'ready' => $service->ready($store),
             'canManage' => $role === 'owner' || (! $store->is_trial && $store->expires_at && in_array('subscription.renew', $request->user('staff')->permissions ?? [], true)),
             'canManageBot' => $role === 'owner' || in_array('bot.manage', $request->user('staff')->permissions ?? [], true),
             'botStatus' => BotConnection::state($store, false)['status'] ?? 'DISCONNECTED']);
@@ -53,14 +53,14 @@ class SubscriptionController extends Controller
     public function checkout(Request $request, Store $store, SubscriptionService $service): RedirectResponse
     {
         $role = $this->access($request, $store, true);
-        $data = $request->validate(['plan_id' => 'required|integer|exists:plan_options,id']);
+        $data = $request->validate(['request_id' => 'nullable|uuid', 'voucher_code' => 'nullable|string|max:40', 'plan_id' => 'required|integer|exists:plan_options,id']);
         $plan = PlanOption::findOrFail($data['plan_id']);
         if ($role === 'staff') {
             abort_unless(! $store->is_trial && $store->expires_at && $store->category === $plan->category && $store->plan === $plan->plan, 403);
         }
-        $service->checkout($store, $plan);
+        $invoice = $service->checkout($store, $plan, $data['voucher_code'] ?? null, $data['request_id'] ?? null);
 
-        return back()->with('success', 'Invoice disiapkan. Bayar sesuai total QRIS dan cek status pembayaran.');
+        return back()->with('success', $invoice->snapshot['price'] === 0 ? 'Voucher diterapkan tanpa pembayaran. Lanjutkan aktivasi atau periksa masa aktif paket.' : 'Invoice disiapkan. Bayar sesuai total QRIS dan cek status pembayaran.');
     }
 
     public function refresh(Request $request, Store $store, SubscriptionInvoice $invoice, SubscriptionService $service): RedirectResponse
@@ -70,14 +70,6 @@ class SubscriptionController extends Controller
         $service->sync($invoice);
 
         return back()->with('success', 'Status pembayaran diperbarui.');
-    }
-
-    public function trial(Request $request, Store $store, SubscriptionService $service): RedirectResponse
-    {
-        abort_unless($this->access($request, $store, true) === 'owner', 403);
-        $service->requestTrial($store);
-
-        return back()->with('success', 'Trial disiapkan. Hubungkan bot sebelum memulai masa aktif.');
     }
 
     public function activate(Request $request, Store $store, SubscriptionService $service): RedirectResponse

@@ -1,27 +1,27 @@
 # Aturan bisnis DigitalToko
 
-Status: keputusan kebutuhan pengguna dan rancangan tindak lanjut per 13 Oktober 2026. Belum diimplementasikan. Bagian bertanda usulan atau belum ditetapkan tidak dianggap keputusan pengguna.
+Status: kebijakan pengguna, disinkronkan dengan source lokal pada **21 Oktober 2026**. Kebijakan retensi/purge, refund gagal provisioning, dan otomatisasi domain tidak otomatis berarti fitur sudah tersedia. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
 
 ## Identitas dan akun Hanshop
 
 - Owner memasukkan nomor HP Hanshop, ID user Hanshop, atau email akun. Login tetap OTP, dengan pilihan pengiriman ke WhatsApp atau email akun tersebut. Setelah login, owner wajib melengkapi data diri/email dan mendapat persetujuan KTP sebelum memilih/membayar paket.
-- Data diri wajib: nama sesuai KTP, nomor WA terverifikasi, email terverifikasi, dan alamat. Foto KTP tetap pada penyimpanan privat verifikasi, bukan field profil publik.
-- Rancangan keamanan: identifier harus menunjuk akun yang sama; tujuan OTP dibaca dari profil server, bukan alamat tujuan bebas dari request. OTP email hanya tersedia setelah email tersimpan dan terverifikasi. Akun lama tanpa email dapat login WA untuk melengkapi dan memverifikasi email. OTP memiliki expiry, batas percobaan/pengiriman, konsumsi satu kali, dan purpose login; jawaban request OTP tidak membuka daftar akun existing. Provider pengiriman email belum dipilih.
-- Email owner harus disimpan juga pada akun API Hanshop. Source model user yang diperiksa belum menulis field email; kebutuhan perubahan schema, validasi, kontrak profile, dan sinkronisasi belum diimplementasikan atau diverifikasi pada database.
-- Pendaftaran owner baru dapat langsung di DigitalToko dan otomatis membuat akun Hanshop. Akun ditautkan lewat `id_user` stabil. Provisioning akun harus idempotent dan menangani nomor/email existing tanpa membuat akun ganda atau menautkan tanpa verifikasi kepemilikan. Kontrak API pendaftaran/sinkronisasi masih perlu dibangun.
+- Data diri wajib: nama sesuai KTP, nomor WA terverifikasi, email terverifikasi, dan alamat. Form juga memuat NIK, tempat/tanggal lahir dan foto KTP; dokumen tetap pada penyimpanan privat verifikasi, bukan profil publik.
+- Rancangan keamanan: identifier harus menunjuk akun yang sama; tujuan OTP dibaca dari profil server, bukan alamat tujuan bebas dari request. OTP email hanya tersedia setelah email tersimpan dan terverifikasi. Akun lama tanpa email dapat login WA untuk melengkapi dan memverifikasi email. OTP memiliki expiry, batas percobaan/pengiriman, konsumsi satu kali, dan purpose login; jawaban request OTP tidak membuka daftar akun existing. Pengiriman platform memakai konfigurasi mail Laravel; customer dapat memakai SMTP toko melalui StoreMail.
+- Email owner harus disimpan juga pada akun API Hanshop. Bridge identitas/profile dan migration email tersedia di API Hanshop; verifikasi penerapan SQL pada lingkungan tujuan tetap diperlukan.
+- Pendaftaran owner baru dapat langsung di DigitalToko dan otomatis membuat akun Hanshop. Akun ditautkan lewat `id_user` stabil. Provisioning akun harus idempotent dan menangani nomor/email existing tanpa membuat akun ganda atau menautkan tanpa verifikasi kepemilikan. Bridge register/profile sudah tersedia; keaktifan layanan dan konfigurasi token tetap perlu diperiksa pada deployment.
 - Identitas akun boleh digunakan bersama, tetapi sesi dan hak admin API Hanshop tidak dibagikan kepada penyewa. Staff DigitalToko memiliki scope toko, bukan akses admin Hanshop.
 - Satu saldo akun Hanshop digunakan untuk transaksi pribadi melalui bot Hanshop dan pembelian sumber Hanshop dari toko. API Hanshop tetap menjadi sumber kebenaran saldo dan ledger; DigitalToko tidak membuat salinan saldo yang dapat didebit secara independen.
 - Partner/integrasi toko ditautkan ke akun Hanshop yang sama. Akun partner per toko, jika dipakai, bukan berarti dompet baru. Catat `store_id`, kanal, dan ID pesanan sebagai referensi ledger/riwayat agar transaksi toko dapat dipisahkan dari transaksi pribadi dalam laporan.
-- Pengisian saldo dapat dimulai dari panel tenant ataupun bot Hanshop dan mengkredit akun Hanshop yang sama. Staff tidak boleh otomatis memiliki hak memakai seluruh saldo owner.
+- Target pengisian saldo owner: dari panel tenant ataupun bot Hanshop ke akun Hanshop yang sama. Source DigitalToko saat ini membaca saldo pemasok, tetapi belum menyediakan checkout topup saldo Hanshop owner dari panel; ini berbeda dari topup saldo customer yang sudah tersedia. Staff tidak boleh otomatis memiliki hak memakai seluruh saldo owner.
 - Jumlah toko per owner tidak dibatasi secara komersial. Tiap toko tetap punya sewa/resource sendiri; rate limit dan kontrol provisioning operasional tidak berarti kuota jumlah toko. Saldo Hanshop owner sama, tetapi staff tidak diberi akses wallet global. Saldo pelanggan per toko berbeda dari saldo owner.
 - Akun tanpa paket dapat mengakses onboarding/verifikasi. Pemilihan dan pembayaran paket hanya dibuka setelah data diri lengkap dan KTP disetujui. Fitur operasional toko terkunci sebelum aktivasi. Akses akun Hanshop di luar sewa tidak dicabut otomatis oleh DigitalToko.
-- Staff dibuat owner sebagai akun lokal toko, tidak dimasukkan ke users Hanshop. Login memakai username atau email dan password, dengan konteks toko yang eksplisit. Password disimpan sebagai hash dan tidak ditampilkan kembali; mekanisme reset belum ditentukan. Maksimal lima akun staff per toko, tidak termasuk owner. Scope jumlah akun nonaktif perlu ditetapkan saat implementasi.
+- Staff dibuat owner sebagai akun lokal toko, tidak dimasukkan ke users Hanshop. Login memakai username atau email dan password, dengan konteks toko yang eksplisit. Password disimpan sebagai hash dan tidak ditampilkan kembali; mekanisme reset belum ditentukan. Maksimal lima akun staff per toko, tidak termasuk owner. Akun nonaktif tetap dihitung dalam batas lima; owner dapat menghapus akun untuk menggantinya.
 - Owner/staff berpermission mengatur guest checkout atau wajib login. Nomor WA pembeli wajib diisi, email opsional. Kontak digunakan untuk bukti dan tindak lanjut pesanan; nomor yang diketik tidak otomatis menjadi bukti kepemilikan akun atau memberi akses riwayat. Pembeli login dan guest berscope toko, bukan akun owner pemasok.
-- Pembeli login dengan WA + OTP atau email + password. Email/password hanya tersedia untuk akun dengan email yang sudah ditambahkan/verifikasi; email tetap opsional bagi guest/pembeli jalur WA. Penautan dua jalur login memerlukan bukti kontrol kedua identitas, bukan mencocokkan teks nomor/email saja.
+- Pembeli login dengan WA + OTP atau email + password. Pendaftaran web baru wajib nama, email, WA dan password. Guest tetap boleh tanpa email. Email/password memerlukan email verified; akun lama/jalur bot diperlakukan sesuai bukti identitas yang sudah ada. Penautan dua jalur login memerlukan bukti kontrol kedua identitas, bukan mencocokkan teks nomor/email saja.
 
 ## Pembayaran pembeli toko
 
-Dua jenis modul tersedia dalam rancangan:
+Dua gateway customer tersedia dalam source:
 
 1. Gateway eksternal, dengan Midtrans sebagai integrasi awal yang diminta.
 2. Gateway custom untuk toko dengan QRIS sendiri, menggunakan notifikasi Android dan pencocokan server.
@@ -40,7 +40,7 @@ Akun merchant Midtrans milik toko; satu gateway aktif. Fee mengikuti biaya merch
 - Pencairan tersedia ketika toko berhenti karena expiry/suspend layanan atau penutupan manual, bukan tarik rutin saat aktif. Untuk manual tutup, semua saldo/transaksi menggantung harus dituntaskan sebelum penutupan final. Rancangan CLOSING menolak pesanan/topup baru sambil membuka penyelesaian/refund oleh toko; CLOSED hanya setelah kewajiban selesai. Grace yang masih bertransaksi bukan status berhenti. Ini bukan jaminan mencegah seluruh penyalahgunaan dana; tidak ada transfer antar-wallet pada rancangan awal.
 - Refund otomatis atomik/idempotent, satu kredit per pesanan yang benar-benar dibayar/didebit. Custom QRIS mengikuti policy produk saja/termasuk kode unik; Midtrans produk saja tanpa fee. Refund wallet berbeda dari refund tunai provider.
 - Gunakan identitas/jenis checkout saat pesanan dibuat sebagai snapshot: guest yang login sesudah pembayaran tidak otomatis mengubah refund menjadi wallet. Pending/tidak pasti tidak memicu refund sebelum terminal gagal sesuai aturan bisnis.
-- Pembelian ulang guest harus terkait pesanan asal sebagai tindak lanjut dengan kontrol akses dan audit, bukan retry bebas atas request pemasok pending. Cara menghitung biaya pembelian ulang/menandai refund manual belum dirinci.
+- Pembelian ulang guest harus terkait pesanan asal sebagai tindak lanjut dengan kontrol akses dan audit, bukan retry bebas atas request pemasok pending. Panel mencatat refund manual atau pembelian ulang yang sudah dilakukan, bukan menjalankan pembelian ulang pemasok secara otomatis.
 - Keputusan terbaru: saldo pelanggan, transaksi nonterminal, dan refund belum selesai menahan penghapusan. Mengkredit refund ke wallet belum menyelesaikan saldo tunai; saldo tersebut tetap diperhitungkan. Ini menggantikan forced failure/purge tanpa syarat pada hari ke-30.
 
 Payment adapter menerima status valid server-side, tidak percaya redirect/browser sukses. Midtrans memakai verifikasi notification/status API sesuai dokumentasi. Semua invoice memiliki tujuan eksplisit: pesanan pelanggan, deposit saldo Hanshop, sewa, atau pembelian modul. Satu mutasi hanya menyelesaikan satu invoice yang sesuai.
@@ -49,7 +49,7 @@ Payment adapter menerima status valid server-side, tidak percaya redirect/browse
 
 - Pembayaran paket DigitalToko memakai gateway custom owner platform yang sudah ada di API Hanshop dan HansDev Forwarder dari project `android-listener`.
 - Setelah bayar, provisioning otomatis/idempotent; durasi pertama belum mulai. Kriteria siap: data wajib lengkap, kategori bot wajib koneksi WA terhubung; kategori web sudah menentukan subdomain atau memasukkan custom domain. Rancangan teknis: memasukkan hostname tidak membuktikan DNS/TLS siap; subdomain bawaan diprovision sebagai jalur web siap sementara custom domain diverifikasi. Paket lengkap memenuhi kesiapan bot dan web. Setelah siap simpan ready_at, klik Aktifkan mulai durasi; tanpa klik auto-aktif setelah 24 jam. Bila kebutuhan wajib belum siap, timer belum dimulai. Aktivasi manual/otomatis hanya sekali dan memeriksa kesiapan terkini.
-- Pembayaran invoice sewa tidak dikonversi menjadi deposit saldo tanpa tujuan invoice yang eksplisit. Source saat ini belum membuktikan bahwa tipe invoice sewa sudah didukung.
+- Pembayaran invoice sewa tidak dikonversi menjadi deposit saldo tanpa tujuan invoice yang eksplisit. SubscriptionInvoice dan bridge billing Hanshop mendukung invoice sewa terpisah; invoice voucher Rp0 diselesaikan lokal.
 - Pemenuhan verifikasi KTP merupakan syarat owner yang diminta. Pembayaran sukses, status subscription, approval KTP, dan readiness worker/domain adalah state berbeda.
 - Flow paid: login/daftar -> data diri/email -> KTP approved -> pilih paket/subdomain -> bayar -> provisioning -> siap -> manual/auto-aktif 24 jam -> durasi berjalan. Gagal provisioning diperbaiki admin terlebih dahulu; jika layanan tetap tidak dapat diberikan dan belum aktif, pembayaran sewa direfund. Kriteria/batas waktu usaha perbaikan dan metode refund teknis perlu dirinci; refund sewa tidak mengubah lisensi custom nonrefund secara otomatis.
 - Perpanjangan, upgrade/downgrade, dan pengelolaan masa tenggang dilakukan melalui panel tenant. Usulan: admin menetapkan policy durasi/biaya/eligibility; panel tenant menampilkan dan menjalankan policy tersebut, bukan memberi tenant hak memperpanjang gratis atau menentukan masa tenggang sendiri.
@@ -59,15 +59,13 @@ Payment adapter menerima status valid server-side, tidak percaya redirect/browse
 - Setelah tujuh hari web/bot diblokir, data tetap disimpan. Hari ke-30 memeriksa penghapusan: saldo pelanggan/transaksi/refund belum selesai menahan purge; jika tidak ada kewajiban dan tidak diperpanjang, seluruh data toko dihapus. Akun/saldo/riwayat owner Hanshop tetap dipertahankan.
 - SLA/batas usaha perbaikan provisioning, kesiapan upgrade kanal baru, dan backup dirinci pada desain teknis. Gagal total sebelum layanan diberikan memakai refund sewa. Batas konfirmasi 24 jam setelah siap, bukan setelah invoice dibuat/dibayar.
 
-## Trial
+## Promo langganan melalui voucher
 
-Trial tujuh hari tersedia hanya kategori Bot WhatsApp, tidak Web Topup atau Paket Lengkap. KTP/data diri dan kesiapan WA tetap berlaku. Trial tidak memerlukan invoice sewa berbayar, tetapi pembelian produk/topup/payment provider tidak menjadi gratis: saldo Hanshop/Digiflazz dan biaya produk tetap berlaku. Lisensi custom tidak otomatis diberikan oleh trial.
+Trial otomatis Bot WhatsApp tujuh hari dihapus. Semua toko memilih paket dan durasi yang tersedia; promo diatur admin melalui voucher, termasuk diskon 100%. Voucher mengikuti sasaran, jadwal, dan kuotanya. Total Rp0 dicatat lunas secara lokal tanpa QRIS, kode unik, atau pemotongan saldo Hanshop. Total berbayar tetap minimal Rp1.000. Voucher 100% juga dapat berlaku untuk modul berbayar jika sasaran voucher mengizinkannya.
 
-Trial hanya sekali per owner terverifikasi pada satu toko, bukan sekali per toko. Hak dicatat di level owner dan tidak reset setelah toko dihapus/dibuat ulang atau kontak owner diganti. Konsumsi hak trial secara atomik saat benar-benar aktif, bukan saat membuka form; dua toko tidak dapat mengambil trial owner yang sama bersamaan.
+Pembelian pertama tetap menunggu kesiapan layanan dan konfirmasi aktivasi (atau aktivasi otomatis setelah 24 jam siap). Perpanjangan, perubahan paket, dan downgrade mengikuti aturan langganan biasa. Permintaan checkout yang sama hanya menghasilkan satu invoice dan satu pemakaian voucher, termasuk jika paket gratis langsung diterapkan.
 
-Setelah tujuh hari bot dan akses transaksi baru berdasarkan trial langsung berhenti tanpa grace. Panel pembelian paket/penyelesaian tetap tersedia; transaksi lama direkonsiliasi. Data tidak langsung dihapus: pemeriksaan purge 30 hari sejak trial berakhir dan penundaan saldo/transaksi/refund tetap berlaku. Akun/riwayat owner Hanshop tidak terdampak.
-
-Trial memakai Jupiter dalam kategori Bot WhatsApp, sehingga sumber Digiflazz dan stok sendiri dapat dicoba bersama akses Hanshop; tidak mendapat storefront. Saat membeli paid sebelum trial habis, paid langsung mulai ketika konversi efektif dan sisa trial tidak ditambahkan. Resource baru pada kategori web/full tetap perlu disiapkan sebelum layanan baru dijanjikan siap. Setelah trial habis, paid mengikuti expired dari pembayaran sukses, tanpa trial/provisioning ulang toko yang masih tersimpan. Konversi membatalkan timer penghentian/purge trial lama secara idempotent.
+Trial lama yang sudah aktif dihormati sampai tanggal kedaluwarsa awal tanpa masa tenggang. Trial yang belum dimulai dikembalikan ke pilih paket tanpa menghapus konfigurasi toko. Penanda trial historis tetap disimpan; tidak ada endpoint atau tombol untuk membuat trial baru.
 
 ## Masa tenggang, suspend, dan penghapusan toko
 
@@ -129,18 +127,18 @@ Rancangan tambahan yang diperlukan:
 - Invoice expired, event palsu, perangkat offline, dan notifikasi terlambat memiliki jalur review/reconciliation yang eksplisit. Tidak ada klaim bahwa aplikasi HP membuktikan pembayaran hanya karena mengirim teks.
 - Panduan tenant menghubungkan forwarder beserta uji penerimaan dan pembayaran nyata sebelum fitur diaktifkan.
 
-Usulan pemasangan: setiap tenant modul custom memakai perangkat/notifikasi QRIS miliknya; perangkat platform melayani pembayaran platform. Penempatan perangkat dan provider notifikasi yang didukung perlu disepakati.
+Usulan pemasangan: setiap tenant modul custom memakai perangkat/notifikasi QRIS miliknya; perangkat platform melayani pembayaran platform. Custom QRIS tenant saat ini menerima package DANA, ShopeePay atau Shopee sesuai validasi koneksi; endpoint platform Hanshop memakai kontraknya sendiri.
 
 ## Paket, toko, staf, dan domain
 
 - Admin mengatur harga serta durasi dari panel, untuk kategori Web Topup, Bot WhatsApp, atau Paket Lengkap dan sembilan paket Mercury sampai Andromeda sesuai kombinasi kanal/sumber.
-- Trial tujuh hari hanya Bot WhatsApp; detail eligibility/conversion dibedakan dari subscription paid.
+- Tidak ada trial baru; promo memakai voucher admin, termasuk diskon 100%. Trial aktif lama dihormati sampai berakhir.
 - Harga/fitur/durasi disnapshot pada invoice dan subscription; pengeditan paket tidak mengubah invoice lama atau hak sewa existing secara diam-diam.
-- Setiap toko maksimal satu nomor/sesi WhatsApp jika kategori menyertakan bot. Pergantian nomor harus melalui logout/pelepasan sesi lama, bukan dua sesi aktif.
+- Setiap toko maksimal satu nomor/sesi WhatsApp termasuk paket Web untuk OTP/notifikasi. Command transaksi chat tetap hanya Bot/Full. Pergantian nomor harus melalui logout/pelepasan sesi lama, bukan dua sesi aktif.
 - Owner dapat menambah maksimal lima staff lokal toko dengan permission terkonfigurasi. Rancangan permission didelegasikan kepada pengembang dan dirinci di `docs/STAFF_PERMISSIONS.md`.
-- Setiap toko mendapat satu subdomain yang ditentukan ketika membeli paket. Usulan: reservasi slug dengan batas waktu saat checkout, commit saat pembayaran/provisioning sah, dan larang nama sistem.
+- Slug subdomain unik ditentukan saat membuat toko draft dan nama sistem ditolak. Belum ada reservasi checkout dengan TTL; custom domain masih model/resolver, belum alur klaim DNS/TLS owner lengkap.
 - Koneksi domain gratis, maksimal satu domain custom per toko selain satu subdomain bawaan; pembelian/perpanjangan registrar tanggung jawab tenant. Rancangan www/apex bila didukung diperlakukan alias satu domain utama, bukan dua domain bisnis. Subdomain tidak diganti melalui fitur biasa; rename berbayar mungkin fase berikut. Slug boleh dipakai lagi setelah purge; custom domain baru wajib verifikasi.
-- Subdomain tidak perlu menerbitkan storefront publik bila kategori hanya Bot WhatsApp; fungsi subdomain untuk kategori tersebut belum ditetapkan.
+- Toko Bot tetap menyimpan slug sebagai identitas, tetapi tidak membuka storefront tanpa hak kanal Web.
 
 ## Produk, parsing, dan fallback
 
@@ -151,7 +149,7 @@ Usulan pemasangan: setiap tenant modul custom memakai perangkat/notifikasi QRIS 
 - Jangan mencoba ulang pasangan source/SKU yang sudah gagal final pada pesanan yang sama. Pastikan harga/entitlement/ketersediaan tetap layak sebelum dispatch berikutnya.
 - Jika seluruh parsing habis/gagal aman, transaksi GAGAL. Kandidat menunggu aktif berbeda dari daftar kandidat habis; transaksi menunggu sampai ada informasi aktif. Jangan gagal otomatis hanya karena beberapa menit/hari ke-30 berlalu; transaksi nonterminal menahan purge sesuai keputusan terbaru.
 - Jika modal saat request naik melebihi harga jual yang disepakati, transaksi GAGAL; jangan memaksakan rugi/menambah tagihan. Refund sesuai jenis checkout. Auto-update katalog opsional owner/staff memakai aturan markup produk/kategori/layanan berikut; ini menggantikan tahan pesanan karena modal naik.
-- Markup otomatis menerima nominal (`5000`), persen (`5%`), atau kombinasi (`5% + 5000`). Prioritas produk > kategori produk > layanan; gunakan satu aturan pertama yang terisi, tidak menjumlahkan markup antar-level. Produk markup 5000 mengalahkan kategori 5%. Nilai 0 eksplisit berbeda dari kosong/inherit. Rumus kombinasi: harga jual = modal + (modal x persen / 100) + nominal. Contoh modal Rp100.000, aturan 5% + 5000 menghasilkan Rp110.000. Parser hanya format yang diizinkan, bukan eval ekspresi; pembulatan rupiah dan harga dasar multi-source perlu dirinci saat implementasi.
+- Markup otomatis menerima nominal (`5000`), persen (`5%`), atau kombinasi (`5% + 5000`). Prioritas produk > kategori produk > layanan; gunakan satu aturan pertama yang terisi, tidak menjumlahkan markup antar-level. Produk markup 5000 mengalahkan kategori 5%. Nilai 0 eksplisit berbeda dari kosong/inherit. Rumus kombinasi: harga jual = modal + (modal x persen / 100) + nominal. Contoh modal Rp100.000, aturan 5% + 5000 menghasilkan Rp110.000. Parser hanya format yang diizinkan, bukan eval ekspresi; implementasi membulatkan komponen persen ke atas dengan aritmetika integer. Harga sumber berdasarkan kandidat eligible; pembaruan otomatis terpisah dari pewarisan markup.
 - Cegah dispatch pembelian mahal menggunakan snapshot/modal maksimum bila kontrak pemasok mendukung. Jika pemasok sudah menerima order sebelum kenaikan diketahui, jangan memalsukan gagal pemasok/refund sambil order masih pending; adaptasi kontrak harga masing-masing source perlu dipastikan.
 - Pemberitahuan pending pertama sekali setelah lima menit pesanan menunggu tanpa hasil terminal, berikutnya cek manual. Jika sudah terminal sebelum lima menit jangan kirim pesan pending. Perubahan status bermakna tetap kirim notifikasi dengan dedup; jangan timer pending berkala atau menggandakan pembelian.
 - Modal sama dengan harga jual tetap boleh transaksi dengan margin nol; fee dipisahkan sesuai gateway. Source termurah dengan saldo tidak cukup dilewati untuk kandidat berikutnya yang layak. Pengecualian: hasil dispatch belum pasti tidak boleh dianggap saldo kurang/gagal aman untuk reroute. Jika seluruh kandidat habis/gagal aman, terminal gagal sesuai aturan existing.
@@ -170,8 +168,8 @@ Stok selalu dipisahkan per toko, termasuk dua toko owner yang sama. Fitur platfo
 - Sediakan tiga template siap pilih. Model layout utuh: Aurora (modern terang), Nebula (gaming gelap), dan Atlas (marketplace dengan sidebar kategori). Masing-masing mencakup beranda, katalog, dan kerangka halaman bersama. Template berbagi komponen dan form order/profil seragam.
 - Owner dapat mengganti nama/logo toko, warna, susunan section yang disediakan, penempatan iklan/banner, dan susunan ringkasan produk.
 - Form order dan halaman profil dibuat seragam bagi semua toko; mengikuti branding yang diizinkan tanpa layout/logic checkout berbeda per tenant.
-- Usulan implementasi editor berbasis schema allowlist: section tertentu dapat diurutkan/ditampilkan, slot tertentu dapat dipilih, dan preview draft dapat dipublish. Bukan HTML/JS/CSS bebas.
-- Tema dan konfigurasi bersifat tenant, dengan versi schema; pergantian template tidak menghapus katalog/transaksi. Tulisan Powered by DigitalToko wajib dan tidak dapat dihapus/disembunyikan oleh pengaturan template. Daftar section, slot iklan, dan jumlah banner masih perlu dirinci.
+- Implementasi editor memakai schema tervalidasi: section tertentu dapat diurutkan/ditampilkan dan media dapat dipilih. Simpan desain memperbarui branding toko; belum ada versi draft/publish desain terpisah seperti status draf artikel. Bukan HTML/JS/CSS bebas.
+- Tema dan konfigurasi bersifat tenant dengan schema tervalidasi; pergantian template tidak menghapus katalog/transaksi. Tulisan Powered by DigitalToko wajib dan tidak dapat dihapus/disembunyikan oleh pengaturan template. Section, carousel, banner/link, flash sale/trending, welcome ad dan CS sudah memiliki schema/UI pada StoreDesignPanel dan StoreDesignController; bukan drag-and-drop atau kode bebas seperti editor situs umum.
 
 ## Verifikasi owner dengan KTP
 
@@ -179,17 +177,18 @@ Stok selalu dipisahkan per toko, termasuk dua toko owner yang sama. Fitur platfo
 - KTP manual wajib approved sebelum pilih/bayar paket; satu verifikasi owner semua toko. Jika ditolak, alasan diberikan dan file submission ditolak dihapus otomatis 72 jam sejak rejected_at. Job delete menunjuk versi submission spesifik, tidak menghapus upload pengganti yang sudah approved. Riwayat alasan/status dapat tetap ada tanpa foto.
 - KTP approved disimpan selama owner memiliki toko aktif. Pengguna mensyaratkan data diri baru dapat dibersihkan owner setelah semua tokonya dihapus. Rancangan konservatif: jangan otomatis menghapus identitas saat toko hanya grace/suspend/DELETION_HOLD; tahan untuk kewajiban/penyelesaian, lalu izinkan owner membersihkan profil/dokumen DigitalToko ketika tidak ada toko/kewajiban. Akun/saldo/riwayat owner Hanshop tetap dipertahankan sesuai keputusan sebelumnya; cakupan pembersihan email/profil Hanshop perlu dipisahkan dari akun dan ledger.
 - OTP membuktikan kontrol nomor; upload KTP saja tidak membuktikan dokumen asli atau mencegah seluruh penipuan. Mekanisme pemeriksaan, bukti kepemilikan, dan proses sengketa perlu ditetapkan.
-- Dokumen identitas disimpan privat dengan enkripsi dan akses terbatas reviewer, signed URL singkat, tanpa akses staff toko atau pembeli, dan tanpa payload NIK/foto di log.
+- Foto KTP disimpan pada disk privat dan dibaca melalui endpoint owner terkait/admin, dengan reference pemeriksaan untuk admin serta respons no-store. NIK/alamat/tempat/tanggal lahir memakai encrypted casts; foto KTP sendiri belum memakai enkripsi file aplikasi. Enkripsi disk/backup menjadi kebutuhan operasional. Staff/pembeli tidak diberi akses dokumen.
 - Tentukan tujuan pengumpulan, dasar pemrosesan, data minimum, masa retensi, penghapusan, dan pemberitahuan privasi sebelum mengumpulkan KTP. Jangan menambah selfie/biometrik tanpa kebutuhan dan keputusan eksplisit.
 - Sediakan mekanisme laporan toko/produk dan tindakan suspend sebagai pelengkap verifikasi, dengan keputusan admin dan penyelesaian transaksi lama yang dapat diaudit.
 
-## Referensi pemeriksaan saat ini
+## Koreksi hasil, notifikasi dan batas implementasi
 
-- `API Hanshop/routes/auth.js`: OTP berdasarkan akun existing dan session panel; bukan bukti SSO tenant yang siap.
-- `API Hanshop/docs/M9_1_TRANSACTION_QUEUE_PLAN.md`: fallback hanya pada failure yang aman; PROCESSING/UNCERTAIN ditahan.
-- `API Hanshop/src/modules/stok/types.ts` dan frontend `src/types/stok.ts`: kontrak stok acuan.
-- `android-listener/README.md`: kontrak forwarder saat ini dan batas validasi perangkat nyata.
-- Midtrans notification verification: https://docs.midtrans.com/docs/https-notification-webhooks
-- UU Pelindungan Data Pribadi: https://jdih.komdigi.go.id/produk_hukum/view/id/832/t/crc32/
+`CustomerOrderDecision` mendukung keputusan sukses/gagal manual untuk produk Digiflazz lunas yang eligible dan sudah memiliki attempt terkirim. Owner atau staff `orders.manage` harus memberi alasan; riwayat disimpan. Callback Digiflazz sah tetap dapat mengubah status/SN dari hasil manual maupun terminal otomatis. Koreksi gagal memberi refund satu kali; koreksi sukses menarik refund kembali, boleh menjadi minus. Saldo minus membatasi pembelian melalui saldo maupun gateway. Callback bukan izin mengulang dispatch pemasok.
 
-Pemeriksaan dilakukan terhadap source/docs lokal. Tidak ada transaksi live, pemeriksaan saldo live, koneksi perangkat tenant, atau verifikasi identitas yang dijalankan.
+WA OTP/notifikasi customer menggunakan worker toko dan identitas nama toko, termasuk paket Web. Perintah chat tetap berlisensi Bot/Full. Email dapat memakai mail platform atau SMTP toko terenkripsi; tidak ada fallback WA pusat tersembunyi. Owner/platform tetap jalur identitas Hanshop. Pengiriman WA/outbox tidak menjamin exactly-once ketika pesan diterima sebelum ACK tersimpan.
+
+Mode Pengujian memakai development key Digiflazz, testing=true, wallet/kuota terpisah dan simulasi sumber Hanshop/stok. Pembayaran simulasi lokal tersedia selain Midtrans Sandbox. Pergantian mode ditolak saat masih ada pesanan atau inquiry berjalan.
+
+Purge seluruh data toko hari ke-30, DELETION_HOLD otomatis, pemberitahuan retensi lengkap, refund sewa gagal provisioning dan provisioning DNS/TLS adalah target lanjutan. Source menyediakan grace/expiry, penutupan manual dengan pemeriksaan kewajiban, purge foto KTP ditolak, cleanup upload artikel dan endpoint bersihkan profil owner bila tidak ada toko; jangan menyamakannya dengan purge toko penuh. Retensi yang disebut pada bagian kebijakan tetap menjadi kebutuhan, bukan klaim implementasi.
+
+Referensi source: `apps/web/app/Services`, `apps/web/app/Http/Controllers`, `apps/web/routes`, serta bridge `API Hanshop/src/modules/digitaltoko-identity`. Perubahan schema Hanshop menggunakan SQL manual di scripts/migrations; database Laravel memakai migrations sendiri. Riwayat validasi lokal ada pada FOUNDATION_VALIDATION.md dan NOTIFICATION_PROGRESS.md. Sinkronisasi dokumen ini tidak menjalankan transaksi, migrasi produksi atau pengiriman pesan nyata.

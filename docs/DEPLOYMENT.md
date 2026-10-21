@@ -1,12 +1,12 @@
 # VPS dan domain deployment DigitalToko
 
-Fondasi sudah dibuat lokal, belum dideploy. Tidak ada perubahan pada DNS/server hansdigi.biz.id dan domain digitaltoko.com belum dibeli. Ini panduan untuk deployment aplikasi; modul bisnis/live auth belum siap layanan penyewa.
+Panduan disinkronkan dengan source lokal **21 Oktober 2026**. Modul bisnis, checkout, OTP dan notifikasi sudah tersedia; DNS/VPS, kepemilikan domain, secret dan layanan produksi harus diverifikasi pada lingkungan tujuan. Sinkronisasi dokumen tidak mengubah server atau membuktikan deploy telah dilakukan.
 
 ## Runtime
 
 - Aplikasi web apps/web: Laravel 13.35, Inertia 3, React 19/TypeScript, Vite 8. Lock Composer saat ini memerlukan PHP 8.4+ (local diuji PHP 8.5.5); verifikasi composer check-platform-reqs pada VPS.
 - Node 22.12+ untuk build React dan worker apps/bot. Git diperlukan untuk patch Baileys exact 7.0.0-rc14.
-- PHP-FPM/Nginx dan extension PHP pdo_mysql untuk MySQL aplikasi terpisah, queue worker/scheduler. Redis dibutuhkan saat koordinasi multi-proses diperluas, bukan syarat demo foundation ini.
+- PHP-FPM/Nginx dan extension PHP pdo_mysql untuk MySQL aplikasi terpisah, queue worker/scheduler. Redis dipakai cache/lock pemasok dan koordinasi runtime; Predis tersedia. Pastikan service/driver dikonfigurasi dan tidak bergantung pada array cache untuk produksi.
 - Satu worker bot per toko, satu port loopback dan direktori session UUID; tidak menjalankan semua tenant pada satu socket global.
 
 ## Domain awal
@@ -34,7 +34,7 @@ Document root wajib apps/web/public. Contoh deploy/nginx.conf.example harus dise
 cd /var/www/digitaltoko/apps/web
 composer install --no-dev --optimize-autoloader
 # Siapkan .env produksi, APP_KEY hanya saat instalasi pertama.
-php artisan key:generate
+# php artisan key:generate  # hanya instalasi pertama yang belum memiliki APP_KEY
 php artisan migrate --force
 npm ci
 npm run build
@@ -42,7 +42,7 @@ php artisan optimize
 composer check-platform-reqs
 ```
 
-Simpan APP_KEY existing pada redeploy agar session/encryption tidak rusak. Siapkan permission storage dan bootstrap/cache. Jalankan queue:work sebagai service dan schedule:run setiap menit saat job bisnis tersedia. Contoh worker PM2 ada di deploy/ecosystem.config.cjs; gunakan config/env/store UUID/port berbeda per worker dan jangan clone session toko.
+Simpan APP_KEY existing pada redeploy agar session/encryption tidak rusak. Siapkan permission storage dan bootstrap/cache. Jalankan queue:work sebagai service dan schedule:run setiap menit. Scheduler juga memiliki pekerjaan submenit customer-notices; hindari instance scheduler bertumpuk dan hentikan scheduler lama saat deploy sesuai supervisor. Contoh PM2 menjalankan satu manager yang membuat worker per toko, bukan satu konfigurasi PM2 manual untuk setiap tenant. Jangan clone session toko.
 
 ## Berpindah ke domain final
 
@@ -68,7 +68,7 @@ Rujukan: https://laravel.com/framework/docs/deployment dan https://inertiajs.com
 
 ## Menjalankan onboarding owner
 
-1. Backup database Hanshop, lalu terapkan migration additive API Hanshop/scripts/migrations/20261013_digitaltoko_identity.sql pada database Hanshop. Migration menambah email unik nullable dan timestamp verifikasi; tidak mengubah saldo/history/API key existing. File ini belum dijalankan pada database Hanshop production.
+1. Backup database Hanshop, lalu terapkan migration additive API Hanshop/scripts/migrations/20261013_digitaltoko_identity.sql pada database Hanshop. Migration menambah email unik nullable dan timestamp verifikasi; tidak mengubah saldo/history/API key existing. Penerapannya pada database Hanshop tujuan harus diperiksa; hasil lokal tidak membuktikan migration production sudah terpasang.
 2. Deploy/build source API Hanshop yang memuat /internal/digitaltoko. Atur DIGITALTOKO_IDENTITY_TOKEN minimal 32 karakter acak. API tidak membuka bridge apabila token belum ada.
 3. Di Laravel, atur HANSHOP_API_URL ke origin API Hanshop dan HANSHOP_IDENTITY_TOKEN dengan token yang sama. Gunakan HTTPS atau jaringan privat. Token ini server-only, berbeda dari API key customer dan token bot.
 4. Atur SMTP/provider mail Laravel dan sender yang valid. Mail log/array tidak diterima untuk email OTP di luar testing. OTP WhatsApp dikirim melalui bot Hanshop existing; bot penyewa belum diperlukan saat onboarding.
@@ -90,7 +90,7 @@ Dokumen KTP disimpan pada disk privat, diakses hanya owner terkait/admin melalui
 - Gateway memakai URL/token bridge existing, QR_DYNAMIC/Cloudinary existing, dan tabel mutasi dari forwarder. `/internal/digitaltoko/billing/invoice` hanya server-to-server. ID invoice menjadi kunci idempotensi; nominal dan akun yang berubah pada ID yang sama ditolak. Pembayaran sewa tidak mengkredit saldo Hanshop.
 - Laravel cron `schedule:run` per menit menjalankan `digitaltoko:subscriptions`; saat development jalankan `php artisan schedule:work` di terminal Anda. Ini memeriksa pembayaran, aktivasi 24 jam setelah siap, downgrade terjadwal, dan grace. Tombol cek pembayaran juga memeriksa invoice tanpa menunggu cron.
 - Pembayaran pertama menunggu konfirmasi aktivasi. Web siap ketika slug tersedia; Bot/Full perlu heartbeat CONNECTED worker per toko. Owner/staff berizin sekarang dapat menghubungkan worker lewat menu Koneksi WhatsApp menggunakan QR atau kode pairing; panduan manager di bawah.
-- Upgrade penuh berlaku saat lunas; kanal bot yang baru ditambahkan tetap membutuhkan worker tersambung untuk beroperasi. Downgrade (mengurangi kanal/sumber) berlaku setelah periode existing selesai. Trial Bot Jupiter 7 hari sekali per owner, tanpa grace; paid conversion tidak menambahkan sisa trial.
+- Upgrade penuh berlaku saat lunas; kanal bot yang baru ditambahkan tetap membutuhkan worker tersambung untuk beroperasi. Downgrade (mengurangi kanal/sumber) berlaku setelah periode existing selesai. Trial baru dinonaktifkan; promo memakai voucher, termasuk diskon 100% tanpa gateway. Trial lama yang sudah aktif tetap berakhir sesuai jadwal tanpa grace.
 - Invoice ambigu masuk REVIEW dan tidak mengaktifkan toko. Pembayaran setelah invoice sudah EXPIRED tidak otomatis diterapkan; perlu pemeriksaan/refund operator. Jangan memalsukan status lunas dari browser. Rekonsiliasi gateway tidak membuat transaksi produk atau mengubah saldo pelanggan.
 - Nominal unik sewa +1 sampai +999 dialokasikan bersama gateway existing dengan named lock. Nominal historis tidak didaur ulang untuk mencegah mutasi lama membayar invoice baru; jika seluruh rentang telah digunakan, pembuatan invoice ditolak dan perlu penanganan operator.
 - Scheduler billing belum menghapus toko setelah 30 hari. Penghapusan/DELETION_HOLD menunggu modul saldo pelanggan dan kewajiban transaksi; data tetap disimpan agar tidak terhapus tanpa pemeriksaan kewajiban.
@@ -102,7 +102,7 @@ Dokumen KTP disimpan pada disk privat, diakses hanya owner terkait/admin melalui
 3. Atur `WEB_BASE_URL` pada bot ke origin Laravel yang dapat diakses worker dan diterima `platform.host`. Semua toko menggunakan backend ini; domain tidak di-hardcode. Setelah pindah domain, ubah URL environment dan restart manager/PHP sesuai konfigurasi.
 4. Jalankan `npm ci`, `npm run build`, lalu `npm run manager` dalam `apps/bot`; contoh PM2 sekarang menjalankan `dist/manager.js`. Jangan menjalankan PM2 mode cluster atau dua manager pada registry/sesi yang sama. Atur izin folder sesi privat untuk user layanan bot; mode file Unix 0600/0700 tidak menggantikan ACL Windows.
 5. Owner memilih toko → Langganan & aktivasi → Koneksi WhatsApp → pilih metode dan nomor → tautkan di HP. Status CONNECTED memungkinkan konfirmasi aktivasi. Staff dengan `bot.manage` dapat menghubungkan/lepas koneksi, sedangkan `bot.view` hanya melihat status. Staff yang hanya mempunyai izin bot diarahkan langsung ke menu koneksi setelah login.
-6. Toko draft perlu bayar atau trial terlebih dahulu. Bot berhenti saat akses berakhir; masa tenggang berbayar tetap tersedia tujuh hari. Token dan ID percobaan mencegah worker/sesi lama memperbarui percobaan baru. QR/kode dihapus dari respons ketika kedaluwarsa atau sudah terhubung.
+6. Toko draft perlu membeli paket terlebih dahulu, atau memakai voucher 100% untuk invoice gratis. Bot berhenti saat akses berakhir; masa tenggang berbayar tetap tersedia tujuh hari. Token dan ID percobaan mencegah worker/sesi lama memperbarui percobaan baru. QR/kode dihapus dari respons ketika kedaluwarsa atau sudah terhubung.
 
 Registry manager dan auth Baileys saat ini berada pada file privat per toko, dengan atomic writer untuk creds. Operasi multi-host, penyimpanan auth/key di database, pemulihan penuh setelah disk rusak, dan integrasi purge toko masih memerlukan tahap hardening. Jangan menyalin sesi bot Hanshop ke worker tenant. Panduan rinci dan batas modul bisnis: `apps/bot/README.md`.
 
@@ -124,7 +124,7 @@ Editor desain web berada pada Pengaturan toko → Desain web, tersedia bagi owne
 
 Jalankan `php artisan db:seed --class=PackagePlanSeeder --no-interaction` setelah backup plan_options. Seeder mengganti nama penawaran legacy Orbit/Space/Galaxy sesuai kategori/sumber, sambil mempertahankan ID, harga, durasi, status aktif dan snapshot invoice/langganan. Penawaran khusus yang tidak memakai nama legacy tetap dipertahankan. Jika suatu kombinasi belum ada, dibuat penawaran awal Rp50.000/30 hari **nonaktif** untuk diatur admin. Dapat dijalankan ulang; tidak perlu migrate:fresh.
 
-Frontend dan PHP membaca satu katalog JSON bersama. Deploy juga file resources/js/packageCatalog.json, jalankan npm run build dan muat ulang konfigurasi Laravel jika memakai config cache. Trial bot penuh kini ditampilkan sebagai Jupiter. Nama di invoice tersimpan tetap merupakan bukti historis; panel menampilkan nama paket baru berdampingan dengan nama penawaran historis bila diperlukan.
+Frontend dan PHP membaca satu katalog JSON bersama. Deploy juga file resources/js/packageCatalog.json, jalankan npm run build dan muat ulang konfigurasi Laravel jika memakai config cache. Riwayat trial bot penuh tetap ditampilkan sebagai Jupiter; penawaran trial baru sudah dihapus. Nama di invoice tersimpan tetap merupakan bukti historis; panel menampilkan nama paket baru berdampingan dengan nama penawaran historis bila diperlukan.
 
 
 ## Transaksi pelanggan web dan bot (15 Oktober 2026)
@@ -136,11 +136,11 @@ Frontend dan PHP membaca satu katalog JSON bersama. Deploy juga file resources/j
 5. Admin → Modul pembayaran mengatur harga lisensi QRIS custom. Nilai awal 0 menutup penjualan; harga aktif minimal Rp1.000. Owner → Pembayaran pelanggan memilih SATU gateway: QRIS Midtrans dengan server key merchant toko dan sandbox/production, atau QRIS custom setelah invoice lisensi sah. Key/token/payload disimpan terenkripsi, tidak dimuat ke props Inertia.
 6. Aktifkan QRIS pada merchant Midtrans dan atur Notification URL yang ditampilkan panel. Webhook memverifikasi signature lalu membaca status server Midtrans; JSON status dari browser tidak melunasi pesanan. Biaya sesuai tarif merchant diatur owner/staff berizin. Saldo topup dan refund produk Midtrans selalu mengecualikan fee.
 7. QRIS custom: masukkan payload QRIS merchant valid (EMV/CRC/IDR), ambil token privat dari modal Hans Forward. Atur POST JSON, URL panel, Bearer token, sumber aplikasi yang sesuai, tanpa template khusus (field standar event_id/application_package/text/occurred_at; title opsional). Pilih teks gabungan bila judul berisi penanda pembayaran. Nominal dan waktu harus cocok dengan satu invoice. Perubahan QRIS/aplikasi penerima merotasi token; invoice lama memakai snapshot lamanya. Hindari memakai merchant QRIS yang sama pada sistem invoice lain di luar DigitalToko karena nominal unik lintas sistem tidak dapat dijamin.
-8. Pelanggan membuka subdomain/custom domain toko → pilih produk → checkout. Guest tergantung kebijakan toko, WA wajib. Akun memakai WA OTP; email/password diaktifkan sesudah verifikasi email. SMTP nyata diperlukan untuk OTP/notifikasi email, bot Hanshop untuk OTP WA dan fallback notifikasi. Akun dan wallet berlaku per toko, saldo owner Hanshop tidak menjadi saldo pelanggan.
+8. Pelanggan membuka subdomain/custom domain toko → pilih produk → checkout. Guest tergantung kebijakan toko, WA wajib. Pendaftaran web membutuhkan nama, WA, email dan password; akun memakai WA OTP atau email/password/OTP email sesuai verifikasi. SMTP nyata diperlukan untuk OTP/notifikasi email, worker WA toko untuk OTP/notifikasi customer; owner/platform tetap bridge identitas Hanshop. Tidak ada fallback WA pusat tersembunyi. Email memakai platform atau SMTP toko. Akun dan wallet berlaku per toko, saldo owner Hanshop tidak menjadi saldo pelanggan.
 9. Bot: `#beli KODE TUJUAN` menampilkan konfirmasi, tombol Saldo/QRIS atau format `#pesan KODE|TUJUAN|saldo|HARGA`. Pascabayar menjalankan inquiry dan membawa ID inquiry pada konfirmasi; gunakan format yang ditampilkan bot. `#topup 50000`, `#saldo`, `#status`, `#status NOMOR_PESANAN`. Command dan tombol membaca mesin yang sama dengan web.
 10. Invoice biasa 15 menit; inquiry tagihan standar 5 menit dan harus dibayar pada hari yang sama (Asia/Jakarta). Bayar pasca memakai referensi inquiry; setelah kemungkinan dispatch hanya status-pasca, tidak mengulang pay-pasca. Format khusus multi-parameter seperti PBB/SAMSAT tidak disediakan oleh form standar dan harus diintegrasikan terpisah. Harga naik sebelum dispatch menggagalkan pesanan/refund, hasil ambigu tetap pending tanpa fallback. Pemeriksaan Digiflazz mendekati 90 hari dihentikan ke review agar pemeriksaan prabayar tidak membuat transaksi baru.
 11. Owner/staff berizin membuka Transaksi pelanggan, Pelanggan & saldo, dan Pembayaran pelanggan. Kontak, hasil stok, kirim ulang, kebijakan fee, serta pencairan memiliki izin terpisah. Tindakan/modal dan daftar memakai pola UI existing, filter/pagination di atas dan bawah.
-12. Penutupan manual menghentikan checkout/topup baru; penutupan final mensyaratkan saldo 0, tidak ada invoice/pesanan belum selesai, dan guest gagal terbayar sudah ditindaklanjuti. Pencairan hanya pencatatan uang yang telah diberikan manual, bukan API transfer. Pembayaran sah yang terlambat masuk review; owner bisa menyelesaikan topup atau menggagalkan/refund pesanan yang BELUM dikirim ke pemasok. Pending yang sudah dispatch tidak dapat dipaksa gagal lewat tindakan tersebut. Notifikasi berhenti dikirim ke pelanggan bersaldo; perpanjangan membuka akses kembali tanpa mereset wallet/ledger/pesanan.
+12. Penutupan manual menghentikan checkout/topup baru; penutupan final mensyaratkan saldo 0, tidak ada invoice/pesanan belum selesai, dan guest gagal terbayar sudah ditindaklanjuti. Pencairan hanya pencatatan uang yang telah diberikan manual, bukan API transfer. Pembayaran sah yang terlambat masuk review; owner bisa menyelesaikan topup atau menggagalkan/refund pesanan yang BELUM dikirim ke pemasok. Review pembayaran sebelum dispatch berbeda dari keputusan manual produk. Owner/staff orders.manage dapat memutus sukses/gagal transaksi Digiflazz eligible yang sudah dispatch, dengan alasan; webhook Digiflazz sah tetap dapat memperbarui status/SN dan merekonsiliasi refund. Notifikasi berhenti dikirim ke pelanggan bersaldo; perpanjangan membuka akses kembali tanpa mereset wallet/ledger/pesanan.
 
 Validasi protokol mengacu dokumentasi resmi Midtrans QRIS, status transaksi/notification, serta Digiflazz topup, cek tagihan, bayar tagihan, dan cek status. Pengujian otomatis memakai HTTP palsu dan database terisolasi; pembayaran, OTP WhatsApp nyata, serta pembelian pemasok nyata tetap harus diuji dengan akun operator setelah konfigurasi. Penghapusan otomatis toko beserta data saat kewajiban belum selesai tidak diaktifkan oleh modul ini.
 
@@ -152,3 +152,17 @@ Endpoint nickname default adalah `https://api.isan.eu.org/nickname` (tanpa API k
 Owner/staff berizin kelola produk mengatur game dan format tujuan pemasok melalui Layanan & kategori → Kategori utama → Edit → Pengecekan akun game. Deteksi otomatis memakai nama kategori yang dikenali; kategori yang tidak cocok dapat diberi game secara eksplisit atau dinonaktifkan. Mobile Legends/Magic Chess secara standar menggabungkan ID dan zona tanpa pemisah. Sesuaikan format jika pemasok meminta format lain.
 
 Integrasi memanggil endpoint publik, tanpa menyalin implementasi worker pihak ketiga. Repositori referensi `https://github.com/ihsangan/valid` menyatakan lisensi CC BY-NC-SA 4.0; ketentuan pemakaian endpoint untuk bisnis perlu dikonfirmasi kepada penyedia.
+
+
+## Pembaruan operasional source — 21 Oktober 2026
+
+- Migrasi Laravel tambahan untuk pengirim toko dan voucher: `2026_10_20_071258_add_notification_settings_to_stores_table.php`, `2026_10_20_122931_create_discount_vouchers.php`. Terapkan `php artisan migrate --force` setelah backup. Data/kredensial memakai APP_KEY existing. Tidak ada migration baru yang dibuat oleh pembaruan dokumentasi ini.
+- Trial baru tidak tersedia. Voucher platform 100% menghasilkan invoice Rp0 lokal tanpa memanggil billing Hanshop/QRIS; pembelian pertama tetap menunggu aktivasi. Invoice berbayar setelah diskon minimal Rp1.000. Kuota dan idempotency checkout tetap diperiksa; simpan request_id untuk replay invoice gratis.
+- Restart bot manager dan worker existing setelah build; jangan menjalankan instance kedua. Restart queue worker agar layanan notifikasi/fulfillment terbaru dimuat. File sesi tetap dipertahankan.
+- Mode Pengujian diatur di toko; selesaikan/batalkan order berjalan dan tunggu inquiry kedaluwarsa sebelum beralih. Digiflazz menggunakan development key/testing; sumber Hanshop dan stok premium disimulasikan. Simulasi bayar lokal ada pada halaman status pesanan yang eligible; Midtrans Sandbox bukan pembayaran uang nyata.
+- URL payload Digiflazz yang berlaku: `{APP_URL}/api/commerce/digiflazz`, satu URL platform; secret per koneksi dan referensi attempt diverifikasi. Midtrans `/api/commerce/midtrans/{store}` dan Forwarder `/api/commerce/forward/{store}` per toko. Gunakan URL yang ditampilkan panel. Tunnel ngrok harus diterima sebagai host platform (APP_URL/domain/alias yang sesuai), bukan hanya mengganti payload URL di Digiflazz. Restart/clear config ketika konfigurasi URL berubah.
+- Semua paket termasuk Web dapat pairing WA untuk notifikasi/OTP. Paket Web tetap tidak menjalankan transaksi chat. Menu Notifikasi & email memilih MAIL_* bawaan atau SMTP tenant; gunakan sender sah dan uji pengiriman secara terkontrol. Jalur OTP lokal tidak memerlukan callback HTTP sinkron worker → Laravel saat request kirim OTP sedang ditahan.
+- Status/SN callback Digiflazz dapat mengoreksi hasil terminal/manual DigitalToko. Reclaim refund dapat membuat wallet customer minus; pesanan baru diblokir sampai saldo pulih. Penerapan API Hanshop memiliki aturan/marker tersendiri, lihat dokumentasi source API tersebut. Jangan menyamakan dua database atau menjalankan SQL API pada DB Laravel.
+- API Hanshop memiliki migration manual `20261020_manual_result_supplier_callback.sql` dan `20261020_negative_balance_support.sql` untuk perubahan callback/ledger/saldo sumber API sendiri. Periksa prasyarat M9/M12, backup dan nama schema sesuai instruksi file sebelum deploy source terkait; pembaruan dokumentasi ini tidak menjalankannya.
+- Retensi toko: belum ada automatic full purge hari ke-30. Scheduler yang tersedia hanya menghapus foto KTP ditolak serta upload artikel tidak terpakai sesuai aturan masing-masing. Penutupan manual memeriksa kewajiban, tetapi tidak menghapus seluruh data toko/domain/sesi.
+- Pembayaran uji/live, penerimaan OTP/email, ketahanan WA dan background Android harus diverifikasi di lingkungan tujuan. Jangan memakai hasil tes fixture sebagai bukti pembayaran/pesan nyata.

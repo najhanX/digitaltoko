@@ -1,8 +1,8 @@
 # Rancangan domain web toko
 
-Status: host resolver tersedia lokal, DNS/TLS/deployment belum dikonfigurasi. Domain awal hansdigi.biz.id di VPS, domain final digitaltoko.com setelah dibeli. Konfigurasi domain dan transisi di DEPLOYMENT.md.
+Status source **21 Oktober 2026**: host resolver tersedia untuk slug di domain/alias platform serta custom hostname active+verified. Model/tabel StoreDomain dan pembacaan domain pada panel admin tersedia; belum ada endpoint panel owner untuk klaim/kelola custom domain maupun otomatisasi ownership/DNS/TLS/provider. Keadaan DNS/VPS/kepemilikan domain nyata tidak diperiksa pada sinkronisasi ini. Domain awal yang direncanakan hansdigi.biz.id, final digitaltoko.com; konfigurasi transisi di DEPLOYMENT.md.
 
-## Usulan awal
+## Routing yang tersedia
 
 - Domain platform awal hansdigi.biz.id; final digitaltoko.com.
 - Panel foundation /admin, /owner, /staff/<uuid>/login pada domain platform sama.
@@ -11,7 +11,7 @@ Status: host resolver tersedia lokal, DNS/TLS/deployment belum dikonfigurasi. Do
 
 Satu aplikasi storefront melayani banyak hostname. Backend memetakan hostname terdaftar ke `store_id`, lalu memeriksa status toko dan entitlement web. Deploy aplikasi per toko tidak diperlukan.
 
-Ketentuan pengguna: satu subdomain per toko ditentukan saat pembelian, tetap pada fitur awal; rename berbayar mungkin fase berikut. Koneksi domain gratis maksimal satu domain custom per toko, dengan panduan DNS. Rancangan www/apex bila didukung alias domain utama sama. Setelah purge slug dapat dipakai toko lain. Reservasi checkout/binding mencegah dua tenant menguasai hostname sama. Untuk bot saja fungsi subdomain belum diputuskan; tidak menerbitkan storefront tanpa hak web.
+Ketentuan pengguna: satu subdomain per toko ditentukan saat pembelian, tetap pada fitur awal; rename berbayar mungkin fase berikut. Koneksi domain gratis maksimal satu domain custom per toko, dengan panduan DNS. Rancangan www/apex bila didukung alias domain utama sama. Setelah purge slug dapat dipakai toko lain. Reservasi checkout/binding mencegah dua tenant menguasai hostname sama. Slug juga disimpan untuk toko Bot sebagai identitas toko, tetapi tidak menerbitkan storefront tanpa hak web.
 
 ## Subdomain bawaan
 
@@ -29,7 +29,7 @@ Domain utama tanpa prefix (apex) tidak diperlakukan identik dengan subdomain. Du
 
 Cloudflare for SaaS tidak membeli domain pelanggan atau mengurus tagihan registrarnya. Masa aktif domain, masa aktif paket Web App, dan status sertifikat TLS adalah lifecycle berbeda.
 
-## Onboarding dan keamanan routing
+## Target onboarding domain otomatis (belum lengkap)
 
 1. Owner memasukkan hostname; backend memeriksa entitlement custom domain, normalisasi, dan keunikan global.
 2. Backend mendaftarkan custom hostname menggunakan credential platform yang tetap berada di server.
@@ -43,7 +43,11 @@ Hostname bukan bukti otorisasi owner. Perubahan domain memakai sesi panel dan ak
 
 Saat domain dilepas atau dipindah toko, hapus/nonaktifkan binding di penyedia dan aplikasi secara terkoordinasi. Klaim ulang wajib verifikasi kepemilikan baru; jangan memindahkan domain hanya berdasarkan teks hostname. Jangan mengubah record email/MX pelanggan untuk onboarding storefront.
 
-## Expiry dan operasional
+## Batas implementasi lifecycle
+
+Pemblokiran akses sesuai langganan tersedia di backend. Renewal memperbarui masa aktif. Tidak ada job purge toko penuh atau pelepasan provider domain otomatis; aturan berikut adalah kebijakan target, bukan tindakan yang sudah dijalankan scheduler.
+
+## Kebijakan expiry dan operasional
 
 Web bertransaksi selama grace tujuh hari, lalu publik diblokir. Hari ke-30 memeriksa eligibility purge: saldo pelanggan/transaksi/refund belum selesai menahan penghapusan dan domain mapping. Panel renewal/penyelesaian tetap tersedia. Renewal sebelum purge memulihkan routing setelah readiness check. Slug hanya dilepas setelah purge benar-benar selesai, bukan ketika tanggal ke-30 tercapai dalam DELETION_HOLD. Saat purge binding penyedia/aplikasi dilepas; akun/saldo/riwayat owner Hanshop dan domain tenant di registrar tetap ada. Klaim ulang custom domain membutuhkan verifikasi.
 

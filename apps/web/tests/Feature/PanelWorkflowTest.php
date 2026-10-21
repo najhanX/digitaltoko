@@ -179,7 +179,8 @@ class PanelWorkflowTest extends TestCase
         $store = $this->store($owner);
         $store->update(['category' => 'bot']);
         $service = app(SubscriptionService::class);
-        $service->requestTrial($store);
+        $owner->forceFill(['trial_store_id' => $store->id])->save();
+        $store->update(['status' => 'provisioning', 'is_trial' => true, 'trial_requested_at' => now()]);
         $plan = PlanOption::create(['name' => 'Galaxy Bot', 'category' => 'bot', 'plan' => 'galaxy', 'price' => 100000, 'duration_days' => 30, 'active' => true]);
         $service->checkout($store, $plan);
         $this->assertFalse($store->fresh()->is_trial);

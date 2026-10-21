@@ -6,6 +6,10 @@
 @import './articles.css';
 @import './scrollbars.css';
 @import './typography.css';
+@import './catalog-panel.css';
+@import './admin-panel.css';
+@import './sales-panel.css';
+@import './action-controls.css';
 
 .sandbox-indicator{position:fixed;bottom:16px;left:16px;z-index:90;display:grid;gap:3px;max-width:min(300px,calc(100vw - 100px));padding:10px 14px;border:1px solid #d9a122;border-radius:12px;background:#fff7d6;color:#684309;box-shadow:0 4px 18px #0002;font-size:var(--text-small);pointer-events:none}.sandbox-indicator strong{font-size:var(--text-body)}
 
@@ -23,3 +27,15 @@
 #app table tbody:last-child>tr:last-child>:first-child{border-end-start-radius:11px}
 #app table tbody:last-child>tr:last-child>:last-child{border-end-end-radius:11px}
 #app :is(.table-scroll,.staff-table){border-radius:12px}
+
+/* Keep the notification counter independent of shared typography sizing. */
+#app .notification-bell{width:40px;height:40px;flex:0 0 40px;overflow:visible}
+#app .notification-bell>svg{width:20px;height:20px;flex-shrink:0}
+#app .notification-bell .notification-count{position:absolute;inset:-5px -6px auto auto;display:flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 4px;border:2px solid var(--panel-card);border-radius:999px;font-size:10px;font-weight:700;line-height:1;letter-spacing:0;white-space:nowrap;transform:none}
+#app .article-panel-table{background:var(--panel-card,#fff)}
+#app .article-panel-table thead th{background:var(--panel-soft,#f8fafc)}
+#app .article-panel-table tbody td{background:var(--panel-card,#fff)}
+#app .article-panel-table tbody tr:hover td{background:var(--panel-soft,#f8fafc)}
+.article-prose{color:var(--sf-text,var(--text))}
+
+.voucher-code-field{display:flex;gap:8px;align-items:center}.voucher-code-field input{flex:1;min-width:0}.voucher-code-field .button{flex-shrink:0}
