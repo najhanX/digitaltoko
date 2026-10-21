@@ -9,7 +9,7 @@ Disinkronkan dengan source dan keputusan pengguna sampai **21 Oktober 2026**. Ke
 - Sembilan paket Mercury/Venus/Terra/Mars/Jupiter/Saturn/Uranus/Neptune/Andromeda mengikuti tabel ARCHITECTURE.md. Hanshop tersedia pada semua paket aktif. Harga/durasi ditentukan admin, bukan hardcoded komersial.
 - Trial otomatis tujuh hari dihapus. Voucher admin dapat menutup 100% tagihan sewa/modul tanpa gateway. Trial lama yang sudah aktif dihormati sampai expiry awal tanpa grace; trial belum dimulai kembali ke pilih paket.
 - Aktivasi pertama setelah layanan siap dan konfirmasi owner, otomatis setelah 24 jam siap. Renewal aktif dari expiry; setelah habis dari paid_at; perubahan/upgrade harga penuh memulai periode baru; downgrade saat periode berikutnya. Semua per toko.
-- Grace tujuh hari masih bertransaksi; selanjutnya akses operasional ditolak. Purge hari ke-30 dengan hold kewajiban adalah kebijakan yang belum diimplementasikan sebagai penghapusan otomatis.
+- Grace tujuh hari masih bertransaksi; selanjutnya akses operasional ditolak. Evaluasi purge expiry+30 dengan hold kewajiban sudah diimplementasikan. Evaluasi dijadwalkan per jam; penghapusan membutuhkan `STORE_PURGE_ENABLED=true` setelah pratinjau diperiksa.
 - Identitas/saldo owner milik Hanshop. Staff maksimal lima (termasuk nonaktif), akun lokal toko. Profil/KTP approved wajib sebelum pembelian. Pendaftaran owner, sinkron email, OTP, dan review manual tersedia.
 - Pendaftaran customer web membutuhkan nama, email, nomor WA dan password. Jalur login WA OTP/email-password serta OTP email tersedia sesuai verifikasi. Guest wajib WA, email opsional. Verifikasi email tidak sekaligus memverifikasi WA.
 - Semua paket boleh menghubungkan satu WA toko untuk OTP/notifikasi. Paket Web tidak memperoleh fitur command transaksi chat. Tidak ada fallback WA Hanshop pusat untuk OTP/customer notice toko. Email dapat memakai pengirim platform atau SMTP toko.
@@ -34,13 +34,13 @@ Disinkronkan dengan source dan keputusan pengguna sampai **21 Oktober 2026**. Ke
 | Area | Kondisi / tindak lanjut |
 | --- | --- |
 | Domain | Otomatisasi ownership/DNS/TLS/Cloudflare for SaaS, apex, pelepasan binding dan rename slug berbayar belum lengkap |
-| Purge dan backup | Implementasi hold hari ke-30, reminder, audit, purge media/cache/session/provider serta kebijakan backup/restore |
+| Purge dan backup | Hold/reminder, pratinjau, purge data/media/WA dan pembatalan renewal sudah tersedia. Aktivasi produksi, backup/log bersama, restore offline dan pelepasan DNS/TLS provider masih tugas operator; lihat RETENTION_PROGRESS.md. |
 | Gagal provisioning | SLA penanganan dan mekanisme refund sewa otomatis belum tersedia |
 | Upgrade kanal | Evaluasi UX/readiness kanal tambahan; implementasi change berlaku saat invoice lunas, readiness aktivasi pertama tidak otomatis menjadi gerbang upgrade |
 | Akun | Reset password mandiri dan prosedur cleanup lanjutan; endpoint membersihkan data diri owner tanpa toko sudah ada, jangan menganggap label permission sama dengan endpoint fitur |
 | Wallet owner | Topup saldo Hanshop dari panel tenant belum memiliki alur tersendiri; saldo customer sudah bisa topup |
 | Operasional | Spesifikasi VPS/kapasitas pilot, monitoring, backup recovery, secret rotation, domain/SMTP/provider aktual perlu diverifikasi lingkungan |
-| Worker | Durability auth/key, crash recovery, multi-host dan pembersihan sesi saat purge perlu hardening |
+| Worker | Durability auth/key, crash recovery, multi-host perlu hardening; purge sekarang meminta ACK disconnect manager sebelum menghapus data toko |
 | Layanan pihak ketiga | Validasi pemakaian komersial endpoint nickname dan hak penggunaan aset brand; fallback saat layanan tidak tersedia |
 | Kesiapan peluncuran | Pilot pembayaran/pemasok/OTP nyata terkontrol dan pengujian idle Android jangka panjang belum dapat disimpulkan dari tes lokal |
 

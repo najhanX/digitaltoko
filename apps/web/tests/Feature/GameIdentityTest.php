@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessCustomerOrder;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
 use App\Models\PremiumStock;
@@ -14,6 +15,7 @@ use App\Services\GameIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -30,6 +32,7 @@ class GameIdentityTest extends TestCase
         config(['platform.domain' => 'localhost', 'app.url' => 'http://localhost', 'inertia.ssr.enabled' => false, 'cache.default' => 'array', 'services.game_identity.url' => 'https://nickname.example.test/nickname']);
         Cache::flush();
         Http::preventStrayRequests();
+        Queue::fake([ProcessCustomerOrder::class]);
     }
 
     private function shop(): Store

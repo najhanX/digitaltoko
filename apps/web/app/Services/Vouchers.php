@@ -29,7 +29,7 @@ class Vouchers
     /** Pending invoices reserve quota until cancellation/expiry is confirmed; paid failures still use the voucher. */
     public function used(DiscountVoucher $voucher, bool $sandbox = false, bool $lock = false): int
     {
-        $count = 0;
+        $count = (int) ($sandbox ? $voucher->archived_sandbox_uses : $voucher->archived_uses);
         foreach (['order', 'subscription', 'module'] as $type) {
             $model = match ($type) {
                 'order' => CustomerOrder::class,'subscription' => SubscriptionInvoice::class,'module' => ModulePurchase::class,default => null

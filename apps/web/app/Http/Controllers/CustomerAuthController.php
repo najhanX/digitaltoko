@@ -8,6 +8,7 @@ use App\Services\CustomerAccess;
 use App\Services\CustomerCommerce;
 use App\Services\CustomerOtp;
 use App\Services\StoreMail;
+use App\Services\StoreRetention;
 use App\Support\HanshopIdentity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -84,7 +85,7 @@ class CustomerAuthController extends Controller
         }
         try {
             $customer = DB::transaction(function () use ($store, $payload) {
-                Store::whereKey($store->id)->lockForUpdate()->first();
+                StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
                 $customer = Customer::where('store_id', $store->id)->where('phone', $payload['phone'])->first();
                 if ($payload['verified_channel'] === 'email' && $customer && ($customer->id !== $payload['customer_id'] || $customer->email !== $payload['email'])) {
                     throw ValidationException::withMessages(['email' => 'Data akun berubah. Minta OTP baru.']);
@@ -154,7 +155,7 @@ class CustomerAuthController extends Controller
         $payload = $otp->consume($request, $store, 'email', $data['otp']);
         abort_unless($payload['customer_id'] === $customer->id, 403);
         DB::transaction(function () use ($store, $customer, $payload, $data) {
-            Store::whereKey($store->id)->lockForUpdate()->first();
+            StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
             app(CustomerCommerce::class)->ensure(! Customer::where('store_id', $store->id)->where('email', $payload['email'])->whereKeyNot($customer->id)->exists(), 'Email sudah digunakan.');
             $customer->update(['email' => $payload['email'], 'email_verified_at' => now(), ...(filled($data['password'] ?? null) ? ['password' => $data['password']] : [])]);
         });

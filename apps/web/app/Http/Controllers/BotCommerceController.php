@@ -12,6 +12,7 @@ use App\Services\CustomerCommerce;
 use App\Services\CustomerInquiryService;
 use App\Services\CustomerPayments;
 use App\Services\StoreCatalog;
+use App\Services\StoreRetention;
 use App\Services\Vouchers;
 use App\Support\HanshopIdentity;
 use Illuminate\Http\JsonResponse;
@@ -29,7 +30,7 @@ class BotCommerceController extends Controller
             'idempotency_key' => 'required_if:action,buy,topup,inquiry|nullable|string|max:128', 'payment' => 'nullable|in:gateway,wallet', 'number' => 'nullable|string|max:40', 'voucher_code' => 'nullable|string|max:40', 'expected_price' => 'nullable|integer|min:1', 'inquiry_id' => 'nullable|uuid']);
         $phone = HanshopIdentity::phone($data['phone']);
         $customer = DB::transaction(function () use ($store, $phone) {
-            Store::whereKey($store->id)->lockForUpdate()->first();
+            StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
 
             $customer = Customer::firstOrCreate(['store_id' => $store->id, 'phone' => $phone], ['name' => 'Pelanggan '.substr($phone, -4), 'phone_verified_at' => now()]);
             abort_unless($customer->phone_verified_at, 403, 'Verifikasi nomor WhatsApp melalui akun web terlebih dahulu.');

@@ -19,7 +19,7 @@ class CommerceModules
     public function buy(Store $store, ?string $voucherCode = null): ModulePurchase
     {
         $invoice = DB::transaction(function () use ($store, $voucherCode) {
-            Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
             $setting = app(CustomerCommerce::class)->settings($store);
             app(CustomerCommerce::class)->ensure($store->acceptsOrders() && ! $setting->custom_licensed_at && $this->price() >= 1000, 'Pembelian modul belum tersedia atau sudah dimiliki toko.');
 
@@ -52,7 +52,7 @@ class CommerceModules
             validator($data, ['invoice_id' => 'required|in:'.$invoice->id, 'id_user' => 'required|in:'.$store->owner->hanshop_user_id, 'amount' => 'required|integer|in:'.$invoice->amount,
                 'total' => 'required|integer|min:'.$invoice->amount.'|max:'.($invoice->amount + 999), 'status' => 'required|in:PENDING,PAID,EXPIRED,REVIEW', 'qr_url' => 'nullable|url:https', 'expires_at' => 'required|date', 'paid_at' => 'nullable|date'])->validate();
             DB::transaction(function () use ($invoice, $store, $data) {
-                Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+                StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
                 $invoice = ModulePurchase::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
                 if ($invoice->status !== 'pending') {
                     return;

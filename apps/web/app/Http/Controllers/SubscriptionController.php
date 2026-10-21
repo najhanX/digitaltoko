@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PlanOption;
 use App\Models\Store;
 use App\Models\SubscriptionInvoice;
+use App\Services\StoreRetention;
 use App\Services\SubscriptionService;
 use App\Support\BotConnection;
 use App\Support\ListQuery;
@@ -44,6 +45,7 @@ class SubscriptionController extends Controller
             'plans' => PlanOption::where('active', true)->orderBy('duration_days')->orderBy('price')->get()
                 ->map(fn ($plan) => [...$plan->toArray(), 'purpose' => $service->purpose($store, $plan)]),
             'invoices' => $page->items(), 'currentInvoice' => $current, 'historyPagination' => ListQuery::meta($page), 'historyFilters' => $list->filters,
+            'retention' => app(StoreRetention::class)->summary($store),
             'ready' => $service->ready($store),
             'canManage' => $role === 'owner' || (! $store->is_trial && $store->expires_at && in_array('subscription.renew', $request->user('staff')->permissions ?? [], true)),
             'canManageBot' => $role === 'owner' || in_array('bot.manage', $request->user('staff')->permissions ?? [], true),

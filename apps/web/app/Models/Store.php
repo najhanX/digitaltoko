@@ -19,7 +19,7 @@ class Store extends Model
 
     protected function casts(): array
     {
-        return ['notification_settings' => 'encrypted:array', 'sandbox' => 'boolean', 'admin_suspended_at' => 'immutable_datetime', 'subscription' => 'array', 'starts_at' => 'immutable_datetime', 'ready_at' => 'immutable_datetime', 'trial_requested_at' => 'immutable_datetime', 'branding' => 'array', 'expires_at' => 'immutable_datetime', 'is_trial' => 'boolean'];
+        return ['closure_requested_at' => 'immutable_datetime', 'retention_reasons' => 'array', 'retention_checked_at' => 'immutable_datetime', 'purge_started_at' => 'immutable_datetime', 'notification_settings' => 'encrypted:array', 'sandbox' => 'boolean', 'admin_suspended_at' => 'immutable_datetime', 'subscription' => 'array', 'starts_at' => 'immutable_datetime', 'ready_at' => 'immutable_datetime', 'trial_requested_at' => 'immutable_datetime', 'branding' => 'array', 'expires_at' => 'immutable_datetime', 'is_trial' => 'boolean'];
     }
 
     public function owner(): BelongsTo

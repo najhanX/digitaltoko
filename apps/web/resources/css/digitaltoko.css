@@ -559,3 +559,21 @@
 @media(prefers-reduced-motion:reduce){.panel-surface.workspace-shell,.workspace-shell .workspace-sidebar,.workspace-shell .sidebar-brand>.brand,.workspace-shell .sidebar-mini-brand,.workspace-shell .sidebar-label,.workspace-shell .nav-item,.workspace-shell .sidebar-section-toggle,.workspace-shell .nav-item>span,.workspace-shell .sidebar-section-toggle>span,.workspace-shell .sidebar-bottom>div,.workspace-shell .sidebar-store>strong{transition:none}}
 
 .notification-settings-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:24px}.notification-settings-grid .card-section-heading{flex-wrap:wrap}.notification-settings-grid .card-section-heading h2{font-size:19px}.notification-settings-grid .card-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}@media(max-width:900px){.notification-settings-grid{grid-template-columns:1fr}}
+
+/* Per-store lifecycle and deletion preview. */
+.store-retention-panel{padding:1.25rem;display:grid;gap:1rem;min-width:0}
+.store-retention-panel.needs-attention{border-color:var(--warning,#d99a28)}
+.retention-heading{display:flex;align-items:center;gap:.65rem;min-width:0}
+.retention-heading svg{flex-shrink:0;color:var(--primary,#6652df)}
+.retention-heading h2{margin:0;font-size:1.05rem}
+.retention-timeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:0}
+.retention-timeline dt{font-size:.875rem;color:var(--muted,#64748b);margin-bottom:.35rem}
+.retention-timeline dd{margin:0;font-weight:600;overflow-wrap:anywhere;font-size:.95rem}
+.retention-obligations{display:grid;gap:.65rem}
+.retention-obligations ul{margin:0;padding-left:1.25rem;display:grid;gap:.3rem}
+.retention-chips{display:flex;flex-wrap:wrap;gap:.5rem}
+.retention-preview{border-top:1px solid var(--border,#dce2ec);padding-top:1rem}
+.retention-preview summary{cursor:pointer;font-weight:600;color:var(--primary,#6652df)}
+.retention-inventory{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem 1rem;margin:1rem 0}
+.retention-inventory>div{display:flex;justify-content:space-between;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border,#dce2ec);font-size:.9rem}
+@media(max-width:700px){.retention-timeline{grid-template-columns:1fr}.retention-inventory{grid-template-columns:repeat(2,minmax(0,1fr))}.store-retention-panel .section-toolbar{align-items:flex-start}}

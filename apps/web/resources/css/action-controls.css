@@ -1,7 +1,7 @@
 /* Action controls retain a visible surface in light, dark and custom storefront themes. */
-.panel-surface .button.secondary { background:var(--panel-soft); border-color:var(--border); color:var(--panel-text); }
-.panel-surface .button.secondary:hover:not(:disabled) { background:var(--panel-tint); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); color:var(--primary); }
-.panel-surface .icon-button { background:var(--panel-soft); color:var(--panel-text); }
+.panel-surface .button.secondary { background:color-mix(in srgb,var(--primary) 12%,var(--panel-card)); border-color:color-mix(in srgb,var(--primary) 24%,var(--border)); color:var(--panel-text); }
+.panel-surface .button.secondary:hover:not(:disabled) { background:color-mix(in srgb,var(--primary) 20%,var(--panel-card)); border-color:var(--primary); color:var(--panel-text); }
+.panel-surface .icon-button { background:color-mix(in srgb,var(--primary) 10%,var(--panel-card)); color:var(--panel-text); }
 .panel-surface .icon-button:hover:not(:disabled) { background:var(--panel-tint); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); color:var(--primary); }
 .panel-surface :is(.button.secondary,.icon-button).danger-text { color:light-dark(#b42336,#fda4af); background:color-mix(in srgb,#ef4444 7%,var(--panel-card)); border-color:color-mix(in srgb,#ef4444 22%,var(--border)); }
 .panel-surface :is(.button.secondary,.icon-button).danger-text:hover:not(:disabled) { background:color-mix(in srgb,#ef4444 13%,var(--panel-card)); }
@@ -11,14 +11,67 @@
 .panel-surface .content-tabs:has(>button) { display:flex; flex-wrap:wrap; align-items:stretch; gap:6px; padding:6px; border:1px solid var(--border); border-radius:11px; background:var(--panel-soft); }
 .panel-surface .content-tabs>button { display:inline-flex; align-items:center; justify-content:center; min-height:40px; flex:1 1 auto; padding:9px 12px; border:1px solid var(--border); border-radius:7px; background:var(--panel-card); color:var(--panel-text); font:inherit; font-size:var(--text-small); font-weight:600; line-height:1.5; transition:background-color .16s,color .16s; }
 .panel-surface .content-tabs>button:hover { background:var(--panel-tint); color:var(--primary); }
-.panel-surface .content-tabs>button.selected { background:var(--primary); color:var(--panel-card); border-color:var(--primary); }
+.panel-surface .content-tabs>button.selected { background:var(--primary); color:light-dark(#fff,#10182a); border-color:var(--primary); }
 .panel-surface .theme-switch>button:not([aria-pressed=true]) { background:var(--panel-soft); }
 .panel-surface .notification-item-actions>button { border:1px solid var(--border); border-radius:7px; background:var(--panel-soft); padding:6px 9px; color:var(--primary); }
 .sf-site .au-quick-tabs>button:not(.selected),.sf-site .sf-categories>button:not(.selected) { background:color-mix(in srgb,var(--sf-accent) 5%,var(--sf-card)); border:1px solid var(--sf-line); }
 .sf-site .au-quick-tabs>button:not(.selected):hover,.sf-site .sf-categories>button:not(.selected):hover { background:color-mix(in srgb,var(--sf-accent) 11%,var(--sf-card)); border-color:var(--sf-accent); }
 .sf-site .button { background:var(--sf-accent); border:1px solid var(--sf-accent); color:var(--sf-accent-contrast,#fff); }
 .sf-site .button:hover:not(:disabled) { background:color-mix(in srgb,var(--sf-accent) 88%,#000); }
-.sf-site .button.secondary { background:color-mix(in srgb,var(--sf-accent) 7%,var(--sf-card)); color:var(--sf-text); border:1px solid var(--sf-line); }
-.sf-site .button.secondary:hover:not(:disabled) { background:color-mix(in srgb,var(--sf-accent) 13%,var(--sf-card)); border-color:var(--sf-accent); }
+.sf-site .button.secondary { background:color-mix(in srgb,var(--sf-accent) 14%,var(--sf-card)); color:var(--sf-text); border:1px solid var(--sf-line); }
+.sf-site .button.secondary:hover:not(:disabled) { background:color-mix(in srgb,var(--sf-accent) 22%,var(--sf-card)); border-color:var(--sf-accent); }
 .sf-site :is(button,a.button):focus-visible { outline:2px solid var(--sf-accent); outline-offset:3px; }
 @media(prefers-reduced-motion:reduce) { .panel-surface :is(button.button,a.button,.icon-button,.content-tabs>button) { transition:none; } }
+
+/* Shared action surfaces stay distinct from their parent card. */
+.panel-surface :is(.service-tabs,.modal-editor-tabs,.design-area-tabs,.article-editor-tabs,.onboarding-tabs)>button {
+    background:color-mix(in srgb,var(--primary) 10%,var(--panel-card));
+    color:var(--panel-text); border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));
+    border-radius:8px; font-weight:600;
+}
+.panel-surface :is(.service-tabs,.modal-editor-tabs,.design-area-tabs,.article-editor-tabs,.onboarding-tabs)>button.selected {
+    background:var(--primary); border-color:var(--primary); color:light-dark(#fff,#10182a); box-shadow:none;
+}
+.panel-surface :is(.service-tabs,.modal-editor-tabs,.design-area-tabs,.article-editor-tabs,.onboarding-tabs)>button:hover:not(.selected):not(:disabled) {
+    background:color-mix(in srgb,var(--primary) 18%,var(--panel-card));
+}
+.panel-surface .article-editor-tabs { display:flex;flex-wrap:wrap;gap:6px; }
+.panel-surface :is(.article-editor-toolbar,.notification-tools) button {
+    background:color-mix(in srgb,var(--primary) 10%,var(--panel-card));
+    border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border)); color:var(--panel-text);
+}
+.panel-surface .article-editor-toolbar button.selected,.panel-surface .notification-tools button[aria-pressed=true] {
+    background:var(--primary); border-color:var(--primary); color:light-dark(#fff,#10182a);
+}
+.panel-surface :is(.article-editor-toolbar,.notification-tools) button:hover:not(:disabled):not(.selected):not([aria-pressed=true]) {
+    background:color-mix(in srgb,var(--primary) 20%,var(--panel-card));
+}
+.panel-surface .notification-tools .notification-read-all { padding-inline:9px; }
+.panel-surface .list-pagination button:not(.selected) {
+    background:color-mix(in srgb,var(--primary) 10%,var(--panel-card));
+    border-color:color-mix(in srgb,var(--primary) 22%,var(--border)); color:var(--panel-text);
+}
+.panel-surface .list-pagination button:not(.selected):hover:not(:disabled) {
+    background:color-mix(in srgb,var(--primary) 18%,var(--panel-card)); border-color:var(--primary);
+}
+.sf-site.sf-custom-theme .list-pagination button:not(.selected),
+.sf-site .list-pagination button:not(.selected),.sf-site .ng-periods button:not(.selected),
+.sf-site .sf-premium-banner button,.sf-site .sf-promo-tile button {
+    background:color-mix(in srgb,var(--sf-accent) 14%,var(--sf-card)); color:var(--sf-text);
+    border:1px solid color-mix(in srgb,var(--sf-accent) 25%,var(--sf-line));
+}
+.sf-site .sf-premium-banner button,.sf-site .sf-promo-tile button { padding:9px 13px;border-radius:8px; }
+.sf-site .panel-dialog .button.secondary {
+    background:color-mix(in srgb,var(--sf-accent) 14%,var(--sf-card)); color:var(--sf-text);
+    border-color:color-mix(in srgb,var(--sf-accent) 25%,var(--sf-line));
+}
+
+.panel-surface .content-tabs>button:not(.selected),
+.panel-surface .theme-switch>button:not([aria-pressed=true]),
+.panel-surface .account-menu>div button,
+.panel-surface .pricing-target-control>.icon-button {
+    background:color-mix(in srgb,var(--primary) 10%,var(--panel-card));
+}
+.sf-site .sf-customer-dropdown>button {
+    background:color-mix(in srgb,var(--sf-accent) 12%,var(--sf-card));
+}

@@ -85,3 +85,5 @@ Schedule::command('digitaltoko:commerce')->everyMinute()->withoutOverlapping();
 Schedule::command('digitaltoko:customer-notices')->everyFiveSeconds()->withoutOverlapping()->runInBackground();
 
 Schedule::command('digitaltoko:prune-article-uploads')->daily()->withoutOverlapping();
+
+Schedule::command('digitaltoko:retention'.(config('platform.store_purge_enabled') ? ' --apply' : ''))->hourly()->withoutOverlapping();

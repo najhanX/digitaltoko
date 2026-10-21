@@ -11,6 +11,7 @@ use App\Models\SubscriptionInvoice;
 use App\Models\SupplierConnection;
 use App\Models\User;
 use App\Services\PanelNotifications;
+use App\Services\StoreRetention;
 use App\Services\SubscriptionService;
 use App\Support\BotConnection;
 use App\Support\ListQuery;
@@ -19,6 +20,7 @@ use App\Support\PlatformHost;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -34,7 +36,7 @@ class AdminStoreController extends Controller
 
     private function payload(Store $store): array
     {
-        return [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'status', 'template', 'is_trial', 'starts_at', 'expires_at', 'created_at', 'admin_suspended_at', 'admin_suspension_reason']),
+        return [...$store->only(['id', 'name', 'slug', 'category', 'plan', 'status', 'template', 'is_trial', 'retention_state', 'starts_at', 'expires_at', 'created_at', 'admin_suspended_at', 'admin_suspension_reason']),
             'owner' => $store->owner->only(['id', 'name', 'email', 'phone', 'hanshop_user_id', 'verification_status']),
             'domain' => $store->domain?->only(['hostname', 'status', 'verified_at']),
             'url' => app(PlatformHost::class)->storeUrl($store)];
@@ -44,7 +46,7 @@ class AdminStoreController extends Controller
     {
         $this->authorizeAdmin($request);
         $list = new ListQuery($request, ['status' => ['draft', 'provisioning', 'active', 'grace', 'expired', 'suspended', 'suspended_manual', 'purging'],
-            'category' => ['bot', 'web', 'full'], 'package' => PackageCatalog::keys(), 'suspension' => ['yes', 'no']], 10);
+            'category' => ['bot', 'web', 'full'], 'package' => PackageCatalog::keys(), 'suspension' => ['yes', 'no'], 'retention' => ['scheduled', 'requested', 'hold', 'ready', 'purging', 'error']], 10);
         $query = Store::with(['owner:id,name,email,phone,hanshop_user_id,verification_status', 'domain'])->join('users', 'users.id', '=', 'stores.owner_id')->select('stores.*');
         $ownerId = $request->query('owner');
         $owner = is_string($ownerId) && ctype_digit($ownerId) ? User::where('role', 'owner')->find($ownerId, ['id', 'name', 'phone', 'email']) : null;
@@ -54,7 +56,7 @@ class AdminStoreController extends Controller
         if ($list->filters['suspension'] !== '') {
             $list->filters['suspension'] === 'yes' ? $query->whereNotNull('admin_suspended_at') : $query->whereNull('admin_suspended_at');
         }
-        $page = $list->paginate($list->apply(PackageCatalog::filter($query, $list->filters['package']), ['stores.name', 'stores.slug', 'users.name', 'users.phone', 'users.email', 'users.hanshop_user_id'], ['status' => 'stores.status', 'category' => 'stores.category'])->latest('stores.created_at')->orderByDesc('stores.id'));
+        $page = $list->paginate($list->apply(PackageCatalog::filter($query, $list->filters['package']), ['stores.name', 'stores.slug', 'users.name', 'users.phone', 'users.email', 'users.hanshop_user_id'], ['status' => 'stores.status', 'category' => 'stores.category', 'retention' => 'stores.retention_state'])->latest('stores.created_at')->orderByDesc('stores.id'));
 
         return Inertia::render('Admin/Stores', ['stores' => $page->getCollection()->map(fn ($store) => $this->payload($store)),
             'filters' => $list->filters, 'pagination' => ListQuery::meta($page), 'selectedOwner' => $owner,
@@ -70,10 +72,39 @@ class AdminStoreController extends Controller
         $events = $list->paginate($list->apply(StoreAdminEvent::where('store_id', $store->id)->leftJoin('users', 'users.id', '=', 'store_admin_events.admin_id')->select('store_admin_events.*', 'users.name as admin_name'), ['reason', 'users.name'], ['action' => 'action'])->orderByDesc('store_admin_events.id'));
 
         return Inertia::render('Admin/StoreDetail', ['store' => $this->payload($store->load(['owner', 'domain'])),
+            'retention' => app(StoreRetention::class)->summary($store, true),
             'bot' => BotConnection::state($store, false)['status'] ?? 'DISCONNECTED',
             'counts' => ['staff' => StoreStaff::where('store_id', $store->id)->count(), 'products' => CatalogProduct::where('store_id', $store->id)->count(),
                 'stock' => PremiumStock::where('store_id', $store->id)->where('status', 'ready')->count(), 'suppliers' => SupplierConnection::where('store_id', $store->id)->where('enabled', true)->count()],
             'events' => $events->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($events)]);
+    }
+
+    public function destroy(Request $request, Store $store, StoreRetention $retention): RedirectResponse
+    {
+        $this->authorizeAdmin($request);
+        $data = $request->validate(['confirmation' => 'required|string|max:100', 'preview_token' => 'required|string|size:64']);
+        $lock = Cache::lock('store-retention:'.$store->id, 300);
+        if (! $lock->get()) {
+            throw ValidationException::withMessages(['retention' => 'Penghapusan sedang diproses. Tunggu sebentar dan muat ulang halaman.']);
+        }
+        try {
+            if (! hash_equals($store->fresh()->slug, $data['confirmation'])) {
+                throw ValidationException::withMessages(['confirmation' => 'Ketik subdomain toko persis seperti yang ditampilkan.']);
+            }
+            if (! $retention->approveManualDeletion($store, $request->user('web'), $data['preview_token'])) {
+                throw ValidationException::withMessages(['retention' => 'Toko belum mengajukan penghapusan atau masih memiliki kewajiban/penahan. Muat ulang dan periksa rinciannya.']);
+            }
+        } catch (ValidationException $error) {
+            throw $error;
+        } catch (\Throwable $error) {
+            report($error);
+
+            return back()->withErrors(['retention' => 'Penghapusan belum selesai. Data ditahan. Periksa bot manager/penyimpanan, lalu muat ulang pratinjau untuk mencoba kembali.']);
+        } finally {
+            $lock->release();
+        }
+
+        return to_route('admin.stores.index')->with('success', 'Toko telah dihapus permanen. Akun owner dan toko lainnya tetap tersimpan.');
     }
 
     public function update(Request $request, Store $store): RedirectResponse
@@ -106,6 +137,7 @@ class AdminStoreController extends Controller
                     if (SubscriptionInvoice::where('store_id', $locked->id)->whereIn('status', ['pending', 'paid', 'review'])->exists()) {
                         throw ValidationException::withMessages(['expires_at' => 'Selesaikan invoice atau jadwal perubahan paket terlebih dahulu.']);
                     }
+                    app(StoreRetention::class)->renewed($locked);
                     $locked->update(['expires_at' => Carbon::parse($data['expires_at']), 'status' => 'active']);
                     break;
                 case 'package':

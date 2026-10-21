@@ -184,7 +184,7 @@ class CustomerCommerce
     public function paid(CustomerOrder $order, string $event, int $amount, \DateTimeInterface $paidAt): void
     {
         DB::transaction(function () use ($order, $event, $amount, $paidAt) {
-            Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
             $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
             $receipt = CommerceReceipt::where('event', $event)->first();
             if ($receipt) {

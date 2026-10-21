@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Customer;
 use App\Models\CustomerLedger;
+use App\Models\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -25,6 +26,7 @@ class CustomerWallet
         if (DB::transactionLevel() < 1) {
             throw new \LogicException('Wallet mutation requires a database transaction.');
         }
+        StoreRetention::guard(Store::whereKey($customer->store_id)->lockForUpdate()->firstOrFail());
         $locked = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
         $existing = CustomerLedger::where('event', $event)->first();
         if ($existing) {

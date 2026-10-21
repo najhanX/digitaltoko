@@ -3,6 +3,7 @@
 use App\Http\Middleware\CapturePanelNotifications;
 use App\Http\Middleware\ConfiguredTrustProxies;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ProtectPurgingStore;
 use App\Http\Middleware\RequirePlatformHost;
 use App\Http\Middleware\ResolvePlatformHost;
 use App\Models\Store;
@@ -20,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(prepend: [ResolvePlatformHost::class], append: [HandleInertiaRequests::class, CapturePanelNotifications::class]);
+        $middleware->web(prepend: [ResolvePlatformHost::class], append: [ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->trimStrings(except: ['payload', 'entries.*', 'content.*.text']);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);

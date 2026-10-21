@@ -13,6 +13,7 @@ class CustomerAccess
     {
         $store = $request->attributes->get('store');
         abort_unless($store instanceof Store, 404);
+        StoreRetention::guard($store);
 
         return $store;
     }
@@ -50,6 +51,7 @@ class CustomerAccess
         abort_unless(is_string($token) && strlen($token) >= 32, 401);
         $store = Store::where('worker_token_hash', hash('sha256', $token))->first();
         abort_unless($store, 401);
+        StoreRetention::guard($store);
 
         return $store;
     }

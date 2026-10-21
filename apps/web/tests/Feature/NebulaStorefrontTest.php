@@ -94,7 +94,7 @@ class NebulaStorefrontTest extends TestCase
         $this->get($url)->assertInertia(fn (Assert $page) => $page->has('gaming.flash_sale', 0));
         $this->assertSame(15000, $product->fresh()->sale_price);
         $store->update(['template' => 'aurora']);
-        $this->get($url)->assertInertia(fn (Assert $page) => $page->where('gaming', null));
+        $this->get($url)->assertInertia(fn (Assert $page) => $page->has('gaming.flash_sale', 0)->has('gaming.trending', 0));
         Http::assertNothingSent();
     }
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessCustomerOrder;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
 use App\Models\CustomerOrder;
@@ -13,6 +14,7 @@ use App\Services\CategoryDestination;
 use App\Services\CustomerCommerce;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -28,6 +30,7 @@ class CategoryDestinationTest extends TestCase
         $this->withoutVite();
         config(['platform.domain' => 'localhost', 'inertia.ssr.enabled' => false, 'cache.default' => 'array']);
         Http::preventStrayRequests();
+        Queue::fake([ProcessCustomerOrder::class]);
     }
 
     private function shop(): Store

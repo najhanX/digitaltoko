@@ -117,6 +117,9 @@ class PanelNotifications
         if (! $store instanceof Store && $recipient instanceof User && $url && preg_match('#^/stores/([a-f0-9-]{36})/#', $url, $match)) {
             $store = Store::whereKey($match[1])->where('owner_id', $recipient->id)->first();
         }
+        if ($store instanceof Store && ! Store::whereKey($store->id)->exists()) {
+            $store = null;
+        }
         $method = $request->method();
         $title = match (true) {
             $request->is('stores/*/bot/connect') => 'Permintaan koneksi WhatsApp',

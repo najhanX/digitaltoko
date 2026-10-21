@@ -163,6 +163,7 @@ Route::middleware('platform.host')->group(function () {
         Route::get('/admin/stores', [AdminStoreController::class, 'index'])->name('admin.stores.index');
         Route::get('/admin/stores/{store}', [AdminStoreController::class, 'show'])->name('admin.stores.show');
         Route::patch('/admin/stores/{store}', [AdminStoreController::class, 'update'])->name('admin.stores.update');
+        Route::delete('/admin/stores/{store}', [AdminStoreController::class, 'destroy'])->middleware('throttle:6,1')->name('admin.stores.destroy');
         Route::get('/owner/profile', [OwnerOnboardingController::class, 'show']);
         Route::post('/owner/profile/email/otp', [OwnerOnboardingController::class, 'emailOtp'])->middleware('throttle:3,1');
         Route::post('/owner/profile/email/verify', [OwnerOnboardingController::class, 'verifyEmail'])->middleware('throttle:10,1');

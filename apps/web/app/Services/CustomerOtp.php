@@ -7,6 +7,7 @@ use App\Models\Store;
 use App\Support\BotConnection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -59,7 +60,14 @@ class CustomerOtp
             Cache::forget('customer-challenge:'.$old);
         }
         $id = (string) Str::uuid();
-        Cache::put('customer-challenge:'.$id, ['hash' => Hash::make($otp), 'attempts' => 0, 'payload' => ['store_id' => $store->id, ...$data], 'purpose' => $purpose, 'channel' => $channel, 'destination' => $destination, 'expires_at' => now()->addMinutes(5)->timestamp], now()->addMinutes(5));
+        DB::transaction(function () use ($store, $id, $otp, $data, $purpose, $channel, $destination) {
+            StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
+            Cache::put('customer-challenge:'.$id, ['hash' => Hash::make($otp), 'attempts' => 0, 'payload' => ['store_id' => $store->id, ...$data], 'purpose' => $purpose, 'channel' => $channel, 'destination' => $destination, 'expires_at' => now()->addMinutes(5)->timestamp], now()->addMinutes(5));
+            $index = 'store-otp-keys:'.$store->id;
+            $keys = array_filter(Cache::get($index, []), fn ($key) => Cache::has($key));
+            $keys[] = 'customer-challenge:'.$id;
+            Cache::put($index, array_values($keys), now()->addMinutes(6));
+        });
         $request->session()->put('customer_challenge_'.$purpose, $id);
     }
 

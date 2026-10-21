@@ -102,6 +102,7 @@ class SubscriptionService
         DB::transaction(function () use ($invoice, $data, $free) {
             $owner = User::whereKey($invoice->owner_id)->lockForUpdate()->firstOrFail();
             $store = Store::whereKey($invoice->store_id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard($store);
             $locked = SubscriptionInvoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== 'pending') {
                 return;
@@ -138,6 +139,7 @@ class SubscriptionService
 
     private function grant(Store $store, SubscriptionInvoice $invoice, \DateTimeInterface $base): void
     {
+        app(StoreRetention::class)->renewed($store);
         $store->update(['category' => $invoice->snapshot['category'], 'plan' => $invoice->snapshot['plan'], 'subscription' => [...$invoice->snapshot, 'features' => $this->features($invoice->snapshot['category'], $invoice->snapshot['plan']), 'features_version' => 1],
             'starts_at' => $base, 'expires_at' => Carbon::instance($base)->addDays($invoice->snapshot['duration_days']),
             'status' => 'active', 'is_trial' => false, 'trial_requested_at' => null, 'ready_at' => null]);

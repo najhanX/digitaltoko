@@ -38,7 +38,7 @@ Domain memakai `APP_URL`, `PLATFORM_DOMAIN`, alias, dan mapping custom host veri
 
 ## Batas saat ini
 
-Penghapusan otomatis seluruh data toko setelah retensi, pengelolaan backup/purge lintas aplikasi, otomatisasi DNS/TLS, refund sewa gagal provisioning, dan hardening worker multi-host belum merupakan alur lengkap. Panel topup saldo Hanshop owner juga belum tersedia; jangan menyamakannya dengan topup wallet pelanggan yang sudah tersedia.
+Retensi per toko sudah tersedia: jadwal 7/30 hari, hold kewajiban, reminder, pratinjau admin, pembatalan saat renewal, dan purge data/media/sesi WhatsApp. Persetujuan penutupan manual tersedia melalui modal admin, termasuk toko tanpa langganan. Penghapusan otomatis dinonaktifkan secara bawaan (`STORE_PURGE_ENABLED=false`) dan terpisah dari persetujuan manual. Kebijakan backup/log server bersama, otomatisasi DNS/TLS, refund sewa gagal provisioning, dan hardening worker multi-host tetap memerlukan tindak lanjut operasional. Panel topup saldo Hanshop owner juga belum tersedia; jangan menyamakannya dengan topup wallet pelanggan yang sudah tersedia.
 
 Source di working tree dapat lebih baru daripada commit/deployment. Pengujian historis tercatat dengan tanggal dan lingkungannya; keberadaan source/test tidak membuktikan layanan produksi sudah diperbarui.
 
@@ -47,6 +47,7 @@ Source di working tree dapat lebih baru daripada commit/deployment. Pengujian hi
 - [Arsitektur dan alur source](docs/ARCHITECTURE.md)
 - [Aturan bisnis dan batas implementasi](docs/BUSINESS_RULES.md)
 - [Keputusan dan pekerjaan terbuka](docs/DECISIONS.md)
+- [Retensi toko: hasil dan cara penggunaan](docs/RETENTION_PROGRESS.md)
 - [Hak akses staff](docs/STAFF_PERMISSIONS.md)
 - [Domain](docs/DOMAINS.md) dan [deployment](docs/DEPLOYMENT.md)
 - [Riwayat validasi](docs/FOUNDATION_VALIDATION.md), [checkpoint notifikasi/voucher](docs/NOTIFICATION_PROGRESS.md), [audit UI](docs/UI_READABILITY_AUDIT.md)

@@ -60,6 +60,7 @@ class CustomerInquiryService
 
                 return DB::transaction(function () use ($store, $engine, $product, $phone, $destination, $reference, $requestKey, $hash, $amount, $cost, $expiry, $data, $quote, $candidates, $position) {
                     $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+                    StoreRetention::guard($locked);
                     $engine->ensure($locked->sandbox === $store->sandbox, 'Mode toko berubah. Periksa tagihan kembali.');
 
                     return CustomerInquiry::create(['store_id' => $store->id, 'product_id' => $product->id, 'phone' => $phone, 'destination' => $destination, 'reference' => $reference, 'request_key' => $requestKey, 'request_hash' => $hash, 'amount' => $amount, 'cost' => $cost, 'expires_at' => $expiry,

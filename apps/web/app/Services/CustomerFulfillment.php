@@ -29,7 +29,7 @@ class CustomerFulfillment
         abort_unless($lock->get(), 503, 'Transaksi sedang diproses. Kirim ulang callback.');
         try {
             DB::transaction(function () use ($order, $attempt, $data) {
-                Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
+                StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
                 $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
                 if ($order->payment_status !== 'paid' || $order->purpose !== 'product' || ! $attempt->last_checked_at || ! in_array($attempt->status, ['dispatching', 'pending', 'success', 'failed'], true)) {
@@ -117,7 +117,7 @@ class CustomerFulfillment
     private function claim(CustomerOrder $order): ?OrderAttempt
     {
         return DB::transaction(function () use ($order) {
-            Store::whereKey($order->store_id)->lockForUpdate()->first();
+            StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
             $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
             if (! empty($order->snapshot['manual_decision']) || ! empty($order->snapshot['supplier_reconciled']) || $order->payment_status !== 'paid' || $order->purpose !== 'product' || ! in_array($order->status, ['paid', 'processing', 'pending'], true)) {
                 return null;
@@ -172,7 +172,7 @@ class CustomerFulfillment
     private function stock(CustomerOrder $order, OrderAttempt $attempt): void
     {
         DB::transaction(function () use ($order, $attempt) {
-            Store::whereKey($order->store_id)->lockForUpdate()->first();
+            StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
             $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->first();
             $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->first();
             if (! in_array($order->status, ['processing', 'pending'], true) || $attempt->status !== 'dispatching') {
@@ -281,7 +281,7 @@ class CustomerFulfillment
     private function finish(CustomerOrder $order, OrderAttempt $attempt, array $outcome): void
     {
         DB::transaction(function () use ($order, $attempt, $outcome) {
-            Store::whereKey($order->store_id)->lockForUpdate()->first();
+            StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
             $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->first();
             $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->first();
             if (in_array($order->status, ['success', 'failed', 'review'], true) || in_array($attempt->status, ['success', 'failed'], true)) {

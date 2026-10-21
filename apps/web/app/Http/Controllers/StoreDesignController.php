@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CatalogCategory;
 use App\Models\CatalogProduct;
 use App\Models\Store;
+use App\Services\StoreRetention;
 use App\Support\CatalogAccess;
 use App\Support\ListQuery;
 use App\Support\StorefrontDesign;
@@ -181,6 +182,7 @@ class StoreDesignController extends Controller
         try {
             DB::transaction(function () use ($store, $request, $data, $designs, &$newFiles, &$oldFiles) {
                 $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+                StoreRetention::guard($locked);
                 $branding = $locked->branding ?? [];
                 if ((int) ($branding['design_revision'] ?? 0) !== (int) $data['revision']) {
                     throw ValidationException::withMessages(['revision' => 'Desain telah diubah pengguna lain. Muat ulang halaman sebelum menyimpan kembali.']);

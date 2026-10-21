@@ -7,6 +7,7 @@ use App\Models\CustomerOrder;
 use App\Models\OrderAttempt;
 use App\Models\SupplierConnection;
 use App\Services\CustomerFulfillment;
+use App\Services\StoreRetention;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -39,6 +40,7 @@ class DigiflazzWebhookController extends Controller
             if ($error->getStatusCode() !== 503) {
                 throw $error;
             }
+            StoreRetention::guard($order->store->fresh());
             ProcessDigiflazzCallback::dispatch($attempt->id, $data['data']);
         }
 

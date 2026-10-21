@@ -36,7 +36,7 @@ class CustomerPayments
     public function simulate(CustomerOrder $order): void
     {
         DB::transaction(function () use ($order) {
-            Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
             $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->is_sandbox && ($locked->gateway === 'sandbox' || ($locked->gateway === 'midtrans' && ($locked->snapshot['sandbox'] ?? false))), 403);
             if ($locked->payment_status === 'paid') {
@@ -178,7 +178,7 @@ class CustomerPayments
             app(CustomerCommerce::class)->paid($order, 'midtrans:'.($data['transaction_id'] ?? $order->number), $order->total, $paidAt);
         } elseif (in_array($status, ['expire', 'cancel', 'deny', 'failure'], true)) {
             DB::transaction(function () use ($order) {
-                Store::whereKey($order->store_id)->lockForUpdate()->first();
+                StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
                 $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->first();
                 if ($locked->payment_status === 'unpaid' && $locked->status === 'awaiting_payment') {
                     $locked->update(['status' => 'expired', 'message' => 'Pembayaran tidak diselesaikan.']);
@@ -270,7 +270,7 @@ class CustomerPayments
                 }
             }
             DB::transaction(function () use ($order, $commerce, $ownerId, $recovery) {
-                Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
+                StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
                 $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $commerce->ensure($locked->payment_status === 'unpaid' && in_array($locked->status, ['awaiting_payment', 'expired'], true), 'Pesanan sudah dibayar atau statusnya berubah. Pembatalan dihentikan.');
                 $locked->update(['status' => 'expired', 'completed_at' => now(), 'qr_image' => null, 'snapshot' => [...$locked->snapshot, 'cancelled_by_customer' => $ownerId === null, 'cancelled_by_owner' => $ownerId, ...($recovery ? ['cancellation_recovery' => ['reason' => 'sandbox_uncreated_stale_key', 'at' => now()->toIso8601String()]] : [])], 'message' => $ownerId === null ? 'Pesanan dibatalkan oleh pelanggan. Jangan membayar invoice ini.' : 'Pesanan dibatalkan oleh owner toko. Jangan membayar invoice ini.']);

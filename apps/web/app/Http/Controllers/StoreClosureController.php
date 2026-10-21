@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\CustomerNotice;
-use App\Models\CustomerOrder;
 use App\Models\Store;
+use App\Models\User;
 use App\Services\CustomerCommerce;
+use App\Services\StoreObligations;
+use App\Services\StoreRetention;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,11 +31,7 @@ class StoreClosureController extends Controller
         return Inertia::render('Owner/StoreClosure', [
             'store' => $store->only(['id', 'name', 'status']),
             'closing' => (bool) $setting->closing,
-            'obligations' => [
-                'balance' => (int) Customer::where('store_id', $store->id)->where('balance', '>', 0)->sum('balance'),
-                'orders' => CustomerOrder::where('store_id', $store->id)->whereIn('status', ['paid', 'processing', 'pending', 'review', 'awaiting_payment'])->count(),
-                'guests' => CustomerOrder::where('store_id', $store->id)->whereNull('customer_id')->where('status', 'failed')->where('payment_status', 'paid')->whereNull('resolution')->count(),
-            ],
+            'obligations' => app(StoreObligations::class)->inspect($store),
         ]);
     }
 
@@ -43,14 +41,17 @@ class StoreClosureController extends Controller
         $setting = app(CustomerCommerce::class)->settings($store);
         $data = $request->validate(['closing' => 'required|boolean', 'finalize' => 'sometimes|boolean']);
         DB::transaction(function () use ($store, $setting, $data) {
-            $store = Store::whereKey($store->id)->lockForUpdate()->first();
+            User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
+            $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard($store);
             if ($data['finalize'] ?? false) {
-                $owed = Customer::where('store_id', $store->id)->where('balance', '>', 0)->exists() || CustomerOrder::where('store_id', $store->id)->whereIn('status', ['paid', 'processing', 'pending', 'review', 'awaiting_payment'])->exists()
-                 || CustomerOrder::where('store_id', $store->id)->whereNull('customer_id')->where('status', 'failed')->where('payment_status', 'paid')->whereNull('resolution')->exists();
+                $owed = array_filter(app(StoreObligations::class)->inspect($store));
                 app(CustomerCommerce::class)->ensure(! $owed, 'Tuntaskan saldo pelanggan, invoice, dan pesanan yang belum selesai terlebih dahulu.');
-                $store->update(['status' => 'suspended_manual']);
+                $store->update(['status' => 'suspended_manual', 'closure_requested_at' => $store->closure_requested_at ?? now()]);
                 $setting->update(['closing' => true]);
+                app(StoreRetention::class)->review($store);
             } else {
+                app(CustomerCommerce::class)->ensure($store->status !== 'suspended_manual', 'Permohonan penghapusan sudah diajukan. Hubungi administrator untuk tindak lanjut.');
                 $previous = $setting->closing;
                 $setting->update(['closing' => $data['closing']]);
                 if (! $previous && $data['closing']) {
@@ -62,6 +63,6 @@ class StoreClosureController extends Controller
             }
         });
 
-        return back()->with('success', 'Status penutupan toko diperbarui.');
+        return back()->with('success', ($data['finalize'] ?? false) ? 'Permohonan penghapusan terkirim. Toko dihentikan dan menunggu persetujuan administrator.' : 'Status penutupan toko diperbarui.');
     }
 }

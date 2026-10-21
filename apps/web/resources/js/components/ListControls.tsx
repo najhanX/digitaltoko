@@ -22,18 +22,20 @@ export function useServerList(filters:ListFilters, only:string[], prefix = '') {
     return {busy,apply:(values:ListFilters)=>visit(values),go:(number:number)=>visit(filters,number)};
 }
 
-export function FilterBar({filters,onApply,choices = [],placeholder = 'Cari data…',busy = false,sizes = [5,10,20,50],embedded=false,storefront=false}:{
-    filters:ListFilters;onApply:(filters:ListFilters)=>void;choices?:FilterChoice[];placeholder?:string;busy?:boolean;sizes?:number[];embedded?:boolean;storefront?:boolean;
+export function FilterBar({filters,onApply,choices = [],placeholder = 'Cari data…',busy = false,sizes = [5,10,20,50],embedded=false,storefront=false,collapsibleChoices=false}:{
+    filters:ListFilters;onApply:(filters:ListFilters)=>void;choices?:FilterChoice[];placeholder?:string;busy?:boolean;sizes?:number[];embedded?:boolean;storefront?:boolean;collapsibleChoices?:boolean;
 }) {
     const [draft,setDraft] = useState(filters);
     const serialized = JSON.stringify(filters);
     useEffect(()=>setDraft(JSON.parse(serialized)),[serialized]);
     function reset() {const empty:ListFilters={q:'',per_page:filters.per_page};for(const item of choices)empty[item.key]='';setDraft(empty);onApply(empty);}
+    const choiceFields=choices.map(choice=><label key={choice.key}><span>{choice.label}</span><select aria-label={choice.label} value={draft[choice.key] ?? ''} onChange={event=>setDraft({...draft,[choice.key]:event.target.value})}><option value="">Semua</option>{Object.entries(choice.options).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>);
+    const activeChoices=choices.filter(choice=>String(draft[choice.key]??'')!=='').length;
     const Container=embedded?'div':'form';
     const apply=()=>{if(!busy)onApply({...draft,q:String(draft.q ?? '').trim()});};
     return <Container className={'list-filters'+(storefront?' sf-catalog-filters':'')} role="search" onKeyDown={event=>{if(embedded && event.key==='Enter'){event.preventDefault();event.stopPropagation();apply();}}} onSubmit={event=>{event.preventDefault();apply();}}>
         <label className="list-search"><span>Cari</span><div><Search size={17}/><input type="search" aria-label={placeholder} placeholder={placeholder} maxLength={120} value={draft.q ?? ''} onChange={event=>setDraft({...draft,q:event.target.value})}/></div></label>
-        {choices.map(choice=><label key={choice.key}><span>{choice.label}</span><select aria-label={choice.label} value={draft[choice.key] ?? ''} onChange={event=>setDraft({...draft,[choice.key]:event.target.value})}><option value="">Semua</option>{Object.entries(choice.options).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>)}
+        {collapsibleChoices&&choices.length>0?<details className="list-extra-filters"><summary>Filter lainnya{activeChoices>0&&<span className="pill">{activeChoices}</span>}</summary><div className="list-extra-fields">{choiceFields}</div></details>:choiceFields}
         <label className="list-page-size"><span>{storefront?'Tampilkan':'Per halaman'}</span><select aria-label="Per halaman" value={draft.per_page} onChange={event=>setDraft({...draft,per_page:Number(event.target.value)})}>{sizes.map(size=><option key={size} value={size}>{size}</option>)}</select></label>
         <div className="filter-actions"><button type={embedded?'button':'submit'} onClick={embedded?apply:undefined} className="button" disabled={busy}>{storefront && <Search size={16}/>}<span>{busy?'Memuat…':storefront?'Cari':'Terapkan'}</span></button>{(!storefront || !!String(draft.q ?? '') || !!String(filters.q ?? '')) && <button type="button" className="button secondary" aria-label={storefront?'Hapus pencarian':undefined} title={storefront?'Hapus pencarian':undefined} disabled={busy} onClick={reset}><RotateCcw size={15}/>{!storefront && 'Reset'}</button>}</div>
     </Container>;
