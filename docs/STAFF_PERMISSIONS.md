@@ -4,9 +4,9 @@ Disinkronkan dengan `apps/web/app/Support/StaffPermissions.php` dan controller p
 
 ## Aturan akses
 
-Owner terverifikasi mengelola akun/grant staff. Backend selalu memeriksa store_id, guard dan izin; label/menu bukan otorisasi. Izin kelola tertentu mengimplikasikan baca melalui CatalogAccess; izin sensitif tetap terpisah. Staff tidak membaca saldo Hanshop global atau mengganti credential pemasok/gateway owner.
+Owner terverifikasi mengelola akun/grant staff. Backend selalu memeriksa store_id, guard dan izin; label/menu bukan otorisasi. Izin kelola tertentu mengimplikasikan baca melalui CatalogAccess; izin sensitif tetap terpisah. Staff tidak membaca saldo Hanshop global atau mengganti credential Digiflazz/Hanshop/gateway owner. OtomaX memiliki izin khusus eksplisit untuk mengelola koneksi toko.
 
-Owner-only: pengelolaan staff, identitas/KTP, credential pemasok dan gateway, pembelian modul, domain, aktivasi pertama, perubahan paket, pembatalan order dari panel dan penyelesaian pembayaran review. Staff `subscription.renew` hanya memperpanjang kanal/sumber yang sama; trial historis tidak dapat dikonversi oleh staff. `orders.manage` adalah keputusan manual Digiflazz eligible, bukan semua pemasok.
+Owner-only: pengelolaan staff, identitas/KTP, credential Digiflazz/Hanshop dan gateway, pembelian modul, domain, aktivasi pertama, perubahan paket, pembatalan order dari panel dan penyelesaian pembayaran review. Staff `subscription.renew` hanya memperpanjang kanal/sumber yang sama; trial historis tidak dapat dikonversi oleh staff. `orders.manage` adalah keputusan manual Digiflazz/OtomaX eligible, bukan semua pemasok.
 
 ## Allowlist source
 
@@ -21,9 +21,13 @@ Owner-only: pengelolaan staff, identitas/KTP, credential pemasok dan gateway, pe
 | `stock.view` | Lihat jumlah stok |
 | `stock.manage` | Kelola stok ready |
 | `stock.credentials` | Lihat credential stok |
-| `suppliers.balance` | Lihat saldo Digiflazz toko |
+| `suppliers.balance` | Lihat saldo pemasok toko (Digiflazz/OtomaX) |
+| `suppliers.manage` | Kelola koneksi supplier OtomaX |
+| `suppliers.responses` | Kelola kelompok jawaban OtomaX |
+| `suppliers.import` | Impor katalog & kelola profil file OtomaX |
+| `suppliers.deposit` | Ambil & lihat tiket deposit OtomaX |
 | `orders.view` | Lihat & cek transaksi |
-| `orders.manage` | Putuskan sukses/gagal transaksi Digiflazz manual |
+| `orders.manage` | Putuskan sukses/gagal transaksi Digiflazz/OtomaX manual |
 | `orders.resend` | Kirim ulang hasil ke penerima asli |
 | `guests.resolve` | Tindak lanjut pesanan guest |
 | `customers.view` | Lihat pelanggan |

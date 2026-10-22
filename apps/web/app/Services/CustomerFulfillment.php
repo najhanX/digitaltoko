@@ -10,9 +10,11 @@ use App\Models\Store;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Support\HanshopIdentity;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 
 class CustomerFulfillment
 {
@@ -21,6 +23,11 @@ class CustomerFulfillment
     public static function isDefinitiveFailure(string $rc): bool
     {
         return in_array($rc, self::DIGIFLAZZ_FAILURES, true);
+    }
+
+    public static function matchesDigiflazzSku(mixed $actual, mixed $expected): bool
+    {
+        return is_string($actual) && is_string($expected) && $actual !== '' && strcasecmp($actual, $expected) === 0;
     }
 
     public function digiflazzCallback(CustomerOrder $order, OrderAttempt $attempt, array $data): void
@@ -75,6 +82,57 @@ class CustomerFulfillment
         }
     }
 
+    public function otomaxCallback(CustomerOrder $order, OrderAttempt $attempt, array $parsed): void
+    {
+        $lock = Cache::lock('customer-fulfill:'.$order->id, 120);
+        abort_unless($lock->get(), 503, 'Kirim ulang callback setelah proses selesai.');
+        try {
+            DB::transaction(function () use ($order, $attempt, $parsed) {
+                StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
+                $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
+                if ($order->payment_status !== 'paid' || ! $attempt->last_checked_at || empty($attempt->request_snapshot['otomax_sent']) || $order->is_sandbox) {
+                    return;
+                }
+                $fields = $parsed['fields'];
+                $status = $parsed['status'];
+                if ($parsed['error'] || ! in_array($status, ['success', 'failed', 'pending'], true)) {
+                    return;
+                }
+                $latest = $order->attempts()->whereNotNull('last_checked_at')->orderByDesc('position')->first();
+                if ($latest?->id !== $attempt->id) {
+                    $attempt->update(['message' => 'Callback parsing lama diterima; perlu rekonsiliasi.', 'result' => $fields['sn'] ?? $attempt->result]);
+                    if ($status === 'success') {
+                        $order->update(['status' => 'review', 'message' => 'Parsing sebelumnya melaporkan sukses setelah berpindah sumber. Periksa kemungkinan transaksi ganda.']);
+                        app(CustomerCommerce::class)->notice($order, 'review');
+                    }
+
+                    return;
+                }
+                $this->updateOtomaxPrice($order, $attempt, $parsed);
+                $outcome = ['status' => $status, 'cost' => OtomaxParser::amount($fields['harga'] ?? null), 'result' => $fields['sn'] ?? '', 'message' => 'Callback OtomaX diterima.'];
+                if (isset($fields['id_transaksi'])) {
+                    $attempt->update(['provider_id' => $fields['id_transaksi']]);
+                }
+                if (in_array($order->status, ['success', 'failed', 'review'], true) || in_array($attempt->status, ['success', 'failed'], true)) {
+                    app(CustomerOrderDecision::class)->callback($order, $attempt, ['status' => $status === 'success' ? 'Sukses' : ($status === 'failed' ? 'Gagal' : 'Pending'), 'rc' => $status === 'success' ? '00' : ($status === 'failed' ? '01' : '03'), 'price' => $outcome['cost'], 'sn' => $outcome['result']]);
+
+                    return;
+                }
+                $this->finish($order, $attempt, $outcome);
+                if ($status === 'failed') {
+                    if (! $order->attempts()->where('status', '!=', 'failed')->exists()) {
+                        app(CustomerCommerce::class)->fail($order->fresh(), 'Semua sumber produk telah gagal atau tidak tersedia.');
+                    } else {
+                        DB::afterCommit(fn () => ProcessCustomerOrder::dispatch($order->id));
+                    }
+                }
+            }, 3);
+        } finally {
+            $lock->release();
+        }
+    }
+
     private function digiflazzFailureMessage(string $rc, bool $testing, mixed $supplierMessage = null): string
     {
         return match ($rc) {
@@ -85,6 +143,72 @@ class CustomerFulfillment
             '45' => app(DigiflazzNetwork::class)->whitelistMessage($testing, $supplierMessage),
             default => 'Digiflazz menolak transaksi (RC '.preg_replace('/[^0-9]/', '', $rc).').',
         };
+    }
+
+    public function canRetrySupplier(CustomerOrder $order): bool
+    {
+        return $order->payment_status === 'paid' && $order->purpose === 'product'
+            && in_array($order->status, ['processing', 'pending', 'review', 'success', 'failed'], true)
+            && in_array($order->attempts()->whereNotNull('last_checked_at')->orderByDesc('position')->first()?->source, ['digiflazz', 'hanshop', 'otomax'], true);
+    }
+
+    public function retrySupplier(CustomerOrder $order): void
+    {
+        $engine = app(CustomerCommerce::class);
+        $lock = Cache::lock('customer-fulfill:'.$order->id, 120);
+        $engine->ensure($lock->get(), 'Transaksi sedang diproses. Tunggu sebentar lalu coba kembali.');
+        try {
+            $attempt = DB::transaction(function () use ($order, $engine) {
+                StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
+                $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $engine->ensure($this->canRetrySupplier($locked), 'Pesanan ini belum dapat dikirim ulang ke pemasok.');
+                $attempt = $locked->attempts()->whereNotNull('last_checked_at')->orderByDesc('position')->lockForUpdate()->firstOrFail();
+                $engine->ensure(! $attempt->last_checked_at->gt(now()->subMinute()), 'Tunggu minimal satu menit sejak pengiriman atau pemeriksaan terakhir.');
+                $data = $attempt->request_snapshot;
+                if ($attempt->source === 'digiflazz') {
+                    $engine->ensure(! $attempt->created_at->lt(now()->subDays(89)), 'Transaksi Digiflazz terlalu lama untuk dikirim ulang. Hubungi pemasok.');
+                }
+                if ($attempt->source === 'otomax' && empty($data['otomax']['settings']['status_path'])) {
+                    $firstSentAt = isset($data['otomax_first_sent_at']) ? Carbon::parse($data['otomax_first_sent_at']) : $attempt->created_at;
+                    $engine->ensure($firstSentAt->copy()->timezone('Asia/Jakarta')->toDateString() === now('Asia/Jakarta')->toDateString(), 'OtomaX hanya dapat dikirim ulang pada hari pengiriman pertama (WIB). Tunggu callback supplier.');
+                }
+                $attempt->update(['last_checked_at' => now()]);
+
+                return $attempt;
+            }, 3);
+            try {
+                $outcome = $this->remote($order->fresh(), $attempt);
+            } catch (ValidationException $exception) {
+                throw $exception;
+            } catch (\Throwable) {
+                throw ValidationException::withMessages(['supplier' => 'Pemasok belum memberikan hasil pasti. Tunggu callback atau coba kembali setelah satu menit.']);
+            }
+            DB::transaction(function () use ($order, $attempt, $outcome) {
+                StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
+                $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
+                if (in_array($locked->status, ['success', 'failed', 'review'], true) || ! empty($locked->snapshot['manual_decision']) || ! empty($locked->snapshot['supplier_reconciled'])) {
+                    if (in_array($outcome['status'], ['success', 'failed', 'pending'], true) && empty($outcome['uncertain'])) {
+                        app(CustomerOrderDecision::class)->callback($locked, $attempt, [
+                            'status' => $outcome['status'] === 'success' ? 'Sukses' : ($outcome['status'] === 'failed' ? 'Gagal' : 'Pending'), 'rc' => $outcome['status'] === 'success' ? '00' : ($outcome['status'] === 'failed' ? '01' : '03'),
+                            'price' => $outcome['cost'] ?? null, 'sn' => $outcome['result'] ?? '',
+                        ], true);
+                    }
+
+                    return;
+                }
+                $this->finish($locked, $attempt, $outcome);
+                if ($outcome['status'] === 'failed' && ! in_array($locked->fresh()->status, ['success', 'failed'], true)) {
+                    if (! $locked->attempts()->where('status', '!=', 'failed')->exists()) {
+                        app(CustomerCommerce::class)->fail($locked->fresh(), 'Semua sumber produk telah gagal atau tidak tersedia.');
+                    } else {
+                        DB::afterCommit(fn () => ProcessCustomerOrder::dispatch($locked->id));
+                    }
+                }
+            }, 3);
+        } finally {
+            $lock->release();
+        }
     }
 
     public function run(CustomerOrder $order): void
@@ -128,44 +252,55 @@ class CustomerFulfillment
 
                 return null;
             }
-            $attempt = $order->attempts()->whereNotIn('status', ['failed'])->orderBy('position')->lockForUpdate()->first();
-            if (! $attempt) {
-                app(CustomerCommerce::class)->fail($order, 'Semua sumber produk telah gagal atau tidak tersedia.');
-
-                return null;
-            }
-            if ($attempt->status === 'success') {
-                $this->success($order, $attempt->result ?? 'Pesanan berhasil.');
-
-                return null;
-            }
-            if ($attempt->source === 'digiflazz' && $attempt->created_at->lt(now()->subDays(89))) {
-                $order->update(['status' => 'review', 'message' => 'Transaksi terlalu lama untuk diperiksa otomatis. Hubungi pemasok dengan referensi yang sama.']);
-                app(CustomerCommerce::class)->notice($order, 'review');
-
-                return null;
-            }
-            if ($attempt->status !== 'ready' && $attempt->last_checked_at?->gt(now()->subMinute())) {
-                return null;
-            }
-            if ($attempt->status === 'ready') {
-                $data = $attempt->request_snapshot;
-                if ($attempt->source !== 'stock' && ! SupplierConnection::whereKey($data['connection_id'])->where('store_id', $order->store_id)->where('enabled', true)->exists()) {
-                    $attempt->update(['status' => 'failed', 'message' => 'Koneksi sumber dinonaktifkan sebelum pengiriman.']);
+            while (true) {
+                $attempt = $order->attempts()->whereNotIn('status', ['failed'])->orderBy('position')->lockForUpdate()->first();
+                if (! $attempt) {
+                    app(CustomerCommerce::class)->fail($order, 'Semua sumber produk telah gagal atau tidak tersedia.');
 
                     return null;
                 }
-                $current = $attempt->source === 'stock' ? null : SupplierProduct::where('connection_id', $data['connection_id'])->where('sku', $data['sku'])->first();
-                if ($attempt->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount) || ($current && $current->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
-                    app(CustomerCommerce::class)->fail($order, 'Modal pemasok naik melebihi harga jual pesanan.');
+                if ($attempt->source !== 'stock' && $attempt->last_checked_at !== null) {
+                    return null;
+                }
+                if ($attempt->status === 'success') {
+                    $this->success($order, $attempt->result ?? 'Pesanan berhasil.');
 
                     return null;
                 }
-            }
-            $attempt->update(['status' => 'dispatching', 'last_checked_at' => now()]);
-            $order->update(['status' => 'processing']);
+                if ($attempt->source === 'digiflazz' && $attempt->created_at->lt(now()->subDays(89))) {
+                    $order->update(['status' => 'review', 'message' => 'Transaksi terlalu lama untuk diperiksa otomatis. Hubungi pemasok dengan referensi yang sama.']);
+                    app(CustomerCommerce::class)->notice($order, 'review');
 
-            return $attempt;
+                    return null;
+                }
+                if ($attempt->status !== 'ready' && $attempt->last_checked_at?->gt(now()->subMinute())) {
+                    return null;
+                }
+                if ($attempt->status === 'ready') {
+                    $data = $attempt->request_snapshot;
+                    if ($attempt->source !== 'stock' && ! SupplierConnection::whereKey($data['connection_id'])->where('store_id', $order->store_id)->where('enabled', true)->exists()) {
+                        $attempt->update(['status' => 'failed', 'message' => 'Koneksi sumber dinonaktifkan sebelum pengiriman.']);
+
+                        continue;
+                    }
+                    $current = $attempt->source === 'stock' ? null : SupplierProduct::where('store_id', $order->store_id)
+                        ->where('connection_id', $data['connection_id'])->where('mode', $data['mode'] ?? 'prepaid')->where('sku', $data['sku'])->first();
+                    if ($attempt->source !== 'stock' && (! $current || ! $current->available || ($current->quantity !== null && $current->quantity <= 0))) {
+                        $attempt->update(['status' => 'failed', 'message' => 'Produk sumber tidak tersedia atau sudah dihapus sebelum pengiriman.']);
+
+                        continue;
+                    }
+                    if ($attempt->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount) || ($current && $current->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
+                        app(CustomerCommerce::class)->fail($order, 'Modal pemasok naik melebihi harga jual pesanan.');
+
+                        return null;
+                    }
+                }
+                $attempt->update(['status' => 'dispatching', 'last_checked_at' => now()]);
+                $order->update(['status' => 'processing']);
+
+                return $attempt;
+            }
         }, 3);
     }
 
@@ -208,6 +343,41 @@ class CustomerFulfillment
     private function remote(CustomerOrder $order, OrderAttempt $attempt): array
     {
         $data = $attempt->request_snapshot;
+        if ($attempt->source === 'otomax') {
+            $connection = SupplierConnection::with('store')->where('store_id', $order->store_id)->findOrFail($data['connection_id']);
+            $event = ! empty($data['otomax_sent']) ? 'status' : 'transaction';
+            if ($event === 'status' && empty($data['otomax']['settings']['status_path'])) {
+                $firstSentAt = isset($data['otomax_first_sent_at'])
+                    ? Carbon::parse($data['otomax_first_sent_at'])
+                    : $attempt->created_at;
+                if ($firstSentAt->copy()->timezone('Asia/Jakarta')->toDateString() !== now('Asia/Jakarta')->toDateString()) {
+                    return ['status' => 'pending', 'uncertain' => true, 'message' => 'Pengiriman ulang OtomaX dihentikan karena sudah berganti hari (WIB). Menunggu callback supplier.'];
+                }
+                $event = 'transaction';
+            }
+            if ($event === 'transaction') {
+                $data['otomax_first_sent_at'] ??= empty($data['otomax_sent']) ? now()->toIso8601String() : $attempt->created_at->toIso8601String();
+                $data['otomax_sent'] = true;
+                $attempt->update(['request_snapshot' => $data]);
+            }
+            $response = app(OtomaxClient::class)->send($connection, $event, ['product' => strtoupper($data['sku']), 'dest' => $order->destination, 'refID' => $attempt->reference, 'cost' => $attempt->cost], $data['otomax']);
+            $attempt->recordSupplierResponse($response['text'] ?? '', $response['error']);
+            $fields = $response['fields'];
+            if (isset($fields['refid']) && $fields['refid'] !== $attempt->reference) {
+                return ['status' => 'pending', 'uncertain' => true, 'message' => 'Referensi hasil OtomaX tidak cocok.'];
+            }
+            if ((isset($fields['tujuan']) && $fields['tujuan'] !== $order->destination) || (isset($fields['kode_produk']) && strtoupper($fields['kode_produk']) !== strtoupper($data['sku']))) {
+                return ['status' => 'pending', 'uncertain' => true, 'message' => 'Produk atau tujuan hasil OtomaX tidak cocok.'];
+            }
+            if (isset($fields['id_transaksi'])) {
+                $attempt->update(['provider_id' => $fields['id_transaksi']]);
+            }
+
+            $this->updateOtomaxPrice($order, $attempt, $response);
+
+            return ['status' => $response['error'] ? 'pending' : $response['status'], 'uncertain' => (bool) $response['error'], 'cost' => OtomaxParser::amount($fields['harga'] ?? null), 'result' => $fields['sn'] ?? '', 'message' => $response['error'] ? 'Jawaban OtomaX perlu diperiksa; menunggu callback.' : 'Hasil OtomaX diterima.'];
+        }
+
         if ($order->is_sandbox && $attempt->source === 'hanshop') {
             return ['status' => 'success', 'cost' => $attempt->cost, 'result' => 'SIMULASI HANSHOP: '.$attempt->reference];
         }
@@ -215,7 +385,7 @@ class CustomerFulfillment
             $result = app(HanshopIdentity::class)->call('supplier/transaction', ['id_user' => $data['id_user'], 'store_id' => $order->store_id, 'access_until' => now()->addMinutes(5)->toIso8601String(),
                 'reference' => $attempt->reference, 'kind' => $data['kind'], 'product_code' => $data['sku'], 'destination' => $order->destination, 'max_price' => (int) ($order->snapshot['subtotal'] ?? $order->amount)]);
             if (($result['reference'] ?? '') !== $attempt->reference || ($result['id_user'] ?? '') !== $data['id_user']) {
-                return ['status' => 'pending', 'message' => 'Referensi hasil pemasok belum cocok.'];
+                return ['status' => 'pending', 'uncertain' => true, 'message' => 'Referensi hasil pemasok belum cocok.'];
             }
             $status = $result['status'] ?? 'PENDING';
 
@@ -236,19 +406,19 @@ class CustomerFulfillment
             $inquiry = $inquiryResponse->json('data');
             $inquiryFailure = is_array($inquiry) && ($inquiry['status'] ?? '') === 'Gagal' && in_array((string) ($inquiry['rc'] ?? ''), self::DIGIFLAZZ_FAILURES, true);
             if (! $inquiryResponse->successful() && ! ($inquiryResponse->status() === 400 && $inquiryFailure)) {
-                return ['status' => 'pending', 'message' => 'Pemeriksaan tagihan belum dapat dipastikan.'];
+                return ['status' => 'pending', 'uncertain' => true, 'message' => 'Pemeriksaan tagihan belum dapat dipastikan.'];
             }
-            if (! is_array($inquiry) || ($inquiry['ref_id'] ?? '') !== $attempt->reference || ($inquiry['buyer_sku_code'] ?? '') !== $data['sku'] || ($inquiry['customer_no'] ?? '') !== $order->destination) {
-                return ['status' => 'pending', 'message' => 'Pemeriksaan tagihan belum memperoleh hasil pasti.'];
+            if (! is_array($inquiry) || ($inquiry['ref_id'] ?? '') !== $attempt->reference || ! self::matchesDigiflazzSku($inquiry['buyer_sku_code'] ?? null, $data['sku']) || ($inquiry['customer_no'] ?? '') !== $order->destination) {
+                return ['status' => 'pending', 'uncertain' => true, 'message' => 'Pemeriksaan tagihan belum memperoleh hasil pasti.'];
             }
             if ($inquiryFailure) {
                 return ['status' => 'failed', 'message' => $this->digiflazzFailureMessage((string) $inquiry['rc'], $order->is_sandbox, $inquiry['message'] ?? null)];
             }
             if (($inquiry['status'] ?? '') !== 'Sukses' || ($inquiry['rc'] ?? '') !== '00') {
-                return ['status' => 'pending', 'message' => 'Pemeriksaan tagihan belum memperoleh hasil pasti.'];
+                return ['status' => 'pending', 'uncertain' => true, 'message' => 'Pemeriksaan tagihan belum memperoleh hasil pasti.'];
             }
             if (! is_numeric($inquiry['price'] ?? null) || (int) $inquiry['price'] <= 0) {
-                return ['status' => 'pending', 'message' => 'Nominal tagihan belum valid.'];
+                return ['status' => 'pending', 'uncertain' => true, 'message' => 'Nominal tagihan belum valid.'];
             }
             if ((int) $inquiry['price'] > (int) ($order->snapshot['subtotal'] ?? $order->amount)) {
                 return ['status' => 'failed', 'price_changed' => true, 'message' => 'Modal tagihan melebihi harga pesanan.'];
@@ -266,10 +436,10 @@ class CustomerFulfillment
         $body = $response->json('data');
         $terminalFailure = is_array($body) && ($body['status'] ?? '') === 'Gagal' && in_array((string) ($body['rc'] ?? ''), self::DIGIFLAZZ_FAILURES, true);
         if (! $response->successful() && ! ($response->status() === 400 && $terminalFailure)) {
-            return ['status' => 'pending', 'message' => 'Respons Digiflazz belum dapat dipastikan (HTTP '.$response->status().').'];
+            return ['status' => 'pending', 'uncertain' => true, 'message' => 'Respons Digiflazz belum dapat dipastikan (HTTP '.$response->status().').'];
         }
-        if (! is_array($body) || ($body['ref_id'] ?? '') !== $attempt->reference || ($body['buyer_sku_code'] ?? '') !== $data['sku'] || ($body['customer_no'] ?? '') !== $order->destination) {
-            return ['status' => 'pending', 'message' => 'Respons pemasok belum dapat dipastikan.'];
+        if (! is_array($body) || ($body['ref_id'] ?? '') !== $attempt->reference || ! self::matchesDigiflazzSku($body['buyer_sku_code'] ?? null, $data['sku']) || ($body['customer_no'] ?? '') !== $order->destination) {
+            return ['status' => 'pending', 'uncertain' => true, 'message' => 'Respons pemasok belum dapat dipastikan.'];
         }
         $status = $body['status'] ?? '';
         $rc = (string) ($body['rc'] ?? '');
@@ -304,6 +474,39 @@ class CustomerFulfillment
             } elseif ($status === 'pending') {
                 $order->update(['status' => 'pending', 'message' => 'Transaksi sedang diproses pemasok. Silakan cek kembali.']);
             }
+        }, 3);
+    }
+
+    private function updateOtomaxPrice(CustomerOrder $order, OrderAttempt $attempt, array $parsed): void
+    {
+        $cost = OtomaxParser::amount($parsed['fields']['harga'] ?? null);
+        if ($order->is_sandbox || ! empty($parsed['error']) || $cost === null || $cost <= 0 || $cost > 1000000000000) {
+            return;
+        }
+        $snapshot = $attempt->request_snapshot;
+        DB::transaction(function () use ($order, $snapshot, $cost) {
+            $store = Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard($store);
+            if ($store->sandbox) {
+                return;
+            }
+            $connection = SupplierConnection::where('store_id', $store->id)->where('kind', 'otomax')->where('enabled', true)->whereKey($snapshot['connection_id'] ?? null)->lockForUpdate()->first();
+            if (! $connection || ($connection->credentials['member_id'] ?? null) !== ($snapshot['otomax']['credentials']['member_id'] ?? null)
+                || ($connection->settings['base_url'] ?? null) !== ($snapshot['otomax']['settings']['base_url'] ?? null)) {
+                return;
+            }
+            $item = SupplierProduct::where('store_id', $store->id)->where('connection_id', $connection->id)->where('mode', $snapshot['mode'] ?? 'prepaid')->where('sku', $snapshot['sku'] ?? '')->lockForUpdate()->first();
+            if (! $item || $item->cost === $cost) {
+                return;
+            }
+            $item->update(['cost' => $cost]);
+            DB::afterCommit(function () use ($store, $item) {
+                try {
+                    app(StoreCatalog::class)->reprice($store, $item->id);
+                } catch (\Throwable $error) {
+                    report($error);
+                }
+            });
         }, 3);
     }
 

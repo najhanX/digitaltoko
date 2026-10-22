@@ -81,6 +81,61 @@ class CustomerCommerceTest extends TestCase
         app(CustomerCommerce::class)->settings($s)->update(['gateway' => $type, 'credentials' => ['server_key' => 'test-only-server-key', 'qris_payload' => $this->qris(), 'forward_token' => str_repeat('f', 40), 'application_package' => 'id.dana'], 'custom_licensed_at' => $type === 'custom' ? now() : null]);
     }
 
+    public function test_order_auto_refresh_checks_midtrans_and_records_payment_once(): void
+    {
+        $store = $this->store();
+        $this->gateway($store);
+        $product = $this->product($store);
+        $engine = app(CustomerCommerce::class);
+        $order = $engine->begin($store, $this->input($product, ['payment' => 'gateway']), null);
+        $order->update(['provider_id' => 'MID-AUTO-1', 'qr_image' => 'data:image/png;base64,dGVzdA==']);
+        $paid = false;
+        Http::fake(function ($request) use ($order, &$paid) {
+            $this->assertSame('GET', $request->method());
+            $this->assertStringEndsWith('/'.$order->number.'/status', $request->url());
+
+            return Http::response(['status_code' => $paid ? '200' : '201', 'order_id' => $order->number, 'gross_amount' => $order->total.'.00', 'currency' => 'IDR', 'transaction_id' => 'MID-AUTO-1', 'transaction_status' => $paid ? 'settlement' : 'pending', 'settlement_time' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s')]);
+        });
+        $url = $engine->url($order);
+        $this->get($url)->assertOk()->assertInertia(fn (Page $page) => $page->where('order.payment_status', 'unpaid')->where('order.payment_check_failed', false));
+        $paid = true;
+        $this->get($url)->assertOk();
+        Http::assertSentCount(1);
+        $this->travel(11)->seconds();
+        $this->get($url)->assertOk()->assertInertia(fn (Page $page) => $page->where('order.payment_status', 'paid')->where('order.payment_check_failed', false));
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+        $this->get($url)->assertOk();
+        Http::assertSentCount(2);
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+        $this->assertDatabaseCount('commerce_receipts', 1);
+    }
+
+    public function test_order_payment_poll_recovers_from_midtrans_error_and_rejects_invalid_access(): void
+    {
+        $store = $this->store();
+        $this->gateway($store);
+        $product = $this->product($store);
+        $engine = app(CustomerCommerce::class);
+        $order = $engine->begin($store, $this->input($product, ['payment' => 'gateway']), null);
+        $order->update(['provider_id' => 'MID-AUTO-2', 'qr_image' => 'data:image/png;base64,dGVzdA==']);
+        $failed = true;
+        Http::fake(function () use ($order, &$failed) {
+            return $failed ? Http::response([], 503) : Http::response(['status_code' => '200', 'order_id' => $order->number, 'gross_amount' => $order->total.'.00', 'currency' => 'IDR', 'transaction_id' => 'MID-AUTO-2', 'transaction_status' => 'settlement', 'settlement_time' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s')]);
+        });
+        $url = $engine->url($order);
+        $this->get(str_replace($engine->token($order), 'invalid-token', $url))->assertNotFound();
+        Http::assertNothingSent();
+        $this->get($url)->assertOk()->assertInertia(fn (Page $page) => $page->where('order.payment_status', 'unpaid')->where('order.payment_check_failed', true));
+        $this->get($url)->assertOk();
+        Http::assertSentCount(1);
+        $this->assertSame('unpaid', $order->fresh()->payment_status);
+        $failed = false;
+        $this->travel(11)->seconds();
+        $this->get($url)->assertOk()->assertInertia(fn (Page $page) => $page->where('order.payment_status', 'paid')->where('order.payment_check_failed', false));
+        Http::assertSentCount(2);
+    }
+
     private function qris(): string
     {
         $s = '00020101021126080004TEST5204000053033605802ID5904TEST6007JAKARTA6304';
@@ -208,7 +263,7 @@ class CustomerCommerceTest extends TestCase
             $references[] = $r['ref_id'];
             $count++;
 
-            return Http::response(['data' => ['ref_id' => $r['ref_id'], 'buyer_sku_code' => $r['buyer_sku_code'], 'customer_no' => $r['customer_no'], 'status' => $count === 1 ? 'Pending' : 'Sukses', 'rc' => $count === 1 ? '03' : '00', 'price' => 8000, 'sn' => 'SN-TEST']]);
+            return Http::response(['data' => ['ref_id' => $r['ref_id'], 'buyer_sku_code' => strtolower($r['buyer_sku_code']), 'customer_no' => $r['customer_no'], 'status' => $count === 1 ? 'Pending' : 'Sukses', 'rc' => $count === 1 ? '03' : '00', 'price' => 8000, 'sn' => 'SN-TEST']]);
         });
         $order = app(CustomerCommerce::class)->begin($s, $this->input($p), $c);
         app(CustomerFulfillment::class)->run($order);
@@ -218,9 +273,86 @@ class CustomerCommerceTest extends TestCase
         $this->assertSame(1, $count);
         $this->travel(61)->seconds();
         app(CustomerFulfillment::class)->run($order);
+        $this->assertSame(1, $count);
+        app(CustomerFulfillment::class)->retrySupplier($order);
         $this->assertSame('success', $order->fresh()->status);
         $this->assertSame($references[0], $references[1]);
         $this->assertSame(1, PremiumStock::where('status', 'ready')->count());
+        $this->assertSame(0, CustomerLedger::where('reason', 'refund')->count());
+    }
+
+    public function test_unavailable_deleted_and_empty_sources_are_skipped_before_the_first_request(): void
+    {
+        foreach (['unavailable', 'deleted', 'empty'] as $state) {
+            $store = $this->store();
+            $customer = $this->customer($store);
+            $product = $this->product($store);
+            $source = $this->remote($store, $product);
+            $order = app(CustomerCommerce::class)->begin($store, $this->input($product), $customer);
+            if ($state === 'deleted') {
+                $source->delete();
+            } else {
+                $source->update($state === 'empty' ? ['quantity' => 0] : ['available' => false]);
+            }
+            app(CustomerFulfillment::class)->run($order);
+            $attempt = $order->attempts()->where('source', 'digiflazz')->firstOrFail();
+            $this->assertSame('failed', $attempt->status);
+            $this->assertNull($attempt->last_checked_at);
+            $this->assertStringContainsString('tidak tersedia', $attempt->message);
+            $this->assertSame('success', $order->fresh()->status);
+            $this->assertSame('sent', PremiumStock::where('product_id', $product->id)->sole()->status);
+            $this->assertSame(85000, $customer->fresh()->balance);
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_a_source_that_disappears_after_dispatch_keeps_pending_without_sending_a_fallback(): void
+    {
+        $store = $this->store();
+        $product = $this->product($store);
+        $source = $this->remote($store, $product);
+        Http::fake(fn ($request) => Http::response(['data' => ['ref_id' => $request['ref_id'], 'buyer_sku_code' => $request['buyer_sku_code'], 'customer_no' => $request['customer_no'], 'status' => 'Pending', 'rc' => '03', 'price' => 8000]]));
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product), $this->customer($store));
+        app(CustomerFulfillment::class)->run($order);
+        $source->update(['available' => false]);
+        $this->travel(2)->minutes();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame('ready', PremiumStock::where('product_id', $product->id)->sole()->status);
+        $this->assertSame(0, CustomerLedger::where('reason', 'refund')->count());
+        Http::assertSentCount(1);
+    }
+
+    public function test_hanshop_pending_is_rechecked_only_by_explicit_supplier_action(): void
+    {
+        config(['services.hanshop.url' => 'https://hanshop.test', 'services.hanshop.token' => str_repeat('t', 40)]);
+        $store = $this->store();
+        $store->owner->update(['hanshop_user_id' => 'HD-RETRY']);
+        $customer = $this->customer($store);
+        $product = $this->product($store);
+        $this->remote($store, $product);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product), $customer);
+        $attempt = $order->attempts()->where('source', 'digiflazz')->firstOrFail();
+        $snapshot = $attempt->request_snapshot;
+        $snapshot['id_user'] = 'HD-RETRY';
+        $attempt->update(['source' => 'hanshop', 'request_snapshot' => $snapshot]);
+        $calls = 0;
+        Http::fake(function ($request) use (&$calls) {
+            $calls++;
+
+            return Http::response(['status' => 'SUCCESS', 'data' => ['reference' => $request['reference'], 'id_user' => $request['id_user'], 'status' => $calls === 1 ? 'PENDING' : 'SUCCESS', 'price' => 8000, 'result' => $calls === 1 ? null : 'HANSHOP-SN']]);
+        });
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->travel(2)->minutes();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        Http::assertSentCount(1);
+        $this->actingAs($store->owner)->post('/stores/'.$store->id.'/orders/'.$order->id, ['action' => 'retry_supplier'])->assertSessionHasNoErrors();
+        Http::assertSentCount(2);
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame('HANSHOP-SN', $order->fresh()->result);
+        $requests = Http::recorded()->values();
+        $this->assertSame($requests[0][0]['reference'], $requests[1][0]['reference']);
         $this->assertSame(0, CustomerLedger::where('reason', 'refund')->count());
     }
 
@@ -621,7 +753,7 @@ class CustomerCommerceTest extends TestCase
             $command = $r['commands'];
             $status = $command === 'pay-pasca' ? 'Pending' : 'Sukses';
 
-            return Http::response(['data' => ['ref_id' => $r['ref_id'], 'buyer_sku_code' => $r['buyer_sku_code'], 'customer_no' => $r['customer_no'], 'status' => $status, 'rc' => $status === 'Pending' ? '03' : '00', 'price' => 52000, 'customer_name' => 'Nama Dummy', 'periode' => '202610', 'sn' => 'BILL-SN']]);
+            return Http::response(['data' => ['ref_id' => $r['ref_id'], 'buyer_sku_code' => strtolower($r['buyer_sku_code']), 'customer_no' => $r['customer_no'], 'status' => $status, 'rc' => $status === 'Pending' ? '03' : '00', 'price' => 52000, 'customer_name' => 'Nama Dummy', 'periode' => '202610', 'sn' => 'BILL-SN']]);
         });
         $service = app(CustomerInquiryService::class);
         $inquiry = $service->quote($s, $p->id, '12345678', $c->phone, 'inquiry-test-key');
@@ -633,7 +765,7 @@ class CustomerCommerceTest extends TestCase
         $this->assertSame('pending', $o->fresh()->status);
         $this->assertSame(47500, $c->fresh()->balance);
         $this->travel(61)->seconds();
-        app(CustomerFulfillment::class)->run($o);
+        app(CustomerFulfillment::class)->retrySupplier($o);
         $this->assertSame('success', $o->fresh()->status);
         Http::assertSentCount(4);
         $requests = Http::recorded()->map(fn ($pair) => $pair[0])->values();

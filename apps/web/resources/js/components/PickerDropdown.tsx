@@ -18,7 +18,7 @@ export default function PickerDropdown({label,summary,children}:{label:string;su
         return()=>{window.removeEventListener('resize',place);window.removeEventListener('scroll',place,true);};
     },[open]);
     return <div className="picker-dropdown">
-        <button ref={trigger} type="button" className="picker-dropdown-trigger" aria-expanded={open} aria-controls={id} aria-haspopup="dialog" onClick={()=>{const element=panel.current;if(!element)return;if(element.matches(':popover-open'))element.hidePopover();else element.showPopover();}}><span><strong>{label}</strong><small>{summary}</small></span><ChevronDown size={17}/></button>
+        <button ref={trigger} type="button" className="picker-dropdown-trigger" aria-expanded={open} aria-controls={id} aria-haspopup="dialog" popoverTarget={id} popoverTargetAction="toggle"><span><strong>{label}</strong><small>{summary}</small></span><ChevronDown size={17}/></button>
         <div ref={panel} id={id} popover="auto" role="dialog" aria-label={label} className="picker-dropdown-panel" style={position} onToggle={event=>setOpen(event.newState==='open')} onChange={event=>{if(event.target instanceof HTMLInputElement && event.target.type==='radio')panel.current?.hidePopover();}}>
             {open && <div className="picker-dropdown-scroll">{children}</div>}
         </div>

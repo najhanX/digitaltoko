@@ -12,6 +12,7 @@ use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\CustomerPanelController;
 use App\Http\Controllers\GameIdentityController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\OtomaxController;
 use App\Http\Controllers\OwnerAuthController;
 use App\Http\Controllers\OwnerOnboardingController;
 use App\Http\Controllers\PanelController;
@@ -107,6 +108,25 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/customers', [CustomerPanelController::class, 'customers']);
     Route::get('/stores/{store}/customers/{customer}/ledger', [CustomerPanelController::class, 'ledger']);
     Route::post('/stores/{store}/customers/{customer}/settle', [CustomerPanelController::class, 'settle'])->middleware('throttle:6,1,commerce-stores-store-customers-customer-settle');
+
+    Route::prefix('/stores/{store}/otomax')->controller(OtomaxController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::get('/options', 'options');
+        Route::get('/tester', 'tester');
+        Route::get('/profiles/{profile}', 'profile');
+        Route::post('/profiles', 'saveProfile');
+        Route::patch('/profiles/{profile}', 'saveProfile');
+        Route::delete('/profiles/{profile}', 'deleteProfile');
+        Route::post('/test', 'test')->middleware('throttle:30,1');
+        Route::post('/connections', 'save');
+        Route::patch('/connections/{connection}', 'save');
+        Route::post('/connections/{connection}/callback-url', 'callbackUrl')->middleware('throttle:20,1');
+        Route::post('/connections/{connection}/balance', 'balance')->middleware('throttle:20,1');
+        Route::post('/connections/{connection}/ticket', 'ticket')->middleware('throttle:6,1');
+        Route::post('/connections/{connection}/preview', 'preview')->middleware('throttle:10,1');
+        Route::post('/imports/{import}/confirm', 'confirm')->middleware('throttle:10,1');
+    });
+
     Route::get('/stores/{store}/sources', [SupplierController::class, 'index']);
     Route::post('/stores/{store}/sources/{connection}/webhook', [SupplierController::class, 'webhook'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/sources/{connection}/webhook-secret', [SupplierController::class, 'webhookSecret'])->middleware('throttle:6,1,supplier-webhook-secret');
@@ -117,9 +137,11 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/catalog-structure', [CatalogTaxonomyController::class, 'index'])->name('stores.taxonomy');
     Route::get('/stores/{store}/catalog-structure/options', [CatalogTaxonomyController::class, 'options']);
     Route::get('/stores/{store}/catalog-structure/destination-profile', [CatalogTaxonomyController::class, 'destinationProfile'])->middleware('throttle:60,1');
+    Route::post('/stores/{store}/catalog-structure/bulk-delete', [CatalogTaxonomyController::class, 'bulkDelete']);
     Route::post('/stores/{store}/services', [CatalogTaxonomyController::class, 'service']);
     Route::patch('/stores/{store}/services/{service}', [CatalogTaxonomyController::class, 'service']);
     Route::delete('/stores/{store}/services/{service}', [CatalogTaxonomyController::class, 'deleteService']);
+    Route::post('/stores/{store}/categories/bulk', [CatalogTaxonomyController::class, 'bulkCategories']);
     Route::post('/stores/{store}/categories', [CatalogTaxonomyController::class, 'category']);
     Route::patch('/stores/{store}/categories/{category}', [CatalogTaxonomyController::class, 'category']);
     Route::delete('/stores/{store}/categories/{category}', [CatalogTaxonomyController::class, 'deleteCategory']);

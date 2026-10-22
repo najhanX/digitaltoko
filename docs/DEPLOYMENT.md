@@ -182,3 +182,19 @@ Purge menghapus data dan direktori **aktif** khusus toko. Snapshot database/medi
 ### Persetujuan penghapusan manual dari panel
 
 Permohonan owner (termasuk toko belum pernah berlangganan) ada pada Admin → Kelola toko → pilih status **Menunggu penghapusan** → Kelola → **Tinjau & hapus toko**. Periksa preview dan kewajiban, ketik subdomain persis, lalu pilih **Hapus permanen**. Jika cleanup gagal, perbaiki bot manager/storage, muat ulang pratinjau dan pilih **Lanjutkan penghapusan**. Tidak perlu mengaktifkan STORE_PURGE_ENABLED atau menjalankan --apply untuk alur ini. Flag otomatis tetap boleh false. Scheduler tidak menyetujui permohonan manual secara otomatis. Tidak ada jalur memaksa melewati saldo/pending. Migration baru mengangkat toko suspended_manual existing menjadi permohonan yang dapat ditinjau admin.
+
+
+## Supplier OtomaX (21 Oktober 2026)
+
+- Deploy `composer install --no-dev --optimize-autoloader` (PhpSpreadsheet 5.10.0), build web, backup database, lalu `php artisan migrate --force`. Ada dua migrasi: tabel/profil/koneksi multi-supplier dan perluasan encrypted payload/snapshot untuk file besar. Jangan mengganti APP_KEY.
+- Menu owner/staff: Produk & harga → Supplier OtomaX. Buat kelompok jawaban, tambahkan koneksi, uji saldo, ambil URL callback, lalu impor XLSX/CSV. Langkah rinci ada di [OTOMAX_PROGRESS.md](OTOMAX_PROGRESS.md).
+- `QUEUE_CONNECTION=database` atau Redis, `DB_QUEUE_RETRY_AFTER=240` / `REDIS_QUEUE_RETRY_AFTER=240` (harus melebihi timeout job impor 180 detik). Jalankan `php artisan queue:work --timeout=180`, serta scheduler. Restart worker setelah deploy. Driver sync didukung untuk tes, tetapi impor besar sebaiknya antrean.
+- `APP_URL` harus URL publik platform/URL ngrok yang aktif. Daftarkan URL callback **lengkap** dari modal, termasuk ID koneksi dan token, ke supplier. Route menerima GET/POST `/api/commerce/otomax/{connection}/{token}`; IP callback diisi sesuai IP pengirim nyata. Jangan menyalin URL/token ke log publik. Whitelist IP keluar VPS pada IP Center supplier jika diwajibkan. IP request transaksi dan IP callback bisa berbeda.
+- Tidak ada polling pembelian ulang. Biarkan endpoint cek status kosong kecuali supplier menjamin endpoint tersebut read-only dan mendukung `cek=1`. Katalog/harga/stok diperbarui lewat impor ulang, bukan API daftar produk yang belum terverifikasi.
+- Paket dengan fitur sumber PPOB sendiri memperoleh OtomaX; paket stok premium saja tidak. Sandbox mensimulasikan transaksi/saldo/tiket tanpa request supplier. Tiket deposit tidak mentransfer uang atau menandai saldo masuk otomatis.
+- Scheduler membersihkan file/payload pratinjau setelah dua jam. Riwayat ringkas dan callback mengikuti lifecycle toko; purge juga membersihkan file OtomaX dan job terkait. Tidak ada penghapusan log callback otomatis berdasarkan umur saat ini.
+
+
+### Impor OtomaX besar dan penyimpanan worker
+
+Hasil normalisasi Excel/CSV disimpan terenkripsi pada `storage/app/private/otomax/{store}/previews/{import}`; database hanya memuat metadata, path dan hash kecil. Mount disk `local` privat yang sama pada proses web dan queue jika keduanya berjalan di container/host berbeda, dan pertahankan APP_KEY. Jangan menaruh preview di disk publik. Setelah pembaruan ini restart worker/scheduler yang berjalan lama lalu unggah ulang file yang sebelumnya gagal. Tidak ada migrasi tambahan atau keharusan menaikkan max_allowed_packet untuk perbaikan ini. Impor selesai dan scheduler membersihkan berkas sesuai lifecycle toko/pratinjau.

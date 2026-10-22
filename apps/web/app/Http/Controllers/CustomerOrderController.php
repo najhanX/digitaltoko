@@ -134,13 +134,15 @@ class CustomerOrderController extends Controller
     {
         $access->order($request, $order);
         Inertia::encryptHistory();
+        $paymentCheckFailed = ! app(CustomerPayments::class)->refreshForReceipt($order);
+        $order->refresh();
         try {
             app(CustomerPayments::class)->repairQr($order);
         } catch (\Throwable) {
             // Invoice remains available so the customer can retry preparing its QR.
         }
 
-        return Inertia::render('Storefront/Order', ['store' => $order->store->only(['name', 'slug', 'template', 'branding']), 'order' => $commerce->publicData($order), 'canCancel' => $order->payment_status === 'unpaid' && $order->status === 'awaiting_payment' && (! $order->guest_checkout_hash || hash_equals($order->guest_checkout_hash, app(GuestCheckout::class)->key($request))), 'access' => $commerce->token($order)])->toResponse($request)->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
+        return Inertia::render('Storefront/Order', ['store' => $order->store->only(['name', 'slug', 'template', 'branding']), 'order' => [...$commerce->publicData($order), 'payment_check_failed' => $paymentCheckFailed && $order->payment_status !== 'paid'], 'canCancel' => $order->payment_status === 'unpaid' && $order->status === 'awaiting_payment' && (! $order->guest_checkout_hash || hash_equals($order->guest_checkout_hash, app(GuestCheckout::class)->key($request))), 'access' => $commerce->token($order)])->toResponse($request)->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
     public function refresh(Request $request, CustomerOrder $order, CustomerAccess $access): RedirectResponse

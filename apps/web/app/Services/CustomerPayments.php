@@ -136,6 +136,41 @@ class CustomerPayments
         app(CustomerCommerce::class)->ensure(($data['order_id'] ?? '') === $order->number && preg_match('/^[0-9]+(?:\.00)?$/', (string) ($data['gross_amount'] ?? '')) && (int) $data['gross_amount'] === $order->total && ($data['currency'] ?? 'IDR') === 'IDR', 'Nominal atau referensi Midtrans tidak sesuai.');
     }
 
+    public function refreshForReceipt(CustomerOrder $order): bool
+    {
+        if ($order->gateway !== 'midtrans' || $order->payment_status === 'paid' || $order->status !== 'awaiting_payment') {
+            return true;
+        }
+        $key = 'receipt-payment-check:'.$order->id;
+        $cached = Cache::get($key);
+        if (is_bool($cached)) {
+            return $cached;
+        }
+        $lock = Cache::lock($key.':lock', 30);
+        if (! $lock->get()) {
+            return true;
+        }
+        try {
+            $cached = Cache::get($key);
+            if (is_bool($cached)) {
+                return $cached;
+            }
+            $expiresAt = now()->addSeconds(10);
+            try {
+                $this->refresh($order->fresh());
+                $checked = true;
+            } catch (\Throwable $exception) {
+                report($exception);
+                $checked = false;
+            }
+            Cache::put($key, $checked, $expiresAt);
+
+            return $checked;
+        } finally {
+            $lock->release();
+        }
+    }
+
     public function refresh(CustomerOrder $order): ?array
     {
         if ($order->gateway !== 'midtrans' || $order->payment_status === 'paid') {

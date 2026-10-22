@@ -19,7 +19,7 @@ class CatalogAccess
         $staff = $request->user('staff');
         $grants = $staff?->permissions ?? [];
         $implied = match ($permission) {
-            'vouchers.view' => ['vouchers.manage'], 'articles.view' => ['articles.manage'], 'orders.view' => ['orders.manage', 'orders.resend', 'guests.resolve'], 'customers.view' => ['customers.contacts', 'wallet.view', 'wallet.settlement'], 'payments.view' => ['payments.policy', 'checkout.manage'], 'products.view' => ['products.manage', 'pricing.manage'],'stock.view' => ['stock.manage', 'stock.credentials'],default => []
+            'vouchers.view' => ['vouchers.manage'], 'articles.view' => ['articles.manage'], 'orders.view' => ['orders.manage', 'orders.resend', 'guests.resolve'], 'customers.view' => ['customers.contacts', 'wallet.view', 'wallet.settlement'], 'payments.view' => ['payments.policy', 'checkout.manage'], 'products.view' => ['products.manage', 'pricing.manage', 'suppliers.manage', 'suppliers.responses', 'suppliers.import', 'suppliers.deposit', 'suppliers.balance'],'stock.view' => ['stock.manage', 'stock.credentials'],default => []
         };
         abort_unless($staff && $staff->active && $staff->store_id === $store->id && (in_array($permission, $grants, true) || count(array_intersect($implied, $grants)) > 0), 403);
 
@@ -41,6 +41,6 @@ class CatalogAccess
         $snapshot = $store->subscription ?? [];
         $features = $snapshot['features'] ?? app(SubscriptionService::class)->features($snapshot['category'] ?? $store->category, $snapshot['plan'] ?? $store->plan);
 
-        return in_array($source, $features, true);
+        return in_array($source === 'otomax' ? 'digiflazz' : $source, $features, true);
     }
 }

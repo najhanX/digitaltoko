@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class DigiflazzWebhookTest extends TestCase
@@ -60,6 +61,25 @@ class DigiflazzWebhookTest extends TestCase
         $raw = json_encode(['data' => $body]);
 
         return $this->call('POST', '/api/commerce/digiflazz', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_HUB_SIGNATURE' => 'sha1='.hash_hmac('sha1', $raw, $secret), 'HTTP_X_DIGIFLAZZ_EVENT' => 'update'], $raw);
+    }
+
+    public function test_success_callback_accepts_sku_case_difference_with_distinct_supplier_reference(): void
+    {
+        [$store, $customer, $connection, $order, $attempt, $body] = $this->pending(false);
+        $snapshot = $attempt->request_snapshot;
+        $snapshot['sku'] = strtoupper($snapshot['sku']);
+        $attempt->update(['request_snapshot' => $snapshot]);
+        $this->assertNotSame($order->number, $attempt->reference);
+        $this->sendCallback([...$body, 'status' => 'Sukses', 'rc' => '00', 'sn' => 'SN-PRODUK'])->assertOk();
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame('SN-PRODUK', $order->fresh()->result);
+        $this->assertSame('success', $attempt->fresh()->status);
+        Http::assertNothingSent();
+        $this->actingAs($store->owner)->get('/stores/'.$store->id.'/orders/'.$order->id)
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('order.number', $order->number)
+                ->where('attempts.0.reference', $attempt->reference)
+                ->missing('attempts.0.request_snapshot'));
     }
 
     public function test_failed_callback_finishes_and_refunds_once_without_polling_supplier(): void

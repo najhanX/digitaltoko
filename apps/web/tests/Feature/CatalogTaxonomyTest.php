@@ -16,6 +16,7 @@ use App\Services\ProductPricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -41,6 +42,143 @@ class CatalogTaxonomyTest extends TestCase
     private function product(Store $store, string $service = 'Pulsa', string $category = 'Telkomsel'): CatalogProduct
     {
         return CatalogProduct::create(['store_id' => $store->id, 'name' => 'Produk tes', 'code' => Str::random(10), 'kind' => 'premium', 'service' => $service, 'category' => $category, 'active' => true, 'sale_price' => 15000]);
+    }
+
+    public function test_bulk_categories_move_products_and_update_only_selected_settings(): void
+    {
+        $store = $this->shop();
+        $first = $this->product($store, 'Produk digital', 'Paket A');
+        $second = $this->product($store, 'Produk digital', 'Paket B');
+        $untouched = $this->product($store, 'Produk digital', 'Paket C');
+        $destination = CatalogService::create(['store_id' => $store->id, 'name' => 'Paket Data', 'name_key' => 'paket data']);
+        $store->update(['branding' => ['category_images' => [$first->category_id => 'https://example.test/image.png'], 'category_games' => [$first->category_id => ['game' => 'none', 'destination_format' => 'pipe']]]]);
+        $this->actingAs($store->owner)->postJson('/stores/'.$store->id.'/categories/bulk', ['ids' => [$first->category_id, $second->category_id], 'changes' => ['service_id' => $destination->id, 'provider' => 'telkomsel', 'destination_type' => 'phone']])->assertRedirect();
+        $this->assertSame('Paket Data', $first->fresh()->service);
+        $this->assertSame('Paket Data', $second->fresh()->service);
+        $this->assertSame('Produk digital', $untouched->fresh()->service);
+        $this->assertSame($destination->id, CatalogCategory::find($first->category_id)->service_id);
+        $branding = $store->fresh()->branding;
+        $this->assertSame('telkomsel', $branding['category_providers'][$first->category_id]);
+        $this->assertSame('phone', $branding['category_destinations'][$second->category_id]['type']);
+        $this->assertSame('pipe', $branding['category_games'][$first->category_id]['destination_format']);
+        $this->assertSame('https://example.test/image.png', $branding['category_images'][$first->category_id]);
+        $this->assertSame(15000, $first->fresh()->sale_price);
+        $this->postJson('/stores/'.$store->id.'/categories/bulk', ['ids' => [$first->category_id], 'changes' => ['provider' => null]])->assertRedirect();
+        $this->assertArrayNotHasKey($first->category_id, $store->fresh()->branding['category_providers']);
+        $this->assertSame('telkomsel', $store->fresh()->branding['category_providers'][$second->category_id]);
+        Http::assertNothingSent();
+    }
+
+    public function test_bulk_category_name_collision_rolls_back_every_change(): void
+    {
+        $store = $this->shop();
+        $first = $this->product($store, 'Produk digital', 'Sama');
+        $second = $this->product($store, 'Lainnya', 'Sama');
+        $target = CatalogService::create(['store_id' => $store->id, 'name' => 'Pulsa', 'name_key' => 'pulsa']);
+        $url = '/stores/'.$store->id.'/categories/bulk';
+        $this->actingAs($store->owner)->postJson($url, ['ids' => [$first->category_id, $second->category_id], 'changes' => ['service_id' => $target->id, 'provider' => 'telkomsel']])->assertUnprocessable()->assertJsonValidationErrors('changes.service_id');
+        $this->assertSame('Produk digital', $first->fresh()->service);
+        $this->assertSame('Lainnya', $second->fresh()->service);
+        $this->product($store, 'Pulsa', 'Sama');
+        $this->postJson($url, ['ids' => [$first->category_id], 'changes' => ['service_id' => $target->id]])->assertUnprocessable();
+        $this->assertSame('Produk digital', $first->fresh()->service);
+    }
+
+    public function test_bulk_category_permissions_and_store_boundaries_are_enforced(): void
+    {
+        $store = $this->shop();
+        $first = $this->product($store);
+        $other = $this->shop();
+        $foreign = $this->product($other);
+        $url = '/stores/'.$store->id.'/categories/bulk';
+        $this->actingAs($store->owner)->postJson($url, ['ids' => [$first->category_id, $foreign->category_id], 'changes' => ['destination_type' => 'phone']])->assertUnprocessable();
+        $this->assertEmpty($store->fresh()->branding);
+        $this->postJson($url, ['ids' => [$first->category_id], 'changes' => []])->assertUnprocessable();
+        $this->postJson($url, ['ids' => [$first->category_id], 'changes' => ['service_id' => $foreign->taxonomyCategory->service_id]])->assertUnprocessable();
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Viewer', 'username' => 'bulk-viewer', 'email' => 'bulk-viewer@test.invalid', 'password' => 'test-only-password', 'active' => true, 'permissions' => ['products.view']]);
+        auth('web')->logout();
+        $this->actingAs($staff, 'staff')->postJson($url, ['ids' => [$first->category_id], 'changes' => ['destination_type' => 'phone']])->assertForbidden();
+        $staff->update(['permissions' => ['products.manage']]);
+        $this->postJson($url, ['ids' => [$first->category_id], 'changes' => ['destination_type' => 'phone']])->assertRedirect();
+        $this->assertSame('phone', $store->fresh()->branding['category_destinations'][$first->category_id]['type']);
+        $this->postJson('/stores/'.$other->id.'/categories/bulk', ['ids' => [$foreign->category_id], 'changes' => ['destination_type' => 'phone']])->assertForbidden();
+    }
+
+    public function test_bulk_provider_and_game_column_conflicts_do_not_leave_partial_updates(): void
+    {
+        $store = $this->shop();
+        $first = $this->product($store, 'Produk digital', 'Umum');
+        $game = $this->product($store, 'Game', 'Mobile Legends');
+        $url = '/stores/'.$store->id.'/categories/bulk';
+        $this->actingAs($store->owner)->postJson($url, ['ids' => [$first->category_id, $game->category_id], 'changes' => ['provider' => 'telkomsel']])->assertUnprocessable()->assertJsonValidationErrors('changes.provider');
+        $this->postJson($url, ['ids' => [$first->category_id, $game->category_id], 'changes' => ['destination_columns' => '1']])->assertUnprocessable()->assertJsonValidationErrors('changes.destination_columns');
+        $this->assertEmpty($store->fresh()->branding);
+        $this->postJson($url, ['ids' => [$game->category_id], 'changes' => ['destination_type' => 'game', 'game_validation' => 'none', 'destination_columns' => '1', 'destination_format' => 'id']])->assertRedirect();
+        $this->assertSame(1, app(CategoryDestination::class)->profile($store->fresh(), $game->taxonomyCategory)['columns']);
+    }
+
+    public function test_bulk_delete_empty_categories_cleans_settings_and_keeps_shared_images(): void
+    {
+        Storage::fake('local');
+        $store = $this->shop();
+        $service = CatalogService::create(['store_id' => $store->id, 'name' => 'Pulsa', 'name_key' => 'pulsa']);
+        $categories = collect(['A', 'B', 'C'])->map(fn ($name) => CatalogCategory::create(['store_id' => $store->id, 'service_id' => $service->id, 'name' => $name, 'name_key' => strtolower($name)]));
+        $shared = 'storefront/'.$store->id.'/shared-category-image-123.png';
+        $exclusive = 'storefront/'.$store->id.'/exclusive-category-image-123.png';
+        Storage::disk('local')->put($shared, 'test image');
+        Storage::disk('local')->put($exclusive, 'test image');
+        $sharedUrl = '/storefront-media/'.$store->id.'/shared-category-image-123.png';
+        $exclusiveUrl = '/storefront-media/'.$store->id.'/exclusive-category-image-123.png';
+        $branding = ['category_images' => [$categories[0]->id => $sharedUrl, $categories[1]->id => $exclusiveUrl, $categories[2]->id => $sharedUrl]];
+        foreach (['category_image_preferences', 'category_games', 'category_destinations', 'category_providers'] as $key) {
+            $branding[$key] = [$categories[0]->id => 'fixture'];
+        }
+        $store->update(['branding' => $branding]);
+        $this->actingAs($store->owner)->postJson('/stores/'.$store->id.'/catalog-structure/bulk-delete', ['type' => 'categories', 'ids' => [$categories[0]->id, $categories[1]->id]])->assertRedirect();
+        $this->assertNull($categories[0]->fresh());
+        $this->assertNull($categories[1]->fresh());
+        $this->assertNotNull($categories[2]->fresh());
+        foreach (array_keys($branding) as $key) {
+            $this->assertArrayNotHasKey($categories[0]->id, $store->fresh()->branding[$key]);
+        }
+        Storage::disk('local')->assertExists($shared);
+        Storage::disk('local')->assertMissing($exclusive);
+    }
+
+    public function test_bulk_delete_refuses_all_items_when_one_is_still_used(): void
+    {
+        $store = $this->shop();
+        $product = $this->product($store);
+        $emptyService = CatalogService::create(['store_id' => $store->id, 'name' => 'Kosong', 'name_key' => 'kosong']);
+        $emptyCategory = CatalogCategory::create(['store_id' => $store->id, 'service_id' => $emptyService->id, 'name' => 'Kosong', 'name_key' => 'kosong']);
+        $url = '/stores/'.$store->id.'/catalog-structure/bulk-delete';
+        $this->actingAs($store->owner)->postJson($url, ['type' => 'categories', 'ids' => [$emptyCategory->id, $product->category_id]])->assertUnprocessable()->assertJsonValidationErrors('delete');
+        $this->assertNotNull($emptyCategory->fresh());
+        $this->assertNotNull($product->fresh());
+        $this->postJson($url, ['type' => 'services', 'ids' => [$emptyService->id, $product->taxonomyCategory->service_id]])->assertUnprocessable()->assertJsonValidationErrors('delete');
+        $this->assertNotNull($emptyService->fresh());
+    }
+
+    public function test_bulk_delete_services_requires_manage_permission_and_own_store_ids(): void
+    {
+        $store = $this->shop();
+        $other = $this->shop();
+        $services = collect(['A', 'B'])->map(fn ($name) => CatalogService::create(['store_id' => $store->id, 'name' => $name, 'name_key' => strtolower($name)]));
+        $foreign = CatalogService::create(['store_id' => $other->id, 'name' => 'Foreign', 'name_key' => 'foreign']);
+        $url = '/stores/'.$store->id.'/catalog-structure/bulk-delete';
+        $this->actingAs($store->owner)->postJson($url, ['type' => 'services', 'ids' => [$services[0]->id, $foreign->id]])->assertUnprocessable();
+        $this->assertNotNull($services[0]->fresh());
+        $this->postJson($url, ['type' => 'services', 'ids' => [$services[0]->id, $services[0]->id]])->assertUnprocessable();
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Viewer', 'username' => 'delete-viewer', 'email' => 'delete-viewer@test.invalid', 'password' => 'test-password', 'active' => true, 'permissions' => ['products.view']]);
+        auth('web')->logout();
+        $this->actingAs($staff, 'staff')->postJson($url, ['type' => 'services', 'ids' => $services->pluck('id')->all()])->assertForbidden();
+        $staff->update(['permissions' => ['products.manage']]);
+        $this->postJson($url, ['type' => 'services', 'ids' => $services->pluck('id')->all()])->assertRedirect();
+        foreach ($services as $service) {
+            $this->assertNull($service->fresh());
+        }
+        $this->assertNotNull($foreign->fresh());
+        Http::assertNothingSent();
     }
 
     public function test_category_provider_is_validated_scoped_and_removed_when_moved_or_deleted(): void

@@ -16,8 +16,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+use App\Models\OtomaxImport;
 use App\Models\SubscriptionInvoice;
 use App\Models\User;
+use App\Services\OtomaxImports;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
@@ -87,3 +89,10 @@ Schedule::command('digitaltoko:customer-notices')->everyFiveSeconds()->withoutOv
 Schedule::command('digitaltoko:prune-article-uploads')->daily()->withoutOverlapping();
 
 Schedule::command('digitaltoko:retention'.(config('platform.store_purge_enabled') ? ' --apply' : ''))->hourly()->withoutOverlapping();
+
+Schedule::call(function () {
+    OtomaxImport::whereIn('status', ['draft', 'preview', 'completed', 'failed'])->where('expires_at', '<', now())->each(function ($record) {
+        app(OtomaxImports::class)->deleteFiles($record);
+        $record->update(['payload' => [], 'status' => $record->status === 'completed' ? 'completed' : 'expired']);
+    });
+})->hourly()->name('otomax-import-cleanup')->withoutOverlapping();

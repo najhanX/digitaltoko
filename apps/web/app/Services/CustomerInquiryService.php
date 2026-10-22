@@ -44,7 +44,7 @@ class CustomerInquiryService
                 } catch (\Throwable) {
                     continue;
                 }
-                if (! $response->successful() || ! is_array($data) || ($data['ref_id'] ?? '') !== $reference || ($data['customer_no'] ?? '') !== $destination || ($data['buyer_sku_code'] ?? '') !== $mapping->item->sku || ($data['status'] ?? '') !== 'Sukses' || ($data['rc'] ?? '') !== '00') {
+                if (! $response->successful() || ! is_array($data) || ($data['ref_id'] ?? '') !== $reference || ($data['customer_no'] ?? '') !== $destination || ! CustomerFulfillment::matchesDigiflazzSku($data['buyer_sku_code'] ?? null, $mapping->item->sku) || ($data['status'] ?? '') !== 'Sukses' || ($data['rc'] ?? '') !== '00') {
                     continue;
                 }
                 $cost = $data['price'] ?? null;

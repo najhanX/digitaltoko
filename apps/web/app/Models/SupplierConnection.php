@@ -16,7 +16,7 @@ class SupplierConnection extends Model
 
     protected function casts(): array
     {
-        return ['credentials' => 'encrypted:array', 'catalog_modes' => 'array', 'enabled' => 'boolean', 'verified_at' => 'immutable_datetime', 'synced_at' => 'immutable_datetime'];
+        return ['credentials' => 'encrypted:array', 'settings' => 'array', 'catalog_modes' => 'array', 'enabled' => 'boolean', 'verified_at' => 'immutable_datetime', 'synced_at' => 'immutable_datetime'];
     }
 
     public function store(): BelongsTo

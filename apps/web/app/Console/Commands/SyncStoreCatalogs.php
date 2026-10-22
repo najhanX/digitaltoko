@@ -8,6 +8,8 @@ use App\Support\CatalogAccess;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 #[Signature('digitaltoko:catalog-sync {--store=}')]
 #[Description('Perbarui snapshot pemasok toko aktif dengan cache Redis per akun.')]
@@ -18,7 +20,7 @@ class SyncStoreCatalogs extends Command
      */
     public function handle(SupplierCatalog $catalog): int
     {
-        $query = SupplierConnection::with('store.owner')->where('enabled', true)->whereHas('store', fn ($q) => $q->whereNull('admin_suspended_at')->whereIn('status', ['active', 'grace', 'provisioning']));
+        $query = SupplierConnection::with('store.owner')->where('kind', '!=', 'otomax')->where('enabled', true)->whereHas('store', fn ($q) => $q->whereNull('admin_suspended_at')->whereIn('status', ['active', 'grace', 'provisioning']));
         if ($this->option('store')) {
             $query->where('store_id', $this->option('store'));
         }
@@ -34,7 +36,10 @@ class SyncStoreCatalogs extends Command
                         $catalog->sync($connection, $mode);
                         $completed++;
                     } catch (\Throwable $error) {
-                        $connection->update(['last_error' => 'Sinkronisasi otomatis gagal; snapshot sebelumnya dipertahankan.']);
+                        $message = $error instanceof ValidationException
+                            ? (string) collect($error->errors())->flatten()->first()
+                            : 'Sinkronisasi otomatis gagal karena gangguan server. Katalog terakhir tetap disimpan.';
+                        $connection->update(['last_error' => Str::limit($message, 250, '')]);
                         $failed++;
                     }
                 }

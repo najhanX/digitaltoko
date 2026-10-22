@@ -458,7 +458,7 @@ export default function Catalog({
                             </div>
                         </div>
                     )}
-                    <div className="table-scroll">
+                    <div className="table-scroll catalog-products-table">
                         <table>
                             <thead>
                                 <tr>
@@ -624,25 +624,27 @@ export default function Catalog({
                                             </small>
                                         </td>
                                         <td className="table-cell-center">
-                                            <div className="row-actions">
+                                            <div className="row-actions catalog-item-actions" role="group" aria-label={"Tindakan produk " + item.name}>
                                                 {(canManage || canPrice) && (
                                                     <button
                                                         type="button"
-                                                        className="button secondary small"
+                                                        className="icon-button"
+                                                        aria-label={(canManage ? "Edit produk " : "Atur harga ") + item.name}
+                                                        title={canManage ? "Edit produk" : "Atur harga"}
                                                         onClick={() =>
                                                             openProduct(item)
                                                         }
                                                     >
                                                         <Pencil size={14} />
-                                                        {canManage
-                                                            ? "Edit"
-                                                            : "Atur harga"}
+
                                                     </button>
                                                 )}
                                                 {canManage && (
                                                     <button
                                                         type="button"
-                                                        className="button secondary small"
+                                                        className="icon-button"
+                                                        aria-label={(item.active ? "Nonaktifkan produk " : "Aktifkan produk ") + item.name}
+                                                        title={item.active ? "Nonaktifkan produk" : "Aktifkan produk"}
                                                         disabled={
                                                             bulk.processing ||
                                                             list.busy
@@ -663,16 +665,14 @@ export default function Catalog({
                                                             />
                                                         ) : (
                                                             <Power size={14} />
-                                                        )}{" "}
-                                                        {item.active
-                                                            ? "Nonaktifkan"
-                                                            : "Aktifkan"}
+                                                        )}
                                                     </button>
                                                 )}
                                                 {canManage && (
                                                     <button
                                                         type="button"
                                                         className="icon-button danger-text"
+                                                        title="Hapus produk"
                                                         aria-label={
                                                             "Hapus produk " +
                                                             item.name
@@ -775,19 +775,21 @@ export default function Catalog({
                                         </td>
                                         <td className="table-cell-center">
                                             {canPrice && (
-                                                <div className="row-actions">
+                                                <div className="row-actions catalog-item-actions" role="group" aria-label={"Tindakan aturan " + item.key}>
                                                     <button
-                                                        className="button secondary small"
+                                                        className="icon-button"
+                                                        aria-label={"Edit aturan " + item.key}
+                                                        title="Edit aturan harga"
                                                         type="button"
                                                         onClick={() =>
                                                             openRule(item)
                                                         }
                                                     >
                                                         <Pencil size={14} />
-                                                        Edit
                                                     </button>
                                                     <button
                                                         className="icon-button danger-text"
+                                                        title="Hapus aturan harga"
                                                         type="button"
                                                         aria-label={
                                                             "Hapus aturan " +

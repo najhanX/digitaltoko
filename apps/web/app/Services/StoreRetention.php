@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ImportOtomaxProducts;
 use App\Jobs\ProcessCustomerOrder;
 use App\Jobs\ProcessDigiflazzCallback;
 use App\Jobs\SendCustomerNotice;
@@ -19,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 
 class StoreRetention
 {
-    public const TABLES = ['store_domains', 'store_staff', 'supplier_connections', 'supplier_products', 'catalog_services', 'catalog_categories', 'catalog_products', 'product_mappings', 'premium_stocks', 'pricing_rules', 'customers', 'customer_inquiries', 'customer_orders', 'customer_ledgers', 'customer_notices', 'store_payment_settings', 'subscription_invoices', 'module_purchases', 'store_articles', 'article_assets', 'discount_vouchers', 'panel_notifications', 'store_admin_events'];
+    public const TABLES = ['otomax_profiles', 'otomax_imports', 'otomax_tickets', 'otomax_events', 'store_domains', 'store_staff', 'supplier_connections', 'supplier_products', 'catalog_services', 'catalog_categories', 'catalog_products', 'product_mappings', 'premium_stocks', 'pricing_rules', 'customers', 'customer_inquiries', 'customer_orders', 'customer_ledgers', 'customer_notices', 'store_payment_settings', 'subscription_invoices', 'module_purchases', 'store_articles', 'article_assets', 'discount_vouchers', 'panel_notifications', 'store_admin_events'];
 
     /** Called under the store row lock, including supplier callbacks and wallet mutations. */
     public static function guard(Store $store): void
@@ -54,7 +55,7 @@ class StoreRetention
         ];
         if ($inventory) {
             $result['inventory'] = collect(self::TABLES)->mapWithKeys(fn ($table) => [$table => DB::table($table)->where('store_id', $store->id)->count()])->all();
-            $result['directories'] = ['storefront/'.$store->id, 'articles/'.$store->id];
+            $result['directories'] = ['storefront/'.$store->id, 'articles/'.$store->id, 'otomax/'.$store->id];
             $result['manual_token'] = hash_hmac('sha256', json_encode([$store->id, $store->slug, $store->status, $store->expires_at?->timestamp,
                 $store->closure_requested_at?->timestamp, $store->purge_origin, $state, $obligations, $reasons, $result['inventory']]), config('app.key'));
         }
@@ -229,7 +230,7 @@ class StoreRetention
         if ($root === false) {
             throw new \RuntimeException('Storage root is unavailable.');
         }
-        foreach (['storefront', 'articles'] as $folder) {
+        foreach (['storefront', 'articles', 'otomax'] as $folder) {
             $parent = $disk->path($folder);
             $target = $disk->path($folder.'/'.$store->id);
             if (is_link($parent) || is_link($target)) {
@@ -280,6 +281,7 @@ class StoreRetention
     private function eraseQueuedOrders(Store $store): void
     {
         $identifiers = [
+            ImportOtomaxProducts::class => ['importId', DB::table('otomax_imports')->where('store_id', $store->id)->pluck('id')],
             ProcessCustomerOrder::class => ['orderId', DB::table('customer_orders')->where('store_id', $store->id)->pluck('id')],
             SendCustomerNotice::class => ['noticeId', DB::table('customer_notices')->where('store_id', $store->id)->pluck('id')],
             ProcessDigiflazzCallback::class => ['attemptId', DB::table('order_attempts')->whereIn('order_id', DB::table('customer_orders')->where('store_id', $store->id)->select('id'))->pluck('id')],

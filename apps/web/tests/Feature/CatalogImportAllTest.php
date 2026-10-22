@@ -170,6 +170,27 @@ class CatalogImportAllTest extends TestCase
         $this->assertDatabaseCount('catalog_products', 2);
     }
 
+    public function test_same_sku_on_two_otomax_suppliers_remains_separate_after_import_and_update(): void
+    {
+        $store = $this->shop();
+        $firstConnection = SupplierConnection::create(['store_id' => $store->id, 'kind' => 'otomax', 'slot' => (string) Str::uuid(), 'name' => 'Supplier A', 'enabled' => true]);
+        $secondConnection = SupplierConnection::create(['store_id' => $store->id, 'kind' => 'otomax', 'slot' => (string) Str::uuid(), 'name' => 'Supplier B', 'enabled' => true]);
+        $first = $this->item($firstConnection, ['sku' => 'T10', 'cost' => 10000]);
+        $second = $this->item($secondConnection, ['sku' => 'T10', 'cost' => 12000]);
+        $this->assertNotSame($first->id, $second->id);
+        $url = '/stores/'.$store->id.'/products/import';
+        $this->actingAs($store->owner)->post($url, ['ids' => [$first->id, $second->id]])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('catalog_products', ['store_id' => $store->id, 'code' => 'O-T10']);
+        $this->assertDatabaseHas('catalog_products', ['store_id' => $store->id, 'code' => 'O-T10-2']);
+        $this->assertSame(2, ProductMapping::whereIn('supplier_product_id', [$first->id, $second->id])->distinct()->count('supplier_product_id'));
+        $this->post($url, ['ids' => [$first->id, $second->id]])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('catalog_products', 2);
+        SupplierProduct::upsert([[...$first->getAttributes(), 'id' => (string) Str::uuid(), 'cost' => 9500]], ['connection_id', 'mode', 'sku'], ['cost']);
+        $this->assertSame(9500, $first->fresh()->cost);
+        $this->assertSame(12000, $second->fresh()->cost);
+        $this->assertDatabaseCount('supplier_products', 2);
+    }
+
     public function test_import_codes_are_short_and_collision_suffixes_keep_length_and_supplier_sku_intact(): void
     {
         $store = $this->shop();

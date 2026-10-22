@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { type PageMeta } from './ListControls';
 import PickerDropdown from './PickerDropdown';
 export const rupiah=(value:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(value);
-export const sourceLabels:Record<string,string>={digiflazz:'Digiflazz',hanshop:'Hanshop',stock:'Stok sendiri'};
+export const sourceLabels:Record<string,string>={otomax:'OtomaX',digiflazz:'Digiflazz',hanshop:'Hanshop',stock:'Stok sendiri'};
 export const kindLabels:Record<string,string>={ppob:'Prabayar / PPOB',premium:'Aplikasi premium',postpaid:'Tagihan pascabayar'};
 export type CatalogStore={id:string;name:string;status:string;plan?:string;sandbox?:boolean};
 export type MappingOption={id:string;name:string;sku:string;mode:string;cost:number;kind:string;source:string;allowed:boolean};

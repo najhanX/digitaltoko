@@ -1,80 +1,1420 @@
-import CatalogHelp from '../../components/CatalogHelp';
-import { Link, useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Layers, ArrowRight } from 'lucide-react';
-import WorkspaceLayout from '../../components/WorkspaceLayout';
-import Modal from '../../components/Modal';
-import ConfirmDialog from '../../components/ConfirmDialog';
-import type { DestinationProfile } from '../../components/categoryDestination';
-import CatalogSelect from '../../components/CatalogSelect';
-import { FormErrors, type CatalogStore } from '../../components/CatalogForms';
-import { FilterBar, Pagination, useServerList, type ListFilters, type PageMeta } from '../../components/ListControls';
+import CatalogHelp from "../../components/CatalogHelp";
+import { Link, useForm } from "@inertiajs/react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Pencil, Trash2, Layers, ArrowRight } from "lucide-react";
+import WorkspaceLayout from "../../components/WorkspaceLayout";
+import Modal from "../../components/Modal";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import type { DestinationProfile } from "../../components/categoryDestination";
+import CatalogSelect from "../../components/CatalogSelect";
+import { FormErrors, type CatalogStore } from "../../components/CatalogForms";
+import {
+    FilterBar,
+    Pagination,
+    useServerList,
+    type ListFilters,
+    type PageMeta,
+} from "../../components/ListControls";
 
-type Service={id:string;name:string;quick_order_service?:string|null};
-type Item=Service & {provider?:string;destination_type?:string;destination_columns?:string;game_validation?:string;destination_format?:string;image?:string|null;categories_count?:number;products_count:number;service?:Service};
-type Props={role:'owner'|'staff';store:CatalogStore;tab:'services'|'categories';items:Item[];canManage:boolean;filters:ListFilters;pagination:PageMeta;selectedService:Service|null;gameOptions:Record<string,{name:string}>;providerOptions:{id:string;name:string}[]};
-export default function Taxonomy({role,store,tab,items,canManage,filters,pagination,selectedService,gameOptions={},providerOptions=[]}:Props) {
-    const base='/stores/'+store.id,category=tab==='categories';
-    const list=useServerList(filters,['items','filters','pagination','selectedService']);
-    const [open,setOpen]=useState(false),[editing,setEditing]=useState<Item|null>(null),[service,setService]=useState<Service|null>(null),[removing,setRemoving]=useState<Item|null>(null);
-    const [detected,setDetected]=useState<DestinationProfile|null>(null),[detectError,setDetectError]=useState(false);
-    const [editorTab,setEditorTab]=useState<'identity'|'destination'|'image'>('identity');
-    const [filePreview,setFilePreview]=useState<string|null>(null);
-    const form=useForm({name:'',service_id:'',provider:'',image_url:'',image_file:null as File|null,remove_image:false,destination_type:'auto',destination_columns:'auto',game_validation:'auto',destination_format:'auto'}),deletion=useForm({});
-    useEffect(()=>{if(!form.data.image_file){setFilePreview(null);return;}const url=URL.createObjectURL(form.data.image_file);setFilePreview(url);return()=>URL.revokeObjectURL(url);},[form.data.image_file]);
-    useEffect(()=>{
-        setDetected(null);setDetectError(false);
-        if(!open || !category || form.data.destination_type!=='auto' || !service || !form.data.name.trim())return;
-        const controller=new AbortController();
-        const timer=setTimeout(()=>{
-            const query=new URLSearchParams({name:form.data.name.trim(),service_id:service.id,game_validation:form.data.game_validation,...(editing?{category_id:editing.id}:{})});
-            fetch(base+'/catalog-structure/destination-profile?'+query,{credentials:'same-origin',headers:{Accept:'application/json'},signal:controller.signal})
-                .then(async response=>{if(!response.ok)throw new Error();return response.json();})
-                .then(data=>{if(!controller.signal.aborted)setDetected(data.profile);})
-                .catch(()=>{if(!controller.signal.aborted)setDetectError(true);});
-        },300);
-        return()=>{clearTimeout(timer);controller.abort();};
-    },[open,category,form.data.destination_type,form.data.name,form.data.game_validation,service?.id,editing?.id,base]);
-    const effectiveType=form.data.destination_type==='auto'?detected?.type:form.data.destination_type;
-    const destinationLabels:Record<string,string>={game:'Game - ID game / tujuan',premium:'Aplikasi premium - WhatsApp pembeli',phone:'Nomor HP tujuan',pln:'ID PLN / nomor meteran',other:'Satu tujuan umum'};
-    function start(item:Item|null) {setEditorTab('identity');setEditing(item);const parent=item?.service?{...item.service,quick_order_service:item.quick_order_service}:selectedService;setService(parent);form.setData({name:item?.name ?? '',service_id:parent?.id ?? '',provider:item?.provider ?? '',image_url:item?.image?.startsWith('https://')?item.image:'',image_file:null,remove_image:false,destination_type:item?.destination_type ?? 'auto',destination_columns:item?.destination_columns ?? 'auto',game_validation:item?.game_validation ?? 'auto',destination_format:item?.destination_format ?? 'auto'});form.clearErrors();setOpen(true);}
-    return <WorkspaceLayout contentClassName="catalog-workspace" role={role} title="Layanan & kategori" description={'Susun katalog '+store.name+' dari layanan, kategori utama, lalu produk.'} actions={<><Link className="button secondary" href={base+'/products'}>Katalog produk<ArrowRight size={16}/></Link>{canManage && <button type="button" className="button" onClick={()=>start(null)}><Plus size={16}/>{category?'Tambah kategori utama':'Tambah layanan'}</button>}</>}>
-        <nav className="content-tabs" aria-label="Struktur katalog"><Link className={!category?'selected':''} aria-current={!category?'page':undefined} href={base+'/catalog-structure'}>Layanan</Link><Link className={category?'selected':''} aria-current={category?'page':undefined} href={base+'/catalog-structure?tab=categories'}>Kategori utama</Link></nav>
-        <CatalogHelp title="Struktur katalog: layanan → kategori → produk"><p>Buat layanan, tambahkan kategori di dalamnya, lalu pilih kategori saat membuat produk. Data toko Anda terpisah dari toko lain. Bagian yang belum memiliki produk aktif belum ditampilkan pada katalog bot/web.</p></CatalogHelp>
-        {category && selectedService && <div className="summary-note admin-owner-filter"><span>Layanan: <strong>{selectedService.name}</strong></span><Link className="text-link" href={base+'/catalog-structure?tab=categories'}>Semua layanan</Link></div>}
-        <section className="table-card data-list-table catalog-data-card"><header className="data-table-header"><h2>{category?'Kategori utama':'Layanan toko'}</h2><Pagination compact meta={pagination} onPage={list.go} busy={list.busy} label="Navigasi atas struktur katalog"/></header>
-        <FilterBar filters={filters} onApply={list.apply} busy={list.busy} placeholder={category?'Cari nama kategori utama…':'Cari nama layanan…'}/>
+type Service = {
+    id: string;
+    name: string;
+    quick_order_service?: string | null;
+};
+type Item = Service & {
+    provider?: string;
+    destination_type?: string;
+    destination_columns?: string;
+    game_validation?: string;
+    destination_format?: string;
+    image?: string | null;
+    categories_count?: number;
+    products_count: number;
+    service?: Service;
+};
+type Props = {
+    role: "owner" | "staff";
+    store: CatalogStore;
+    tab: "services" | "categories";
+    items: Item[];
+    canManage: boolean;
+    filters: ListFilters;
+    pagination: PageMeta;
+    selectedService: Service | null;
+    gameOptions: Record<string, { name: string }>;
+    providerOptions: { id: string; name: string }[];
+};
+export default function Taxonomy({
+    role,
+    store,
+    tab,
+    items,
+    canManage,
+    filters,
+    pagination,
+    selectedService,
+    gameOptions = {},
+    providerOptions = [],
+}: Props) {
+    const base = "/stores/" + store.id,
+        category = tab === "categories";
+    const list = useServerList(filters, [
+        "items",
+        "filters",
+        "pagination",
+        "selectedService",
+    ]);
+    const [open, setOpen] = useState(false),
+        [editing, setEditing] = useState<Item | null>(null),
+        [service, setService] = useState<Service | null>(null),
+        [removing, setRemoving] = useState<Item | null>(null);
+    const [detected, setDetected] = useState<DestinationProfile | null>(null),
+        [detectError, setDetectError] = useState(false);
+    const [editorTab, setEditorTab] = useState<
+        "identity" | "destination" | "image"
+    >("identity");
+    const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [selected, setSelected] = useState<string[]>([]),
+        [bulkOpen, setBulkOpen] = useState(false),
+        [bulkService, setBulkService] = useState<Service | null>(null);
+    const [bulkRemoving, setBulkRemoving] = useState(false);
+    const bulkDeletion = useForm({ ids: [] as string[], type: "categories" });
+    const selectAll = useRef<HTMLInputElement>(null);
+    const bulk = useForm<{ ids: string[]; changes: Record<string, string> }>({
+        ids: [],
+        changes: {},
+    });
+    const rowKey = items.map((item) => item.id).join(",");
+    useEffect(() => {
+        setSelected([]);
+        setBulkOpen(false);
+        setBulkRemoving(false);
+    }, [rowKey, tab, selectedService?.id]);
+    useEffect(() => {
+        if (selectAll.current)
+            selectAll.current.indeterminate =
+                selected.length > 0 && selected.length < items.length;
+    }, [selected.length, items.length]);
+    function changeBulk(key: string, value: string | null) {
+        const next = { ...bulk.data.changes };
+        if (value === null) delete next[key];
+        else next[key] = value;
+        if (
+            key === "destination_type" &&
+            value &&
+            !["auto", "game"].includes(value)
+        ) {
+            delete next.destination_columns;
+            delete next.game_validation;
+            delete next.destination_format;
+        }
+        bulk.setData("changes", next);
+    }
+    const bulkGame =
+        !bulk.data.changes.destination_type ||
+        ["auto", "game"].includes(bulk.data.changes.destination_type);
 
-            <div className="table-scroll"><table><thead><tr><th>Nama {category?'kategori':'layanan'}</th><th>{category?'Layanan':'Kategori utama'}</th><th>Produk</th><th>Tindakan</th></tr></thead><tbody>{items.map(item=><tr key={item.id}><td><div className="taxonomy-name">{category && item.image && <img src={item.image} alt="" width={44} height={52} loading="lazy"/>}<div><strong>{item.name}</strong>{category && <small className="field-help">{item.quick_order_service && <>{providerOptions.find(provider=>provider.id===item.provider)?.name ?? 'Provider belum diatur'} · </>}Tujuan: {({auto:'Otomatis',game:'ID game',premium:'WhatsApp pembeli',phone:'Nomor HP',pln:'ID PLN / meteran',other:'Satu tujuan'} as Record<string,string>)[item.destination_type ?? 'auto']}</small>}</div></div></td><td className={category?undefined:"table-cell-center"}>{category?item.service?.name:<Link className="text-link" href={base+'/catalog-structure?tab=categories&service_id='+item.id}>{item.categories_count} kategori<ArrowRight size={13}/></Link>}</td><td className="table-cell-center">{category?<Link className="text-link" href={base+'/products?category_id='+item.id}>{item.products_count} produk<ArrowRight size={13}/></Link>:item.products_count+' produk'}</td><td className="table-cell-center">{canManage?<div className="row-actions"><button type="button" className="button secondary small" onClick={()=>start(item)}><Pencil size={14}/>Edit</button><button type="button" className="icon-button danger-text" aria-label={'Hapus '+item.name} onClick={()=>{deletion.clearErrors();setRemoving(item);}}><Trash2 size={16}/></button></div>:<small>Akses baca</small>}</td></tr>)}</tbody></table></div>
-            {!items.length && <div className="empty-state"><Layers size={30}/><h3>Belum ada {category?'kategori utama':'layanan'} yang cocok</h3><p>{canManage?'Gunakan tombol tambah untuk mulai menyusun katalog.':'Minta owner atau staff pengelola produk untuk menambahkan data.'}</p></div>}
-            <Pagination meta={pagination} onPage={list.go} busy={list.busy}/>
-        </section>
-        <Modal open={open} title={(editing?'Edit ':'Tambah ')+(category?'kategori utama':'layanan')} onClose={()=>setOpen(false)} busy={form.processing} description={category?'Berlaku untuk semua produk dalam kategori ini.':undefined} footer={<><button type="button" className="button secondary" disabled={form.processing} onClick={()=>setOpen(false)}>Batal</button><button type="submit" form="taxonomy-form" className="button" disabled={form.processing}>{form.processing?'Menyimpan…':'Simpan'}</button></>}>
-            <form id="taxonomy-form" className="form-stack" onSubmit={event=>{event.preventDefault();if(form.processing)return;form.transform(data=>category?{...data,...(editing?{_method:'patch'}:{})}:{name:data.name});const url=base+'/'+(category?'categories':'services')+(editing?'/'+editing.id:'');const options={preserveScroll:true,onSuccess:()=>setOpen(false),onError:(errors:Record<string,string>)=>{const keys=Object.keys(errors);setEditorTab(keys.some(key=>key.startsWith('image_') || key==='remove_image')?'image':keys.some(key=>key.startsWith('destination_') || key==='game_validation')?'destination':'identity');},forceFormData:category};if(editing && !category)form.patch(url,options);else form.post(url,options);}}>
-                <FormErrors errors={form.errors}/>
-                {category && <div className="modal-editor-tabs" role="group" aria-label="Bagian pengaturan kategori">{([['identity','Identitas'],['destination','Tujuan pesanan'],['image','Gambar']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={editorTab===key} className={editorTab===key?'selected':''} onClick={()=>setEditorTab(key)}>{label}</button>)}</div>}
-                {(!category || editorTab==='identity') && <div className="form-stack">
-                    <label>Nama {category?'kategori utama':'layanan'}<input data-modal-focus required maxLength={100} value={form.data.name} onChange={event=>form.setData('name',event.target.value)} placeholder={category?'Contoh: Telkomsel, Canva, Mobile Legends':'Contoh: Pulsa, Aplikasi premium, Game'}/></label>
-                    {category && <CatalogSelect label="Layanan induk" url={base+'/catalog-structure/options?type=services'} value={service} onChange={item=>{setService(item);form.setData('service_id',item.id);if(!item.quick_order_service)form.setData('provider','');}}/>}
-                    {category && service?.quick_order_service && <label>Provider kategori<select value={form.data.provider} onChange={event=>form.setData('provider',event.target.value)}><option value="">Tidak ditampilkan di quick order</option>{providerOptions.map(provider=><option key={provider.id} value={provider.id}>{provider.name}</option>)}</select><small>Dipakai untuk quick order {({pulsa:'Pulsa',data:'Paket data',voucher:'Voucher data'} as Record<string,string>)[service.quick_order_service]}. Semua produk kategori mengikuti provider ini, apa pun nama kategorinya.</small></label>}
-                    {category && editing && <details className="compact-help"><summary>Dampak perubahan kategori</summary><p>Semua produk ikut berpindah saat layanan diubah. Aturan harga kategori/produk tetap; harga yang mengikuti layanan memakai aturan layanan baru. Nama kategori pada layanan tujuan harus unik.</p></details>}
-                </div>}
+    const form = useForm({
+            name: "",
+            service_id: "",
+            provider: "",
+            image_url: "",
+            image_file: null as File | null,
+            remove_image: false,
+            destination_type: "auto",
+            destination_columns: "auto",
+            game_validation: "auto",
+            destination_format: "auto",
+        }),
+        deletion = useForm({});
+    useEffect(() => {
+        if (!form.data.image_file) {
+            setFilePreview(null);
+            return;
+        }
+        const url = URL.createObjectURL(form.data.image_file);
+        setFilePreview(url);
+        return () => URL.revokeObjectURL(url);
+    }, [form.data.image_file]);
+    useEffect(() => {
+        setDetected(null);
+        setDetectError(false);
+        if (
+            !open ||
+            !category ||
+            form.data.destination_type !== "auto" ||
+            !service ||
+            !form.data.name.trim()
+        )
+            return;
+        const controller = new AbortController();
+        const timer = setTimeout(() => {
+            const query = new URLSearchParams({
+                name: form.data.name.trim(),
+                service_id: service.id,
+                game_validation: form.data.game_validation,
+                ...(editing ? { category_id: editing.id } : {}),
+            });
+            fetch(base + "/catalog-structure/destination-profile?" + query, {
+                credentials: "same-origin",
+                headers: { Accept: "application/json" },
+                signal: controller.signal,
+            })
+                .then(async (response) => {
+                    if (!response.ok) throw new Error();
+                    return response.json();
+                })
+                .then((data) => {
+                    if (!controller.signal.aborted) setDetected(data.profile);
+                })
+                .catch(() => {
+                    if (!controller.signal.aborted) setDetectError(true);
+                });
+        }, 300);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [
+        open,
+        category,
+        form.data.destination_type,
+        form.data.name,
+        form.data.game_validation,
+        service?.id,
+        editing?.id,
+        base,
+    ]);
+    const effectiveType =
+        form.data.destination_type === "auto"
+            ? detected?.type
+            : form.data.destination_type;
+    const destinationLabels: Record<string, string> = {
+        game: "Game - ID game / tujuan",
+        premium: "Aplikasi premium - WhatsApp pembeli",
+        phone: "Nomor HP tujuan",
+        pln: "ID PLN / nomor meteran",
+        other: "Satu tujuan umum",
+    };
+    function start(item: Item | null) {
+        setEditorTab("identity");
+        setEditing(item);
+        const parent = item?.service
+            ? { ...item.service, quick_order_service: item.quick_order_service }
+            : selectedService;
+        setService(parent);
+        form.setData({
+            name: item?.name ?? "",
+            service_id: parent?.id ?? "",
+            provider: item?.provider ?? "",
+            image_url: item?.image?.startsWith("https://") ? item.image : "",
+            image_file: null,
+            remove_image: false,
+            destination_type: item?.destination_type ?? "auto",
+            destination_columns: item?.destination_columns ?? "auto",
+            game_validation: item?.game_validation ?? "auto",
+            destination_format: item?.destination_format ?? "auto",
+        });
+        form.clearErrors();
+        setOpen(true);
+    }
+    return (
+        <WorkspaceLayout
+            contentClassName="catalog-workspace"
+            role={role}
+            title="Layanan & kategori"
+            description={
+                "Susun katalog " +
+                store.name +
+                " dari layanan, kategori utama, lalu produk."
+            }
+            actions={
+                <>
+                    <Link
+                        className="button secondary"
+                        href={base + "/products"}
+                    >
+                        Katalog produk
+                        <ArrowRight size={16} />
+                    </Link>
+                    {canManage && (
+                        <button
+                            type="button"
+                            className="button"
+                            onClick={() => start(null)}
+                        >
+                            <Plus size={16} />
+                            {category
+                                ? "Tambah kategori utama"
+                                : "Tambah layanan"}
+                        </button>
+                    )}
+                </>
+            }
+        >
+            <nav className="content-tabs" aria-label="Struktur katalog">
+                <Link
+                    className={!category ? "selected" : ""}
+                    aria-current={!category ? "page" : undefined}
+                    href={base + "/catalog-structure"}
+                >
+                    Layanan
+                </Link>
+                <Link
+                    className={category ? "selected" : ""}
+                    aria-current={category ? "page" : undefined}
+                    href={base + "/catalog-structure?tab=categories"}
+                >
+                    Kategori utama
+                </Link>
+            </nav>
+            <CatalogHelp title="Struktur katalog: layanan → kategori → produk">
+                <p>
+                    Buat layanan, tambahkan kategori di dalamnya, lalu pilih
+                    kategori saat membuat produk. Data toko Anda terpisah dari
+                    toko lain. Bagian yang belum memiliki produk aktif belum
+                    ditampilkan pada katalog bot/web.
+                </p>
+            </CatalogHelp>
+            {category && selectedService && (
+                <div className="summary-note admin-owner-filter">
+                    <span>
+                        Layanan: <strong>{selectedService.name}</strong>
+                    </span>
+                    <Link
+                        className="text-link"
+                        href={base + "/catalog-structure?tab=categories"}
+                    >
+                        Semua layanan
+                    </Link>
+                </div>
+            )}
+            <section className="table-card data-list-table catalog-data-card">
+                <header className="data-table-header">
+                    <h2>{category ? "Kategori utama" : "Layanan toko"}</h2>
+                    <Pagination
+                        compact
+                        meta={pagination}
+                        onPage={list.go}
+                        busy={list.busy}
+                        label="Navigasi atas struktur katalog"
+                    />
+                </header>
+                <FilterBar
+                    filters={filters}
+                    onApply={list.apply}
+                    busy={list.busy}
+                    placeholder={
+                        category
+                            ? "Cari nama kategori utama…"
+                            : "Cari nama layanan…"
+                    }
+                />
 
-                {category && editorTab==='destination' && <fieldset className="form-stack compact-fieldset catalog-form-panel catalog-destination-grid"><legend>Tujuan transaksi kategori</legend>
-                    <label>Jenis tujuan<select value={form.data.destination_type} onChange={event=>form.setData('destination_type',event.target.value)}><option value="auto">Otomatis dari layanan / kategori</option><option value="game">Game - ID game / tujuan</option><option value="premium">Aplikasi premium - gunakan WhatsApp pembeli</option><option value="phone">Pulsa / data / nelpon / voucher data - nomor HP</option><option value="pln">Token listrik / PLN - ID pelanggan atau meteran</option><option value="other">Lainnya - satu tujuan</option></select></label>
-                    {form.data.destination_type==='auto' && <p role="status">{detected?'Hasil otomatis: '+destinationLabels[detected.type]+'.':detectError?'Deteksi belum dapat dimuat. Pilih jenis tujuan secara langsung atau coba buka kembali modal.':service && form.data.name.trim()?'Memeriksa jenis tujuan...':'Isi nama kategori dan pilih layanan untuk melihat jenis tujuan.'}</p>}
-                    {effectiveType==='premium'?<p>Kolom tujuan tidak ditampilkan. Tujuan pesanan diambil otomatis dari nomor WhatsApp wajib pada bagian kontak pembeli.</p>:effectiveType==='game'?<>
-                        <label>Jumlah kolom tujuan game<select value={form.data.destination_columns} onChange={event=>form.setData('destination_columns',event.target.value)}><option value="auto">Otomatis sesuai game (lainnya: satu kolom)</option><option value="1">Satu kolom - ID game / tujuan</option><option value="2">Dua kolom - ID game + zona/server</option></select></label>
-                        <label>Game untuk cek nickname<select value={form.data.game_validation} onChange={event=>form.setData('game_validation',event.target.value)}><option value="auto">Otomatis dari nama kategori</option><option value="none">Tanpa pengecekan nickname</option>{Object.entries(gameOptions).map(([key,game])=><option key={key} value={key}>{game.name}</option>)}</select></label><small>Untuk game lainnya, pilih Tanpa pengecekan nickname.</small>
-                        <label>Format tujuan dikirim ke pemasok<select value={form.data.destination_format} onChange={event=>form.setData('destination_format',event.target.value)}><option value="auto">Standar game (game manual: ID+server)</option><option value="concat">ID+server tanpa pemisah: 12345678913486</option><option value="parentheses">ID(server): 123456789(13486)</option><option value="pipe">ID|server: 123456789|13486</option><option value="space">ID server: 123456789 13486</option><option value="id">Hanya ID: 123456789</option></select><small>Sesuaikan format gabungan dengan ketentuan pemasok.</small></label>
-                    </>:effectiveType?<p>{effectiveType==='phone'?'Pembeli mengisi nomor HP tujuan yang ingin diisi. Nomor ini boleh berbeda dari WhatsApp penerima bukti.':effectiveType==='pln'?'Pembeli mengisi ID PLN atau nomor meteran, bukan nomor WhatsApp.':'Pembeli mengisi satu tujuan sesuai kebutuhan produk.'}</p>:null}
-                </fieldset>}
+                {canManage && (
+                    <div className="catalog-bulk-toolbar taxonomy-bulk-toolbar">
+                        <span>
+                            {selected.length}{" "}
+                            {category ? "kategori" : "layanan"} dipilih pada
+                            halaman ini
+                        </span>
+                        <div className="taxonomy-bulk-actions">
+                            {category && (
+                                <button
+                                    type="button"
+                                    className="button small"
+                                    disabled={!selected.length}
+                                    onClick={() => {
+                                        bulk.clearErrors();
+                                        bulk.setData({
+                                            ids: selected,
+                                            changes: {},
+                                        });
+                                        setBulkService(null);
+                                        setBulkOpen(true);
+                                    }}
+                                >
+                                    <Pencil size={15} />
+                                    Edit massal
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                className="button danger small"
+                                disabled={!selected.length}
+                                onClick={() => {
+                                    bulkDeletion.clearErrors();
+                                    bulkDeletion.setData({
+                                        ids: selected,
+                                        type: category
+                                            ? "categories"
+                                            : "services",
+                                    });
+                                    setBulkRemoving(true);
+                                }}
+                            >
+                                <Trash2 size={15} />
+                                Hapus massal
+                            </button>
+                            {selected.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="button secondary small"
+                                    onClick={() => setSelected([])}
+                                >
+                                    Batal pilih
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+                <div className="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                {canManage && (
+                                    <th className="catalog-selection-cell">
+                                        <input
+                                            ref={selectAll}
+                                            type="checkbox"
+                                            aria-label={
+                                                "Pilih semua " +
+                                                (category
+                                                    ? "kategori"
+                                                    : "layanan") +
+                                                " pada halaman"
+                                            }
+                                            checked={
+                                                items.length > 0 &&
+                                                selected.length === items.length
+                                            }
+                                            onChange={(event) =>
+                                                setSelected(
+                                                    event.target.checked
+                                                        ? items.map(
+                                                              (item) => item.id,
+                                                          )
+                                                        : [],
+                                                )
+                                            }
+                                        />
+                                    </th>
+                                )}
+                                <th>
+                                    Nama {category ? "kategori" : "layanan"}
+                                </th>
+                                <th>
+                                    {category ? "Layanan" : "Kategori utama"}
+                                </th>
+                                <th>Produk</th>
+                                <th>Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map((item) => (
+                                <tr
+                                    key={item.id}
+                                    className={
+                                        selected.includes(item.id)
+                                            ? "catalog-row-selected"
+                                            : undefined
+                                    }
+                                >
+                                    {canManage && (
+                                        <td className="table-cell-center">
+                                            <input
+                                                type="checkbox"
+                                                aria-label={
+                                                    "Pilih " +
+                                                    (category
+                                                        ? "kategori "
+                                                        : "layanan ") +
+                                                    item.name
+                                                }
+                                                checked={selected.includes(
+                                                    item.id,
+                                                )}
+                                                onChange={(event) =>
+                                                    setSelected((current) =>
+                                                        event.target.checked
+                                                            ? [
+                                                                  ...current,
+                                                                  item.id,
+                                                              ]
+                                                            : current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      item.id,
+                                                              ),
+                                                    )
+                                                }
+                                            />
+                                        </td>
+                                    )}
+                                    <td>
+                                        <div className="taxonomy-name">
+                                            {category && item.image && (
+                                                <img
+                                                    src={item.image}
+                                                    alt=""
+                                                    width={44}
+                                                    height={52}
+                                                    loading="lazy"
+                                                />
+                                            )}
+                                            <div>
+                                                <strong>{item.name}</strong>
+                                                {category && (
+                                                    <small className="field-help">
+                                                        {item.quick_order_service && (
+                                                            <>
+                                                                {providerOptions.find(
+                                                                    (
+                                                                        provider,
+                                                                    ) =>
+                                                                        provider.id ===
+                                                                        item.provider,
+                                                                )?.name ??
+                                                                    "Provider belum diatur"}{" "}
+                                                                ·{" "}
+                                                            </>
+                                                        )}
+                                                        Tujuan:{" "}
+                                                        {
+                                                            (
+                                                                {
+                                                                    auto: "Otomatis",
+                                                                    game: "ID game",
+                                                                    premium:
+                                                                        "WhatsApp pembeli",
+                                                                    phone: "Nomor HP",
+                                                                    pln: "ID PLN / meteran",
+                                                                    other: "Satu tujuan",
+                                                                } as Record<
+                                                                    string,
+                                                                    string
+                                                                >
+                                                            )[
+                                                                item.destination_type ??
+                                                                    "auto"
+                                                            ]
+                                                        }
+                                                    </small>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td
+                                        className={
+                                            category
+                                                ? undefined
+                                                : "table-cell-center"
+                                        }
+                                    >
+                                        {category ? (
+                                            item.service?.name
+                                        ) : (
+                                            <Link
+                                                className="text-link"
+                                                href={
+                                                    base +
+                                                    "/catalog-structure?tab=categories&service_id=" +
+                                                    item.id
+                                                }
+                                            >
+                                                {item.categories_count} kategori
+                                                <ArrowRight size={13} />
+                                            </Link>
+                                        )}
+                                    </td>
+                                    <td className="table-cell-center">
+                                        {category ? (
+                                            <Link
+                                                className="text-link"
+                                                href={
+                                                    base +
+                                                    "/products?category_id=" +
+                                                    item.id
+                                                }
+                                            >
+                                                {item.products_count} produk
+                                                <ArrowRight size={13} />
+                                            </Link>
+                                        ) : (
+                                            item.products_count + " produk"
+                                        )}
+                                    </td>
+                                    <td className="table-cell-center">
+                                        {canManage ? (
+                                            <div className="row-actions">
+                                                <button
+                                                    type="button"
+                                                    className="button secondary small"
+                                                    onClick={() => start(item)}
+                                                >
+                                                    <Pencil size={14} />
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="icon-button danger-text"
+                                                    aria-label={
+                                                        "Hapus " + item.name
+                                                    }
+                                                    onClick={() => {
+                                                        deletion.clearErrors();
+                                                        setRemoving(item);
+                                                    }}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <small>Akses baca</small>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                {!items.length && (
+                    <div className="empty-state">
+                        <Layers size={30} />
+                        <h3>
+                            Belum ada {category ? "kategori utama" : "layanan"}{" "}
+                            yang cocok
+                        </h3>
+                        <p>
+                            {canManage
+                                ? "Gunakan tombol tambah untuk mulai menyusun katalog."
+                                : "Minta owner atau staff pengelola produk untuk menambahkan data."}
+                        </p>
+                    </div>
+                )}
+                <Pagination
+                    meta={pagination}
+                    onPage={list.go}
+                    busy={list.busy}
+                />
+            </section>
+            <Modal
+                open={open}
+                title={
+                    (editing ? "Edit " : "Tambah ") +
+                    (category ? "kategori utama" : "layanan")
+                }
+                onClose={() => setOpen(false)}
+                busy={form.processing}
+                description={
+                    category
+                        ? "Berlaku untuk semua produk dalam kategori ini."
+                        : undefined
+                }
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            className="button secondary"
+                            disabled={form.processing}
+                            onClick={() => setOpen(false)}
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            form="taxonomy-form"
+                            className="button"
+                            disabled={form.processing}
+                        >
+                            {form.processing ? "Menyimpan…" : "Simpan"}
+                        </button>
+                    </>
+                }
+            >
+                <form
+                    id="taxonomy-form"
+                    className="form-stack"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        if (form.processing) return;
+                        form.transform((data) =>
+                            category
+                                ? {
+                                      ...data,
+                                      ...(editing ? { _method: "patch" } : {}),
+                                  }
+                                : { name: data.name },
+                        );
+                        const url =
+                            base +
+                            "/" +
+                            (category ? "categories" : "services") +
+                            (editing ? "/" + editing.id : "");
+                        const options = {
+                            preserveScroll: true,
+                            onSuccess: () => setOpen(false),
+                            onError: (errors: Record<string, string>) => {
+                                const keys = Object.keys(errors);
+                                setEditorTab(
+                                    keys.some(
+                                        (key) =>
+                                            key.startsWith("image_") ||
+                                            key === "remove_image",
+                                    )
+                                        ? "image"
+                                        : keys.some(
+                                                (key) =>
+                                                    key.startsWith(
+                                                        "destination_",
+                                                    ) ||
+                                                    key === "game_validation",
+                                            )
+                                          ? "destination"
+                                          : "identity",
+                                );
+                            },
+                            forceFormData: category,
+                        };
+                        if (editing && !category) form.patch(url, options);
+                        else form.post(url, options);
+                    }}
+                >
+                    <FormErrors errors={form.errors} />
+                    {category && (
+                        <div
+                            className="modal-editor-tabs"
+                            role="group"
+                            aria-label="Bagian pengaturan kategori"
+                        >
+                            {(
+                                [
+                                    ["identity", "Identitas"],
+                                    ["destination", "Tujuan pesanan"],
+                                    ["image", "Gambar"],
+                                ] as const
+                            ).map(([key, label]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    aria-pressed={editorTab === key}
+                                    className={
+                                        editorTab === key ? "selected" : ""
+                                    }
+                                    onClick={() => setEditorTab(key)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {(!category || editorTab === "identity") && (
+                        <div className="form-stack">
+                            <label>
+                                Nama {category ? "kategori utama" : "layanan"}
+                                <input
+                                    data-modal-focus
+                                    required
+                                    maxLength={100}
+                                    value={form.data.name}
+                                    onChange={(event) =>
+                                        form.setData("name", event.target.value)
+                                    }
+                                    placeholder={
+                                        category
+                                            ? "Contoh: Telkomsel, Canva, Mobile Legends"
+                                            : "Contoh: Pulsa, Aplikasi premium, Game"
+                                    }
+                                />
+                            </label>
+                            {category && (
+                                <CatalogSelect
+                                    label="Layanan induk"
+                                    url={
+                                        base +
+                                        "/catalog-structure/options?type=services"
+                                    }
+                                    value={service}
+                                    onChange={(item) => {
+                                        setService(item);
+                                        form.setData("service_id", item.id);
+                                        if (!item.quick_order_service)
+                                            form.setData("provider", "");
+                                    }}
+                                />
+                            )}
+                            {category && service?.quick_order_service && (
+                                <label>
+                                    Provider kategori
+                                    <select
+                                        value={form.data.provider}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                "provider",
+                                                event.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="">
+                                            Tidak ditampilkan di quick order
+                                        </option>
+                                        {providerOptions.map((provider) => (
+                                            <option
+                                                key={provider.id}
+                                                value={provider.id}
+                                            >
+                                                {provider.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <small>
+                                        Dipakai untuk quick order{" "}
+                                        {
+                                            (
+                                                {
+                                                    pulsa: "Pulsa",
+                                                    data: "Paket data",
+                                                    voucher: "Voucher data",
+                                                } as Record<string, string>
+                                            )[service.quick_order_service]
+                                        }
+                                        . Semua produk kategori mengikuti
+                                        provider ini, apa pun nama kategorinya.
+                                    </small>
+                                </label>
+                            )}
+                            {category && editing && (
+                                <details className="compact-help">
+                                    <summary>Dampak perubahan kategori</summary>
+                                    <p>
+                                        Semua produk ikut berpindah saat layanan
+                                        diubah. Aturan harga kategori/produk
+                                        tetap; harga yang mengikuti layanan
+                                        memakai aturan layanan baru. Nama
+                                        kategori pada layanan tujuan harus unik.
+                                    </p>
+                                </details>
+                            )}
+                        </div>
+                    )}
 
-                {category && editorTab==='image' && <fieldset className="form-stack compact-fieldset catalog-form-panel"><legend>Gambar kategori</legend>{(filePreview || editing?.image) && !form.data.remove_image && <img className="taxonomy-image-preview" src={filePreview || editing?.image || ''} alt={form.data.name} width={80} height={100}/>}<label>Unggah gambar<input type="file" accept="image/jpeg,image/png,image/webp" onChange={event=>{form.setData('image_file',event.target.files?.[0] ?? null);form.setData('remove_image',false);}}/></label><small>JPG/PNG/WebP, maksimal 4 MB. Rasio 4:5.</small><label>Atau URL gambar HTTPS<input type="url" value={form.data.image_url} placeholder="https://contoh.com/mobile-legends.webp" onChange={event=>form.setData('image_url',event.target.value)}/></label>{editing?.image && <label className="checkbox-label"><input type="checkbox" checked={form.data.remove_image} onChange={event=>{form.setData('remove_image',event.target.checked);if(event.target.checked){form.setData('image_url','');form.setData('image_file',null);}}}/>Hapus gambar saat ini</label>}</fieldset>}
+                    {category && editorTab === "destination" && (
+                        <fieldset className="form-stack compact-fieldset catalog-form-panel catalog-destination-grid">
+                            <legend>Tujuan transaksi kategori</legend>
+                            <label>
+                                Jenis tujuan
+                                <select
+                                    value={form.data.destination_type}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            "destination_type",
+                                            event.target.value,
+                                        )
+                                    }
+                                >
+                                    <option value="auto">
+                                        Otomatis dari layanan / kategori
+                                    </option>
+                                    <option value="game">
+                                        Game - ID game / tujuan
+                                    </option>
+                                    <option value="premium">
+                                        Aplikasi premium - gunakan WhatsApp
+                                        pembeli
+                                    </option>
+                                    <option value="phone">
+                                        Pulsa / data / nelpon / voucher data -
+                                        nomor HP
+                                    </option>
+                                    <option value="pln">
+                                        Token listrik / PLN - ID pelanggan atau
+                                        meteran
+                                    </option>
+                                    <option value="other">
+                                        Lainnya - satu tujuan
+                                    </option>
+                                </select>
+                            </label>
+                            {form.data.destination_type === "auto" && (
+                                <p role="status">
+                                    {detected
+                                        ? "Hasil otomatis: " +
+                                          destinationLabels[detected.type] +
+                                          "."
+                                        : detectError
+                                          ? "Deteksi belum dapat dimuat. Pilih jenis tujuan secara langsung atau coba buka kembali modal."
+                                          : service && form.data.name.trim()
+                                            ? "Memeriksa jenis tujuan..."
+                                            : "Isi nama kategori dan pilih layanan untuk melihat jenis tujuan."}
+                                </p>
+                            )}
+                            {effectiveType === "premium" ? (
+                                <p>
+                                    Kolom tujuan tidak ditampilkan. Tujuan
+                                    pesanan diambil otomatis dari nomor WhatsApp
+                                    wajib pada bagian kontak pembeli.
+                                </p>
+                            ) : effectiveType === "game" ? (
+                                <>
+                                    <label>
+                                        Jumlah kolom tujuan game
+                                        <select
+                                            value={
+                                                form.data.destination_columns
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    "destination_columns",
+                                                    event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="auto">
+                                                Otomatis sesuai game (lainnya:
+                                                satu kolom)
+                                            </option>
+                                            <option value="1">
+                                                Satu kolom - ID game / tujuan
+                                            </option>
+                                            <option value="2">
+                                                Dua kolom - ID game +
+                                                zona/server
+                                            </option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Game untuk cek nickname
+                                        <select
+                                            value={form.data.game_validation}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    "game_validation",
+                                                    event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="auto">
+                                                Otomatis dari nama kategori
+                                            </option>
+                                            <option value="none">
+                                                Tanpa pengecekan nickname
+                                            </option>
+                                            {Object.entries(gameOptions).map(
+                                                ([key, game]) => (
+                                                    <option
+                                                        key={key}
+                                                        value={key}
+                                                    >
+                                                        {game.name}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </label>
+                                    <small>
+                                        Untuk game lainnya, pilih Tanpa
+                                        pengecekan nickname.
+                                    </small>
+                                    <label>
+                                        Format tujuan dikirim ke pemasok
+                                        <select
+                                            value={form.data.destination_format}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    "destination_format",
+                                                    event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="auto">
+                                                Standar game (game manual:
+                                                ID+server)
+                                            </option>
+                                            <option value="concat">
+                                                ID+server tanpa pemisah:
+                                                12345678913486
+                                            </option>
+                                            <option value="parentheses">
+                                                ID(server): 123456789(13486)
+                                            </option>
+                                            <option value="pipe">
+                                                ID|server: 123456789|13486
+                                            </option>
+                                            <option value="space">
+                                                ID server: 123456789 13486
+                                            </option>
+                                            <option value="id">
+                                                Hanya ID: 123456789
+                                            </option>
+                                        </select>
+                                        <small>
+                                            Sesuaikan format gabungan dengan
+                                            ketentuan pemasok.
+                                        </small>
+                                    </label>
+                                </>
+                            ) : effectiveType ? (
+                                <p>
+                                    {effectiveType === "phone"
+                                        ? "Pembeli mengisi nomor HP tujuan yang ingin diisi. Nomor ini boleh berbeda dari WhatsApp penerima bukti."
+                                        : effectiveType === "pln"
+                                          ? "Pembeli mengisi ID PLN atau nomor meteran, bukan nomor WhatsApp."
+                                          : "Pembeli mengisi satu tujuan sesuai kebutuhan produk."}
+                                </p>
+                            ) : null}
+                        </fieldset>
+                    )}
 
-
-            </form>
-        </Modal>
-        <ConfirmDialog open={!!removing} title={'Hapus '+(category?'kategori utama':'layanan')+'?'} confirmLabel="Hapus" danger busy={deletion.processing} onCancel={()=>setRemoving(null)} onConfirm={()=>{if(removing)deletion.delete(base+'/'+(category?'categories':'services')+'/'+removing.id,{preserveScroll:true,onSuccess:()=>setRemoving(null)});}}><FormErrors errors={deletion.errors}/><p>{removing?.name}</p><p>{category?'Kategori hanya dapat dihapus jika sudah tidak dipakai produk.':'Layanan hanya dapat dihapus jika sudah tidak memiliki kategori utama.'}</p></ConfirmDialog>
-    </WorkspaceLayout>;
+                    {category && editorTab === "image" && (
+                        <fieldset className="form-stack compact-fieldset catalog-form-panel">
+                            <legend>Gambar kategori</legend>
+                            {(filePreview || editing?.image) &&
+                                !form.data.remove_image && (
+                                    <img
+                                        className="taxonomy-image-preview"
+                                        src={
+                                            filePreview || editing?.image || ""
+                                        }
+                                        alt={form.data.name}
+                                        width={80}
+                                        height={100}
+                                    />
+                                )}
+                            <label>
+                                Unggah gambar
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={(event) => {
+                                        form.setData(
+                                            "image_file",
+                                            event.target.files?.[0] ?? null,
+                                        );
+                                        form.setData("remove_image", false);
+                                    }}
+                                />
+                            </label>
+                            <small>
+                                JPG/PNG/WebP, maksimal 4 MB. Rasio 4:5.
+                            </small>
+                            <label>
+                                Atau URL gambar HTTPS
+                                <input
+                                    type="url"
+                                    value={form.data.image_url}
+                                    placeholder="https://contoh.com/mobile-legends.webp"
+                                    onChange={(event) =>
+                                        form.setData(
+                                            "image_url",
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </label>
+                            {editing?.image && (
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.data.remove_image}
+                                        onChange={(event) => {
+                                            form.setData(
+                                                "remove_image",
+                                                event.target.checked,
+                                            );
+                                            if (event.target.checked) {
+                                                form.setData("image_url", "");
+                                                form.setData(
+                                                    "image_file",
+                                                    null,
+                                                );
+                                            }
+                                        }}
+                                    />
+                                    Hapus gambar saat ini
+                                </label>
+                            )}
+                        </fieldset>
+                    )}
+                </form>
+            </Modal>
+            <Modal
+                open={bulkOpen}
+                title="Edit massal kategori"
+                description={
+                    bulk.data.ids.length +
+                    " kategori dipilih. Hanya pengaturan yang Anda ubah yang diterapkan."
+                }
+                busy={bulk.processing}
+                onClose={() => setBulkOpen(false)}
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            className="button secondary"
+                            disabled={bulk.processing}
+                            onClick={() => setBulkOpen(false)}
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            form="taxonomy-bulk-form"
+                            className="button"
+                            disabled={
+                                bulk.processing ||
+                                !Object.keys(bulk.data.changes).length ||
+                                ("service_id" in bulk.data.changes &&
+                                    !bulk.data.changes.service_id)
+                            }
+                        >
+                            {bulk.processing
+                                ? "Menyimpan…"
+                                : "Terapkan ke " +
+                                  bulk.data.ids.length +
+                                  " kategori"}
+                        </button>
+                    </>
+                }
+            >
+                <form
+                    id="taxonomy-bulk-form"
+                    className="form-stack taxonomy-bulk-settings"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        bulk.post(base + "/categories/bulk", {
+                            preserveScroll: true,
+                            onSuccess: () => {
+                                setBulkOpen(false);
+                                setSelected([]);
+                            },
+                        });
+                    }}
+                >
+                    <FormErrors errors={bulk.errors} />
+                    <div className="bulk-setting">
+                        <label className="checkbox-label">
+                            <input
+                                type="checkbox"
+                                checked={"service_id" in bulk.data.changes}
+                                onChange={(event) => {
+                                    changeBulk(
+                                        "service_id",
+                                        event.target.checked
+                                            ? (bulkService?.id ?? "")
+                                            : null,
+                                    );
+                                }}
+                            />
+                            Ubah layanan induk
+                        </label>
+                        {"service_id" in bulk.data.changes && (
+                            <>
+                                <CatalogSelect
+                                    label="Layanan tujuan"
+                                    url={
+                                        base +
+                                        "/catalog-structure/options?type=services"
+                                    }
+                                    value={bulkService}
+                                    onChange={(item) => {
+                                        setBulkService(item);
+                                        changeBulk("service_id", item.id);
+                                    }}
+                                />
+                                <p className="field-help">
+                                    Semua produk dalam kategori ikut berpindah.
+                                    Nama kategori yang bentrok akan menahan
+                                    seluruh perubahan.
+                                </p>
+                                {bulkService &&
+                                    !bulkService.quick_order_service && (
+                                        <p className="field-help">
+                                            Layanan ini tidak memakai provider
+                                            quick order. Provider lama akan
+                                            dilepas.
+                                        </p>
+                                    )}
+                            </>
+                        )}
+                    </div>
+                    <div className="bulk-setting">
+                        <label className="checkbox-label">
+                            <input
+                                type="checkbox"
+                                checked={"provider" in bulk.data.changes}
+                                onChange={(event) =>
+                                    changeBulk(
+                                        "provider",
+                                        event.target.checked ? "" : null,
+                                    )
+                                }
+                            />
+                            Ubah provider
+                        </label>
+                        {"provider" in bulk.data.changes && (
+                            <>
+                                <label>
+                                    Provider kategori
+                                    <select
+                                        value={bulk.data.changes.provider}
+                                        onChange={(event) =>
+                                            changeBulk(
+                                                "provider",
+                                                event.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="">
+                                            Hapus provider / tanpa quick order
+                                        </option>
+                                        {providerOptions.map((provider) => (
+                                            <option
+                                                key={provider.id}
+                                                value={provider.id}
+                                            >
+                                                {provider.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <p className="field-help">
+                                    Provider hanya untuk layanan Pulsa, Paket
+                                    Data, atau Voucher Data.
+                                </p>
+                            </>
+                        )}
+                    </div>
+                    <details className="bulk-setting">
+                        <summary>Tujuan pesanan</summary>
+                        <div className="form-stack">
+                            <label>
+                                Jenis tujuan
+                                <select
+                                    value={
+                                        bulk.data.changes.destination_type ??
+                                        "keep"
+                                    }
+                                    onChange={(event) =>
+                                        changeBulk(
+                                            "destination_type",
+                                            event.target.value === "keep"
+                                                ? null
+                                                : event.target.value,
+                                        )
+                                    }
+                                >
+                                    <option value="keep">
+                                        Pertahankan masing-masing
+                                    </option>
+                                    <option value="auto">
+                                        Otomatis dari layanan / kategori
+                                    </option>
+                                    <option value="game">
+                                        Game - ID game / tujuan
+                                    </option>
+                                    <option value="premium">
+                                        Aplikasi premium - WhatsApp pembeli
+                                    </option>
+                                    <option value="phone">
+                                        Nomor HP tujuan
+                                    </option>
+                                    <option value="pln">
+                                        ID PLN / nomor meteran
+                                    </option>
+                                    <option value="other">
+                                        Satu tujuan umum
+                                    </option>
+                                </select>
+                            </label>
+                            {bulkGame && (
+                                <>
+                                    <label>
+                                        Jumlah kolom game
+                                        <select
+                                            value={
+                                                bulk.data.changes
+                                                    .destination_columns ??
+                                                "keep"
+                                            }
+                                            onChange={(event) =>
+                                                changeBulk(
+                                                    "destination_columns",
+                                                    event.target.value ===
+                                                        "keep"
+                                                        ? null
+                                                        : event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="keep">
+                                                Pertahankan masing-masing
+                                            </option>
+                                            <option value="auto">
+                                                Otomatis sesuai game
+                                            </option>
+                                            <option value="1">
+                                                Satu kolom
+                                            </option>
+                                            <option value="2">
+                                                Dua kolom - ID + zona/server
+                                            </option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Pengecekan nickname
+                                        <select
+                                            value={
+                                                bulk.data.changes
+                                                    .game_validation ?? "keep"
+                                            }
+                                            onChange={(event) =>
+                                                changeBulk(
+                                                    "game_validation",
+                                                    event.target.value ===
+                                                        "keep"
+                                                        ? null
+                                                        : event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="keep">
+                                                Pertahankan masing-masing
+                                            </option>
+                                            <option value="auto">
+                                                Otomatis dari nama kategori
+                                            </option>
+                                            <option value="none">
+                                                Tanpa pengecekan nickname
+                                            </option>
+                                            {Object.entries(gameOptions).map(
+                                                ([key, game]) => (
+                                                    <option
+                                                        key={key}
+                                                        value={key}
+                                                    >
+                                                        {game.name}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Format tujuan game
+                                        <select
+                                            value={
+                                                bulk.data.changes
+                                                    .destination_format ??
+                                                "keep"
+                                            }
+                                            onChange={(event) =>
+                                                changeBulk(
+                                                    "destination_format",
+                                                    event.target.value ===
+                                                        "keep"
+                                                        ? null
+                                                        : event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="keep">
+                                                Pertahankan masing-masing
+                                            </option>
+                                            <option value="auto">
+                                                Standar game
+                                            </option>
+                                            <option value="concat">
+                                                ID+server
+                                            </option>
+                                            <option value="parentheses">
+                                                ID(server)
+                                            </option>
+                                            <option value="pipe">
+                                                ID|server
+                                            </option>
+                                            <option value="space">
+                                                ID server
+                                            </option>
+                                            <option value="id">Hanya ID</option>
+                                        </select>
+                                    </label>
+                                    <p className="field-help">
+                                        Jumlah kolom, nickname dan format
+                                        gabungan hanya dipakai untuk tujuan
+                                        game.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </details>
+                </form>
+            </Modal>
+            <ConfirmDialog
+                open={bulkRemoving}
+                title={
+                    "Hapus " +
+                    bulkDeletion.data.ids.length +
+                    " " +
+                    (bulkDeletion.data.type === "categories"
+                        ? "kategori utama"
+                        : "layanan") +
+                    "?"
+                }
+                confirmLabel="Hapus pilihan"
+                danger
+                busy={bulkDeletion.processing}
+                onCancel={() => setBulkRemoving(false)}
+                onConfirm={() =>
+                    bulkDeletion.post(base + "/catalog-structure/bulk-delete", {
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            setBulkRemoving(false);
+                            setSelected([]);
+                        },
+                    })
+                }
+            >
+                <FormErrors errors={bulkDeletion.errors} />
+                <p>
+                    {bulkDeletion.data.type === "categories"
+                        ? "Hanya kategori tanpa produk yang dapat dihapus."
+                        : "Hanya layanan tanpa kategori yang dapat dihapus."}{" "}
+                    Jika ada pilihan yang masih digunakan, seluruh penghapusan
+                    dibatalkan.
+                </p>
+                <p>Penghapusan tidak dapat dibatalkan.</p>
+            </ConfirmDialog>
+            <ConfirmDialog
+                open={!!removing}
+                title={
+                    "Hapus " + (category ? "kategori utama" : "layanan") + "?"
+                }
+                confirmLabel="Hapus"
+                danger
+                busy={deletion.processing}
+                onCancel={() => setRemoving(null)}
+                onConfirm={() => {
+                    if (removing)
+                        deletion.delete(
+                            base +
+                                "/" +
+                                (category ? "categories" : "services") +
+                                "/" +
+                                removing.id,
+                            {
+                                preserveScroll: true,
+                                onSuccess: () => setRemoving(null),
+                            },
+                        );
+                }}
+            >
+                <FormErrors errors={deletion.errors} />
+                <p>{removing?.name}</p>
+                <p>
+                    {category
+                        ? "Kategori hanya dapat dihapus jika sudah tidak dipakai produk."
+                        : "Layanan hanya dapat dihapus jika sudah tidak memiliki kategori utama."}
+                </p>
+            </ConfirmDialog>
+        </WorkspaceLayout>
+    );
 }

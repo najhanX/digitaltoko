@@ -23,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(prepend: [ResolvePlatformHost::class], append: [ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
-        $middleware->trimStrings(except: ['payload', 'entries.*', 'content.*.text']);
+        $middleware->trimStrings(except: ['pin', 'payload', 'entries.*', 'content.*.text', 'config.rules.*.captures.*.prefix', 'config.rules.*.captures.*.suffix', 'config.rules.*.keyword', 'config.rules.*.regex', 'config.rules.*.template', 'text']);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);
         $middleware->replace(TrustProxies::class, ConfiguredTrustProxies::class);
         $middleware->redirectGuestsTo(function (Request $request): string {
@@ -38,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontFlash(['password', 'password_confirmation', 'current_password', 'api_key', 'webhook_secret', 'server_key', 'qris_payload', 'forward_token', 'otp', 'credentials', 'payload', 'entries']);
+        $exceptions->dontFlash(['password', 'password_confirmation', 'current_password', 'pin', 'callback_token', 'api_key', 'webhook_secret', 'server_key', 'qris_payload', 'forward_token', 'otp', 'credentials', 'payload', 'entries']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

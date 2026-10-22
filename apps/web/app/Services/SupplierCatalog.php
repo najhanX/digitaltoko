@@ -7,6 +7,7 @@ use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Support\CatalogAccess;
 use App\Support\HanshopIdentity;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -25,9 +26,12 @@ class SupplierCatalog
         }
         $age = max(60, min(180, (int) config('suppliers.cache_seconds', 120)));
         $connections = SupplierConnection::with('store.owner')->where('store_id', $store->id)
-            ->where('enabled', true)->whereNotNull('synced_at')->where('synced_at', '<=', now()->subSeconds($age))->get();
+            ->where('kind', '!=', 'otomax')->where('enabled', true)->whereNotNull('synced_at')->where('synced_at', '<=', now()->subSeconds($age))->get();
         foreach ($connections as $connection) {
             if (! CatalogAccess::supports($store, $connection->kind)) {
+                continue;
+            }
+            if ($connection->synced_at->greaterThan(now()->subSeconds($this->cache->lifetime($connection->kind, 'catalog:prepaid')))) {
                 continue;
             }
             foreach ($connection->catalog_modes ?? ['prepaid'] as $mode) {
@@ -55,14 +59,41 @@ class SupplierCatalog
         if (! $username || ! $key) {
             throw ValidationException::withMessages(['supplier' => 'Lengkapi credential Digiflazz terlebih dahulu.']);
         }
-        $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)
-            ->post('https://api.digiflazz.com/v1/'.$path, ['cmd' => $path === 'cek-saldo' ? 'deposit' : $mode,
-                'username' => $username, 'sign' => md5($username.$key.($path === 'cek-saldo' ? 'depo' : 'pricelist'))]);
-        if (! $response->successful() || ! is_array($response->json('data'))) {
-            throw ValidationException::withMessages(['supplier' => 'Permintaan Digiflazz ditolak. Periksa username, API key, whitelist IP, dan batas permintaan.']);
+        try {
+            $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)
+                ->post('https://api.digiflazz.com/v1/'.$path, ['cmd' => $path === 'cek-saldo' ? 'deposit' : $mode,
+                    'username' => $username, 'sign' => md5($username.$key.($path === 'cek-saldo' ? 'depo' : 'pricelist'))]);
+        } catch (ConnectionException) {
+            throw new SupplierFailure('API Digiflazz tidak dapat dihubungi. Periksa koneksi server lalu coba kembali.');
+        }
+        $data = $response->json('data');
+        $rawCode = $response->json('data.rc') ?? $response->json('rc');
+        $code = is_scalar($rawCode) && preg_match('/^[0-9]{2}$/D', (string) $rawCode) ? (string) $rawCode : null;
+        if ($code === '83' || $response->status() === 429) {
+            $message = $path === 'price-list' || $code === '83'
+                ? 'Digiflazz membatasi pengecekan daftar harga ('.($code === '83' ? 'RC 83' : 'HTTP 429').'). Daftar harga hanya boleh diminta sekali setiap 5 menit per akun.'
+                : 'Digiflazz sedang membatasi permintaan saldo (HTTP 429). Tunggu beberapa saat sebelum memeriksa kembali.';
+            throw new SupplierFailure($message, true);
+        }
+        if ($code === '45') {
+            throw new SupplierFailure(app(DigiflazzNetwork::class)->whitelistMessage((bool) ($credentials['testing'] ?? false), $response->json('data.message') ?? $response->json('message')));
+        }
+        $message = match ($code) {
+            '40' => 'Parameter permintaan Digiflazz ditolak (RC 40). Periksa konfigurasi integrasi.',
+            '41' => 'Signature Digiflazz ditolak (RC 41). Periksa API key sesuai mode Production atau Development.',
+            '42' => 'Username Digiflazz tidak sesuai (RC 42). Periksa username pada koneksi pemasok.',
+            '82' => 'Akun Digiflazz belum terverifikasi (RC 82). Selesaikan verifikasi akun Digiflazz.',
+            '88' => 'Akun Digiflazz belum diizinkan mengakses API (RC 88). Periksa akun atau hubungi Digiflazz.',
+            default => null,
+        };
+        if ($message !== null) {
+            throw new SupplierFailure($message);
+        }
+        if (! $response->successful() || ! is_array($data) || ($code !== null && $code !== '00')) {
+            throw new SupplierFailure('Permintaan Digiflazz gagal (HTTP '.$response->status().($code !== null ? ', RC '.$code : '').'). Coba kembali atau periksa layanan Digiflazz.');
         }
 
-        return $response->json('data');
+        return $data;
     }
 
     public function balance(SupplierConnection $connection): array
@@ -169,6 +200,7 @@ class SupplierCatalog
         CatalogAccess::operational($connection->store);
         abort_unless($connection->enabled && CatalogAccess::supports($connection->store, $connection->kind), 403);
         abort_unless(in_array($mode, ['prepaid', 'pasca'], true) && ($connection->kind === 'digiflazz' || $mode === 'prepaid'), 422);
+        abort_if($connection->kind === 'otomax', 422, 'Katalog OtomaX diperbarui melalui impor Excel/CSV.');
         $account = $this->account($connection);
         try {
             $snapshot = $this->cache->remember($connection->kind, $account, 'catalog:'.$mode, fn () => $this->rows($connection, $mode));
@@ -195,7 +227,7 @@ class SupplierCatalog
 
             return count($rows);
         } catch (ValidationException $error) {
-            $connection->update(['last_error' => 'Sinkronisasi gagal. Katalog terakhir tetap disimpan.']);
+            $connection->update(['last_error' => Str::limit((string) collect($error->errors())->flatten()->first(), 250, '')]);
             throw $error;
         }
     }

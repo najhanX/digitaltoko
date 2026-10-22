@@ -15,7 +15,7 @@ class CustomerOrderDecision
     {
         return $order->purpose === 'product' && $order->payment_status === 'paid'
             && in_array($order->status, ['paid', 'processing', 'pending', 'review'], true)
-            && $order->attempts()->whereNotNull('last_checked_at')->where('status', '!=', 'ready')->orderByDesc('position')->first()?->source === 'digiflazz';
+            && in_array($order->attempts()->whereNotNull('last_checked_at')->where('status', '!=', 'ready')->orderByDesc('position')->first()?->source, ['digiflazz', 'otomax'], true);
     }
 
     public function decide(CustomerOrder $order, string $status, string $note, string $result, string $actor): void
@@ -26,9 +26,9 @@ class CustomerOrderDecision
             DB::transaction(function () use ($order, $status, $note, $result, $actor) {
                 Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
                 $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
-                app(CustomerCommerce::class)->ensure($this->eligible($order), 'Hanya pesanan produk lunas yang telah dikirim ke Digiflazz dan belum selesai yang dapat diputuskan manual.');
+                app(CustomerCommerce::class)->ensure($this->eligible($order), 'Hanya pesanan produk lunas yang telah dikirim ke pemasok dan belum selesai yang dapat diputuskan manual.');
                 $attempt = $order->attempts()->whereNotNull('last_checked_at')->where('status', '!=', 'ready')->orderByDesc('position')->lockForUpdate()->firstOrFail();
-                app(CustomerCommerce::class)->ensure($attempt->source === 'digiflazz', 'Sumber terakhir bukan Digiflazz. Periksa hasil sumber tersebut terlebih dahulu.');
+                app(CustomerCommerce::class)->ensure(in_array($attempt->source, ['digiflazz', 'otomax'], true), 'Sumber terakhir tidak mendukung keputusan manual. Periksa hasil sumber tersebut terlebih dahulu.');
                 $snapshot = $order->snapshot;
                 unset($snapshot['supplier_callback_hash'], $snapshot['manual_callback_hash']);
                 $snapshot['manual_decision'] = ['attempt_id' => $attempt->id, 'actor' => $actor, 'note' => $note, 'status' => $status, 'at' => now()->toIso8601String()];
@@ -40,8 +40,8 @@ class CustomerOrderDecision
         }
     }
 
-    /** Called only after callback authentication, under the fulfillment and database locks. */
-    public function callback(CustomerOrder $order, OrderAttempt $attempt, array $data): void
+    /** Called only after callback authentication, under the fulfillment and database locks; also used for authenticated supplier retries. */
+    public function callback(CustomerOrder $order, OrderAttempt $attempt, array $data, bool $fromRetry = false): void
     {
         $status = $data['status'] === 'Sukses' && $data['rc'] === '00' ? 'success' : ($data['status'] === 'Gagal' && CustomerFulfillment::isDefinitiveFailure($data['rc']) ? 'failed' : 'pending');
         $snapshot = $order->snapshot;
@@ -57,11 +57,11 @@ class CustomerOrderDecision
         $snapshot['supplier_reconciled'] = true;
         $order->update(['snapshot' => $snapshot]);
         $cost = $data['price'] ?? null;
-        $attempt->update(['status' => $status, 'result' => $result, 'message' => 'Hasil terbaru webhook Digiflazz.', ...(is_numeric($cost) && $cost >= 0 ? ['cost' => (int) $cost] : [])]);
+        $attempt->update(['status' => $status, 'result' => $result, 'message' => ($fromRetry ? 'Respons terbaru kirim ulang ' : 'Hasil terbaru webhook ').ucfirst($attempt->source).'.', ...(is_numeric($cost) && $cost >= 0 ? ['cost' => (int) $cost] : [])]);
         if ($status === 'success' && (! is_numeric($cost) || $cost < 0 || $cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
             $status = 'review';
         }
-        $this->apply($order, $attempt, $status, $result, $status === 'review' ? 'Harga hasil supplier perlu diperiksa toko.' : 'Status diperbarui dari webhook Digiflazz.', 'webhook:digiflazz');
+        $this->apply($order, $attempt, $status, $result, $status === 'review' ? 'Harga hasil supplier perlu diperiksa toko.' : ($fromRetry ? 'Status diperbarui dari respons kirim ulang ' : 'Status diperbarui dari webhook ').ucfirst($attempt->source).'.', ($fromRetry ? 'retry:' : 'webhook:').$attempt->source);
     }
 
     private function apply(CustomerOrder $order, OrderAttempt $attempt, string $status, string $result, string $message, string $actor): void
@@ -81,7 +81,7 @@ class CustomerOrderDecision
                 $refundAt = null;
             }
         }
-        $snapshot['decision_history'][] = ['status' => $status, 'supplier_status' => $actor === 'webhook:digiflazz' ? $attempt->status : null, 'actor' => $actor, 'note' => $message, 'at' => now()->toIso8601String()];
+        $snapshot['decision_history'][] = ['status' => $status, 'supplier_status' => str_starts_with($actor, 'webhook:') ? $attempt->status : null, 'actor' => $actor, 'note' => $message, 'at' => now()->toIso8601String()];
         $order->update(['status' => $status, 'result' => $result, 'message' => $message, 'snapshot' => $snapshot, 'refunded_at' => $refundAt, 'completed_at' => in_array($status, ['success', 'failed'], true) ? now() : null]);
         app(CustomerCommerce::class)->notice($order, $status, 'decision:'.$revision);
     }

@@ -38,7 +38,7 @@ class StoreCatalog
                 $connection = $item?->connection;
                 if ($item && $item->store_id === $store->id && $item->kind === $product->kind && $connection?->enabled
                     && $connection->store_id === $store->id && $connection->kind === $mapping->source && $item->available) {
-                    if ($item->observed_at->lt(now()->subSeconds((int) config('suppliers.max_snapshot_age', 600)))) {
+                    if ($item->observed_at->lt(now()->subSeconds(($connection->kind === 'otomax' ? max(1, min(168, (int) ($connection->settings['catalog_hours'] ?? 24))) * 3600 : (int) config('suppliers.max_snapshot_age', 600))))) {
                         $staleSupplier = true;
 
                         continue;
@@ -71,13 +71,13 @@ class StoreCatalog
             'ready_stock' => (int) $product->ready_stocks_count, 'price_blocked' => $cost !== null && $price < $cost];
     }
 
-    public function reprice(Store $store): void
+    public function reprice(Store $store, ?string $supplierProductId = null): void
     {
         if ($store->sandbox) {
             return;
         }
         $this->pricing->forget();
-        $this->query($store, false)->chunkById(100, function ($products) use ($store) {
+        $this->query($store, false)->when($supplierProductId, fn ($query) => $query->whereHas('mappings', fn ($mapping) => $mapping->where('supplier_product_id', $supplierProductId)))->chunkById(100, function ($products) use ($store) {
             foreach ($products as $product) {
                 $quote = $this->present($product, $store, true);
                 if ($quote['rule']['auto_update'] && $quote['cost'] !== null && $product->sale_price !== $quote['regular_price']) {

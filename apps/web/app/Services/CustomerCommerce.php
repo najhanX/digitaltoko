@@ -166,7 +166,7 @@ class CustomerCommerce
                 $connection = $mapping->item?->connection;
                 OrderAttempt::create(['order_id' => $order->id, 'reference' => $inquiry && $index === 0 ? $inquiry->reference : 'DT'.Str::ulid(), 'position' => $index + 1, 'source' => $candidate['source'], 'cost' => $candidate['cost'],
                     'request_snapshot' => ['sku' => $mapping->item?->sku, 'mode' => $mapping->item?->mode, 'kind' => $product->kind, 'connection_id' => $connection?->id,
-                        'testing' => $order->is_sandbox, 'credentials' => $connection?->kind === 'digiflazz' ? app(StoreEnvironment::class)->credentials($connection) : [], 'id_user' => $store->owner->hanshop_user_id]]);
+                        'otomax' => $connection?->kind === 'otomax' ? app(OtomaxClient::class)->snapshot($connection) : null, 'testing' => $order->is_sandbox, 'credentials' => $connection?->kind === 'digiflazz' ? app(StoreEnvironment::class)->credentials($connection) : [], 'id_user' => $store->owner->hanshop_user_id]]);
             }
             if ($gateway === 'wallet') {
                 app(CustomerWallet::class)->apply($customer, -$amount, 'order:'.$order->id.':debit', 'purchase', [], $order->is_sandbox);

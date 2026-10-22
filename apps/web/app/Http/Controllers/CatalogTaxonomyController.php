@@ -241,6 +241,121 @@ class CatalogTaxonomyController extends Controller
         return back()->with('success', 'Kategori utama tersimpan. Produk terkait tetap terhubung.');
     }
 
+    public function bulkCategories(Request $request, Store $store): RedirectResponse
+    {
+        CatalogAccess::authorize($request, $store, 'products.manage');
+        CatalogAccess::operational($store);
+        $data = $request->validate([
+            'ids' => 'required|array|min:1|max:100', 'ids.*' => 'required|uuid|distinct',
+            'changes' => 'required|array:service_id,provider,destination_type,destination_columns,game_validation,destination_format|min:1',
+            'changes.service_id' => ['sometimes', 'required', 'uuid', Rule::exists('catalog_services', 'id')->where('store_id', $store->id)],
+            'changes.provider' => ['sometimes', 'nullable', Rule::in(array_keys(config('mobile_providers')))],
+            'changes.destination_type' => ['sometimes', 'required', Rule::in(CategoryDestination::TYPES)],
+            'changes.destination_columns' => ['sometimes', 'required', Rule::in(['auto', '1', '2'])],
+            'changes.game_validation' => ['sometimes', 'required', Rule::in(['auto', 'none', ...array_keys(app(GameIdentity::class)->games())])],
+            'changes.destination_format' => ['sometimes', 'required', Rule::in(GameIdentity::FORMATS)],
+        ]);
+        DB::transaction(function () use ($store, $data) {
+            $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            CatalogAccess::operational($locked);
+            $categories = CatalogCategory::where('store_id', $store->id)->whereIn('id', $data['ids'])->orderBy('id')->lockForUpdate()->get();
+            if ($categories->count() !== count($data['ids'])) {
+                throw ValidationException::withMessages(['ids' => 'Ada kategori yang tidak ditemukan pada toko ini. Muat ulang pilihan.']);
+            }
+            $changes = $data['changes'];
+            $service = isset($changes['service_id']) ? CatalogService::where('store_id', $store->id)->findOrFail($changes['service_id']) : null;
+            if ($service) {
+                $duplicates = $categories->groupBy('name_key')->filter(fn ($items) => $items->count() > 1)->keys();
+                $existing = CatalogCategory::where('service_id', $service->id)->whereNotIn('id', $data['ids'])->whereIn('name_key', $categories->pluck('name_key'))->pluck('name');
+                if ($duplicates->isNotEmpty() || $existing->isNotEmpty()) {
+                    throw ValidationException::withMessages(['changes.service_id' => 'Nama kategori bentrok pada layanan tujuan. Tidak ada perubahan disimpan. Ganti nama kategori yang sama terlebih dahulu.']);
+                }
+            }
+            $branding = $locked->branding ?? [];
+            foreach ($categories as $category) {
+                if ($service) {
+                    $category->update(['service_id' => $service->id]);
+                    $category->setRelation('service', $service);
+                    CatalogProduct::where('store_id', $store->id)->where('category_id', $category->id)->update(['service' => $service->name]);
+                } else {
+                    $category->load('service');
+                }
+                $quickService = app(QuickOrderCatalog::class)->service($category->service->name);
+                if (array_key_exists('provider', $changes)) {
+                    if (! empty($changes['provider']) && ! $quickService) {
+                        throw ValidationException::withMessages(['changes.provider' => 'Provider hanya untuk Pulsa, Paket Data atau Voucher Data. Periksa layanan kategori '.$category->name.'.']);
+                    }
+                    if (! empty($changes['provider'])) {
+                        $branding['category_providers'][$category->id] = $changes['provider'];
+                    } else {
+                        unset($branding['category_providers'][$category->id]);
+                    }
+                } elseif ($service && ! $quickService) {
+                    unset($branding['category_providers'][$category->id]);
+                }
+                foreach (['destination_type' => ['category_destinations', 'type'], 'destination_columns' => ['category_destinations', 'columns'], 'game_validation' => ['category_games', 'game'], 'destination_format' => ['category_games', 'destination_format']] as $key => [$group, $field]) {
+                    if (array_key_exists($key, $changes)) {
+                        $branding[$group][$category->id][$field] = $changes[$key];
+                    }
+                }
+                $locked->branding = $branding;
+                $profile = app(CategoryDestination::class)->profile($locked, $category);
+                $game = app(GameIdentity::class)->profile($locked, $category);
+                $columns = $branding['category_destinations'][$category->id]['columns'] ?? 'auto';
+                if ($profile['type'] === 'game' && $game && $columns !== 'auto' && (int) $columns !== ($game['server_label'] ? 2 : 1)) {
+                    throw ValidationException::withMessages(['changes.destination_columns' => 'Jumlah kolom tidak sesuai pengecekan nickname kategori '.$category->name.'. Pilih Otomatis atau Tanpa pengecekan nickname.']);
+                }
+            }
+            $locked->update(['branding' => $branding]);
+            app(StoreCatalog::class)->reprice($locked);
+        });
+
+        return back()->with('success', count($data['ids']).' kategori diperbarui. Produk terkait mengikuti pengaturan kategori.');
+    }
+
+    public function bulkDelete(Request $request, Store $store): RedirectResponse
+    {
+        CatalogAccess::authorize($request, $store, 'products.manage');
+        CatalogAccess::operational($store);
+        $data = $request->validate(['type' => 'required|in:services,categories', 'ids' => 'required|array|min:1|max:100', 'ids.*' => 'required|uuid|distinct']);
+        $images = [];
+        DB::transaction(function () use ($store, $data, &$images) {
+            $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            CatalogAccess::operational($locked);
+            $categories = $data['type'] === 'categories';
+            $model = $categories ? CatalogCategory::class : CatalogService::class;
+            $items = $model::where('store_id', $store->id)->whereIn('id', $data['ids'])->orderBy('id')->lockForUpdate()->get();
+            if ($items->count() !== count($data['ids'])) {
+                throw ValidationException::withMessages(['ids' => 'Ada pilihan yang tidak ditemukan pada toko ini. Muat ulang halaman.']);
+            }
+            foreach ($items as $item) {
+                if (($categories ? $item->products() : $item->categories())->exists()) {
+                    throw ValidationException::withMessages(['delete' => $categories
+                        ? 'Kategori '.$item->name.' masih dipakai produk. Pindahkan atau hapus produknya dahulu. Tidak ada kategori yang dihapus.'
+                        : 'Layanan '.$item->name.' masih memiliki kategori. Kosongkan kategorinya dahulu. Tidak ada layanan yang dihapus.']);
+                }
+            }
+            $branding = $locked->branding ?? [];
+            foreach ($items as $item) {
+                if ($categories) {
+                    $images[] = $branding['category_images'][$item->id] ?? null;
+                    foreach (['category_images', 'category_image_preferences', 'category_games', 'category_destinations', 'category_providers'] as $key) {
+                        unset($branding[$key][$item->id]);
+                    }
+                }
+                $item->delete();
+            }
+            if ($categories) {
+                $locked->update(['branding' => $branding]);
+            }
+        });
+        foreach (array_unique($images) as $image) {
+            $this->removeUnusedImage($store->fresh(), $image);
+        }
+
+        return back()->with('success', count($data['ids']).' '.($data['type'] === 'categories' ? 'kategori utama' : 'layanan').' kosong berhasil dihapus.');
+    }
+
     public function deleteService(Request $request, Store $store, CatalogService $service): RedirectResponse
     {
         CatalogAccess::authorize($request, $store, 'products.manage');

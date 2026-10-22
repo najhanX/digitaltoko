@@ -27,9 +27,9 @@ class SupplierController extends Controller
         $page = $list->paginate($list->apply(SupplierProduct::where('store_id', $store->id), ['sku', 'name', 'category', 'service'], ['connection' => 'connection_id', 'available' => 'available', 'mode' => 'mode'])->orderBy('name')->orderBy('id'));
 
         return Inertia::render('Owner/Sources', ['role' => $role, 'store' => $store->only(['id', 'name', 'plan', 'status', 'sandbox']),
-            'connections' => $connections->map(fn ($item) => [...$item->only(['id', 'kind', 'enabled', 'verified_at', 'synced_at', 'last_error']), 'webhook_configured' => filled($item->credentials['webhook_secret'] ?? null)]),
+            'connections' => $connections->map(fn ($item) => [...$item->only(['id', 'name', 'kind', 'enabled', 'verified_at', 'synced_at', 'last_error']), 'webhook_configured' => filled($item->credentials['webhook_secret'] ?? null)]),
             'digiflazzWebhookUrl' => config('suppliers.digiflazz_webhook_url') ?: rtrim(config('app.url'), '/').'/api/commerce/digiflazz',
-            'features' => array_values(array_filter(['digiflazz', 'stock', 'hanshop'], fn ($kind) => CatalogAccess::supports($store, $kind))),
+            'features' => array_values(array_filter(['digiflazz', 'stock', 'hanshop', 'otomax'], fn ($kind) => CatalogAccess::supports($store, $kind))),
             'canManage' => CatalogAccess::has($request, $role, 'products.manage'), 'items' => $page->getCollection()->map(fn ($item) => $item->only(['id', 'connection_id', 'sku', 'mode', 'name', 'kind', 'service', 'category', 'cost', 'available', 'quantity', 'observed_at'])),
             'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
     }
@@ -87,6 +87,7 @@ class SupplierController extends Controller
     {
         abort_unless(CatalogAccess::authorize($request, $store) === 'owner', 403);
         abort_unless($connection->store_id === $store->id, 404);
+        abort_if($connection->kind === 'otomax', 422, 'Nonaktifkan OtomaX melalui pengaturan koneksinya agar callback lama tetap dapat diterima.');
         DB::transaction(function () use ($connection) {
             $locked = SupplierConnection::whereKey($connection->id)->lockForUpdate()->firstOrFail();
             $secret = $locked->credentials['webhook_secret'] ?? null;

@@ -7,7 +7,9 @@ use App\Models\CustomerLedger;
 use App\Models\CustomerNotice;
 use App\Models\CustomerOrder;
 use App\Models\Store;
+use App\Models\SupplierConnection;
 use App\Services\CustomerCommerce;
+use App\Services\CustomerFulfillment;
 use App\Services\CustomerOrderDecision;
 use App\Services\CustomerPayments;
 use App\Services\CustomerWallet;
@@ -42,10 +44,15 @@ class CustomerPanelController extends Controller
         if (CatalogAccess::has($request, $role, 'customers.contacts')) {
             $data['phone'] = $order->phone;
         }
+        $attempts = $order->attempts()->orderBy('position')->get();
+        $supplierNames = SupplierConnection::where('store_id', $store->id)->where('kind', 'otomax')
+            ->whereIn('id', $attempts->where('source', 'otomax')->map(fn ($attempt) => $attempt->request_snapshot['connection_id'] ?? null)->filter())
+            ->pluck('name', 'id');
         Inertia::encryptHistory();
 
         return Inertia::render('Owner/OrderDetail', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'order' => [...$data, 'customer_id' => $order->customer_id, 'resolution' => $order->resolution],
-            'attempts' => $order->attempts()->orderBy('position')->get()->map(fn ($a) => $a->only(['id', 'position', 'source', 'cost', 'status', 'message', 'created_at', 'updated_at'])),
+            'attempts' => $attempts->map(fn ($a) => [...$a->only(['id', 'position', 'source', 'reference', 'cost', 'status', 'message', 'created_at', 'updated_at']), 'supplier_name' => $a->source === 'otomax' ? ($a->request_snapshot['otomax']['connection_name'] ?? $supplierNames->get($a->request_snapshot['connection_id'] ?? '')) : null, 'supplier_response' => $a->source === 'otomax' ? ($a->request_snapshot['supplier_response'] ?? null) : null]),
+            'canRetrySupplier' => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerFulfillment::class)->canRetrySupplier($order),
             'canCancel' => $role === 'owner' && ! $data['cancelled'] && $order->payment_status === 'unpaid' && in_array($order->status, ['awaiting_payment', 'expired'], true),
             'canReview' => $role === 'owner' && $order->status === 'review' && $order->payment_status === 'paid' && ! $order->attempts()->whereNotNull('last_checked_at')->exists(), 'canResolve' => CatalogAccess::has($request, $role, 'guests.resolve'), 'canResend' => CatalogAccess::has($request, $role, 'orders.resend'),
             'canManual' => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerOrderDecision::class)->eligible($order),
@@ -55,10 +62,15 @@ class CustomerPanelController extends Controller
 
     public function action(Request $request, Store $store, CustomerOrder $order): RedirectResponse
     {
-        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review,cancel,manual', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'status' => 'required_if:action,manual|in:success,failed', 'result' => 'nullable|string|max:20000', 'note' => 'required_if:action,resolve,review,manual|nullable|string|min:8|max:500']);
-        $permission = ['manual' => 'orders.manage', 'resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view', 'cancel' => 'orders.view'][$data['action']];
+        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review,cancel,manual,retry_supplier', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'status' => 'required_if:action,manual|in:success,failed', 'result' => 'nullable|string|max:20000', 'note' => 'required_if:action,resolve,review,manual|nullable|string|min:8|max:500']);
+        $permission = ['retry_supplier' => 'orders.manage', 'manual' => 'orders.manage', 'resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view', 'cancel' => 'orders.view'][$data['action']];
         $role = CatalogAccess::authorize($request, $store, $permission);
         abort_unless($order->store_id === $store->id, 404);
+        if ($data['action'] === 'retry_supplier') {
+            app(CustomerFulfillment::class)->retrySupplier($order);
+
+            return back()->with('success', 'Respons terbaru pemasok sudah diperiksa dan diterapkan jika ada perubahan.');
+        }
         if ($data['action'] === 'manual') {
             app(CustomerOrderDecision::class)->decide($order, $data['status'], $data['note'], $data['result'] ?? '', $role.':'.$request->user($role === 'staff' ? 'staff' : 'web')->id);
 

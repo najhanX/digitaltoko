@@ -24,6 +24,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class StoreCatalogTest extends TestCase
@@ -152,10 +153,16 @@ class StoreCatalogTest extends TestCase
         $this->assertStringNotContainsString('account-a', (string) DB::table('supplier_connections')->where('id', $one->id)->value('credentials'));
         $this->assertArrayNotHasKey('credentials', $one->toArray());
         $this->travel(121)->seconds();
+        $service->sync($one);
+        $service->sync($same);
+        Http::assertSentCount(2);
+        $this->travel(180)->seconds();
         try {
             $service->sync($one);
             $this->fail('Expected provider rejection');
         } catch (ValidationException $error) {
+            $this->assertStringContainsString('RC 83', $error->errors()['supplier'][0]);
+            $this->assertStringContainsString('5 menit', $one->fresh()->last_error);
         }
         $this->assertTrue(SupplierProduct::where('connection_id', $one->id)->first()->available);
         $this->assertDatabaseCount('supplier_products', 3);
@@ -165,6 +172,121 @@ class StoreCatalogTest extends TestCase
         } catch (ValidationException $error) {
         }
         $this->assertCount($count, Http::recorded());
+    }
+
+    public static function digiflazzRateLimitResponses(): array
+    {
+        return [
+            'rc83 in successful HTTP response' => [200, ['data' => ['rc' => '83', 'message' => 'PRIVATE-RESPONSE']], 'RC 83'],
+            'HTTP rate limit without JSON' => [429, [], 'HTTP 429'],
+        ];
+    }
+
+    #[DataProvider('digiflazzRateLimitResponses')]
+    public function test_digiflazz_rate_limit_waits_five_minutes_and_preserves_the_catalog_until_recovery(int $status, array $payload, string $reason): void
+    {
+        $connection = $this->connection($this->shop(), 'digiflazz', 'rate-'.$status);
+        $item = $this->item($connection);
+        $observed = $item->observed_at;
+        Http::fake(['api.digiflazz.com/*' => Http::sequence()
+            ->push($payload, $status)
+            ->push(['data' => [$this->digiRow()]])]);
+        $catalog = app(SupplierCatalog::class);
+        foreach ([0, 121] as $seconds) {
+            $this->travel($seconds)->seconds();
+            try {
+                $catalog->sync($connection);
+                $this->fail('Expected rate limit');
+            } catch (ValidationException $error) {
+                $this->assertStringContainsString($reason, $error->errors()['supplier'][0]);
+                $this->assertStringNotContainsString('PRIVATE-RESPONSE', $error->errors()['supplier'][0]);
+            }
+        }
+        Http::assertSentCount(1);
+        $this->assertTrue($item->fresh()->available);
+        $this->assertEquals($observed, $item->fresh()->observed_at);
+        $this->travel(180)->seconds();
+        $this->assertSame(1, $catalog->sync($connection));
+        Http::assertSentCount(2);
+        $this->assertNull($connection->fresh()->last_error);
+    }
+
+    public static function digiflazzAuthenticationResponses(): array
+    {
+        return [
+            ['41', 'Signature Digiflazz ditolak'],
+            ['42', 'Username Digiflazz tidak sesuai'],
+            ['82', 'belum terverifikasi'],
+        ];
+    }
+
+    #[DataProvider('digiflazzAuthenticationResponses')]
+    public function test_digiflazz_authentication_failures_expose_safe_specific_reasons_and_allow_recovery(string $code, string $message): void
+    {
+        $connection = $this->connection($this->shop(), 'digiflazz', 'auth-'.$code);
+        Http::fake(['api.digiflazz.com/*' => Http::sequence()
+            ->push(['data' => ['rc' => (string) $code, 'message' => 'SECRET-RESPONSE']], 400)
+            ->push(['data' => [$this->digiRow()]])]);
+        $catalog = app(SupplierCatalog::class);
+        try {
+            $catalog->sync($connection);
+            $this->fail('Expected authentication error');
+        } catch (ValidationException $error) {
+            $this->assertStringContainsString($message, $error->errors()['supplier'][0]);
+        }
+        $this->assertStringContainsString('RC '.$code, $connection->fresh()->last_error);
+        $this->assertStringNotContainsString('SECRET-RESPONSE', $connection->fresh()->last_error);
+        $this->travel(16)->seconds();
+        $this->assertSame(1, $catalog->sync($connection));
+        $this->assertNull($connection->fresh()->last_error);
+        Http::assertSentCount(2);
+    }
+
+    public function test_digiflazz_whitelist_failure_includes_the_rejected_ip_and_mode_without_leaking_response_text(): void
+    {
+        $connection = $this->connection($this->shop());
+        $item = $this->item($connection);
+        Http::fake(['api.digiflazz.com/*' => Http::response(['data' => ['rc' => '45', 'message' => 'IP 202.62.13.170 rejected SECRET-RESPONSE']], 400)]);
+        try {
+            app(SupplierCatalog::class)->sync($connection);
+            $this->fail('Expected IP whitelist error');
+        } catch (ValidationException $error) {
+            $message = $error->errors()['supplier'][0];
+            $this->assertStringContainsString('202.62.13.170', $message);
+            $this->assertStringContainsString('Production (RC 45)', $message);
+            $this->assertStringNotContainsString('SECRET-RESPONSE', $message);
+            $this->assertSame($message, $connection->fresh()->last_error);
+        }
+        $this->assertTrue($item->fresh()->available);
+        Http::assertSentCount(1);
+    }
+
+    public function test_digiflazz_invalid_product_data_never_replaces_the_last_valid_catalog(): void
+    {
+        $connection = $this->connection($this->shop());
+        $item = $this->item($connection);
+        Http::fake(['api.digiflazz.com/*' => Http::response(['data' => [['buyer_sku_code' => 'INVALID']]])]);
+        try {
+            app(SupplierCatalog::class)->sync($connection);
+            $this->fail('Expected catalog validation error');
+        } catch (ValidationException $error) {
+            $this->assertStringContainsString('Data produk Digiflazz tidak valid', $connection->fresh()->last_error);
+        }
+        $this->assertTrue($item->fresh()->available);
+        $this->assertSame(10000, $item->fresh()->cost);
+        $this->assertDatabaseCount('supplier_products', 1);
+    }
+
+    public function test_catalog_scheduler_keeps_the_specific_error_and_does_not_sync_file_based_otomax_connections(): void
+    {
+        $store = $this->shop();
+        $connection = $this->connection($store);
+        $otomax = $this->connection($store, 'otomax');
+        Http::fake(['api.digiflazz.com/*' => Http::response(['data' => ['rc' => '83', 'message' => 'Rate limited']])]);
+        $this->artisan('digitaltoko:catalog-sync', ['--store' => $store->id])->assertExitCode(1);
+        $this->assertStringContainsString('RC 83', $connection->fresh()->last_error);
+        $this->assertNull($otomax->fresh()->last_error);
+        Http::assertSentCount(1);
     }
 
     public function test_source_features_expiry_and_staff_permissions_are_enforced_server_side(): void

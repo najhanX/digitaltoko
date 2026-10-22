@@ -200,7 +200,7 @@ class CatalogController extends Controller
             if (ProductMapping::where('store_id', $store->id)->where('supplier_product_id', $item->id)->exists()) {
                 continue;
             }
-            $code = ($item->connection->kind === 'digiflazz' ? 'D' : 'H').'-'.strtoupper(substr(preg_replace('/[^a-zA-Z0-9_.-]/', '-', $item->sku), 0, 48));
+            $code = (['digiflazz' => 'D', 'hanshop' => 'H', 'otomax' => 'O'][$item->connection->kind] ?? 'S').'-'.strtoupper(substr(preg_replace('/[^a-zA-Z0-9_.-]/', '-', $item->sku), 0, 48));
             $originalCode = $code;
             $counter = 1;
             while (CatalogProduct::where('store_id', $store->id)->where('code', $code)->exists()) {

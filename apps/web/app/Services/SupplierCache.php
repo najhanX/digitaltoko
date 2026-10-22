@@ -8,9 +8,17 @@ use Illuminate\Validation\ValidationException;
 
 class SupplierCache
 {
+    public function lifetime(string $source, string $operation): int
+    {
+        return $source === 'digiflazz' && str_starts_with($operation, 'catalog:')
+            ? 300
+            : max(60, min(180, (int) config('suppliers.cache_seconds', 120)));
+    }
+
     public function remember(string $source, string $account, string $operation, Closure $read): array
     {
         $key = 'supplier:v1:'.$source.':'.hash_hmac('sha256', $account, (string) config('app.key')).':'.$operation;
+        $lifetime = $this->lifetime($source, $operation);
         try {
             $cache = Cache::store(config('suppliers.cache_store', 'redis'));
             $cached = $cache->get($key);
@@ -18,7 +26,7 @@ class SupplierCache
                 return $cached;
             }
 
-            return $cache->lock($key.':lock', 60)->block(5, function () use ($cache, $key, $read) {
+            return $cache->lock($key.':lock', 60)->block(5, function () use ($cache, $key, $read, $lifetime) {
                 if (is_array($cached = $cache->get($key))) {
                     return $cached;
                 }
@@ -31,7 +39,7 @@ class SupplierCache
                 try {
                     $value = $read();
                 } catch (\Throwable $error) {
-                    $seconds = $error instanceof SupplierFailure && ! $error->rateLimited ? 15 : 120;
+                    $seconds = $error instanceof SupplierFailure && ! $error->rateLimited ? 15 : max(120, $lifetime);
                     $message = match (true) {
                         $error instanceof SupplierFailure => $error->getMessage(),
                         $error instanceof ValidationException => collect($error->errors())->flatten()->first() ?? 'Respons pemasok tidak valid.',
@@ -41,7 +49,7 @@ class SupplierCache
                     throw ValidationException::withMessages(['supplier' => $message.' Coba kembali dalam '.$seconds.' detik.']);
                 }
                 $snapshot = ['value' => $value, 'observed_at' => now()->toIso8601String()];
-                $cache->put($key, $snapshot, max(60, min(180, (int) config('suppliers.cache_seconds', 120))));
+                $cache->put($key, $snapshot, $lifetime);
 
                 return $snapshot;
             });

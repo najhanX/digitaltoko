@@ -1,38 +1,19 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import Brand from './Brand';
+import SidebarSection from './SidebarSection';
 import ThemeToggle from './ThemeToggle';
 import PreviewBar from './PreviewBar';
 import NotificationBell, { type NotificationSummary } from './PanelNotifications';
 import type { WorkspaceContext } from '../types';
 
 const sidebarOffsets = new Map<string, number>();
+const sidebarCollapsedStates = new Map<string, boolean>();
 
 type NavSection = 'catalog' | 'sales' | 'channels' | 'management';
 type NavLink = { href: string; label: string; icon: LucideIcon; active: boolean; section?: NavSection };
 
-function SidebarSection({label, icon: Icon, links, storageKey, collapsed, onExpand, children}: {label:string; icon:LucideIcon; links:NavLink[]; storageKey:string; collapsed:boolean; onExpand:()=>void; children:ReactNode}) {
-    const id = useId();
-    const activeHref = links.find(link => link.active)?.href;
-    const [open, setOpen] = useState(() => {
-        if (activeHref) return true;
-        try { return sessionStorage.getItem(storageKey) === 'open'; } catch { return false; }
-    });
-    useEffect(() => { if (activeHref) setOpen(true); }, [activeHref]);
-    function toggle() {
-        const next = collapsed || !open;
-        if (collapsed) onExpand();
-        setOpen(next);
-        try { sessionStorage.setItem(storageKey, next ? 'open' : 'closed'); } catch { /* Navigation remains usable without browser storage. */ }
-    }
-    return <div className={'sidebar-section '+(activeHref?'has-active':'')}>
-        <button type="button" className="sidebar-section-toggle" aria-label={label} title={label} aria-expanded={!collapsed && open} aria-controls={id} onClick={toggle}>
-            <Icon size={17} aria-hidden="true"/><span>{label}</span><ChevronDown size={15} aria-hidden="true" className={open?'is-open':''}/>
-        </button>
-        <div id={id} className="sidebar-section-links" hidden={collapsed || !open}>{children}</div>
-    </div>;
-}
 export default function WorkspaceLayout({ title, description, role = 'owner', canCreate: _canCreate, children, actions, eyebrow, breadcrumb, preview = false, contentClassName = '' }: {
     title: string; description?: string; role?: 'owner'|'admin'|'staff'; canCreate?: boolean;
     children: ReactNode; actions?: ReactNode; eyebrow?: string; breadcrumb?: string; preview?: boolean; contentClassName?: string;
@@ -44,13 +25,24 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     const store = stores.find(item => item.id === context?.currentStoreId);
     const permissions = context?.permissions ?? [];
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => sidebarCollapsedStates.get(role) ?? false);
+    const [sidebarReady, setSidebarReady] = useState(false);
     const collapseKey = 'digitaltoko.sidebar.collapsed.'+role;
     useLayoutEffect(() => {
-        try { setSidebarCollapsed(localStorage.getItem(collapseKey) === '1'); } catch { /* Expanded navigation is the fallback when storage is unavailable. */ }
-    }, [collapseKey]);
+        setSidebarReady(false);
+        let collapsed = sidebarCollapsedStates.get(role) ?? false;
+        try { collapsed = localStorage.getItem(collapseKey) === '1'; } catch { /* Keep the in-memory preference when storage is unavailable. */ }
+        sidebarCollapsedStates.set(role, collapsed);
+        setSidebarCollapsed(collapsed);
+        let readyFrame = 0;
+        const restoredFrame = requestAnimationFrame(() => {
+            readyFrame = requestAnimationFrame(() => setSidebarReady(true));
+        });
+        return () => { cancelAnimationFrame(restoredFrame); cancelAnimationFrame(readyFrame); };
+    }, [collapseKey, role]);
     function changeSidebarCollapsed(next: boolean) {
         saveSidebarScroll();
+        sidebarCollapsedStates.set(role, next);
         setSidebarCollapsed(next);
         try { localStorage.setItem(collapseKey, next?'1':'0'); } catch { /* The current page can still change its sidebar width. */ }
     }
@@ -116,7 +108,8 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         const overview = role === 'owner' ? '/owner/stores/'+store.id : '/staff/'+store.id+'/dashboard';
         if (role === 'owner' || permissions.includes('dashboard.view')) scopedLinks.push({href:overview,label:'Ringkasan toko',icon:LayoutDashboard,active:path === overview});
         if (role === 'owner' || permissions.includes('subscription.view')) scopedLinks.push({href:'/stores/'+store.id+'/subscription',label:'Langganan & aktivasi',section:'management',icon:CreditCard,active:path === '/stores/'+store.id+'/subscription'});
-        if (role === 'owner' || permissions.some(value=>['products.view','products.manage','pricing.manage'].includes(value))) {
+        if (role === 'owner' || permissions.some(value=>['products.view','products.manage','pricing.manage','suppliers.manage','suppliers.responses','suppliers.import','suppliers.balance','suppliers.deposit'].includes(value))) {
+            scopedLinks.push({href:'/stores/'+store.id+'/otomax',label:'Supplier OtomaX',section:'catalog',icon:Package,active:path.startsWith('/stores/'+store.id+'/otomax')});
             scopedLinks.push({href:'/stores/'+store.id+'/sources',label:'Sumber produk',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/sources'});
             scopedLinks.push({href:'/stores/'+store.id+'/catalog-structure',label:'Layanan & kategori',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/catalog-structure'});
             scopedLinks.push({href:'/stores/'+store.id+'/products',label:'Katalog & harga',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/products'});
@@ -148,7 +141,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     return <>
         <Head title={title}/>
         {preview && <PreviewBar/>}
-        <div className={'panel-layout panel-surface workspace-shell '+(role!=='admin'?'compact-navigation ':'')+(mobileOpen?'nav-open ':'')+(sidebarCollapsed?'sidebar-collapsed':'')}>
+        <div data-sidebar-ready={sidebarReady?'true':'false'} className={'panel-layout panel-surface workspace-shell '+(role!=='admin'?'compact-navigation ':'')+(mobileOpen?'nav-open ':'')+(sidebarCollapsed?'sidebar-collapsed':'')}>
             {mobileOpen && <button type="button" className="sidebar-backdrop" aria-label="Tutup menu navigasi" tabIndex={-1} onClick={() => setMobileOpen(false)}/>}
             <aside ref={navigationRef} onScroll={saveSidebarScroll} className="sidebar workspace-sidebar" id="workspace-navigation" aria-label="Navigasi panel" role={mobileOpen?'dialog':undefined} aria-modal={mobileOpen?true:undefined}>
                 <div className="sidebar-brand"><Brand/><Link className="sidebar-mini-brand" href="/" aria-label="DigitalToko" title="DigitalToko"><img src="/brand/digitaltoko-mark.png" alt="" width={48} height={48}/></Link><button type="button" className="icon-button mobile-only" aria-label="Tutup menu" onClick={() => setMobileOpen(false)}><X size={20}/></button></div>
