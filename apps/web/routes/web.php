@@ -12,6 +12,7 @@ use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\CustomerPanelController;
 use App\Http\Controllers\GameIdentityController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\OtomaxCatalogController;
 use App\Http\Controllers\OtomaxController;
 use App\Http\Controllers\OwnerAuthController;
 use App\Http\Controllers\OwnerOnboardingController;
@@ -109,6 +110,14 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/customers/{customer}/ledger', [CustomerPanelController::class, 'ledger']);
     Route::post('/stores/{store}/customers/{customer}/settle', [CustomerPanelController::class, 'settle'])->middleware('throttle:6,1,commerce-stores-store-customers-customer-settle');
 
+    Route::prefix('/stores/{store}/otomax')->controller(OtomaxCatalogController::class)->group(function () {
+        Route::get('/connections/{connection}/catalog', 'settings');
+        Route::post('/connections/{connection}/catalog/preview', 'preview')->middleware('throttle:6,1');
+        Route::post('/connections/{connection}/catalog', 'save')->middleware('throttle:10,1');
+        Route::post('/connections/{connection}/catalog/sync', 'sync')->middleware('throttle:6,1');
+        Route::post('/connections/{connection}/catalog/pause', 'pause');
+        Route::get('/catalog-syncs/{import}', 'detail');
+    });
     Route::prefix('/stores/{store}/otomax')->controller(OtomaxController::class)->group(function () {
         Route::get('/', 'index');
         Route::get('/options', 'options');

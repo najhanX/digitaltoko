@@ -6,6 +6,7 @@ use App\Jobs\ImportOtomaxProducts;
 use App\Jobs\ProcessCustomerOrder;
 use App\Jobs\ProcessDigiflazzCallback;
 use App\Jobs\SendCustomerNotice;
+use App\Jobs\SyncOtomaxCatalog;
 use App\Models\Customer;
 use App\Models\CustomerNotice;
 use App\Models\DiscountVoucher;
@@ -282,6 +283,7 @@ class StoreRetention
     {
         $identifiers = [
             ImportOtomaxProducts::class => ['importId', DB::table('otomax_imports')->where('store_id', $store->id)->pluck('id')],
+            SyncOtomaxCatalog::class => ['importId', DB::table('otomax_imports')->where('store_id', $store->id)->pluck('id')],
             ProcessCustomerOrder::class => ['orderId', DB::table('customer_orders')->where('store_id', $store->id)->pluck('id')],
             SendCustomerNotice::class => ['noticeId', DB::table('customer_notices')->where('store_id', $store->id)->pluck('id')],
             ProcessDigiflazzCallback::class => ['attemptId', DB::table('order_attempts')->whereIn('order_id', DB::table('customer_orders')->where('store_id', $store->id)->select('id'))->pluck('id')],

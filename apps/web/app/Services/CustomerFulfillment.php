@@ -496,10 +496,10 @@ class CustomerFulfillment
                 return;
             }
             $item = SupplierProduct::where('store_id', $store->id)->where('connection_id', $connection->id)->where('mode', $snapshot['mode'] ?? 'prepaid')->where('sku', $snapshot['sku'] ?? '')->lockForUpdate()->first();
-            if (! $item || $item->cost === $cost) {
+            if (! $item) {
                 return;
             }
-            $item->update(['cost' => $cost]);
+            $item->update(['cost' => $cost, 'price_observed_at' => now()]);
             DB::afterCommit(function () use ($store, $item) {
                 try {
                     app(StoreCatalog::class)->reprice($store, $item->id);

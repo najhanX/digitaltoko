@@ -9,7 +9,7 @@ class StaffPermissions
         return ['vouchers.view' => 'Lihat voucher diskon', 'vouchers.manage' => 'Buat, ubah & hapus voucher diskon', 'dashboard.view' => 'Lihat ringkasan toko', 'products.view' => 'Lihat produk',
             'products.manage' => 'Kelola layanan, kategori, produk & parsing', 'pricing.manage' => 'Kelola harga & markup',
             'stock.view' => 'Lihat jumlah stok', 'stock.manage' => 'Kelola stok ready',
-            'stock.credentials' => 'Lihat credential stok', 'suppliers.manage' => 'Kelola koneksi & URL callback OtomaX', 'suppliers.responses' => 'Kelola kelompok jawaban OtomaX', 'suppliers.import' => 'Kelola profil & impor katalog OtomaX', 'suppliers.deposit' => 'Ambil tiket deposit OtomaX', 'suppliers.balance' => 'Lihat saldo pemasok toko', 'orders.view' => 'Lihat & cek transaksi',
+            'stock.credentials' => 'Lihat credential stok', 'suppliers.manage' => 'Kelola koneksi, URL harga & callback OtomaX', 'suppliers.responses' => 'Kelola kelompok jawaban OtomaX', 'suppliers.import' => 'Sinkronisasi & impor katalog OtomaX', 'suppliers.deposit' => 'Ambil tiket deposit OtomaX', 'suppliers.balance' => 'Lihat saldo pemasok toko', 'orders.view' => 'Lihat & cek transaksi',
             'orders.manage' => 'Kirim ulang pemasok & putuskan sukses/gagal manual', 'orders.resend' => 'Kirim ulang hasil ke penerima asli', 'guests.resolve' => 'Tindak lanjut pesanan guest',
             'customers.view' => 'Lihat pelanggan', 'customers.contacts' => 'Lihat kontak pelanggan',
             'customers.manage' => 'Kelola profil pelanggan', 'payments.view' => 'Lihat pembayaran',

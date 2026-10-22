@@ -1,6 +1,6 @@
 # DigitalToko web
 
-Status source lokal: **21 Oktober 2026**. Laravel 13 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff, landing dan storefront dijalankan satu Laravel. Worker WhatsApp berada di `../bot`.
+Status source lokal: **22 Oktober 2026**. Laravel 13 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff, landing dan storefront dijalankan satu Laravel. Worker WhatsApp berada di `../bot`.
 
 ## Menjalankan lokal
 
@@ -22,13 +22,13 @@ Atur `APP_URL=http://localhost:8000`, `PLATFORM_DOMAIN=localhost`; alias loopbac
 Jalankan pada terminal/service terpisah:
 
 ```powershell
-php artisan queue:work
+php artisan queue:work --timeout=180
 php artisan schedule:work
 ```
 
 Pastikan driver queue/cache/DB pada `.env` sesuai lingkungan. Queue dan scheduler dapat memproses pesanan lunas sungguhan; gunakan database fixture atau toko Pengujian untuk simulasi. Manager bot dijalankan dari `../bot`, bukan menggandakan proses pada port yang sama.
 
-Untuk Redis: `REDIS_CLIENT=predis`, `SUPPLIER_CACHE_STORE=redis`, `SUPPLIER_CACHE_SECONDS=120`, serta host/port/password sesuai layanan. Paket Predis tersedia. Cache pemasok dibatasi 60–180 detik per akun/operasi, dilindungi lock. Jika cache gagal tidak ada bypass request langsung ke pemasok.
+Untuk Redis: `REDIS_CLIENT=predis`, `SUPPLIER_CACHE_STORE=redis`, `SUPPLIER_CACHE_SECONDS=120`, serta host/port/password sesuai layanan. Paket Predis tersedia. Saldo dan katalog Hanshop memakai cache 60–180 detik per akun/operasi. Katalog Digiflazz memakai cache/cooldown 300 detik per akun/mode. URL Webreport OtomaX memakai snapshot terenkripsi 300 detik per URL lengkap/profil, dengan scheduler terpisah. Semuanya dilindungi lock. Jika cache gagal tidak ada bypass request langsung ke pemasok.
 
 Preview `/preview/admin`, `/preview/owner`, `/preview/staff`, `/preview/storefront` hanya APP_ENV=local dengan `PLATFORM_PREVIEW_ENABLED=true`; ini data contoh, bukan autentikasi atau akun nyata.
 
@@ -47,16 +47,16 @@ Toko demo: demo-aurora, demo-nebula, demo-atlas, demo-grace, demo-expired, **dem
 - Owner: identitas/daftar Hanshop, profil dan email, KTP manual, toko draft, staff maksimal lima termasuk nonaktif. Admin password lokal dan guard staff terpisah.
 - Admin: ringkasan, verifikasi, kelola/detail toko, koreksi paket/masa aktif, suspend/pulihkan dengan audit, paket/harga, pembayaran, voucher, harga modul custom.
 - Langganan: invoice sewa Hanshop, aktivasi pertama dan otomatis 24 jam setelah siap, renewal/upgrade/downgrade, grace tujuh hari. Trial baru dihapus; voucher platform dapat membuat invoice gratis.
-- Produk: sumber Digiflazz/Hanshop, saldo pemasok, layanan/kategori/produk, impor semua/layanan/kategori/pilihan, parsing, aktif/nonaktif/hapus massal, markup nominal/persen/kombinasi dan stok privat.
+- Produk: sumber Digiflazz/Hanshop dan beberapa supplier OtomaX per toko, saldo pemasok, layanan/kategori/produk, impor semua/layanan/kategori/pilihan, parsing, aktif/nonaktif/hapus massal, markup nominal/persen/kombinasi dan stok privat.
 - Penjualan: pesanan, detail/hasil, keputusan manual Digiflazz eligible, callback koreksi status/SN, pelanggan/wallet/ledger, pencairan manual saat berhenti, gateway dan voucher.
 - Pembayaran: wallet, Midtrans merchant toko, QRIS custom berlisensi per toko; inquiry pasca, guest checkout, pembatalan invoice belum dibayar, topup/refund dan snapshot fee/kode unik.
 - Sandbox toko: development key Digiflazz, saldo uji, sumber Hanshop/stok simulasi, bayar simulasi lokal atau Midtrans Sandbox. Perubahan mode ditolak bila masih ada pesanan/inquiry berjalan.
 - Kanal: WA toko untuk OTP/notifikasi termasuk paket Web, email platform atau SMTP toko, branding pesan per toko. Transaksi chat hanya paket Bot/Full.
-- Storefront: Aurora/Nebula/Atlas, kategori/checkout, quick order, nickname/tujuan kategori, banner/warna/logo/favicon/section, flash sale, trending, iklan, CS, leaderboard, kalkulator, artikel dan akun pelanggan.
+- Storefront: Aurora/Nebula/Atlas dengan susunan mobile khusus dan menu ringkas, pencarian dropdown infinite scroll, 24 preset tema (delapan terang/gelap/pastel), kategori/checkout, quick order Aurora ringkas dengan dropdown scroll dan loading minimal 500 ms, nickname/tujuan kategori, banner/warna/logo/favicon/section, flash sale, trending, iklan, CS, leaderboard, kalkulator, artikel dan akun pelanggan.
 - Artikel: Tiptap lazy-loaded, JSON tervalidasi, draf/terbit, revisi konflik, media privat sesuai akses, tags/share/related. Warna isi publik mengikuti tema; editor memiliki latar putih.
 - UI: sidebar compact/collapsed, terang/gelap/sistem, modal aksi, pencarian dan pagination tabel utama atas/bawah. Picker popup memakai dropdown overlay dan pemuatan lanjutan saat scroll. Staff maksimal lima tanpa filter/pagination. Notifikasi lonceng memakai infinite scroll; aksi menghasilkan toast.
 
-Katalog publik dan bot memakai proyeksi yang sama tanpa credential/modal/stok rahasia. Sinkronisasi manual: `php artisan digitaltoko:catalog-sync --store=UUID_TOKO`; tanpa opsi store untuk semua koneksi eligible. Refresh pembaca mempertahankan snapshot saat gagal; sumber remote default lebih dari 600 detik tidak dapat dipesan. Harga pasca pada katalog merupakan biaya admin, bukan total tagihan.
+Katalog publik dan bot memakai proyeksi yang sama tanpa credential/modal/stok rahasia. Sinkronisasi manual: `php artisan digitaltoko:catalog-sync --store=UUID_TOKO`; tanpa opsi store untuk semua koneksi eligible. Refresh pembaca mempertahankan snapshot saat gagal; sumber Digiflazz/Hanshop default lebih dari 600 detik tidak dapat dipesan. OtomaX memakai batas umur katalog per koneksi (default 24 jam, dibatasi 1–168 jam). Harga pasca pada katalog merupakan biaya admin, bukan total tagihan.
 
 ## Integrasi dan callback
 
@@ -84,3 +84,12 @@ npm run build
 Test integrasi MySQL tertentu bersifat opt-in/terisolasi; jangan mengarahkannya ke DB produksi. Bukti historis tidak sama dengan hasil pemeriksaan ulang hari ini. Lihat [arsitektur](../../docs/ARCHITECTURE.md), [aturan bisnis](../../docs/BUSINESS_RULES.md), [deployment](../../docs/DEPLOYMENT.md), [checkpoint](../../docs/NOTIFICATION_PROGRESS.md) dan [riwayat validasi](../../docs/FOUNDATION_VALIDATION.md).
 
 CSS `resources/css/app.css` adalah entry Vite di head Blade, bukan hanya import JS, untuk menghindari flash tanpa style. Navigasi internal memakai Link Inertia; perpindahan hostname memakai anchor. `public/hot` mengarahkan browser ke dev Vite bila ada; pastikan dev server berjalan atau pakai build sesuai lingkungan.
+
+
+## Sinkronisasi URL OtomaX
+
+Aktifkan pada Supplier OtomaX → Daftar harga URL, isi URL ALL produk HTTPS, uji/pratinjau lalu Simpan & sinkronkan. Interval default 15 menit, pilihan 5/15/30/60. Riwayat ada di tab Sinkronisasi harga. Scheduler `digitaltoko:otomax-catalogs` berjalan tiap menit dan mengantrekan pekerjaan; `digitaltoko:catalog-sync` hanya untuk Digiflazz/Hanshop. `queue:work` harus berjalan dan perlu restart setelah deploy. PHP DOM/libxml/cURL serta disk privat bersama web/worker dibutuhkan; tidak ada dependensi baru pada tahap ini.
+
+SKU hilang pada snapshot lengkap menjadi tidak tersedia, bukan dihapus. SKU yang kembali dapat tersedia lagi; harga nol/tidak valid ditahan. Penurunan besar/daftar valid kosong memerlukan konfirmasi. Harga manual, klasifikasi, gambar dan markup toko dipertahankan; harga callback yang lebih baru tidak ditimpa snapshot lama. Kegagalan jaringan/parser mempertahankan snapshot terakhir. URL akun tidak dikembalikan lengkap ke browser. Pengujian toko tidak mengambil feed OtomaX nyata. UI Excel/CSV tersembunyi, sedangkan fondasi dan data impor lama dipertahankan.
+
+Untuk mengubah warna: Desain web → Logo & warna → Ubah. Filter Semua/Terang/Gelap/Pastel hanya memudahkan pemilihan; warna tetap dapat diedit manual. Terapkan ke desain lalu Simpan desain untuk menerbitkan. Katalog memakai `sale_price` naik sebelum pagination; harga promo akhir tetap dihitung oleh mesin katalog.

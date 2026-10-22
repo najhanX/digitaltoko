@@ -82,15 +82,50 @@ class StorefrontSearchTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_scrolling_pages_keeps_results_relevant_scoped_and_without_repeating_rows(): void
+    {
+        $store = $this->shop();
+        $expected = [];
+        for ($index = 0; $index < 21; $index++) {
+            $product = $this->product($store, 'Canva '.str_pad((string) $index, 2, '0', STR_PAD_LEFT));
+            $product->update(['category' => 'Canva '.str_pad((string) $index, 2, '0', STR_PAD_LEFT)]);
+            $expected[] = $product->id;
+        }
+        $this->product($store, 'Spotify unrelated')->update(['category' => 'Music']);
+        $this->product($store, 'Canva inactive', false);
+        $this->product($this->shop(), 'Canva another store');
+        $products = [];
+        $categories = [];
+        for ($page = 1; $page <= 5; $page++) {
+            $response = $this->getJson($this->url($store).'?q=Canva&page='.$page)->assertOk()
+                ->assertJsonPath('pagination.page', $page)->assertJsonPath('pagination.has_more', $page < 5);
+            $this->assertLessThanOrEqual(8, count($response->json('products')));
+            $this->assertLessThanOrEqual(5, count($response->json('categories')));
+            $products = array_merge($products, array_column($response->json('products'), 'id'));
+            $categories = array_merge($categories, array_column($response->json('categories'), 'id'));
+        }
+        $this->assertEqualsCanonicalizing($expected, $products);
+        $this->assertCount(21, array_unique($products));
+        $this->assertCount(21, array_unique($categories));
+        $this->getJson($this->url($store).'?q=Canva&page=6')->assertOk()
+            ->assertJsonCount(0, 'products')->assertJsonCount(0, 'categories')->assertJsonPath('pagination.has_more', false);
+        $this->getJson($this->url($store).'?q=Spotify&page=1')->assertOk()->assertJsonCount(1, 'products')->assertJsonPath('pagination.has_more', false);
+        $this->getJson($this->url($store).'?q=Spotify&page=2')->assertOk()->assertJsonCount(0, 'products')->assertJsonCount(0, 'categories');
+        foreach (['0', '-1', '10001', 'invalid'] as $page) {
+            $this->getJson($this->url($store).'?q=Canva&page='.$page)->assertUnprocessable()->assertJsonValidationErrors('page');
+        }
+        Http::assertNothingSent();
+    }
+
     public function test_blank_short_unmatched_and_unavailable_store_search_do_not_return_catalog(): void
     {
         $store = $this->shop();
         $this->product($store, 'Canva Annual');
         foreach (['', 'C', 'not-in-catalog'] as $term) {
-            $this->getJson($this->url($store).'?q='.urlencode($term))->assertOk()->assertExactJson(['categories' => [], 'products' => []]);
+            $this->getJson($this->url($store).'?q='.urlencode($term))->assertOk()->assertExactJson(['categories' => [], 'products' => [], 'pagination' => ['page' => 1, 'has_more' => false]]);
         }
         $store->update(['expires_at' => now()->subDays(8)]);
-        $this->getJson($this->url($store).'?q=Canva')->assertOk()->assertExactJson(['categories' => [], 'products' => []]);
+        $this->getJson($this->url($store).'?q=Canva')->assertOk()->assertExactJson(['categories' => [], 'products' => [], 'pagination' => ['page' => 1, 'has_more' => false]]);
         $this->getJson('http://localhost/search?q=Canva')->assertNotFound();
         Http::assertNothingSent();
     }

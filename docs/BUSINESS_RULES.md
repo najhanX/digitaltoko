@@ -1,6 +1,6 @@
 # Aturan bisnis DigitalToko
 
-Status: kebijakan pengguna, disinkronkan dengan source lokal pada **21 Oktober 2026**. Kebijakan retensi/purge, refund gagal provisioning, dan otomatisasi domain tidak otomatis berarti fitur sudah tersedia. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
+Status: kebijakan pengguna, disinkronkan dengan source lokal pada **22 Oktober 2026**. Kebijakan retensi/purge, refund gagal provisioning, dan otomatisasi domain tidak otomatis berarti fitur sudah tersedia. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
 
 ## Identitas dan akun Hanshop
 

@@ -70,6 +70,33 @@ class NebulaStorefrontTest extends TestCase
         return $product;
     }
 
+    public function test_each_template_lists_category_products_by_price_before_pagination(): void
+    {
+        foreach (['nebula', 'aurora', 'atlas'] as $template) {
+            $store = $this->shop();
+            $store->update(['template' => $template]);
+            $products = [];
+            foreach ([60000, 10000, 50000, 20000, 40000, 30000] as $index => $price) {
+                $product = $this->product($store, 'Kategori uji urutan');
+                $product->update(['name' => 'Produk '.chr(65 + $index), 'sale_price' => $price, 'auto_update' => false]);
+                $products[$price] = $product->id;
+            }
+            ksort($products);
+            $ids = array_values($products);
+            $base = 'http://'.$store->slug.'.localhost';
+            foreach ([1, 2] as $number) {
+                $expected = array_slice($ids, ($number - 1) * 5, 5);
+                $assert = fn (Assert $page) => $page->where('products', fn ($rows) => collect($rows)->pluck('id')->all() === $expected)
+                    ->where('pagination.total', 6)->where('pagination.current_page', $number);
+                $this->get($base.'/kategori/'.$product->category_id.'?per_page=5&page='.$number)->assertOk()->assertInertia($assert);
+                if ($template !== 'nebula') {
+                    $this->get($base.'/?category='.urlencode('Kategori uji urutan').'&per_page=5&page='.$number)->assertOk()->assertInertia($assert);
+                }
+            }
+        }
+        Http::assertNothingSent();
+    }
+
     private function order(Store $store, CatalogProduct $product, ?Customer $customer, array $overrides = []): CustomerOrder
     {
         return CustomerOrder::create([...['store_id' => $store->id, 'product_id' => $product->id, 'customer_id' => $customer?->id,

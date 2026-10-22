@@ -41,7 +41,7 @@ class HomeController extends Controller
         if (! $store->acceptsOrders() || in_array($store->template, ['nebula', 'promo'], true)) {
             $query->whereRaw('1 = 0');
         }
-        $page = $list->paginate($list->apply($query, ['name', 'code', 'category', 'service'], ['category' => 'category', 'kind' => 'kind'])->orderBy('name')->orderBy('id'));
+        $page = $list->paginate($list->apply($query, ['name', 'code', 'category', 'service'], ['category' => 'category', 'kind' => 'kind'])->orderBy('sale_price')->orderBy('id'));
         $categoryPage = null;
         if (in_array($store->template, ['nebula', 'promo'], true)) {
             $categoryQuery = CatalogCategory::where('store_id', $store->id)->with('service:id,name')

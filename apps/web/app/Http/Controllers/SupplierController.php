@@ -30,7 +30,7 @@ class SupplierController extends Controller
             'connections' => $connections->map(fn ($item) => [...$item->only(['id', 'name', 'kind', 'enabled', 'verified_at', 'synced_at', 'last_error']), 'webhook_configured' => filled($item->credentials['webhook_secret'] ?? null)]),
             'digiflazzWebhookUrl' => config('suppliers.digiflazz_webhook_url') ?: rtrim(config('app.url'), '/').'/api/commerce/digiflazz',
             'features' => array_values(array_filter(['digiflazz', 'stock', 'hanshop', 'otomax'], fn ($kind) => CatalogAccess::supports($store, $kind))),
-            'canManage' => CatalogAccess::has($request, $role, 'products.manage'), 'items' => $page->getCollection()->map(fn ($item) => $item->only(['id', 'connection_id', 'sku', 'mode', 'name', 'kind', 'service', 'category', 'cost', 'available', 'quantity', 'observed_at'])),
+            'canManage' => CatalogAccess::has($request, $role, 'products.manage'), 'items' => $page->getCollection()->map(fn ($item) => $item->only(['id', 'connection_id', 'sku', 'mode', 'name', 'kind', 'service', 'category', 'cost', 'available', 'availability_reason', 'quantity', 'observed_at'])),
             'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
     }
 

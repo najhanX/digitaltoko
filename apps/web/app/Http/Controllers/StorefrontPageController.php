@@ -23,31 +23,35 @@ class StorefrontPageController extends Controller
     {
         $store = $access->store($request);
         abort_unless($store->supportsWeb(), 404);
-        $data = $request->validate(['q' => 'nullable|string|max:80']);
+        $data = $request->validate(['q' => 'nullable|string|max:80', 'page' => 'sometimes|integer|min:1|max:10000']);
+        $page = (int) ($data['page'] ?? 1);
         $term = trim($data['q'] ?? '');
         if (mb_strlen($term) < 2 || ! $store->acceptsOrders()) {
-            return response()->json(['categories' => [], 'products' => []])->header('Cache-Control', 'private, no-store');
+            return response()->json(['categories' => [], 'products' => [], 'pagination' => ['page' => $page, 'has_more' => false]])->header('Cache-Control', 'private, no-store');
         }
         $pattern = '%'.$term.'%';
         $categories = CatalogCategory::where('store_id', $store->id)->with('service:id,name')
             ->whereHas('products', fn ($query) => $query->where('store_id', $store->id)->where('active', true))
             ->where(fn ($query) => $query->where('name', 'like', $pattern)->orWhereHas('service', fn ($service) => $service->where('name', 'like', $pattern)))
-            ->orderBy('name')->orderBy('id')->limit(5)->get()
-            ->map(fn ($category) => ['id' => $category->id, 'name' => $category->name, 'subtitle' => $category->service->name,
-                'image' => $store->branding['category_images'][$category->id] ?? null,
-                'url' => route('storefront.category', ['category' => $category->id], false)]);
+            ->orderBy('name')->orderBy('id')->offset(($page - 1) * 5)->limit(6)->get();
+        $moreCategories = $categories->count() > 5;
+        $categories = $categories->take(5)->values()->map(fn ($category) => ['id' => $category->id, 'name' => $category->name, 'subtitle' => $category->service->name,
+            'image' => $store->branding['category_images'][$category->id] ?? null,
+            'url' => route('storefront.category', ['category' => $category->id], false)]);
         // Search reads bounded catalog snapshots; it must not trigger supplier refreshes on every keystroke.
         $products = $catalog->query($store, false)->where('active', true)
             ->where(fn ($query) => $query->where('name', 'like', $pattern)->orWhere('code', 'like', $pattern)->orWhere('category', 'like', $pattern))
-            ->orderBy('name')->orderBy('id')->limit(8)->get()->map(function ($product) use ($catalog, $store) {
-                $quote = $catalog->present($product, $store);
+            ->orderBy('name')->orderBy('id')->offset(($page - 1) * 8)->limit(9)->get();
+        $moreProducts = $products->count() > 8;
+        $products = $products->take(8)->values()->map(function ($product) use ($catalog, $store) {
+            $quote = $catalog->present($product, $store);
 
-                return ['id' => $product->id, 'name' => $product->name, 'subtitle' => $product->category,
-                    'image' => $quote['category_image'], 'price' => $quote['price'], 'available' => $quote['available'],
-                    'url' => $product->category_id ? route('storefront.category', ['category' => $product->category_id], false).'?product='.$product->id : '/checkout?product='.$product->id];
-            });
+            return ['id' => $product->id, 'name' => $product->name, 'subtitle' => $product->category,
+                'image' => $quote['category_image'], 'price' => $quote['price'], 'available' => $quote['available'],
+                'url' => $product->category_id ? route('storefront.category', ['category' => $product->category_id], false).'?product='.$product->id : '/checkout?product='.$product->id];
+        });
 
-        return response()->json(['categories' => $categories, 'products' => $products])->header('Cache-Control', 'private, no-store');
+        return response()->json(['categories' => $categories, 'products' => $products, 'pagination' => ['page' => $page, 'has_more' => $moreCategories || $moreProducts]])->header('Cache-Control', 'private, no-store');
     }
 
     public function category(Request $request, CatalogCategory $category, CustomerAccess $access, StoreCatalog $catalog): Response

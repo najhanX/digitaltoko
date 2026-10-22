@@ -1506,3 +1506,19 @@
     outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
+
+.otomax-url-preview { display: grid; gap: 14px; min-width: 0; }
+.otomax-url-preview header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.otomax-url-preview h3 { margin: 0; }
+.otomax-sync-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.otomax-sync-stats > div { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.otomax-sync-stats span { font-size: var(--text-small); color: var(--muted); }
+.otomax-sync-stats strong { font-size: 1.15rem; }
+.otomax-url-sample { max-height: 270px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+.otomax-url-sample table { min-width: 650px; table-layout: fixed; }
+.otomax-url-sample :is(th,td):first-child { width: 38%; }
+.otomax-url-sample :is(th,td) { white-space: normal; overflow-wrap: anywhere; }
+.otomax-url-sample td strong { display: block; white-space: normal; }
+@media(max-width:600px) { .otomax-sync-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.otomax-url-label { display:flex; align-items:center; gap:8px; }

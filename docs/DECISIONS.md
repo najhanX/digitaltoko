@@ -1,6 +1,6 @@
 # Keputusan DigitalToko
 
-Disinkronkan dengan source dan keputusan pengguna sampai **21 Oktober 2026**. Keberadaan implementasi lokal tidak menjamin konfigurasi/deployment produksi.
+Disinkronkan dengan source dan keputusan pengguna sampai **22 Oktober 2026**. Keberadaan implementasi lokal tidak menjamin konfigurasi/deployment produksi.
 
 ## Keputusan yang berlaku dan implementasi
 
@@ -25,9 +25,15 @@ Disinkronkan dengan source dan keputusan pengguna sampai **21 Oktober 2026**. Ke
 ## Infrastruktur yang telah memiliki fondasi
 
 - Satu manager dan child worker per toko, session file privat dan loopback HTTP; ini implementasi, bukan lagi sekadar usulan.
-- Cache pemasok Redis 60–180 detik per akun + operasi/mode, lock dan cooldown. Limit Digiflazz per akun/API key menurut konfirmasi owner; akun berbeda tidak disatukan karena IP server sama.
+- Cache saldo/Hanshop Redis 60–180 detik per akun/operasi, katalog Digiflazz 300 detik per akun/mode, dan snapshot URL OtomaX 300 detik per URL lengkap/profil. Semuanya memakai lock dan cooldown. Limit Digiflazz per akun/API key menurut konfirmasi owner; akun berbeda tidak disatukan karena IP server sama.
 - Host resolver untuk subdomain configured domain/alias dan custom host active+verified. DNS wildcard/cert provider harus disiapkan di luar resolver.
 - Laravel queue, scheduler, outbox dan webhook menangani pemrosesan ulang yang aman. API Hanshop bridge internal berbeda dari Public Partner API HMAC.
+
+## Kondisi implementasi tambahan 22 Oktober
+
+- OtomaX mendukung URL ALL produk Webreport HTTPS dengan pratinjau, format pembacaan per koneksi, sinkronisasi manual/terjadwal, history, dan penandaan tidak tersedia untuk SKU hilang. Upload Excel/CSV disembunyikan pada UI tanpa menghapus backend/data lama. Feed belum dipasang ke koneksi asli user oleh proses pengembangan; pemetaan akun tetap dipilih owner.
+- Storefront ketiga template memiliki susunan mobile, dropdown pencarian infinite scroll tanpa kelompok berulang, quick order Aurora ringkas dengan pemuatan scroll minimal 500 ms dan 24 preset warna. Perubahan desain tetap melalui editor owner/staff; tidak ada pergantian tema toko existing otomatis.
+- Urutan produk katalog/halaman kategori berdasarkan `sale_price` naik sebelum pagination. Pencarian navbar, urutan kategori, trending dan promo memiliki alur masing-masing.
 
 ## Pekerjaan atau keputusan yang masih terbuka
 

@@ -1,6 +1,6 @@
 # VPS dan domain deployment DigitalToko
 
-Panduan disinkronkan dengan source lokal **21 Oktober 2026**. Modul bisnis, checkout, OTP dan notifikasi sudah tersedia; DNS/VPS, kepemilikan domain, secret dan layanan produksi harus diverifikasi pada lingkungan tujuan. Sinkronisasi dokumen tidak mengubah server atau membuktikan deploy telah dilakukan.
+Panduan disinkronkan dengan source lokal **22 Oktober 2026**. Modul bisnis, checkout, OTP dan notifikasi sudah tersedia; DNS/VPS, kepemilikan domain, secret dan layanan produksi harus diverifikasi pada lingkungan tujuan. Sinkronisasi dokumen tidak mengubah server atau membuktikan deploy telah dilakukan.
 
 ## Runtime
 
@@ -177,7 +177,7 @@ Integrasi memanggil endpoint publik, tanpa menyalin implementasi worker pihak ke
 6. Tidak ada opsi melewati saldo/pending/hold. Selesaikan lewat settlement/guest dan invoice yang benar; jangan sekadar mengubah saldo menjadi nol lewat SQL. Renewal sebelum claim mempertahankan data/lisensi. Setelah purge_started_at terisi, toko dibekukan untuk cleanup; jangan mengosongkannya untuk mencoba memulihkan berkas yang mungkin sudah terhapus.
 7. Jika cleanup gagal, panel menampilkan error. Perbaiki penyebab lalu jalankan ulang --apply. Bot manager harus memberi ACK sebelum data dihapus. Retry melanjutkan cleanup, bukan mengembalikan toko. Berkas/session tidak ikut rollback SQL. Diagnostik ada di log privat; jangan membagikan kredensial.
 
-Purge menghapus data dan direktori **aktif** khusus toko. Snapshot database/media, log terpusat, ekspor dan salinan offsite milik operator tidak dibersihkan per toko oleh modul ini. Tetapkan batas umur, enkripsi dan pemusnahan backup; restore wajib offline dan direkonsiliasi dengan daftar toko yang telah dihapus sebelum trafik publik dibuka. Cache pemasok bersama tetap sampai TTL 60–180 detik tanpa flush global. Login owner dan identitas Hanshop dipertahankan; staff/customer yang telah dihapus tidak bisa diautentikasi. DNS/TLS provider dilepas lewat prosedur domain terpisah.
+Purge menghapus data dan direktori **aktif** khusus toko. Snapshot database/media, log terpusat, ekspor dan salinan offsite milik operator tidak dibersihkan per toko oleh modul ini. Tetapkan batas umur, enkripsi dan pemusnahan backup; restore wajib offline dan direkonsiliasi dengan daftar toko yang telah dihapus sebelum trafik publik dibuka. Cache pemasok bersama tetap sampai TTL sesuai jenisnya (60–180 detik saldo/Hanshop, 300 detik katalog Digiflazz/URL OtomaX) tanpa flush global. Login owner dan identitas Hanshop dipertahankan; staff/customer yang telah dihapus tidak bisa diautentikasi. DNS/TLS provider dilepas lewat prosedur domain terpisah.
 
 ### Persetujuan penghapusan manual dari panel
 
@@ -187,10 +187,10 @@ Permohonan owner (termasuk toko belum pernah berlangganan) ada pada Admin → Ke
 ## Supplier OtomaX (21 Oktober 2026)
 
 - Deploy `composer install --no-dev --optimize-autoloader` (PhpSpreadsheet 5.10.0), build web, backup database, lalu `php artisan migrate --force`. Ada dua migrasi: tabel/profil/koneksi multi-supplier dan perluasan encrypted payload/snapshot untuk file besar. Jangan mengganti APP_KEY.
-- Menu owner/staff: Produk & harga → Supplier OtomaX. Buat kelompok jawaban, tambahkan koneksi, uji saldo, ambil URL callback, lalu impor XLSX/CSV. Langkah rinci ada di [OTOMAX_PROGRESS.md](OTOMAX_PROGRESS.md).
+- Menu owner/staff: Produk & harga → Supplier OtomaX. Buat kelompok jawaban, tambahkan koneksi, uji saldo, ambil URL callback, lalu atur Daftar harga URL. Menu XLSX/CSV sementara disembunyikan; fondasinya tetap tersedia. Langkah rinci ada di [OTOMAX_PROGRESS.md](OTOMAX_PROGRESS.md).
 - `QUEUE_CONNECTION=database` atau Redis, `DB_QUEUE_RETRY_AFTER=240` / `REDIS_QUEUE_RETRY_AFTER=240` (harus melebihi timeout job impor 180 detik). Jalankan `php artisan queue:work --timeout=180`, serta scheduler. Restart worker setelah deploy. Driver sync didukung untuk tes, tetapi impor besar sebaiknya antrean.
 - `APP_URL` harus URL publik platform/URL ngrok yang aktif. Daftarkan URL callback **lengkap** dari modal, termasuk ID koneksi dan token, ke supplier. Route menerima GET/POST `/api/commerce/otomax/{connection}/{token}`; IP callback diisi sesuai IP pengirim nyata. Jangan menyalin URL/token ke log publik. Whitelist IP keluar VPS pada IP Center supplier jika diwajibkan. IP request transaksi dan IP callback bisa berbeda.
-- Tidak ada polling pembelian ulang. Biarkan endpoint cek status kosong kecuali supplier menjamin endpoint tersebut read-only dan mendukung `cek=1`. Katalog/harga/stok diperbarui lewat impor ulang, bukan API daftar produk yang belum terverifikasi.
+- Tidak ada polling pembelian ulang. Biarkan endpoint cek status kosong kecuali supplier menjamin endpoint tersebut read-only dan mendukung `cek=1`. Katalog/harga/ketersediaan diperbarui lewat daftar harga URL Webreport; lihat petunjuk sinkronisasi URL di bawah. Stok jumlah tetap tidak diketahui jika feed tidak melaporkannya.
 - Paket dengan fitur sumber PPOB sendiri memperoleh OtomaX; paket stok premium saja tidak. Sandbox mensimulasikan transaksi/saldo/tiket tanpa request supplier. Tiket deposit tidak mentransfer uang atau menandai saldo masuk otomatis.
 - Scheduler membersihkan file/payload pratinjau setelah dua jam. Riwayat ringkas dan callback mengikuti lifecycle toko; purge juga membersihkan file OtomaX dan job terkait. Tidak ada penghapusan log callback otomatis berdasarkan umur saat ini.
 
@@ -198,3 +198,13 @@ Permohonan owner (termasuk toko belum pernah berlangganan) ada pada Admin → Ke
 ### Impor OtomaX besar dan penyimpanan worker
 
 Hasil normalisasi Excel/CSV disimpan terenkripsi pada `storage/app/private/otomax/{store}/previews/{import}`; database hanya memuat metadata, path dan hash kecil. Mount disk `local` privat yang sama pada proses web dan queue jika keduanya berjalan di container/host berbeda, dan pertahankan APP_KEY. Jangan menaruh preview di disk publik. Setelah pembaruan ini restart worker/scheduler yang berjalan lama lalu unggah ulang file yang sebelumnya gagal. Tidak ada migrasi tambahan atau keharusan menaikkan max_allowed_packet untuk perbaikan ini. Impor selesai dan scheduler membersihkan berkas sesuai lifecycle toko/pratinjau.
+
+
+## Sinkronisasi URL katalog OtomaX — 22 Oktober 2026
+
+- Backup database/media privat, deploy source, jalankan php artisan migrate --force untuk 2026_10_22_121229_add_otomax_url_catalog_sync, lalu build web. Migrasi menambah konfigurasi URL terenkripsi/jadwal/revisi pada koneksi, penanda sumber riwayat dan metadata ketersediaan/harga. Tidak ada dependency Composer/NPM baru; ekstensi PHP DOM, libxml dan cURL diperlukan.
+- Lokal: php artisan schedule:work dan php artisan queue:work --timeout=180 berjalan pada terminal terpisah. Restart proses queue:work lama setelah perubahan source/model; pada VPS gunakan pengelola proses dan php artisan queue:restart. retry_after existing 240 detik harus lebih besar daripada timeout worker 180 detik. Redis dan disk privat harus dapat ditulis/diakses worker dan web.
+- Scheduler digitaltoko:otomax-catalogs berjalan tiap menit, hanya mengantrekan koneksi jatuh tempo. Pemeriksaan operator dapat memakai php artisan digitaltoko:otomax-catalogs --store=STORE_UUID. Command ini tidak mengunduh langsung dan bukan pengganti queue worker. Interval per supplier default 15 menit, pilihan 5/15/30/60 menit; shared snapshot URL 300 detik dan cooldown error lima menit.
+- Panel Produk & harga → Supplier OtomaX → Daftar harga URL: masukkan URL ALL produk, atur interval/status otomatis, Uji URL, periksa pratinjau, lalu Simpan & sinkronkan. Jika jumlah produk turun drastis atau daftar valid benar-benar kosong, persetujuan eksplisit diperlukan. Produk baru berada di Sumber produk sebelum diimpor ke katalog jual. Riwayat berada pada tab Sinkronisasi harga.
+- Staff suppliers.manage dapat menguji/mengganti/menjeda URL; suppliers.import dapat meminta sinkronisasi manual. URL tersimpan tidak dikirim kembali lengkap. Jangan memasukkan URL token asli ke Git atau log. Mode Pengujian tidak mengakses feed supplier nyata. UI impor berkas tetap disembunyikan, backend dan data lama dipertahankan.
+- Backup lokal sebelum migrasi disimpan privat sebagai storage/app/private/backups/before-otomax-url-20261022-122029.jsonl.gz (schema dan raw rows 43 tabel, gzip JSONL). Bukan berkas publik dan tidak dimasukkan Git. Pengujian MySQL menggunakan database sementara terpisah, bukan data toko aktif.

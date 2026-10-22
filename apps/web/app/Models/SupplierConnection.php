@@ -12,11 +12,11 @@ class SupplierConnection extends Model
 
     protected $guarded = [];
 
-    protected $hidden = ['credentials'];
+    protected $hidden = ['credentials', 'catalog_config'];
 
     protected function casts(): array
     {
-        return ['credentials' => 'encrypted:array', 'settings' => 'array', 'catalog_modes' => 'array', 'enabled' => 'boolean', 'verified_at' => 'immutable_datetime', 'synced_at' => 'immutable_datetime'];
+        return ['credentials' => 'encrypted:array', 'catalog_config' => 'encrypted:array', 'catalog_revision' => 'integer', 'catalog_next_sync_at' => 'immutable_datetime', 'catalog_last_checked_at' => 'immutable_datetime', 'settings' => 'array', 'catalog_modes' => 'array', 'enabled' => 'boolean', 'verified_at' => 'immutable_datetime', 'synced_at' => 'immutable_datetime'];
     }
 
     public function store(): BelongsTo

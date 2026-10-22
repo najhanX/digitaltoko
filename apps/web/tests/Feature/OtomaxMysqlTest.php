@@ -2,15 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SyncOtomaxCatalog;
 use App\Models\OtomaxImport;
 use App\Models\Store;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Models\User;
+use App\Services\OtomaxCatalogSync;
 use App\Services\OtomaxImports;
+use App\Services\OtomaxWebCatalog;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -52,6 +56,23 @@ class OtomaxMysqlTest extends TestCase
             $this->assertSame(6000, SupplierProduct::where('connection_id', $connection->id)->count());
             Storage::disk('local')->assertMissing($payload['rows_path']);
             Http::assertNothingSent();
+            $html = '<table><tr><td colspan="4">Test</td></tr><tr><td>Kode</td><td>Keterangan</td><td>Harga</td><td>Status</td></tr>';
+            for ($i = 1; $i < 6000; $i++) {
+                $html .= '<tr><td>TEST'.$i.'</td><td>Produk '.$i.'</td><td>1.200</td><td>Open</td></tr>';
+            }
+            Http::fake(['https://8.8.8.8/*' => Http::response($html.'</table>')]);
+            Queue::fake([SyncOtomaxCatalog::class]);
+            $sync = app(OtomaxCatalogSync::class);
+            $preview = $sync->preview($connection->fresh(), ['url' => 'https://8.8.8.8/test-catalog?key=fixture-only', 'profile' => OtomaxWebCatalog::defaults(), 'automatic' => true, 'interval' => 15], 'owner:'.$store->owner_id);
+            $this->assertSame(1, $preview->summary['missing']);
+            $this->assertLessThan(16384, strlen($preview->getRawOriginal('payload')));
+            $sync->activate($connection->fresh(), $preview, 'owner:'.$store->owner_id, false);
+            (new SyncOtomaxCatalog($preview->id))->handle($sync);
+            $this->assertSame('completed', $preview->fresh()->status, $preview->fresh()->error ?? '');
+            $this->assertSame(5999, SupplierProduct::where('connection_id', $connection->id)->where('available', true)->count());
+            $this->assertFalse(SupplierProduct::where('connection_id', $connection->id)->where('sku', 'TEST0')->sole()->available);
+            $this->assertSame(1200, SupplierProduct::where('connection_id', $connection->id)->where('sku', 'TEST1')->sole()->cost);
+            $this->assertSame(6000, SupplierProduct::where('connection_id', $connection->id)->count());
         } finally {
             DB::disconnect('mysql');
             if (preg_match('/^dt_otomax_test_[a-f0-9]{32}$/D', $name)) {

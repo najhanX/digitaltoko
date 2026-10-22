@@ -1,6 +1,6 @@
 # DigitalToko — workspace Hansbot
 
-Dokumentasi disinkronkan dengan source lokal pada **21 Oktober 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
+Dokumentasi disinkronkan dengan source lokal pada **22 Oktober 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
 
 DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk digital, bot WhatsApp, atau keduanya. Satu owner dapat memiliki banyak toko; setiap toko memiliki langganan, katalog, stok, pelanggan, wallet, pesanan, konfigurasi, dan sesi WhatsApp sendiri.
 
@@ -22,11 +22,11 @@ DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk di
 - Onboarding owner lewat bridge identitas Hanshop, profil/email, KTP manual, toko draft, serta maksimal lima staff lokal per toko.
 - Sembilan paket Mercury sampai Andromeda, harga/durasi admin, invoice sewa, aktivasi pertama, renewal, perubahan paket dan masa tenggang per toko. **Trial baru dihapus**; voucher platform mendukung diskon 100% tanpa gateway.
 - Admin mengelola toko, paket, verifikasi, pembayaran, voucher dan harga modul. Penangguhan admin dan koreksi paket/masa aktif memiliki audit.
-- Sumber Digiflazz/Hanshop, cache akun bersama Redis, layanan → kategori → produk, impor semua/per layanan/per kategori/pilihan, parsing, markup dan stok premium privat.
+- Sumber Digiflazz/Hanshop serta multi-supplier OtomaX melalui IP Center dan sinkronisasi URL Webreport, cache akun bersama Redis, layanan → kategori → produk, impor semua/per layanan/per kategori/pilihan, parsing, markup dan stok premium privat.
 - Checkout web dan bot, inquiry pascabayar, akun pelanggan, wallet/topup/refund, guest checkout, Midtrans merchant toko dan QRIS custom berlisensi.
 - Webhook Digiflazz dan rekonsiliasi status/SN, keputusan manual yang dibatasi transaksi Digiflazz eligible, koreksi refund, serta blok pembelian bagi pelanggan bersaldo minus.
 - WhatsApp toko untuk OTP/notifikasi termasuk paket Web. Perintah transaksi chat tetap memerlukan paket Bot/Full. Email memakai pengirim platform atau SMTP toko.
-- Aurora, Nebula dan Atlas memakai katalog/checkout bersama: desain warna/section/banner, flash sale, trending, artikel, leaderboard, cek pesanan, profil dan pengecekan akun game sesuai konfigurasi.
+- Aurora, Nebula dan Atlas memiliki susunan mobile khusus, navigasi ringkas, pencarian dropdown dengan infinite scroll, quick order Aurora dengan dropdown scroll/loading 500 ms, dan 24 preset warna (terang/gelap/pastel). Ketiganya memakai katalog/checkout bersama: desain warna/section/banner, flash sale, trending, artikel, leaderboard, cek pesanan, profil dan pengecekan akun game sesuai konfigurasi.
 - Mode pengujian per toko: Digiflazz development, pembayaran simulasi atau Midtrans Sandbox, wallet/kuota uji terpisah; sumber Hanshop dan stok premium disimulasikan.
 - UI panel responsif, tema terang/gelap, sidebar collapsed, modal aksi, tabel berfilter/pagination, notifikasi lonceng dengan infinite scroll dan toast.
 
@@ -42,6 +42,12 @@ Retensi per toko sudah tersedia: jadwal 7/30 hari, hold kewajiban, reminder, pra
 
 Source di working tree dapat lebih baru daripada commit/deployment. Pengujian historis tercatat dengan tanggal dan lingkungannya; keberadaan source/test tidak membuktikan layanan produksi sudah diperbarui.
 
+## Pembaruan instalasi existing — 22 Oktober 2026
+
+Backup database dan pertahankan APP_KEY, deploy source/dependensi sesuai lockfile, jalankan `php artisan migrate --force`, lalu `npm run build`. Migrasi URL katalog OtomaX menambah konfigurasi terenkripsi, jadwal/revisi sinkronisasi serta metadata sumber produk. Restart queue worker lama; worker URL memakai timeout 180 detik dengan retry_after di atas batas tersebut. Queue dan scheduler diperlukan untuk sinkronisasi otomatis; langkah lengkap ada di [deployment](docs/DEPLOYMENT.md).
+
+URL daftar harga diatur per koneksi melalui **Supplier OtomaX → Daftar harga URL → Uji URL → Simpan & sinkronkan**. Default 15 menit, pilihan 5/15/30/60 menit. Produk hilang dari snapshot valid menjadi tidak tersedia; error unduh tidak menghapus katalog. Menu upload Excel/CSV sementara tersembunyi, fondasi/backend tetap ada.
+
 ## Dokumentasi
 
 - [Arsitektur dan alur source](docs/ARCHITECTURE.md)
@@ -51,3 +57,5 @@ Source di working tree dapat lebih baru daripada commit/deployment. Pengujian hi
 - [Hak akses staff](docs/STAFF_PERMISSIONS.md)
 - [Domain](docs/DOMAINS.md) dan [deployment](docs/DEPLOYMENT.md)
 - [Riwayat validasi](docs/FOUNDATION_VALIDATION.md), [checkpoint notifikasi/voucher](docs/NOTIFICATION_PROGRESS.md), [audit UI](docs/UI_READABILITY_AUDIT.md)
+
+- [Integrasi OtomaX dan progres](docs/OTOMAX_PROGRESS.md), [rancangan serta batas sinkronisasi URL](docs/OTOMAX_INTEGRATION_PLAN.md)

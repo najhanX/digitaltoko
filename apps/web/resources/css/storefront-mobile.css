@@ -1,0 +1,140 @@
+/* The same storefront content uses a simpler composition on phones. */
+.sf-mobile-menu, .sf-mobile-menu-panel { display: contents; }
+.sf-mobile-menu::details-content { display: contents; content-visibility: visible; }
+.sf-mobile-menu>summary { display: none; }
+
+@media (max-width: 700px) {
+    .sf-site { --text-small: .875rem; --text-body: .9375rem; }
+    .sf-site .sf-container { padding-inline: 16px; }
+    .sf-site :is(h1,h2,h3,p,strong,dd) { overflow-wrap: anywhere; }
+    .sf-site :is(.sf-brand,.ng-brand) { min-width: 0; font-size: 16px; gap: 9px; }
+    .sf-site .sf-brand>span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sf-site :is(.ng-brand small,.ng-currency,.ng-nav>span,.sf-atlas-header-nav>span) { display: none; }
+    .sf-site :is(.sf-custom-logo,.ng-brand-symbol,.sf-store-icon) { width: 34px; height: 34px; flex: 0 0 34px; }
+    .sf-site .sf-customer-trigger { min-height: 40px; padding: 8px 10px; gap: 6px; }
+    .sf-site .sf-customer-trigger>span { max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sf-site .sf-customer-dropdown { max-width: calc(100vw - 32px); }
+
+    .sf-site .sf-mobile-menu { display: block; position: relative; min-width: 0; }
+    .sf-site .sf-mobile-menu>summary { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--sf-line); border-radius: 10px; background: var(--sf-card); color: var(--sf-text); cursor: pointer; list-style: none; font-size: 14px; }
+    .sf-mobile-menu>summary::-webkit-details-marker { display: none; }
+    .sf-mobile-menu>summary .sf-menu-close, .sf-mobile-menu[open]>summary .sf-menu-open { display: none; }
+    .sf-mobile-menu[open]>summary .sf-menu-close { display: block; }
+    .sf-site .sf-mobile-menu::details-content { display: block; }
+    .sf-site .sf-mobile-menu:not([open])>.sf-mobile-menu-panel { display: none; }
+    .sf-site .sf-mobile-menu-panel { display: block; box-sizing: border-box; position: absolute; top: calc(100% + 8px); right: 0; z-index: 120; width: min(310px,calc(100vw - 32px)); max-height: calc(100dvh - 180px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; background: var(--sf-card); border: 1px solid var(--sf-line); border-radius: 14px; box-shadow: 0 16px 40px #0003; animation: sf-mobile-menu-enter .18s ease-out; }
+    .sf-site .sf-mobile-menu :is(.sf-store-navigation,.ng-nav,.sf-atlas-header-nav) { display: flex; flex-direction: column; align-items: stretch; width: 100%; gap: 4px; padding: 0; margin: 0; overflow: visible; }
+    .sf-site .sf-mobile-menu :is(.sf-store-navigation>a,.ng-nav>a,.ng-calculator-menu>summary) { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; font-size: 15px; }
+    .sf-site .sf-mobile-menu :is(.sf-store-navigation>a,.ng-nav>a).selected { background: color-mix(in srgb,var(--sf-accent) 12%,var(--sf-card)); color: var(--sf-accent); }
+    .sf-site .ng-nav-border { border: 0; }
+    .sf-site .ng-calculator-menu>div { position: static; width: 100%; box-shadow: none; margin-top: 4px; }
+
+    .sf-site .ng-header-fixed { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; padding: 12px 16px; }
+    .sf-site .ng-header-main { display: contents; }
+    .sf-site .ng-header-main>.sf-brand { grid-column: 1; grid-row: 1; max-width: none; width: 100%; margin: 0; }
+    .sf-site .ng-header-actions { grid-column: 2; grid-row: 1; margin: 0; }
+    .sf-site .ng-header-main>.sf-navbar-search { grid-column: 1; grid-row: 2; width: 100%; max-width: none; }
+    .sf-site .ng-header-fixed>.sf-mobile-menu { grid-column: 2; grid-row: 2; }
+    .sf-site .ng-main { padding-top: 16px; }
+    .sf-site .au-fixed-header { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; padding: 10px 12px; }
+    .sf-site .au-fixed-header>.sf-brand { grid-column: 1; grid-row: 1; }
+    .sf-site .au-fixed-header>.sf-mobile-menu { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
+    .sf-site .au-fixed-header .sf-navbar-search-compact { grid-column: 2; grid-row: 1; margin: 0; }
+    .sf-site .au-fixed-header>:is(.sf-customer-trigger,.sf-customer-menu) { grid-column: 3; grid-row: 1; }
+    .sf-site .au-fixed-header>.sf-mobile-menu>summary { min-height: 36px; }
+    .sf-site .au-fixed-header .sf-mobile-menu-panel { left: 0; right: auto; }
+    .sf-site .sf-atlas-header { position: relative; padding: 12px 16px; }
+    .sf-site .sf-atlas-header-main { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; padding: 0; }
+    .sf-site .sf-atlas-header-main>.sf-navbar-search { grid-column: 1; grid-row: 2; margin: 0; }
+    .sf-site .sf-atlas-header>.sf-mobile-menu { position: absolute; right: 16px; bottom: 12px; }
+    .sf-site .sf-atlas-header-main>.sf-navbar-search { width: calc(100% - 8px); }
+
+    .sf-site .ng-hero.ng-carousel-frame, .sf-site .ng-hero.ng-carousel-frame.ng-carousel-with-copy { height: 240px; min-height: 0; aspect-ratio: auto; border-radius: 14px; }
+    .sf-site .ng-hero.ng-carousel-frame.ng-hero-image-only { height: auto; aspect-ratio: 16/7; }
+    .sf-site .ng-hero-copy { width: 100%; max-width: 100%; padding: 22px 18px 58px; }
+    .sf-site .ng-hero.ng-carousel-frame .ng-hero-copy :is(h1,h2) { font-size: clamp(23px,6.5vw,30px); line-height: 1.2; margin-top: 8px; }
+    .sf-site .ng-hero.ng-carousel-frame .ng-hero-copy :is(p,.ng-hero-caption,.ng-eyebrow) { display: none; }
+    .sf-site .ng-hero-copy .ng-button { min-height: 40px; margin-top: 16px; padding: 9px 13px; font-size: 14px; }
+    .sf-site .ng-hero-bottom { left: 16px; right: 16px; bottom: 12px; gap: 10px; }
+    .sf-site .ng-hero-bottom>span { display: none; }
+    .sf-site .ng-slide-arrows button { width: 34px; height: 34px; }
+    .sf-site :is(.ng-benefits,.au-benefits,.sf-assurances) { display: flex; gap: 12px; padding: 14px 0; overflow-x: auto; }
+    .sf-site :is(.ng-benefits,.au-benefits,.sf-assurances)>div { flex: 0 0 auto; gap: 7px; }
+    .sf-site :is(.ng-benefits,.au-benefits,.sf-assurances) small { display: none; }
+    .sf-site :is(.ng-benefits,.au-benefits,.sf-assurances) strong { font-size: 13px; }
+    .sf-site :is(.ng-benefits,.au-benefits,.sf-assurances) svg { width: 18px; height: 18px; }
+    .sf-site :is(.ng-section-heading,.sf-section-title) { gap: 10px; align-items: center; margin-bottom: 14px; }
+    .sf-site :is(.ng-section-heading,.sf-section-title) h2 { font-size: 20px; line-height: 1.3; }
+    .sf-site .ng-section-heading p, .sf-site .ng-section-heading .ng-eyebrow, .sf-site .ng-tag { display: none; }
+    .sf-site .ng-title-line { gap: 7px; flex-wrap: wrap; }
+    .sf-site .ng-flash { padding: 14px; margin-top: 22px; border-radius: 14px; }
+    .sf-site .ng-deadline>small { display: none; }
+    .sf-site .ng-countdown { gap: 3px; }
+    .sf-site .ng-countdown>span { padding: 5px 6px; min-width: 26px; font-size: 13px; }
+    .sf-site :is(.ng-flash-grid,.ng-trending-grid) { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: minmax(230px,80%); gap: 10px; overflow-x: auto; padding: 2px 2px 10px; scroll-snap-type: x proximity; }
+    .sf-site :is(.ng-sale-card,.ng-trending-card) { scroll-snap-align: start; min-width: 0; }
+    .sf-site .ng-categories-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+    .sf-site .ng-category-card { border-radius: 11px; }
+    .sf-site .ng-category-card>div { padding: 9px; }
+    .sf-site .ng-category-card h3 { font-size: 13px; line-height: 1.4; margin: 0; }
+    .sf-site .ng-category-card :is(small,svg) { display: none; }
+    .sf-site .ng-category-card .ng-game-art { aspect-ratio: 1; height: auto; }
+    .sf-site :is(.sf-products,.sf-atlas .sf-products) { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+    .sf-site .sf-product h3 { font-size: 14px; line-height: 1.4; }
+    .sf-site .sf-product-info { padding: 11px; }
+    .sf-site .sf-price { flex-wrap: wrap; gap: 5px; }
+    .sf-site .sf-price>strong { font-size: 15px; }
+    .sf-site :is(.sf-atlas-main,.sf-shared-sections,.sf-catalog,.ng-flash,.ng-trending) { min-width: 0; max-width: 100%; box-sizing: border-box; }
+    .sf-site .sf-shared-sections { grid-template-columns: minmax(0,1fr); }
+    .sf-site .sf-shared-sections>* { min-width: 0; max-width: 100%; }
+    .sf-site .sf-atlas-layout { display: flex; flex-direction: column; gap: 16px; }
+    .sf-site :is(.sf-atlas-sidebar,.sf-atlas-main) { width: 100%; min-width: 0; }
+    .sf-site .sf-atlas-sidebar { padding: 12px; }
+    .sf-site.sf-atlas .sf-categories { max-height: 130px; }
+    .sf-site .sf-atlas-sidebar>strong { margin-bottom: 8px; }
+    .sf-site.sf-aurora .au-hero { gap: 14px; padding: 6px 0 16px; min-height: 0; }
+    .sf-site .au-hero-copy { padding: 0; }
+    .sf-site .au-hero-copy h1 { font-size: 26px; line-height: 1.3; margin: 0; }
+    .sf-site .au-hero-copy :is(p,.au-eyebrow,.au-hero-note,.sf-button) { display: none; }
+    .sf-site .au-quick-order { padding: 16px; }
+    .sf-site .au-quick-heading h2 { font-size: 21px; }
+    .sf-site .au-quick-tabs { gap: 5px; }
+    .sf-site .au-quick-tabs button { min-height: 44px; padding: 8px; }
+    .sf-site .au-quick-phone>span { display: none; }
+    .sf-site .au-quick-provider { flex-wrap: wrap; gap: 8px; }
+    .sf-site :is(.ng-checkout-layout,.sf-order-layout,.sf-profile-layout,.ng-contact-fields,.ng-game-fields) { grid-template-columns: minmax(0,1fr); }
+    .sf-site .ng-checkout-step, .sf-site .sf-form-card { padding: 16px; border-radius: 13px; min-width: 0; }
+    .sf-site .ng-checkout-step h2 { font-size: 17px; gap: 8px; }
+    .sf-site .ng-checkout-summary { position: static; }
+    .sf-site .ng-nominal-grid { grid-template-columns: minmax(0,1fr); gap: 8px; }
+    .sf-site .ng-nominal { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; }
+    .sf-site .ng-nominal>span { min-width: 0; }
+    .sf-site .ng-nominal>b { flex-shrink: 0; font-size: 14px; }
+    .sf-site .sf-catalog-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; }
+    .sf-site .sf-catalog-filters .list-search { flex: 1 0 100%; }
+    .sf-site .sf-catalog-filters .list-search input { width: 100%; min-width: 0; }
+    .sf-site .sf-catalog-filters .filter-actions { margin-left: auto; }
+    .sf-site .list-pagination { gap: 8px; margin-block: 12px; }
+    .sf-site .list-pagination p { font-size: 13px; }
+    .sf-site .list-pagination button { min-height: 40px; min-width: 40px; }
+    .sf-site .ng-chat-float { width: 48px; height: 48px; min-width: 48px; padding: 12px; border-radius: 50%; font-size: 0; gap: 0; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+    .sf-site .ng-chat-float>span { display: none; }
+    .sf-site .ng-chat-float svg { width: 23px; height: 23px; }
+    .sf-site :is(.ng-how,.au-guide) { grid-template-columns: minmax(0,1fr); gap: 16px; padding-block: 24px; }
+    .sf-site .sf-home-leaderboard { display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 12px; padding: 16px; }
+    .sf-site .sf-home-leaderboard>a { grid-column: 1 / -1; margin-left: 0; white-space: normal; }
+    .sf-site .sf-shared-sections .ng-trending-grid { grid-template-columns: none; }
+    .sf-site :is(.ng-footer-grid,.sf-footer-grid) { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px 16px; }
+    .sf-site :is(.ng-footer-grid,.sf-footer-grid)>div:first-child { grid-column: 1/-1; }
+    .sf-site :is(.ng-footer-grid,.sf-footer-grid)>div:first-child>p, .sf-site .ng-footer-payments>p { display: none; }
+    .sf-site .sf-footer-bottom { font-size: 13px; padding-bottom: 26px; }
+    .sf-site :is(.article-prose,.article-content) { min-width: 0; overflow-wrap: anywhere; }
+    .sf-site .article-prose img { max-width: 100%; height: auto; }
+}
+@media (max-width: 360px) {
+    .sf-site .ng-categories-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .sf-site .ng-hero.ng-carousel-frame .ng-hero-copy :is(h1,h2) { font-size: 23px; }
+    .sf-site .ng-header-fixed>.sf-mobile-menu>summary { padding-inline: 10px; }
+}
+
+@keyframes sf-mobile-menu-enter { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }

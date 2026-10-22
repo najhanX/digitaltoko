@@ -38,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontFlash(['password', 'password_confirmation', 'current_password', 'pin', 'callback_token', 'api_key', 'webhook_secret', 'server_key', 'qris_payload', 'forward_token', 'otp', 'credentials', 'payload', 'entries']);
+        $exceptions->dontFlash(['password', 'password_confirmation', 'current_password', 'pin', 'callback_token', 'api_key', 'webhook_secret', 'server_key', 'qris_payload', 'forward_token', 'otp', 'credentials', 'payload', 'entries', 'url', 'catalog_config']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

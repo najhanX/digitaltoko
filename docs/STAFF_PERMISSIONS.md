@@ -1,6 +1,6 @@
 # Hak akses staff toko
 
-Disinkronkan dengan `apps/web/app/Support/StaffPermissions.php` dan controller pada **21 Oktober 2026**. Maksimal lima akun lokal per toko, termasuk nonaktif; owner tidak dihitung. Login memakai username/email dan password dengan konteks toko. Staff tidak didaftarkan ke Hanshop.
+Disinkronkan dengan `apps/web/app/Support/StaffPermissions.php` dan controller pada **22 Oktober 2026**. Maksimal lima akun lokal per toko, termasuk nonaktif; owner tidak dihitung. Login memakai username/email dan password dengan konteks toko. Staff tidak didaftarkan ke Hanshop.
 
 ## Aturan akses
 
@@ -22,9 +22,9 @@ Owner-only: pengelolaan staff, identitas/KTP, credential Digiflazz/Hanshop dan g
 | `stock.manage` | Kelola stok ready |
 | `stock.credentials` | Lihat credential stok |
 | `suppliers.balance` | Lihat saldo pemasok toko (Digiflazz/OtomaX) |
-| `suppliers.manage` | Kelola koneksi supplier OtomaX |
+| `suppliers.manage` | Kelola koneksi, URL daftar harga, dan callback OtomaX |
 | `suppliers.responses` | Kelola kelompok jawaban OtomaX |
-| `suppliers.import` | Impor katalog & kelola profil file OtomaX |
+| `suppliers.import` | Sinkronisasi katalog URL dan fondasi impor berkas OtomaX |
 | `suppliers.deposit` | Ambil & lihat tiket deposit OtomaX |
 | `orders.view` | Lihat & cek transaksi |
 | `orders.manage` | Putuskan sukses/gagal transaksi Digiflazz/OtomaX manual |

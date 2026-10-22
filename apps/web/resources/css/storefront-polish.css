@@ -385,3 +385,18 @@
 .order-auto-refresh>svg{flex-shrink:0;color:var(--sf-accent,#4f46e5)}.order-auto-refresh>div{min-width:0}.order-auto-refresh strong{display:block;font-size:var(--text-small);font-weight:600;line-height:1.5}.order-auto-refresh small{display:block;margin-top:3px;font-size:var(--text-small);line-height:1.5;color:var(--sf-muted,#64748b)}.order-auto-refresh.is-checking>svg{animation:order-refresh-spin 1.2s linear infinite}.order-refresh-progress{position:absolute;bottom:0;left:0;height:2px;width:35%;border-radius:999px;background:var(--sf-accent,#4f46e5);animation:order-refresh-sweep 1.4s ease-in-out infinite}.order-auto-refresh.has-error>svg{color:var(--sf-secondary,#b7791f)}
 @keyframes order-refresh-spin{to{transform:rotate(360deg)}}@keyframes order-refresh-sweep{from{transform:translateX(-100%)}to{transform:translateX(390%)}}
 @media(prefers-reduced-motion:reduce){.order-auto-refresh.is-checking>svg,.order-refresh-progress{animation:none}.order-refresh-progress{width:100%;opacity:.5}}
+
+/* Additional search pages stay inside the floating result list. */
+.sf-site .sf-search-load-more { padding: 12px 14px; border-top: 1px solid var(--sf-line); background: color-mix(in srgb,var(--sf-accent) 5%,var(--sf-card)); }
+.sf-search-load-more p, .sf-search-load-more>div { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 0; color: var(--sf-muted); font-size: var(--text-small); line-height: 1.6; }
+.sf-search-load-more>div { flex-wrap: wrap; }
+.sf-search-load-more svg { flex-shrink: 0; }
+.sf-site .sf-search-load-more button { min-height: 36px; padding: 6px 12px; border: 1px solid var(--sf-line); border-radius: 8px; background: var(--sf-bg); color: var(--sf-accent); font: inherit; font-weight: 600; }
+.sf-site .sf-search-end { margin: 0; padding: 12px 14px; border-top: 1px solid var(--sf-line); color: var(--sf-muted); font-size: var(--text-small); text-align: center; }
+
+.sf-search-load-more { min-height: 50px; box-sizing: border-box; }
+.sf-navbar-search-group { animation: sf-search-page-enter .25s ease-out; }
+@keyframes sf-search-page-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media(prefers-reduced-motion:reduce) { .sf-navbar-search-group { animation: none; } }
+
+.sf-navbar-search-results { overflow-anchor: none; }

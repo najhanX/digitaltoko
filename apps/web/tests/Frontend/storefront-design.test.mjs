@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {bannerHref, colorInk, customerServiceUrl, designStyle, validBannerUrl, themePresets} from '../../resources/js/components/storefrontDesign.ts';
+import {bannerHref, colorInk, customerServiceUrl, designStyle, validBannerUrl, themePresets, themePresetGroups} from '../../resources/js/components/storefrontDesign.ts';
 
 test('banner links support category filters, HTTPS, local pages, and no destination',()=>{
     assert.equal(bannerHref({link_type:'category',category:'Games & Voucher'}),'/?category=Games%20%26%20Voucher#catalog');
@@ -28,4 +28,29 @@ test('customer service chat normalizes Indonesian numbers and encodes the openin
     assert.equal(customerServiceUrl({...settings,phone:'+6281234567890'}),customerServiceUrl(settings));
     assert.equal(customerServiceUrl({...settings,enabled:false}),null);
     assert.equal(customerServiceUrl({...settings,phone:'javascript:alert(1)'}),null);
+});
+
+test('all 24 palettes provide complete colors and readable text on their own backgrounds',()=>{
+    const luminance=color=>{
+        const rgb=[1,3,5].map(index=>parseInt(color.slice(index,index+2),16)/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);
+        return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+    };
+    const contrast=(a,b)=>{const left=luminance(a),right=luminance(b);return (Math.max(left,right)+.05)/(Math.min(left,right)+.05);};
+    const presets=Object.values(themePresets);
+    assert.equal(presets.length,24);
+    for(const group of Object.keys(themePresetGroups))assert.equal(presets.filter(preset=>preset.group===group).length,8,group);
+    assert.equal(new Set(presets.map(preset=>preset.name)).size,24);
+    for(const preset of presets){
+        assert.equal(Object.keys(preset.colors).length,6,preset.name);
+        for(const color of [preset.accent,...Object.values(preset.colors)])assert.match(color,/^#[0-9a-f]{6}$/i,preset.name);
+        for(const surface of [preset.colors.background,preset.colors.surface]){
+            assert.ok(contrast(preset.colors.text,surface)>=4.5,preset.name+' main text');
+            assert.ok(contrast(preset.colors.muted,surface)>=4.5,preset.name+' supporting text');
+            assert.ok(contrast(preset.accent,surface)>=4.5,preset.name+' accent text');
+        }
+        assert.ok(contrast(colorInk(preset.accent),preset.accent)>=4.5,preset.name+' button text');
+        const style=designStyle({design:preset});
+        assert.equal(style['--sf-bg'],preset.colors.background);
+        assert.equal(style['--sf-accent'],preset.accent);
+    }
 });

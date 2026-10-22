@@ -14,7 +14,7 @@ class SupplierProduct extends Model
 
     protected function casts(): array
     {
-        return ['cost' => 'integer', 'available' => 'boolean', 'quantity' => 'integer', 'observed_at' => 'immutable_datetime'];
+        return ['cost' => 'integer', 'available' => 'boolean', 'quantity' => 'integer', 'observed_at' => 'immutable_datetime', 'price_observed_at' => 'immutable_datetime'];
     }
 
     public function connection(): BelongsTo

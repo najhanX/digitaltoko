@@ -55,25 +55,28 @@ class OtomaxController extends Controller
     public function index(Request $request, Store $store): Response
     {
         $role = $this->access($request, $store);
-        $tab = in_array($request->query('tab'), ['responses', 'profiles', 'imports', 'tickets', 'events'], true) ? $request->query('tab') : 'connections';
+        $tab = in_array($request->query('tab'), ['responses', 'profiles', 'imports', 'syncs', 'tickets', 'events'], true) ? $request->query('tab') : 'connections';
         if ($tab === 'tickets') {
             $this->access($request, $store, 'suppliers.deposit');
         }
         $list = new ListQuery($request, [], 10);
         $model = match ($tab) {
-            'responses','profiles' => OtomaxProfile::class,'imports' => OtomaxImport::class,'tickets' => OtomaxTicket::class,'events' => OtomaxEvent::class,default => SupplierConnection::class
+            'responses','profiles' => OtomaxProfile::class,'imports','syncs' => OtomaxImport::class,'tickets' => OtomaxTicket::class,'events' => OtomaxEvent::class,default => SupplierConnection::class
         };
         $q = $model::where('store_id', $store->id);
+        if (in_array($tab, ['imports', 'syncs'], true)) {
+            $q->where('source', $tab === 'syncs' ? 'url' : 'file');
+        }
         if ($tab === 'connections') {
             $q->where('kind', 'otomax');
         }if (in_array($tab, ['responses', 'profiles'])) {
             $q->where('type', $tab === 'responses' ? 'response' : 'import');
         }
-        $search = in_array($tab, ['responses', 'profiles', 'connections']) ? ['name'] : ($tab === 'imports' ? ['filename', 'status'] : ['status']);
+        $search = in_array($tab, ['responses', 'profiles', 'connections']) ? ['name'] : (in_array($tab, ['imports', 'syncs'], true) ? ['filename', 'status'] : ['status']);
         $page = $list->paginate($list->apply($q, $search)->orderByDesc('created_at')->orderBy('id'));
         $rows = $page->getCollection()->map(function ($row) use ($tab) {
             if ($tab === 'connections') {
-                return [...$row->only(['id', 'name', 'enabled', 'settings', 'response_profile_id', 'verified_at', 'synced_at', 'last_error']), 'member_id' => $row->credentials['member_id'] ?? '', 'response_name' => OtomaxProfile::find($row->response_profile_id)?->name, 'products' => SupplierProduct::where('connection_id', $row->id)->count()];
+                return [...$row->only(['id', 'name', 'enabled', 'settings', 'response_profile_id', 'verified_at', 'synced_at', 'last_error', 'catalog_status', 'catalog_error', 'catalog_last_checked_at', 'catalog_next_sync_at']), 'catalog_configured' => (bool) $row->catalog_config, 'catalog_automatic' => $row->catalog_config['automatic'] ?? false, 'member_id' => $row->credentials['member_id'] ?? '', 'response_name' => OtomaxProfile::find($row->response_profile_id)?->name, 'products' => SupplierProduct::where('connection_id', $row->id)->count()];
             }
             if ($tab === 'events') {
                 $message = $row->data['message'] ?? null;
@@ -82,7 +85,7 @@ class OtomaxController extends Controller
             }
 
             return $row->only(match ($tab) {
-                'responses','profiles' => ['id', 'name', 'version', 'updated_at'], 'imports' => ['id', 'filename', 'status', 'summary', 'processed', 'error', 'created_at'], 'tickets' => ['id', 'amount', 'status', 'is_sandbox', 'result', 'created_at'],default => ['id', 'operation', 'status', 'reference', 'created_at']
+                'responses','profiles' => ['id', 'name', 'version', 'updated_at'], 'imports','syncs' => ['id', 'filename', 'status', 'summary', 'processed', 'error', 'created_at'], 'tickets' => ['id', 'amount', 'status', 'is_sandbox', 'result', 'created_at'],default => ['id', 'operation', 'status', 'reference', 'created_at']
             });
         });
 
@@ -188,13 +191,14 @@ class OtomaxController extends Controller
             if ($identityChanged) {
                 abort_if(OrderAttempt::whereHas('order', fn ($q) => $q->where('store_id', $store->id)->whereIn('status', ['paid', 'processing', 'pending', 'review']))->where('source', 'otomax')->where('request_snapshot', '!=', null)->get()->contains(fn ($a) => ($a->request_snapshot['connection_id'] ?? '') === $c->id), 422, 'Selesaikan transaksi berjalan sebelum mengganti akun/alamat.');
                 SupplierProduct::where('connection_id', $c->id)->update(['available' => false]);
+                $c->fill(['catalog_config' => null, 'catalog_revision' => $c->catalog_revision + 1, 'catalog_next_sync_at' => null, 'catalog_status' => null]);
             }
             $c->fill(['name' => $data['name'], 'settings' => $settings, 'credentials' => $credentials, 'response_profile_id' => $profile->id, 'enabled' => $data['enabled'], 'verified_at' => null]);
             $c->save();
         });
         $this->audit($store, 'Koneksi OtomaX '.$data['name'].' disimpan.');
 
-        return back()->with('success', 'Koneksi disimpan. Uji saldo dan impor katalog sebelum memetakan produk.');
+        return back()->with('success', 'Koneksi disimpan. Uji saldo dan atur URL daftar harga sebelum memetakan produk.');
     }
 
     public function callbackUrl(Request $request, Store $store, SupplierConnection $connection): JsonResponse
@@ -265,7 +269,7 @@ class OtomaxController extends Controller
             $path = $file->store('otomax/'.$store->id, 'local');
             $record = OtomaxImport::create(['store_id' => $store->id, 'connection_id' => $connection->id, 'filename' => mb_substr(basename($file->getClientOriginalName()), 0, 200), 'file_hash' => hash_file('sha256', Storage::disk('local')->path($path)), 'payload' => ['path' => $path, 'type' => strtolower($file->getClientOriginalExtension())], 'summary' => [], 'status' => 'draft', 'expires_at' => now()->addHours(2)]);
         } else {
-            $record = OtomaxImport::where('store_id', $store->id)->where('connection_id', $connection->id)->findOrFail($d['import_id'] ?? '');
+            $record = OtomaxImport::where('store_id', $store->id)->where('connection_id', $connection->id)->where('source', 'file')->findOrFail($d['import_id'] ?? '');
         }
         abort_unless(in_array($record->status, ['draft', 'preview'], true) && $record->expires_at->isFuture(), 422, 'Pratinjau kedaluwarsa atau sudah dikirim.');
         $payload = $record->payload;
@@ -297,7 +301,7 @@ class OtomaxController extends Controller
     public function confirm(Request $request, Store $store, OtomaxImport $import): RedirectResponse
     {
         $this->access($request, $store, 'suppliers.import');
-        abort_unless($import->store_id === $store->id, 404);
+        abort_unless($import->store_id === $store->id && $import->source === 'file', 404);
         $d = $request->validate(['accept_partial' => 'required|boolean', 'missing' => 'required|in:keep,disable']);
         $dispatch = DB::transaction(function () use ($store, $import, $d) {
             StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());

@@ -205,7 +205,7 @@ Kriteria uji tambahan: file contoh berkelompok, file datar, CSV delimiter berbed
 
 ## Rencana lanjutan: katalog OtomaX dari URL Webreport — 22 Oktober 2026
 
-Status: PERENCANAAN, belum diimplementasikan. Perubahan yang sudah dibuat hanya menyembunyikan UI impor berkas. Bagian ini menjadi arah tahap berikutnya; rancangan impor Excel/CSV sebelumnya tetap menjadi fondasi cadangan.
+Status: DIIMPLEMENTASIKAN pada 22 Oktober 2026. Rincian source, perubahan operasional, dan hasil pengujian ada pada bagian terbaru OTOMAX_PROGRESS.md. Bagian di bawah merekam rancangan; perilaku aktual mengikuti catatan implementasi tersebut. UI impor berkas tetap disembunyikan dan fondasinya dipertahankan.
 
 ### Keputusan dan hasil pemeriksaan
 
@@ -226,7 +226,7 @@ Status: PERENCANAAN, belum diimplementasikan. Perubahan yang sudah dibuat hanya 
 ### Aturan pembacaan dan perubahan data
 
 - Parser awal membaca DOM tabel Webreport tanpa menjalankan script, CSS atau HTML supplier di panel. Ambil judul kelompok dan cocokkan kolom berdasarkan header, bukan posisi tetap. Pemetaan header/status/locale angka dapat disimpan sebagai profil reusable per toko untuk format lain yang benar-benar diuji.
-- Normalisasi internal mengubah harga 10.000 menjadi integer rupiah 10000, mempertahankan kode berbentuk teks/nol awal, serta memetakan status Open/Close/Gangguan secara eksplisit. Status tak dikenal, harga kosong/nol/tidak valid, kode duplikat dan tabel login/error bukan katalog yang sah.
+- Normalisasi internal mengubah harga 10.000 menjadi integer rupiah 10000, mempertahankan kode berbentuk teks/nol awal, serta memetakan status Open/Close/Gangguan secara eksplisit. Status tak dikenal, kode duplikat dan tabel login/error menolak snapshot. Implementasi menahan baris berharga kosong/nol/tidak valid sebagai tidak tersedia (modal lama dipertahankan bila ada); SKU tetap dihitung hadir sehingga tidak disalahartikan dihapus. Produk baru dengan harga tersebut tidak dapat dipesan.
 - Perbarui harga beli, status ketersediaan dan data sumber yang valid berdasarkan koneksi + mode + SKU. Status Open tidak dianggap angka stok; jumlah stok tetap null bila feed tidak melaporkannya.
 - Produk baru masuk Sumber produk. Tidak otomatis memublikasikan katalog jual: owner/staff tetap memakai fitur impor dari sumber yang sudah tersedia. Pengimporan dari Sumber produk berbeda dari unggah file Excel/CSV yang disembunyikan.
 - Layanan/kategori, tujuan, gambar, aktif/nonaktif katalog dan markup yang telah diatur toko tidak ditimpa oleh perubahan kelompok/nama supplier. Perubahan produk sumber boleh dicatat tanpa mengganti pengaturan katalog jual.
