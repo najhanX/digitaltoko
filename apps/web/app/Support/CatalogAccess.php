@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\Store;
-use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 
 class CatalogAccess
@@ -38,9 +37,7 @@ class CatalogAccess
 
     public static function supports(Store $store, string $source): bool
     {
-        $snapshot = $store->subscription ?? [];
-        $features = $snapshot['features'] ?? app(SubscriptionService::class)->features($snapshot['category'] ?? $store->category, $snapshot['plan'] ?? $store->plan);
-
-        return in_array($source === 'otomax' ? 'digiflazz' : $source, $features, true);
+        return in_array($store->category, ['bot', 'web', 'full'], true)
+            && in_array($source, ['digiflazz', 'stock', 'hanshop', 'otomax'], true);
     }
 }

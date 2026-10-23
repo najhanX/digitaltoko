@@ -148,7 +148,7 @@ class AdminStoreController extends Controller
                         throw ValidationException::withMessages(['package' => 'Selesaikan invoice atau jadwal perubahan paket terlebih dahulu.']);
                     }
                     $package = collect(PackageCatalog::all())->firstWhere('key', $data['package']);
-                    if ($locked->category === $package['category'] && $locked->plan === $package['plan']) {
+                    if ($locked->category === $package['category']) {
                         throw ValidationException::withMessages(['package' => 'Pilih paket yang berbeda dari paket toko saat ini.']);
                     }
                     $subscription = $locked->subscription;
@@ -156,7 +156,7 @@ class AdminStoreController extends Controller
                         $subscription = [...$subscription, 'name' => isset($subscription['duration_days'])
                             ? PackageCatalog::offerName($package['category'], $package['plan'], (int) $subscription['duration_days']) : $package['name'],
                             'category' => $package['category'], 'plan' => $package['plan'],
-                            'features' => app(SubscriptionService::class)->features($package['category'], $package['plan']), 'features_version' => 1];
+                            'features' => app(SubscriptionService::class)->features($package['category'], $package['plan']), 'features_version' => 2];
                     }
                     $locked->update(['category' => $package['category'], 'plan' => $package['plan'], 'subscription' => $subscription]);
                     break;

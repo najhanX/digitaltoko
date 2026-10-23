@@ -1,6 +1,6 @@
 # Aturan bisnis DigitalToko
 
-Status: kebijakan pengguna, disinkronkan dengan source lokal pada **22 Oktober 2026**. Kebijakan retensi/purge, refund gagal provisioning, dan otomatisasi domain tidak otomatis berarti fitur sudah tersedia. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
+Status: kebijakan pengguna, disinkronkan dengan source lokal pada **23 Oktober 2026**. Kebijakan retensi/purge, refund gagal provisioning, dan otomatisasi domain tidak otomatis berarti fitur sudah tersedia. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
 
 ## Identitas dan akun Hanshop
 
@@ -131,7 +131,7 @@ Usulan pemasangan: setiap tenant modul custom memakai perangkat/notifikasi QRIS 
 
 ## Paket, toko, staf, dan domain
 
-- Admin mengatur harga serta durasi dari panel, untuk kategori Web Topup, Bot WhatsApp, atau Paket Lengkap dan sembilan paket Mercury sampai Andromeda sesuai kombinasi kanal/sumber.
+- Admin mengatur harga serta durasi dari panel, untuk tiga platform: Web Topup, Bot WhatsApp, dan Web + Bot WhatsApp. Semua platform termasuk Digiflazz, API Hanshop, OtomaX, dan stok premium; sumber produk tidak membedakan paket lagi.
 - Tidak ada trial baru; promo memakai voucher admin, termasuk diskon 100%. Trial aktif lama dihormati sampai berakhir.
 - Harga/fitur/durasi disnapshot pada invoice dan subscription; pengeditan paket tidak mengubah invoice lama atau hak sewa existing secara diam-diam.
 - Setiap toko maksimal satu nomor/sesi WhatsApp termasuk paket Web untuk OTP/notifikasi. Command transaksi chat tetap hanya Bot/Full. Pergantian nomor harus melalui logout/pelepasan sesi lama, bukan dua sesi aktif.

@@ -1,6 +1,6 @@
 # DigitalToko — workspace Hansbot
 
-Dokumentasi disinkronkan dengan source lokal pada **22 Oktober 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
+Dokumentasi disinkronkan dengan source lokal pada **23 Oktober 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
 
 DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk digital, bot WhatsApp, atau keduanya. Satu owner dapat memiliki banyak toko; setiap toko memiliki langganan, katalog, stok, pelanggan, wallet, pesanan, konfigurasi, dan sesi WhatsApp sendiri.
 
@@ -20,7 +20,7 @@ DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk di
 ## Implementasi yang tersedia
 
 - Onboarding owner lewat bridge identitas Hanshop, profil/email, KTP manual, toko draft, serta maksimal lima staff lokal per toko.
-- Sembilan paket Mercury sampai Andromeda, harga/durasi admin, invoice sewa, aktivasi pertama, renewal, perubahan paket dan masa tenggang per toko. **Trial baru dihapus**; voucher platform mendukung diskon 100% tanpa gateway.
+- Tiga platform (Web Topup, Bot WhatsApp, Web + Bot WhatsApp), seluruh sumber produk termasuk Digiflazz/Hanshop/OtomaX/stok premium, harga/durasi admin, invoice sewa, aktivasi pertama, renewal, perubahan paket dan masa tenggang per toko. **Trial baru dihapus**; voucher platform mendukung diskon 100% tanpa gateway.
 - Admin mengelola toko, paket, verifikasi, pembayaran, voucher dan harga modul. Penangguhan admin dan koreksi paket/masa aktif memiliki audit.
 - Sumber Digiflazz/Hanshop serta multi-supplier OtomaX melalui IP Center dan sinkronisasi URL Webreport, cache akun bersama Redis, layanan → kategori → produk, impor semua/per layanan/per kategori/pilihan, parsing, markup dan stok premium privat.
 - Checkout web dan bot, inquiry pascabayar, akun pelanggan, wallet/topup/refund, guest checkout, Midtrans merchant toko dan QRIS custom berlisensi.
@@ -59,3 +59,7 @@ URL daftar harga diatur per koneksi melalui **Supplier OtomaX → Daftar harga U
 - [Riwayat validasi](docs/FOUNDATION_VALIDATION.md), [checkpoint notifikasi/voucher](docs/NOTIFICATION_PROGRESS.md), [audit UI](docs/UI_READABILITY_AUDIT.md)
 
 - [Integrasi OtomaX dan progres](docs/OTOMAX_PROGRESS.md), [rancangan serta batas sinkronisasi URL](docs/OTOMAX_INTEGRATION_PLAN.md)
+
+Pusat panduan publik tersedia di `/panduan` dengan 20 tutorial bergambar. Tombol Panduan pada header menu panel membuka topik terkait di tab baru. Lihat [pemeliharaan panduan](docs/TUTORIALS.md).
+
+Halaman publik `/paket` menyediakan pilihan platform/durasi dari harga aktif admin, simulasi biaya sewa dan pengecekan subdomain tanpa membuat toko. Total final (voucher/kode unik bila ada) tetap ditentukan melalui invoice setelah owner memenuhi verifikasi.

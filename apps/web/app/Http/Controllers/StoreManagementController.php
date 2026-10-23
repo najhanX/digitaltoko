@@ -9,6 +9,7 @@ use App\Services\StoreEnvironment;
 use App\Support\PlatformHost;
 use App\Support\StaffPermissions;
 use App\Support\StorefrontDesign;
+use App\Support\StoreSubdomain;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,10 +56,11 @@ class StoreManagementController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $owner = $this->owner($request);
-        $request->merge(['slug' => strtolower(trim((string) $request->input('slug')))]);
+        $request->merge(['slug' => StoreSubdomain::normalize($request->input('slug'))]);
         $data = $request->validate(['name' => 'required|string|max:100',
-            'slug' => ['required', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::notIn(config('platform.reserved_slugs')), Rule::unique('stores', 'slug')],
-            'category' => 'required|in:bot,web,full', 'plan' => 'required|in:orbit,space,galaxy', 'template' => 'required|in:aurora,nebula,atlas']);
+            'slug' => StoreSubdomain::rules(),
+            'category' => 'required|in:bot,web,full', 'template' => 'required|in:aurora,nebula,atlas'], StoreSubdomain::messages());
+        $data['plan'] = 'galaxy';
         $store = DB::transaction(function () use ($owner, $data) {
             $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->verification_status === 'approved' && $locked->email_verified_at && $locked->phone_verified_at, 403);

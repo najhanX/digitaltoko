@@ -18,7 +18,7 @@ class PlanController extends Controller
         abort_unless($request->user()?->role === 'admin', 403);
 
         $list = new ListQuery($request, ['category' => ['bot', 'web', 'full'], 'plan' => ['orbit', 'space', 'galaxy'], 'package' => PackageCatalog::keys(), 'active' => ['0', '1']], 10);
-        $page = $list->paginate($list->apply(PackageCatalog::filter(PackageCatalog::ordered(PlanOption::query()), (string) ($list->filters['package'] ?? '')), ['name'], ['category' => 'category', 'plan' => 'plan', 'active' => 'active'])->orderBy('duration_days')->orderBy('price')->orderBy('id'));
+        $page = $list->paginate($list->apply(PackageCatalog::filter(PackageCatalog::ordered(PlanOption::where('plan', 'galaxy')), (string) ($list->filters['package'] ?? '')), ['name'], ['category' => 'category', 'plan' => 'plan', 'active' => 'active'])->orderBy('duration_days')->orderBy('price')->orderBy('id'));
 
         return Inertia::render('Admin/Plans', ['plans' => $page->items(), 'pagination' => ListQuery::meta($page), 'filters' => $list->filters]);
     }
@@ -26,8 +26,9 @@ class PlanController extends Controller
     public function save(Request $request, ?PlanOption $plan = null): RedirectResponse
     {
         abort_unless($request->user()?->role === 'admin', 403);
-        $data = $request->validate(['name' => 'required|string|max:100', 'category' => 'required|in:bot,web,full', 'plan' => 'required|in:orbit,space,galaxy',
+        $data = $request->validate(['name' => 'required|string|max:100', 'category' => 'required|in:bot,web,full',
             'price' => 'required|integer|min:1000|max:100000000', 'duration_days' => 'required|integer|min:1|max:730', 'active' => 'required|boolean']);
+        $data['plan'] = 'galaxy';
         if ($plan) {
             $plan->update($data);
         } else {

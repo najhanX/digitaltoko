@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\ProductPricing;
 use App\Services\StoreCatalog;
 use App\Services\SupplierCatalog;
+use App\Support\CatalogAccess;
 use Database\Seeders\CatalogDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -293,11 +294,12 @@ class StoreCatalogTest extends TestCase
     {
         $space = $this->shop('space');
         $orbit = $this->shop('orbit');
-        $this->actingAs($space->owner)->post('/stores/'.$space->id.'/sources', ['kind' => 'digiflazz', 'username' => 'buyer', 'api_key' => 'secret', 'enabled' => true])->assertForbidden();
+        $this->assertTrue(CatalogAccess::supports($space, 'digiflazz'));
+        $this->assertTrue(CatalogAccess::supports($orbit, 'stock'));
         $this->actingAs($orbit->owner)->post('/stores/'.$space->id.'/products', ['code' => 'HACK'])->assertForbidden();
         $staff = StoreStaff::create(['store_id' => $orbit->id, 'name' => 'Stock staff', 'username' => 'operator', 'email' => 'operator@example.test', 'password' => 'test-password-123', 'permissions' => ['stock.manage']]);
         auth('web')->logout();
-        $this->actingAs($staff, 'staff')->post('/stores/'.$orbit->id.'/stock', ['product_id' => (string) Str::uuid(), 'cost' => 10, 'entries' => ['private-secret']])->assertForbidden();
+        $this->actingAs($staff, 'staff')->post('/stores/'.$orbit->id.'/stock', ['product_id' => (string) Str::uuid(), 'cost' => 10, 'entries' => ['private-secret']])->assertNotFound();
         $this->post('/stores/'.$orbit->id.'/sources', ['kind' => 'hanshop', 'enabled' => true])->assertForbidden();
         Http::assertNothingSent();
         $orbit->update(['status' => 'expired', 'expires_at' => now()->subDays(8)]);
@@ -349,7 +351,7 @@ class StoreCatalogTest extends TestCase
         $product->update(['auto_update' => true, 'markup' => '1000']);
         $this->assertSame(11000, $this->quote($store, $product)['price']);
         $store->update(['plan' => 'space']);
-        $this->assertFalse($this->quote($store, $product)['available']);
+        $this->assertTrue($this->quote($store, $product)['available']);
         $hanshop->update(['available' => true]);
         $this->assertTrue($this->quote($store, $product)['available']);
         $this->travel(601)->seconds();

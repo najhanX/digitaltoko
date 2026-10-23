@@ -39,8 +39,8 @@ class DemoStoreSeeder extends Seeder
             ]);
             $scenarios = [
                 ['demo-aurora', 'Aurora Digital Demo', 'full', 'galaxy', 'active', 'aurora', 30, false],
-                ['demo-nebula', 'Nebula Gaming Demo', 'web', 'orbit', 'active', 'nebula', 30, false],
-                ['demo-atlas', 'Atlas Premium Demo', 'web', 'space', 'active', 'atlas', 30, false],
+                ['demo-nebula', 'Nebula Gaming Demo', 'web', 'galaxy', 'active', 'nebula', 30, false],
+                ['demo-atlas', 'Atlas Premium Demo', 'web', 'galaxy', 'active', 'atlas', 30, false],
                 ['demo-grace', 'Toko Masa Tenggang Demo', 'full', 'galaxy', 'grace', 'aurora', -3, false],
                 ['demo-expired', 'Toko Kedaluwarsa Demo', 'full', 'galaxy', 'suspended', 'nebula', -10, false],
                 ['demo-bot', 'Bot Digital Demo', 'bot', 'galaxy', 'active', 'aurora', 30, false],
@@ -68,7 +68,7 @@ class DemoStoreSeeder extends Seeder
             }
             Store::firstOrCreate(['slug' => 'demo-owner-two'], [
                 'owner_id' => $secondOwner->id, 'name' => 'Draft Owner Kedua Demo',
-                'category' => 'bot', 'plan' => 'orbit', 'status' => 'draft', 'template' => 'aurora',
+                'category' => 'bot', 'plan' => 'galaxy', 'status' => 'draft', 'template' => 'aurora',
             ]);
         });
         $this->command?->info('Data dummy siap. Akun baru admin/staff memakai password: '.self::PASSWORD);

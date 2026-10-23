@@ -85,7 +85,7 @@ Dokumen KTP disimpan pada disk privat, diakses hanya owner terkait/admin melalui
 ## Panel theme dan langganan (13 Oktober 2026)
 
 - Panel admin/owner/staff dan login memakai palet indigo/cyan dengan pilihan terang, gelap, atau sistem. Preferensi localStorage `digitaltoko.panel.theme` hanya memengaruhi panel; template storefront tetap milik tenant. Bootstrap tema berjalan sebelum stylesheet/SSR agar tidak flash warna terang.
-- Jalankan migrasi Laravel `2026_10_13_161039_create_subscription_billing_tables` setelah backup. Seeder menyediakan sembilan penawaran **nonaktif** seharga dummy Rp50.000/30 hari. Admin harus mengatur harga sebenarnya dan mengaktifkan penawaran pada `/admin/plans`.
+- Jalankan migrasi Laravel `2026_10_13_161039_create_subscription_billing_tables` setelah backup. Pada instalasi baru seeder menyediakan tiga penawaran platform **nonaktif** seharga dummy Rp50.000/30 hari; pada instalasi existing harga/durasi penawaran terlengkap dipertahankan. Admin harus mengatur harga sebenarnya dan mengaktifkan penawaran pada `/admin/plans`.
 - Pada API Hanshop, terapkan `scripts/migrations/20261013_digitaltoko_billing.sql`, build source, lalu restart proses yang Anda kelola. Development `npm run dev` memuat source; jangan menjalankan instance kedua pada port 4000.
 - Gateway memakai URL/token bridge existing, QR_DYNAMIC/Cloudinary existing, dan tabel mutasi dari forwarder. `/internal/digitaltoko/billing/invoice` hanya server-to-server. ID invoice menjadi kunci idempotensi; nominal dan akun yang berubah pada ID yang sama ditolak. Pembayaran sewa tidak mengkredit saldo Hanshop.
 - Laravel cron `schedule:run` per menit menjalankan `digitaltoko:subscriptions`; saat development jalankan `php artisan schedule:work` di terminal Anda. Ini memeriksa pembayaran, aktivasi 24 jam setelah siap, downgrade terjadwal, dan grace. Tombol cek pembayaran juga memeriksa invoice tanpa menunggu cron.
@@ -112,7 +112,7 @@ Registry manager dan auth Baileys saat ini berada pada file privat per toko, den
 2. Gunakan `REDIS_CLIENT=predis` (dependensi Composer sudah disetujui/ditambahkan), `SUPPLIER_CACHE_STORE=redis`, `SUPPLIER_CACHE_SECONDS=120`, dan `SUPPLIER_MAX_SNAPSHOT_AGE=600`. Pertahankan APP_KEY untuk dekripsi credential serta stok privat. Redis harus terjangkau PHP/CLI.
 3. Build/restart API Hanshop yang memuat bridge supplier read-only, dengan `HANSHOP_API_URL` dan `HANSHOP_IDENTITY_TOKEN` existing. Tidak ada migration Hanshop baru untuk pembacaan katalog ini. Token tetap server-only dan komunikasi HTTPS/jaringan privat.
 4. Cron `schedule:run` setiap menit menjalankan sinkron katalog setiap dua menit, tanpa overlap. Saat lokal: `php artisan schedule:work`. Sinkron manual per toko: `php artisan digitaltoko:catalog-sync --store=UUID_TOKO`. Tidak ada transaksi atau perubahan saldo saat sinkron.
-5. Owner hubungkan sumber dan sinkronkan mode prabayar/pasca yang dibutuhkan; scheduler mengulang mode yang sudah dipilih. Sembilan paket publik membatasi sumber milik toko sesuai rinciannya; Hanshop tersedia pada semua paket aktif. Stok lokal tetap privat per toko.
+5. Owner hubungkan sumber dan sinkronkan mode prabayar/pasca yang dibutuhkan; scheduler mengulang mode yang sudah dipilih. Tiga platform publik semuanya mendukung Digiflazz, Hanshop, OtomaX, dan stok premium. Stok lokal tetap privat per toko.
 6. Build bot dan restart manager yang sudah ada melalui supervisor/PM2 agar handler #produk baru dimuat, tanpa menghapus registry/sesi atau membuat instance kedua.
 7. Periksa impor produk, aturan harga, stok, katalog publik dan #produk. Membaca katalog panel/web/bot juga memperbarui koneksi yang pernah disinkronkan jika snapshot berumur sekitar dua menit; pembacaan tetap memakai cache dan lock per akun pemasok. Ini menjaga katalog lokal saat scheduler belum berjalan. Jika cache/provider gagal, snapshot tidak dihapus dan sumber remote yang berumur lebih dari 600 detik tetap tidak dapat dipesan. Panel menampilkan “Perlu sinkronisasi / Stok belum terverifikasi”, bukan menganggap stok pemasok habis. Stok lokal yang masih ready tetap dapat ditampilkan. Pemeriksaan sebelum membuat pesanan memperbarui pemasok sebelum mengambil lock transaksi database.
 
@@ -191,7 +191,7 @@ Permohonan owner (termasuk toko belum pernah berlangganan) ada pada Admin → Ke
 - `QUEUE_CONNECTION=database` atau Redis, `DB_QUEUE_RETRY_AFTER=240` / `REDIS_QUEUE_RETRY_AFTER=240` (harus melebihi timeout job impor 180 detik). Jalankan `php artisan queue:work --timeout=180`, serta scheduler. Restart worker setelah deploy. Driver sync didukung untuk tes, tetapi impor besar sebaiknya antrean.
 - `APP_URL` harus URL publik platform/URL ngrok yang aktif. Daftarkan URL callback **lengkap** dari modal, termasuk ID koneksi dan token, ke supplier. Route menerima GET/POST `/api/commerce/otomax/{connection}/{token}`; IP callback diisi sesuai IP pengirim nyata. Jangan menyalin URL/token ke log publik. Whitelist IP keluar VPS pada IP Center supplier jika diwajibkan. IP request transaksi dan IP callback bisa berbeda.
 - Tidak ada polling pembelian ulang. Biarkan endpoint cek status kosong kecuali supplier menjamin endpoint tersebut read-only dan mendukung `cek=1`. Katalog/harga/ketersediaan diperbarui lewat daftar harga URL Webreport; lihat petunjuk sinkronisasi URL di bawah. Stok jumlah tetap tidak diketahui jika feed tidak melaporkannya.
-- Paket dengan fitur sumber PPOB sendiri memperoleh OtomaX; paket stok premium saja tidak. Sandbox mensimulasikan transaksi/saldo/tiket tanpa request supplier. Tiket deposit tidak mentransfer uang atau menandai saldo masuk otomatis.
+- Semua paket platform memperoleh OtomaX, Digiflazz, API Hanshop, dan stok premium. Sandbox mensimulasikan transaksi/saldo/tiket tanpa request supplier. Tiket deposit tidak mentransfer uang atau menandai saldo masuk otomatis.
 - Scheduler membersihkan file/payload pratinjau setelah dua jam. Riwayat ringkas dan callback mengikuti lifecycle toko; purge juga membersihkan file OtomaX dan job terkait. Tidak ada penghapusan log callback otomatis berdasarkan umur saat ini.
 
 
@@ -208,3 +208,25 @@ Hasil normalisasi Excel/CSV disimpan terenkripsi pada `storage/app/private/otoma
 - Panel Produk & harga → Supplier OtomaX → Daftar harga URL: masukkan URL ALL produk, atur interval/status otomatis, Uji URL, periksa pratinjau, lalu Simpan & sinkronkan. Jika jumlah produk turun drastis atau daftar valid benar-benar kosong, persetujuan eksplisit diperlukan. Produk baru berada di Sumber produk sebelum diimpor ke katalog jual. Riwayat berada pada tab Sinkronisasi harga.
 - Staff suppliers.manage dapat menguji/mengganti/menjeda URL; suppliers.import dapat meminta sinkronisasi manual. URL tersimpan tidak dikirim kembali lengkap. Jangan memasukkan URL token asli ke Git atau log. Mode Pengujian tidak mengakses feed supplier nyata. UI impor berkas tetap disembunyikan, backend dan data lama dipertahankan.
 - Backup lokal sebelum migrasi disimpan privat sebagai storage/app/private/backups/before-otomax-url-20261022-122029.jsonl.gz (schema dan raw rows 43 tabel, gzip JSONL). Bukan berkas publik dan tidak dimasukkan Git. Pengujian MySQL menggunakan database sementara terpisah, bukan data toko aktif.
+
+
+## Paket berdasarkan platform — 23 Oktober 2026
+
+Backup database sebelum deploy. Setelah source diperbarui, jalankan dari `apps/web`:
+
+```sh
+php artisan migrate --force
+php artisan db:seed --class=PackagePlanSeeder --force
+php artisan optimize:clear
+npm run build
+php artisan queue:restart
+```
+
+Migrasi `2026_10_23_003547_consolidate_platform_subscription_packages` menonaktifkan penawaran sumber terbatas dan memperbarui entitlement toko menjadi semua sumber tanpa mengubah masa aktif atau snapshot invoice. Seeder mempertahankan ID/harga/durasi/status penawaran terlengkap tiap platform dan menyiapkan penawaran nonaktif bila belum ada. Penawaran baru diatur di Admin → Paket & harga. Kolom internal `plan=galaxy` tetap dipakai; jangan menghapus penawaran lama yang direferensikan invoice/voucher. Rollback kebijakan memerlukan backup; `down()` tidak mengembalikan batasan sumber secara otomatis. Worker/scheduler proses panjang perlu dimuat ulang agar menggunakan kode terbaru.
+
+
+## IP koneksi pemasok pada panel
+
+Isi `SUPPLIER_OUTBOUND_IP` pada `.env` web dengan IP publik keluar VPS yang digunakan koneksi pemasok. IP ini muncul dengan tombol Salin IP pada popup Digiflazz dan tambah/edit supplier OtomaX. Jika kosong/tidak valid, panel menyatakan IP belum diatur; tidak menampilkan IP tebakan atau melakukan deteksi jaringan saat halaman dibuka.
+
+`DIGIFLAZZ_OUTBOUND_IP` tetap didukung sebagai override khusus Digiflazz. Kosongkan override jika memakai IP bersama. Sesudah mengubah env di deployment yang memakai config cache, jalankan `php artisan config:cache`. Untuk instalasi tanpa config cache, `php artisan config:clear` cukup. Jangan mengisi IP contoh sebagai IP produksi. IP callback OtomaX adalah IP pengirim supplier dan tetap diatur terpisah.

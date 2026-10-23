@@ -20,8 +20,8 @@ function localDate(value:string|null) {
 export default function AdminStoreActions({store}:{store:ManagedStore}) {
     const [action,setAction] = useState('');
     const formId = useId();
-    const form = useForm({name:store.name,template:store.template,expires_at:localDate(store.expires_at),package:packages.find(item=>item.category===store.category && item.plan===store.plan)?.key ?? '',reason:''});
-    function open(value:string) {form.setData({name:store.name,template:store.template,expires_at:localDate(store.expires_at),package:packages.find(item=>item.category===store.category && item.plan===store.plan)?.key ?? '',reason:''});form.clearErrors();setAction(value);}
+    const form = useForm({name:store.name,template:store.template,expires_at:localDate(store.expires_at),package:packages.find(item=>item.category===store.category)?.key ?? '',reason:''});
+    function open(value:string) {form.setData({name:store.name,template:store.template,expires_at:localDate(store.expires_at),package:packages.find(item=>item.category===store.category)?.key ?? '',reason:''});form.clearErrors();setAction(value);}
     const blocked = store.status === 'purging';
     const selectedPackage = packages.find(item=>item.key===form.data.package);
     return <>

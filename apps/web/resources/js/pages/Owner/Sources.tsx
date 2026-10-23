@@ -1,4 +1,5 @@
 import CatalogHelp from '../../components/CatalogHelp';
+import SupplierWhitelistIp from '../../components/SupplierWhitelistIp';
 import { Link, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { Download, Plug, RefreshCw, Unplug, Package, Copy, Eye, EyeOff, KeyRound } from 'lucide-react';
@@ -10,8 +11,8 @@ import { FilterBar, Pagination, useServerList, type ListFilters, type PageMeta }
 import { FormErrors, rupiah, sourceLabels, kindLabels, type CatalogStore } from '../../components/CatalogForms';
 type Connection={name?:string;id:string;kind:string;enabled:boolean;verified_at:string|null;synced_at:string|null;last_error:string|null;webhook_configured:boolean};
 type Item={id:string;connection_id:string;sku:string;mode:string;name:string;kind:string;service:string;category:string;cost:number;available:boolean;availability_reason?:string|null;quantity:number|null;observed_at:string};
-type Props={role:'owner'|'staff';store:CatalogStore;connections:Connection[];features:string[];canManage:boolean;items:Item[];filters:ListFilters;pagination:PageMeta;digiflazzWebhookUrl:string};
-export default function Sources({role,store,connections,features,canManage,items,filters,pagination,digiflazzWebhookUrl}:Props) {
+type Props={role:'owner'|'staff';store:CatalogStore;connections:Connection[];features:string[];canManage:boolean;items:Item[];filters:ListFilters;pagination:PageMeta;digiflazzWebhookUrl:string;supplierOutboundIp:string|null};
+export default function Sources({role,store,connections,features,canManage,items,filters,pagination,digiflazzWebhookUrl,supplierOutboundIp}:Props) {
     const connectionById = new Map(connections.map(connection=>[connection.id,connection]));
     const [webhookConnection,setWebhookConnection]=useState<Connection|null>(null);
     const webhook=useForm({webhook_secret:''});
@@ -75,10 +76,10 @@ export default function Sources({role,store,connections,features,canManage,items
     function edit(kind:string){connection.clearErrors();connection.setData({kind,username:'',api_key:'',enabled:true});setEditing(kind);}
     function close(){setEditing(null);connection.reset();connection.clearErrors();}
     return <WorkspaceLayout contentClassName="catalog-workspace" role={role} title="Sumber produk" description={'Hubungkan pemasok dan impor produknya ke katalog '+store.name+'.'}
-        actions={<Link className="button secondary" href={base+'/products'}><Package size={16}/>Katalog toko</Link>}>
+        actions={<>{features.includes('otomax')&&<Link className="button secondary" href={base+'/otomax'}><Plug size={16}/>Kelola supplier OtomaX</Link>}<Link className="button secondary" href={base+'/products'}><Package size={16}/>Katalog toko</Link></>}>
         {store.sandbox && <CatalogHelp title="Panduan katalog pengujian Digiflazz"><p>Sinkronisasi menyediakan SKU uji resmi: xld10 (prabayar) dan pln (pascabayar). Saldo pemasok yang tampil adalah simulasi Rp1.000.000. Key development baru diverifikasi saat transaksi uji.</p><p>XL: tujuan 087800001230 berhasil, 087800001232 gagal. PLN: 530000000001 berhasil. Hanshop hanya membaca katalog; pemesanan disimulasikan.</p></CatalogHelp>}
         <CatalogHelp title="Mulai dari koneksi → sinkronisasi → impor produk"><p>Sinkronisasi dan impor hanya menyiapkan katalog. Pembelian serta pemotongan saldo dilakukan pada tahap transaksi.</p></CatalogHelp>
-        {features.includes('otomax')&&<div className="card-actions"><Link className="button secondary" href={base+'/otomax'}><Plug size={16}/>Kelola supplier OtomaX</Link></div>}<div className="supplier-setup-grid">{['digiflazz','hanshop'].map(kind=>{
+        <div className="supplier-setup-grid">{['digiflazz','hanshop'].map(kind=>{
             const current=connections.find(item=>item.kind===kind),supported=features.includes(kind);
             return <article className="card onboarding-card catalog-supplier-card" key={kind}><div className="section-toolbar"><h2><span className="catalog-supplier-icon"><Plug size={19}/></span>{sourceLabels[kind]}</h2><span className={'store-status '+(current?.enabled && supported?'active':'expired')}>{!supported?'Tidak termasuk paket':current?.enabled?'Terhubung':'Belum terhubung'}</span></div><p>{store.sandbox?(kind==='digiflazz'?'Gunakan key development. Katalog memakai SKU uji resmi; transaksi dikirim dengan testing aktif.':'Katalog dibaca dari Hanshop. Pembelian dan saldo pemasok disimulasikan.'):(kind==='digiflazz'?'Akun Digiflazz milik toko. Daftarkan IP publik VPS pada whitelist Digiflazz.':'Menggunakan akun Hanshop owner yang sudah tertaut. Saldo mengikuti akun yang sama.')}</p>
                 {current?.synced_at && <small>Snapshot terakhir: {new Date(current.synced_at).toLocaleString('id-ID')}</small>}{current?.last_error && <p className="danger-text">{current.last_error}</p>}
@@ -106,7 +107,7 @@ export default function Sources({role,store,connections,features,canManage,items
         </Modal>
         <Modal open={!!editing} title={'Hubungkan '+sourceLabels[editing ?? 'digiflazz']} onClose={close} busy={connection.processing} footer={<><button className="button secondary" type="button" disabled={connection.processing} onClick={close}>Batal</button><button className="button" type="submit" form="supplier-connect-form" disabled={connection.processing}>{connection.processing?'Menyimpan…':store.sandbox?'Simpan key development':'Periksa & simpan'}</button></>}>
             <form id="supplier-connect-form" className="form-stack" onSubmit={event=>{event.preventDefault();connection.post(base+'/sources',{preserveScroll:true,onSuccess:close});}}><FormErrors errors={connection.errors}/>
-                {editing==='digiflazz'?<><p>Credential disimpan terenkripsi. Pada koneksi yang sudah ada, kolom kosong mempertahankan credential lama.</p><label>Username Digiflazz<input autoComplete="off" value={connection.data.username} onChange={event=>connection.setData('username',event.target.value)}/></label><label>{store.sandbox?'API key development':'API key produksi'}<input type="password" autoComplete="new-password" value={connection.data.api_key} onChange={event=>connection.setData('api_key',event.target.value)}/></label></>:<p>Koneksi menggunakan akun Hanshop owner. Tidak perlu menyalin API key akun ke panel ini.</p>}
+                {editing==='digiflazz'?<><SupplierWhitelistIp key={editing} ip={supplierOutboundIp} supplier="Digiflazz"/><p>Credential disimpan terenkripsi. Pada koneksi yang sudah ada, kolom kosong mempertahankan credential lama.</p><label>Username Digiflazz<input autoComplete="off" value={connection.data.username} onChange={event=>connection.setData('username',event.target.value)}/></label><label>{store.sandbox?'API key development':'API key produksi'}<input type="password" autoComplete="new-password" value={connection.data.api_key} onChange={event=>connection.setData('api_key',event.target.value)}/></label></>:<p>Koneksi menggunakan akun Hanshop owner. Tidak perlu menyalin API key akun ke panel ini.</p>}
                 <label className="checkbox-label"><input type="checkbox" checked={connection.data.enabled} onChange={event=>connection.setData('enabled',event.target.checked)}/>Aktifkan sumber</label>
             </form>
         </Modal>

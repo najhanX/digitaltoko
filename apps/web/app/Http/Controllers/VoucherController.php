@@ -63,7 +63,7 @@ class VoucherController extends Controller
             'plans' => ['id', 'name', 'duration_days', 'price'],'categories' => ['id', 'name', 'service_id'],'products' => ['id', 'name', 'code'],default => ['id', 'name']
         };
 
-        return $model::query()->when($store, fn ($q) => $q->where('store_id', $store->id))->when($type === 'categories', fn ($q) => $q->with('service:id,name'))->select($fields);
+        return $model::query()->when($type === 'plans', fn ($q) => $q->where('plan', 'galaxy'))->when($store, fn ($q) => $q->where('store_id', $store->id))->when($type === 'categories', fn ($q) => $q->with('service:id,name'))->select($fields);
     }
 
     private function option(Model $item, string $type): array

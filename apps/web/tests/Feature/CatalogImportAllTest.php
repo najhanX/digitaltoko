@@ -12,6 +12,7 @@ use App\Models\StoreStaff;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Models\User;
+use App\Support\CatalogAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -226,7 +227,7 @@ class CatalogImportAllTest extends TestCase
         $this->postJson($url)->assertForbidden();
         $connection->update(['enabled' => true]);
         $store->update(['subscription' => ['features' => ['hanshop', 'stock']]]);
-        $this->postJson($url)->assertForbidden();
+        $this->assertTrue(CatalogAccess::supports($store, 'digiflazz'));
         $store->update(['subscription' => null, 'status' => 'suspended']);
         $this->postJson($url)->assertForbidden();
         $store->update(['status' => 'active']);

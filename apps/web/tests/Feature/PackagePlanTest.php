@@ -26,12 +26,11 @@ class PackagePlanTest extends TestCase
         Http::preventStrayRequests();
     }
 
-    public function test_nine_distinct_names_match_the_agreed_channels_sources_and_order(): void
+    public function test_three_platforms_include_all_sources_and_preserve_channel_boundaries(): void
     {
         $this->seed(PackagePlanSeeder::class);
-        $expected = [['Mercury', 'bot', 'space'], ['Venus', 'bot', 'orbit'], ['Terra', 'web', 'space'], ['Mars', 'web', 'orbit'],
-            ['Jupiter', 'bot', 'galaxy'], ['Saturn', 'web', 'galaxy'], ['Uranus', 'full', 'space'], ['Neptune', 'full', 'orbit'], ['Andromeda', 'full', 'galaxy']];
-        $this->assertDatabaseCount('plan_options', 9);
+        $expected = [['Bot WhatsApp', 'bot', 'galaxy'], ['Web Topup', 'web', 'galaxy'], ['Web + Bot WhatsApp', 'full', 'galaxy']];
+        $this->assertDatabaseCount('plan_options', 3);
         $this->assertSame($expected, array_map(fn ($item) => [$item['name'], $item['category'], $item['plan']], PackageCatalog::all()));
         foreach ($expected as [$name,$category,$source]) {
             $offer = PlanOption::where('category', $category)->where('plan', $source)->firstOrFail();
@@ -58,8 +57,8 @@ class PackagePlanTest extends TestCase
         $expiry = $store->expires_at;
         $this->seed(PackagePlanSeeder::class);
         $this->seed(PackagePlanSeeder::class);
-        $this->assertDatabaseCount('plan_options', 10);
-        $this->assertSame('Jupiter · 90 hari', $offer->fresh()->name);
+        $this->assertDatabaseCount('plan_options', 4);
+        $this->assertSame('Bot WhatsApp · 90 hari', $offer->fresh()->name);
         $this->assertSame(123456, $offer->fresh()->price);
         $this->assertSame(90, $offer->fresh()->duration_days);
         $this->assertTrue($offer->fresh()->active);
@@ -75,16 +74,16 @@ class PackagePlanTest extends TestCase
         $this->seed(PackagePlanSeeder::class);
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->get('/admin/plans')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('plans', 9)->where('plans.0.name', 'Mercury · 30 hari')->where('plans.8.name', 'Andromeda · 30 hari'));
-        $this->get('/admin/plans?package=mercury')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('plans', 1)->where('plans.0.category', 'bot')->where('plans.0.plan', 'space'));
+            ->has('plans', 3)->where('plans.0.name', 'Bot WhatsApp · 30 hari')->where('plans.2.name', 'Web + Bot WhatsApp · 30 hari'));
+        $this->get('/admin/plans?package=bot')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('plans', 1)->where('plans.0.category', 'bot')->where('plans.0.plan', 'galaxy'));
         $owner = User::factory()->create(['role' => 'owner', 'verification_status' => 'approved']);
         foreach ([['bot', 'space'], ['web', 'space'], ['bot', 'orbit']] as $i => [$category,$source]) {
             Store::create(['owner_id' => $owner->id, 'name' => 'Toko '.$i, 'slug' => 'package-'.$i, 'category' => $category, 'plan' => $source, 'status' => 'draft']);
         }
-        $this->get('/admin?package=mercury')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('stores', 1)->where('stores.0.category', 'bot')->where('stores.0.plan', 'space')->where('counts.stores', 3));
-        $this->actingAs($owner)->get('/owner/stores?package=mercury')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('stores', 1)->where('stores.0.category', 'bot')->where('stores.0.plan', 'space')->where('counts.stores', 3));
+        $this->get('/admin?package=bot')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('stores', 2)->where('stores.0.category', 'bot')->where('counts.stores', 3));
+        $this->actingAs($owner)->get('/owner/stores?package=bot')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('stores', 2)->where('stores.0.category', 'bot')->where('counts.stores', 3));
     }
 }

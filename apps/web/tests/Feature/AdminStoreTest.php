@@ -70,7 +70,7 @@ class AdminStoreTest extends TestCase
         }
         $this->store($owner, ['category' => 'web', 'plan' => 'space']);
         $this->store();
-        $this->actingAs($admin)->get('/admin/stores?q=628123450000&package=mercury&per_page=5&page=2')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        $this->actingAs($admin)->get('/admin/stores?q=628123450000&package=bot&per_page=5&page=2')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Admin/Stores')->has('stores', 5)->where('pagination.total', 12)->where('pagination.current_page', 2)->where('counts.total', 14)
             ->where('stores.0.category', 'bot')->where('stores.0.plan', 'space')->missing('stores.0.owner.ktp_path')->missing('stores.0.worker_token_hash'));
         $this->get('/admin/stores?owner='.$owner->id)->assertInertia(fn (AssertableInertia $page) => $page->where('pagination.total', 13)->where('selectedOwner.id', $owner->id));
@@ -171,7 +171,7 @@ class AdminStoreTest extends TestCase
             $this->assertSame($package['name'], StoreAdminEvent::where('store_id', $store->id)->firstOrFail()->after['package_name']);
             $this->assertDatabaseHas('panel_notifications', ['user_id' => $store->owner_id, 'title' => 'Paket toko diubah administrator']);
         }
-        $this->assertDatabaseCount('subscription_invoices', 9);
+        $this->assertDatabaseCount('subscription_invoices', 3);
         Http::assertNothingSent();
     }
 
@@ -179,10 +179,10 @@ class AdminStoreTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $store = $this->store();
-        $input = ['action' => 'package', 'package' => 'mercury', 'reason' => 'Koreksi paket oleh administrator'];
+        $input = ['action' => 'package', 'package' => 'bot', 'reason' => 'Koreksi paket oleh administrator'];
         $this->actingAs($store->owner)->patch('/admin/stores/'.$store->id, $input)->assertForbidden();
         $this->actingAs($admin)->patch('/admin/stores/'.$store->id, [...$input, 'package' => 'unknown'])->assertSessionHasErrors('package');
-        $this->patch('/admin/stores/'.$store->id, [...$input, 'package' => 'andromeda'])->assertSessionHasErrors('package');
+        $this->patch('/admin/stores/'.$store->id, [...$input, 'package' => 'full'])->assertSessionHasErrors('package');
         $this->patch('/admin/stores/'.$store->id, [...$input, 'reason' => ''])->assertSessionHasErrors('reason');
         foreach (['pending', 'paid', 'review'] as $status) {
             $blocked = $this->store();
@@ -204,14 +204,14 @@ class AdminStoreTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $store = $this->store(null, ['status' => 'draft', 'starts_at' => null, 'expires_at' => null, 'subscription' => null]);
-        $this->actingAs($admin)->patch('/admin/stores/'.$store->id, ['action' => 'package', 'package' => 'venus', 'reason' => 'Perbaikan pilihan paket sebelum pembayaran'])->assertSessionHasNoErrors();
+        $this->actingAs($admin)->patch('/admin/stores/'.$store->id, ['action' => 'package', 'package' => 'bot', 'reason' => 'Perbaikan pilihan paket sebelum pembayaran'])->assertSessionHasNoErrors();
         $store->refresh();
         $this->assertSame('draft', $store->status);
         $this->assertNull($store->expires_at);
         $this->assertNull($store->subscription);
         $this->assertFalse($store->canConnectBot());
         $this->get('/admin/stores/'.$store->id.'?action=package')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('events', 1)->where('events.0.action', 'package')->where('events.0.after.package_name', 'Venus')->where('filters.action', 'package'));
+            ->has('events', 1)->where('events.0.action', 'package')->where('events.0.after.package_name', 'Bot WhatsApp')->where('filters.action', 'package'));
     }
 
     public function test_detail_audit_is_paginated_scoped_and_keeps_supplier_and_stock_secrets_private(): void

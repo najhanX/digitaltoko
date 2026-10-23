@@ -285,7 +285,8 @@ class VoucherTest extends TestCase
         $this->assertTrue($base->addDays(30)->equalTo($store->fresh()->expires_at));
         $service->checkout($store, $plan, $voucher->code, $key);
         $this->assertTrue($base->addDays(30)->equalTo($store->fresh()->expires_at));
-        $lower = PlanOption::create(['name' => 'Web Dasar', 'category' => 'web', 'plan' => 'orbit', 'price' => 25000, 'duration_days' => 7, 'active' => true]);
+        $store->update(['category' => 'full']);
+        $lower = PlanOption::create(['name' => 'Web Dasar', 'category' => 'web', 'plan' => 'galaxy', 'price' => 25000, 'duration_days' => 7, 'active' => true]);
         $this->invalid(fn () => $service->checkout($store, $lower, $voucher->code, $key));
         $down = $service->checkout($store, $lower, $voucher->code, (string) Str::uuid());
         $this->assertSame('paid', $down->status);
@@ -293,7 +294,8 @@ class VoucherTest extends TestCase
         $expiry = $store->fresh()->expires_at;
         $this->travelTo($expiry);
         $service->tick($store);
-        $this->assertSame('orbit', $store->fresh()->plan);
+        $this->assertSame('web', $store->fresh()->category);
+        $this->assertSame('galaxy', $store->fresh()->plan);
         $this->assertTrue($expiry->addDays(7)->equalTo($store->fresh()->expires_at));
         Http::assertNothingSent();
     }

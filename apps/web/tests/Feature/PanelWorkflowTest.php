@@ -154,12 +154,12 @@ class PanelWorkflowTest extends TestCase
     {
         $owner = $this->owner();
         $store = $this->store($owner);
-        $store->update(['status' => 'active', 'plan' => 'galaxy', 'starts_at' => now()->subDay(), 'expires_at' => now()->addDays(20)]);
-        PlanOption::create(['name' => 'Orbit', 'category' => 'web', 'plan' => 'orbit', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $store->update(['status' => 'active', 'category' => 'full', 'plan' => 'galaxy', 'starts_at' => now()->subDay(), 'expires_at' => now()->addDays(20)]);
+        PlanOption::create(['name' => 'Bot', 'category' => 'bot', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         PlanOption::create(['name' => 'Galaxy', 'category' => 'web', 'plan' => 'galaxy', 'price' => 100000, 'duration_days' => 30, 'active' => true]);
         PlanOption::create(['name' => 'Nonaktif', 'category' => 'web', 'plan' => 'space', 'price' => 10000, 'duration_days' => 30, 'active' => false]);
         $this->actingAs($owner)->get('/stores/'.$store->id.'/subscription')->assertInertia(fn (Assert $page) => $page
-            ->has('plans', 2)->where('plans.0.purpose', 'downgrade')->where('plans.1.purpose', 'renew'));
+            ->has('plans', 2)->where('plans.0.purpose', 'downgrade')->where('plans.1.purpose', 'downgrade'));
         $store->update(['is_trial' => true]);
         $staff = $this->staff($store, ['subscription.view', 'subscription.renew']);
         $this->app['auth']->guard('web')->logout();

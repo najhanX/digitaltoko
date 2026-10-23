@@ -53,3 +53,12 @@ Disinkronkan dengan source dan keputusan pengguna sampai **22 Oktober 2026**. Ke
 ## Sumber acuan
 
 ARCHITECTURE.md untuk peta source, BUSINESS_RULES.md untuk kebijakan/batas implementasi, DEPLOYMENT.md untuk operasi, STAFF_PERMISSIONS.md untuk grant aktual. FOUNDATION_VALIDATION.md dan checkpoint bertanggal merupakan riwayat; klaim lama tidak mengalahkan kondisi source terbaru.
+
+
+## 23 Oktober 2026 — Paket berdasarkan platform
+
+- Mengganti sembilan kombinasi sumber/kanal menjadi Bot WhatsApp, Web Topup, dan Web + Bot WhatsApp, masing-masing dengan harga dan durasi dari admin.
+- Semua platform mendapat Digiflazz, API Hanshop, OtomaX, serta stok premium. Kanal penjualan tetap mengikuti platform; Web tetap boleh menautkan WA untuk OTP/notifikasi, tanpa command penjualan bot.
+- Sesuai persetujuan owner platform, harga/durasi awal memakai penawaran terlengkap lama tiap platform. ID penawaran dipertahankan agar sasaran voucher tetap cocok; penawaran terbatas sumber dinonaktifkan untuk pembelian baru.
+- Migrasi memperbarui entitlement toko lama tanpa mengubah masa aktif dan snapshot invoice. Invoice lama tetap dapat diproses dari snapshot historisnya. Pembelian baru wajib memakai penawaran platform saat ini.
+- Pembelian ulang platform yang sama adalah perpanjangan meskipun toko masih menyimpan kode sumber lama. Perubahan dengan pengurangan kanal berlaku periode berikutnya; penambahan kanal membayar harga penuh dan memulai ulang masa aktif.

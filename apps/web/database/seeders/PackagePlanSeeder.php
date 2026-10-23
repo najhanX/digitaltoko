@@ -12,6 +12,7 @@ class PackagePlanSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
+            PlanOption::where('plan', '!=', 'galaxy')->update(['active' => false]);
             foreach (PackageCatalog::all() as $package) {
                 $offers = PlanOption::where('category', $package['category'])->where('plan', $package['plan'])->lockForUpdate()->get();
                 if ($offers->isEmpty()) {
@@ -19,13 +20,13 @@ class PackagePlanSeeder extends Seeder
                         'category' => $package['category'], 'plan' => $package['plan'], 'price' => 50000, 'duration_days' => 30, 'active' => false]);
                 } else {
                     foreach ($offers as $offer) {
-                        if (preg_match('/\b(Orbit|Space|Galaxy)\b/i', $offer->name)) {
+                        if (preg_match('/\b(Orbit|Space|Galaxy|Jupiter|Saturn|Andromeda)\b/i', $offer->name)) {
                             $offer->update(['name' => PackageCatalog::offerName($offer->category, $offer->plan, $offer->duration_days)]);
                         }
                     }
                 }
             }
         });
-        $this->command?->info('Sembilan kombinasi paket disiapkan. Harga, durasi, status, dan invoice existing dipertahankan.');
+        $this->command?->info('Tiga platform disiapkan dengan seluruh sumber produk. Harga dan durasi paket terlengkap dipertahankan; penawaran lama dinonaktifkan.');
     }
 }

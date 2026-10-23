@@ -22,6 +22,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PremiumStockController;
 use App\Http\Controllers\PreviewController;
 use App\Http\Controllers\PublicArticleController;
+use App\Http\Controllers\PublicPricingController;
 use App\Http\Controllers\QuickOrderController;
 use App\Http\Controllers\StaffLoginController;
 use App\Http\Controllers\StoreArticleController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\StoreManagementController;
 use App\Http\Controllers\StoreNotificationController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\TutorialController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +73,10 @@ Route::post('/account/phone/otp', [CustomerAuthController::class, 'phoneOtp'])->
 Route::post('/account/phone/verify', [CustomerAuthController::class, 'phoneVerify'])->middleware('throttle:10,1');
 Route::post('/account/logout', [CustomerAuthController::class, 'logout']);
 Route::middleware('platform.host')->group(function () {
+    Route::get('/paket', [PublicPricingController::class, 'index'])->name('pricing.index');
+    Route::get('/paket/subdomain', [PublicPricingController::class, 'availability'])->middleware('throttle:30,1,pricing-subdomain')->name('pricing.availability');
+    Route::get('/panduan', [TutorialController::class, 'index'])->name('tutorials.index');
+    Route::get('/panduan/{slug}', [TutorialController::class, 'index'])->where('slug', '[a-z0-9-]+')->name('tutorials.show');
     Route::get('/admin/vouchers', [VoucherController::class, 'index']);
     Route::get('/admin/vouchers/options', [VoucherController::class, 'options']);
     Route::post('/admin/vouchers', [VoucherController::class, 'save']);

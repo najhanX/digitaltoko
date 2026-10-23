@@ -230,10 +230,10 @@ class OtomaxTest extends TestCase
         $this->actingAs($staff, 'staff')->postJson($this->base($s).'/connections/'.$c->id.'/callback-url')->assertForbidden();
     }
 
-    public function test_stock_only_plan_cannot_access_otomax(): void
+    public function test_legacy_stock_plan_can_access_otomax(): void
     {
         $s = $this->shop('space');
-        $this->actingAs($s->owner)->get($this->base($s))->assertForbidden();
+        $this->actingAs($s->owner)->get($this->base($s))->assertOk();
     }
 
     public function test_private_endpoint_is_rejected_without_network(): void

@@ -18,7 +18,7 @@ class PackageCatalog
 
     public static function name(string $category, string $plan): string
     {
-        return collect(self::all())->first(fn ($item) => $item['category'] === $category && $item['plan'] === $plan)['name'] ?? 'Paket toko';
+        return collect(self::all())->first(fn ($item) => $item['category'] === $category)['name'] ?? 'Paket toko';
     }
 
     public static function offerName(string $category, string $plan, int $days): string
@@ -42,6 +42,6 @@ class PackageCatalog
     {
         $package = collect(self::all())->firstWhere('key', $key);
 
-        return $package ? $query->where('category', $package['category'])->where('plan', $package['plan']) : $query;
+        return $package ? $query->where('category', $package['category']) : $query;
     }
 }

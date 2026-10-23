@@ -52,7 +52,7 @@ class SubscriptionTest extends TestCase
         return Store::create(['owner_id' => $owner->id, 'slug' => 'toko-'.Store::count(), 'name' => 'Toko Test', 'category' => $category, 'plan' => 'orbit', 'status' => 'draft', 'template' => 'aurora']);
     }
 
-    private function plan(string $category = 'web', string $plan = 'orbit'): PlanOption
+    private function plan(string $category = 'web', string $plan = 'galaxy'): PlanOption
     {
         return PlanOption::create(['name' => 'Paket Uji', 'category' => $category, 'plan' => $plan, 'price' => 50000, 'duration_days' => 30, 'active' => true]);
     }
@@ -83,6 +83,25 @@ class SubscriptionTest extends TestCase
         $this->assertSame('applied', $i->fresh()->status);
     }
 
+    public function test_pending_legacy_invoice_can_still_be_paid_and_activated_after_offer_is_retired(): void
+    {
+        $store = $this->store($this->owner());
+        $offer = $this->plan();
+        $invoice = $this->service()->checkout($store, $offer);
+        $snapshot = [...$invoice->snapshot, 'plan' => 'orbit', 'name' => 'Mars lama'];
+        $invoice->update(['snapshot' => $snapshot]);
+        $offer->update(['active' => false, 'plan' => 'orbit']);
+        $this->gatewayStatus = 'PAID';
+        $this->service()->sync($invoice->fresh());
+        $this->service()->activate($store->fresh());
+        $this->assertSame('active', $store->fresh()->status);
+        $this->assertSame('galaxy', $store->fresh()->plan);
+        $this->assertSame($snapshot, $invoice->fresh()->snapshot);
+        $this->assertSame(50000, $store->fresh()->subscription['price']);
+        $this->assertContains('stock', $store->fresh()->subscription['features']);
+        $this->assertContains('otomax', $store->fresh()->subscription['features']);
+    }
+
     public function test_active_and_expired_renewal_use_correct_base_and_replay_is_idempotent(): void
     {
         $s = $this->store($this->owner());
@@ -103,7 +122,7 @@ class SubscriptionTest extends TestCase
         $s = $this->store($this->owner());
         $s->update(['status' => 'active', 'starts_at' => now()->subDays(2), 'expires_at' => now()->addDays(50)]);
         $this->gatewayStatus = 'PAID';
-        $i = $this->service()->checkout($s, $this->plan('web', 'galaxy'));
+        $i = $this->service()->checkout($s, $this->plan('full', 'galaxy'));
         $this->assertSame(50000, $i->snapshot['price']);
         $this->assertTrue($s->fresh()->expires_at->equalTo($i->paid_at->addDays(30)));
         $s->refresh();
@@ -113,7 +132,8 @@ class SubscriptionTest extends TestCase
         $this->assertSame('galaxy', $s->fresh()->plan);
         $this->travelTo($expiry->addSecond());
         $this->service()->tick($s);
-        $this->assertSame('orbit', $s->fresh()->plan);
+        $this->assertSame('web', $s->fresh()->category);
+        $this->assertSame('galaxy', $s->fresh()->plan);
         $this->assertTrue($s->fresh()->expires_at->equalTo($expiry->addDays(30)));
         $this->assertSame('applied', $down->fresh()->status);
     }
@@ -279,7 +299,7 @@ class SubscriptionTest extends TestCase
         $store = $this->store($owner);
         $store->update(['status' => 'active', 'expires_at' => now()->addDays(5)]);
         $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Billing', 'username' => 'billing', 'email' => 'b@example.test', 'password' => 'password-test123', 'permissions' => ['subscription.view', 'subscription.renew']]);
-        $this->actingAs($staff, 'staff')->post('/stores/'.$store->id.'/subscription/checkout', ['plan_id' => $this->plan('web', 'galaxy')->id])->assertForbidden();
+        $this->actingAs($staff, 'staff')->post('/stores/'.$store->id.'/subscription/checkout', ['plan_id' => $this->plan('full', 'galaxy')->id])->assertForbidden();
         $this->post('/stores/'.$store->id.'/subscription/checkout', ['plan_id' => $this->plan()->id])->assertSessionHasNoErrors();
         $this->assertDatabaseCount('subscription_invoices', 1);
         $this->assertSame('renew', SubscriptionInvoice::first()->purpose);

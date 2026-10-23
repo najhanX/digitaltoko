@@ -1,0 +1,3145 @@
+[
+  {
+    "slug": "mulai",
+    "title": "Mulai berjualan di DigitalToko",
+    "category": "Persiapan",
+    "summary": "Siapkan akun, paket, produk dan toko pertama Anda.",
+    "image": "/guides/subscription.png",
+    "imageAlt": "Contoh Mulai berjualan di DigitalToko pada data simulasi",
+    "prerequisites": [
+      "Nomor WhatsApp aktif dan dokumen identitas owner."
+    ],
+    "steps": [
+      {
+        "title": "Lengkapi identitas",
+        "paragraphs": [
+          "Masuk panel memakai identitas Hanshop dan OTP melalui kanal yang tersedia. Pada Profil & verifikasi lengkapi data sesuai KTP, tempat/tanggal lahir, alamat, WhatsApp, email dan foto KTP. Verifikasi kontak lalu ajukan pemeriksaan manual. Baca alasan jika pengajuan ditolak."
+        ],
+        "visual": {
+          "image": "/guides/steps/owner-identity-form.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 10.335195530726256,
+              "label": "Lengkapi alamat pemilik",
+              "w": 56.60377358490566,
+              "x": 67.05974842767296,
+              "y": 30.200331703910617
+            },
+            {
+              "h": 7.192737430167598,
+              "label": "Unggah foto dokumen yang jelas",
+              "w": 53.93081761006289,
+              "x": 67.05974842767296,
+              "y": 48.04251047486034
+            },
+            {
+              "h": 6.1725296787709505,
+              "label": "Ajukan setelah kontak terverifikasi",
+              "w": 15.118907232704402,
+              "x": 87.80218160377359,
+              "y": 83.70449982541899
+            }
+          ],
+          "width": 1272,
+          "caption": "Lengkapi data diri, unggah KTP, lalu ajukan verifikasi setelah kontak terverifikasi."
+        }
+      },
+      {
+        "title": "Buat toko",
+        "paragraphs": [
+          "Setelah disetujui, buka Toko saya → Buat toko. Isi nama, subdomain, platform dan template jika memakai web. Periksa ejaan; subdomain ditetapkan sejak awal.",
+          "Pilih Bot WhatsApp, Web Topup atau Web + Bot. Semua sumber termasuk. Setiap toko punya masa aktif dan konfigurasi sendiri."
+        ],
+        "visual": {
+          "image": "/guides/steps/create-store.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.944444444444445,
+              "label": "Isi nama toko",
+              "w": 30.46875,
+              "x": 33.75,
+              "y": 42.41536458333333
+            },
+            {
+              "h": 6.944444444444445,
+              "label": "Tentukan subdomain tetap",
+              "w": 30.46875,
+              "x": 65.625,
+              "y": 42.41536458333333
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Lanjutkan ke pemilihan paket",
+              "w": 16.0888671875,
+              "x": 73.43994140625,
+              "y": 91.51421440972224
+            }
+          ],
+          "width": 1280,
+          "caption": "Isi identitas toko dan lanjutkan ke pemilihan platform serta durasi."
+        }
+      },
+      {
+        "title": "Bayar lalu siapkan layanan",
+        "paragraphs": [
+          "Pada Langganan & aktivasi pilih durasi, masukkan voucher bila ada dan buat invoice. Bayar sesuai total atau gunakan voucher sah 100%. Pembayaran sewa berbeda dari gateway pelanggan toko.",
+          "Hubungkan pemasok dan gateway, impor produk, atur harga serta sambungkan WA bila diperlukan."
+        ],
+        "visual": {
+          "image": "/guides/steps/subscription-confirm.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.944444444444445,
+              "label": "Masukkan voucher jika tersedia",
+              "w": 32.5,
+              "x": 50.0,
+              "y": 51.388888888888886
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Konfirmasikan invoice paket",
+              "w": 10.545654296875,
+              "x": 60.9771728515625,
+              "y": 73.81781684027777
+            }
+          ],
+          "width": 1280,
+          "caption": "Periksa paket, masukkan voucher bila ada, lalu konfirmasikan invoice."
+        }
+      },
+      {
+        "title": "Aktifkan toko",
+        "paragraphs": [
+          "Setelah siap, konfirmasikan aktivasi untuk mulai menghitung masa aktif. Tanpa konfirmasi, sistem dapat mengaktifkan setelah 24 jam dalam keadaan siap. Uji checkout/notifikasi dahulu. Jika ada gangguan layanan, hubungi dukungan DigitalToko."
+        ],
+        "visual": {
+          "image": "/guides/steps/subscription-activation.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.3519553072625703,
+              "label": "Selesaikan persiapan yang diminta",
+              "w": 13.91755110062893,
+              "x": 19.30154284591195,
+              "y": 68.24153282122906
+            },
+            {
+              "h": 6.1725296787709505,
+              "label": "Aktifkan setelah semua siap",
+              "w": 21.28107802672956,
+              "x": 21.56821196933962,
+              "y": 78.59036749301677
+            }
+          ],
+          "width": 1272,
+          "caption": "Selesaikan persiapan yang ditandai; tombol aktivasi tersedia setelah semua syarat siap."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Tidak bisa memilih paket",
+        "answer": "Profil/kontak dan KTP owner perlu disetujui. Staff memerlukan izin sesuai menu."
+      }
+    ],
+    "related": [
+      "langganan",
+      "digiflazz",
+      "midtrans",
+      "whatsapp",
+      "pengujian"
+    ],
+    "sources": [],
+    "keywords": [
+      "daftar",
+      "akun",
+      "ktp",
+      "verifikasi",
+      "aktivasi",
+      "subdomain"
+    ]
+  },
+  {
+    "slug": "admin",
+    "title": "Administrator platform",
+    "category": "Administrasi",
+    "summary": "Verifikasi owner, kelola toko, penawaran dan promo.",
+    "image": "/guides/admin.png",
+    "imageAlt": "Contoh Administrator platform pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Periksa identitas",
+        "paragraphs": [
+          "Pada Verifikasi owner periksa dokumen dan beri alasan bila ditolak. Persetujuan berlaku pada owner untuk semua tokonya. Dokumen pribadi tidak boleh menjadi materi panduan publik."
+        ],
+        "visual": {
+          "image": "/guides/steps/admin-navigation.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.145251396648044,
+              "label": "Periksa identitas pengaju",
+              "w": 15.959119496855346,
+              "x": 9.394654088050315,
+              "y": 40.08379888268157
+            }
+          ],
+          "width": 1272,
+          "caption": "Masuk Verifikasi owner untuk meninjau pengajuan identitas."
+        }
+      },
+      {
+        "title": "Kelola toko",
+        "paragraphs": [
+          "Periksa owner, platform, masa aktif dan kewajiban di Kelola toko. Perubahan paket/masa aktif memerlukan alasan untuk audit. Penangguhan menghentikan layanan, bukan menghapus data atau otomatis refund."
+        ],
+        "visual": {
+          "image": "/guides/steps/admin-navigation.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.145251396648044,
+              "label": "Kelola status setiap toko",
+              "w": 15.959119496855346,
+              "x": 9.394654088050315,
+              "y": 33.24022346368715
+            }
+          ],
+          "width": 1272,
+          "caption": "Masuk Kelola toko untuk melihat dan menangani toko milik masing-masing owner."
+        }
+      },
+      {
+        "title": "Atur paket dan voucher",
+        "paragraphs": [
+          "Paket & harga berisi tiga platform dengan harga/durasi masing-masing. Harga baru tidak menulis ulang invoice lama. Voucher promo platform menarget penawaran/layanan dan dapat 100%."
+        ],
+        "visual": {
+          "image": "/guides/steps/admin-offers.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.58659217877095,
+              "label": "Atur penawaran dan durasi",
+              "w": 11.150624017295597,
+              "x": 91.90896472091194,
+              "y": 23.044692737430168
+            },
+            {
+              "h": 6.145251396648044,
+              "label": "Kelola promo sewa platform",
+              "w": 15.959119496855346,
+              "x": 9.394654088050315,
+              "y": 60.6145251396648
+            }
+          ],
+          "width": 1272,
+          "caption": "Penawaran paket dan voucher promo dikelola melalui menu masing-masing."
+        }
+      },
+      {
+        "title": "Pembayaran dan operasional",
+        "paragraphs": [
+          "Pembayaran sewa terpisah dari gateway pelanggan dan saldo toko. Tinjau kewajiban sebelum penghapusan. Admin mengelola domain/HTTPS, scheduler, queue, Redis, bridge API dan bot manager; periksa log tanpa membagikan credential."
+        ],
+        "visual": {
+          "image": "/guides/steps/admin-navigation.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.145251396648044,
+              "label": "Pantau invoice platform",
+              "w": 15.959119496855346,
+              "x": 9.394654088050315,
+              "y": 53.770949720670394
+            }
+          ],
+          "width": 1272,
+          "caption": "Buka Pembayaran sewa untuk memeriksa invoice platform."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Sinkron masih antre atau OTP gagal",
+        "answer": "Periksa layanan backend terkait dan antrean. Jangan mengubah snapshot invoice untuk melewati pembayaran."
+      }
+    ],
+    "related": [
+      "langganan",
+      "penutupan",
+      "pengujian"
+    ],
+    "sources": [],
+    "keywords": [
+      "platform",
+      "verifikasi",
+      "toko",
+      "paket"
+    ]
+  },
+  {
+    "slug": "langganan",
+    "title": "Paket dan perpanjangan",
+    "category": "Administrasi",
+    "summary": "Durasi, invoice, perubahan platform dan masa tenggang.",
+    "image": "/guides/subscription.png",
+    "imageAlt": "Contoh Paket dan perpanjangan pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Pilih platform",
+        "paragraphs": [
+          "Langganan & aktivasi menyediakan Bot WhatsApp, Web Topup dan Web + Bot WhatsApp, masing-masing dengan pilihan durasi/harga admin. Semua sumber termasuk; langganan berlaku per toko."
+        ],
+        "visual": {
+          "image": "/guides/steps/subscription-platform.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.284916201117319,
+              "label": "Pilih platform toko",
+              "w": 10.068420794025156,
+              "x": 14.310939956761008,
+              "y": 91.66593924581008
+            }
+          ],
+          "width": 1272,
+          "caption": "Pilih Bot WhatsApp, Web Topup, atau Web + Bot; seluruh sumber sudah termasuk."
+        }
+      },
+      {
+        "title": "Bayar invoice",
+        "paragraphs": [
+          "Periksa total/durasi, masukkan voucher bila ada. Bayar tepat QRIS beserta kode unik. Voucher 100% menyelesaikan Rp0 tanpa pembayaran nyata. Jangan membayar dua kali ketika masih diperiksa."
+        ],
+        "visual": {
+          "image": "/guides/steps/subscription-confirm.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.944444444444445,
+              "label": "Masukkan voucher jika tersedia",
+              "w": 32.5,
+              "x": 50.0,
+              "y": 51.388888888888886
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Konfirmasikan invoice paket",
+              "w": 10.545654296875,
+              "x": 60.9771728515625,
+              "y": 73.81781684027777
+            }
+          ],
+          "width": 1280,
+          "caption": "Buat invoice setelah memastikan paket dan voucher benar; ikuti total serta batas pembayaran invoice aktif."
+        }
+      },
+      {
+        "title": "Pahami masa aktif",
+        "paragraphs": [
+          "Pembelian pertama menunggu kesiapan dan aktivasi. Perpanjangan aktif menambah dari expiry; setelah habis dimulai dari pembayaran berhasil. Penambahan kanal membayar penuh dan memulai ulang durasi. Pengurangan kanal berlaku periode berikutnya."
+        ],
+        "visual": {
+          "image": "/guides/steps/subscription-platform.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 4.691864525139666,
+              "label": "Periksa masa aktif toko ini",
+              "w": 17.1297661163522,
+              "x": 19.492556014150942,
+              "y": 62.1562936452514
+            }
+          ],
+          "width": 1272,
+          "caption": "Periksa masa aktif toko yang sedang dipilih. Masa aktif belum berjalan pada contoh toko baru ini."
+        }
+      },
+      {
+        "title": "Perhatikan tenggang",
+        "paragraphs": [
+          "Tujuh hari sesudah expiry masih boleh transaksi dengan pemberitahuan panel. Sesudahnya layanan berhenti. Hari ke-30 ditinjau untuk penghapusan, tetapi saldo/transaksi menggantung menahannya. Staff berizin hanya memperpanjang platform saat ini."
+        ],
+        "visual": {
+          "image": "/guides/steps/subscription-retention.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.753491620111732,
+              "label": "Periksa batas tenggang dan retensi",
+              "w": 15.064244300314463,
+              "x": 20.45652761399371,
+              "y": 68.49576641061452
+            },
+            {
+              "h": 4.691864525139666,
+              "label": "Aturan berlaku hanya untuk toko ini",
+              "w": 16.623673349056602,
+              "x": 19.239509630503143,
+              "y": 49.16746682960894
+            }
+          ],
+          "width": 1272,
+          "caption": "Periksa tanggal layanan berhenti dan evaluasi penghapusan pada jadwal retensi toko."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Paket lama tidak ada",
+        "answer": "Paket kini dibedakan platform. Harga/durasi penawaran terlengkap dipertahankan, invoice lama tetap memakai snapshot historis."
+      }
+    ],
+    "related": [
+      "mulai",
+      "voucher",
+      "penutupan"
+    ],
+    "sources": [],
+    "keywords": [
+      "paket",
+      "masa aktif",
+      "perpanjangan",
+      "upgrade",
+      "downgrade"
+    ]
+  },
+  {
+    "slug": "penutupan",
+    "title": "Penutupan toko",
+    "category": "Administrasi",
+    "summary": "Selesaikan saldo dan transaksi sebelum penghapusan.",
+    "image": "/guides/closure.png",
+    "imageAlt": "Contoh Penutupan toko pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Periksa kewajiban",
+        "paragraphs": [
+          "Buka Penutupan toko. Tinjau saldo pelanggan, transaksi nonterminal, refund serta invoice/jadwal sewa. Toko baru juga dapat punya invoice belum selesai."
+        ],
+        "visual": {
+          "image": "/guides/steps/closure-obligations.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.3519553072625703,
+              "label": "Pastikan semua kewajiban selesai",
+              "w": 25.421948702830193,
+              "x": 23.324181898584907,
+              "y": 17.68505586592179
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Tuntaskan saldo pelanggan",
+              "w": 9.705434355345911,
+              "x": 83.7092177672956,
+              "y": 38.63313983938548
+            }
+          ],
+          "width": 1272,
+          "caption": "Selesaikan saldo pelanggan serta seluruh invoice dan pesanan sebelum penghapusan."
+        }
+      },
+      {
+        "title": "Ajukan penutupan",
+        "paragraphs": [
+          "Ajukan melalui modal. Layanan berhenti sesuai status penutupan; akun owner dan toko lain terpisah. Selesaikan kewajiban serta hubungi pelanggan yang terdampak."
+        ],
+        "visual": {
+          "image": "/guides/steps/closure-confirm.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.138237847222222,
+              "label": "Konfirmasi jika siap menutup toko",
+              "w": 14.544677734375,
+              "x": 58.9776611328125,
+              "y": 64.2626953125
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Batalkan jika belum siap",
+              "w": 6.806640625,
+              "x": 47.520751953125,
+              "y": 64.2626953125
+            }
+          ],
+          "width": 1280,
+          "caption": "Periksa akibatnya sebelum menghentikan pesanan baru. Pilih Kembali jika belum siap."
+        }
+      },
+      {
+        "title": "Tunggu admin",
+        "paragraphs": [
+          "Admin meninjau pratinjau data/kewajiban di Kelola toko sebelum konfirmasi hapus permanen. Pengajuan bukan penghapusan otomatis; tidak ada pemaksaan melewati saldo/pending."
+        ],
+        "visual": {
+          "image": "/guides/steps/closure-obligations.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.3519553072625703,
+              "label": "Pastikan semua kewajiban selesai",
+              "w": 25.421948702830193,
+              "x": 23.324181898584907,
+              "y": 17.68505586592179
+            }
+          ],
+          "width": 1272,
+          "caption": "Admin akan memeriksa kewajiban ini kembali sebelum menyelesaikan penghapusan."
+        }
+      },
+      {
+        "title": "Pahami akibat",
+        "paragraphs": [
+          "Produk, pelanggan, transaksi, staff, media, pengaturan dan sesi WA toko dihapus permanen. Lisensi tidak dipindah/direfund. Akun owner/riwayat Hanshop tetap terpisah. Membuat toko ulang dimulai dari awal."
+        ],
+        "visual": {
+          "image": "/guides/steps/closure-confirm.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.138237847222222,
+              "label": "Batalkan jika belum siap",
+              "w": 6.806640625,
+              "x": 47.520751953125,
+              "y": 64.2626953125
+            }
+          ],
+          "width": 1280,
+          "caption": "Baca konsekuensi penghentian layanan; kembali jika penutupan belum dapat dilanjutkan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Masih ditinjau",
+        "answer": "Admin perlu meninjau dan semua penghalang penghapusan perlu diselesaikan dahulu."
+      }
+    ],
+    "related": [
+      "pelanggan",
+      "transaksi",
+      "langganan"
+    ],
+    "sources": [],
+    "keywords": [
+      "hapus",
+      "retensi",
+      "saldo"
+    ]
+  },
+  {
+    "slug": "staff",
+    "title": "Staff dan hak akses",
+    "category": "Administrasi",
+    "summary": "Buat maksimal lima staff sesuai tugasnya.",
+    "image": "/guides/staff.png",
+    "imageAlt": "Contoh Staff dan hak akses pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Buka menu staff",
+        "paragraphs": [
+          "Owner memilih Administrasi toko → Staff & hak akses. Akun staff hanya berada di toko ini; tidak dibuat sebagai akun Hanshop."
+        ],
+        "visual": {
+          "image": "/guides/steps/staff-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.1725296787709505,
+              "label": "Buat akun khusus toko ini",
+              "w": 11.14079697327044,
+              "x": 91.91387824292451,
+              "y": 23.337661487430168
+            },
+            {
+              "h": 6.1725296787709505,
+              "label": "Gunakan halaman login staff",
+              "w": 9.935141509433961,
+              "x": 80.74697818396227,
+              "y": 23.337661487430168
+            }
+          ],
+          "width": 1272,
+          "caption": "Buka Staff & hak akses; akun staff masuk melalui halaman login khusus toko."
+        }
+      },
+      {
+        "title": "Tambahkan akun",
+        "paragraphs": [
+          "Isi nama, username/email dan password sesuai form. Maksimal lima staff. Berikan akses secara privat, jangan memakai satu akun bersama untuk semua operator."
+        ],
+        "visual": {
+          "image": "/guides/steps/staff-account.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.944444444444445,
+              "label": "Isi identitas staff",
+              "w": 30.390625,
+              "x": 33.7109375,
+              "y": 49.762369791666664
+            },
+            {
+              "h": 6.944444444444445,
+              "label": "Tentukan username login",
+              "w": 30.390625,
+              "x": 65.6640625,
+              "y": 49.762369791666664
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Simpan setelah izin diperiksa",
+              "w": 9.1961669921875,
+              "x": 76.88629150390625,
+              "y": 91.51421440972224
+            }
+          ],
+          "width": 1280,
+          "caption": "Isi identitas dan kredensial akun, lalu periksa hak akses sebelum menyimpan."
+        }
+      },
+      {
+        "title": "Pilih izin",
+        "paragraphs": [
+          "Pilih izin melihat/mengelola produk, harga, pemasok, stok, pesanan, voucher, tampilan, artikel, notifikasi atau perpanjangan sesuai tugas. Hak credential stok dan tindakan sensitif dipisah."
+        ],
+        "visual": {
+          "image": "/guides/steps/staff-permissions.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 7.833116319444445,
+              "label": "Buka kelompok untuk memilih izin",
+              "w": 62.18749999999999,
+              "x": 49.6875,
+              "y": 49.85948350694444
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Simpan akun beserta izinnya",
+              "w": 9.1961669921875,
+              "x": 76.88629150390625,
+              "y": 91.51421440972224
+            }
+          ],
+          "width": 1280,
+          "caption": "Buka kelompok izin dan pilih akses seperlunya sebelum menyimpan akun."
+        }
+      },
+      {
+        "title": "Uji dan nonaktifkan",
+        "paragraphs": [
+          "Staff masuk melalui halaman staff toko dengan username/email dan password. Periksa menu sesuai izin. Nonaktifkan jika tidak bertugas. Izin di satu toko tidak berlaku di toko lain; perpanjangan bukan hak mengganti platform."
+        ],
+        "visual": {
+          "image": "/guides/steps/staff-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.1725296787709505,
+              "label": "Gunakan halaman login staff",
+              "w": 9.935141509433961,
+              "x": 80.74697818396227,
+              "y": 23.337661487430168
+            },
+            {
+              "h": 5.362910265363129,
+              "label": "Tentukan izin per staff",
+              "w": 5.810239779874214,
+              "x": 72.00336576257861,
+              "y": 91.40024877793297
+            }
+          ],
+          "width": 1272,
+          "caption": "Uji akun melalui Login staff. Gunakan Edit untuk menonaktifkan akun tanpa menghapusnya."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Staff tidak melihat menu",
+        "answer": "Periksa status aktif akun, toko tempat login dan permission yang dipilih owner."
+      }
+    ],
+    "related": [
+      "mulai",
+      "langganan"
+    ],
+    "sources": [],
+    "keywords": [
+      "permission",
+      "password",
+      "akses"
+    ]
+  },
+  {
+    "slug": "hanshop",
+    "title": "Menghubungkan API Hanshop",
+    "category": "Integrasi",
+    "summary": "Sinkronkan katalog dan gunakan saldo akun Hanshop owner.",
+    "image": "/guides/sources.png",
+    "imageAlt": "Contoh Menghubungkan API Hanshop pada toko simulasi",
+    "prerequisites": [
+      "Akun owner tertaut ke Hanshop.",
+      "Hak pengelolaan pemasok toko."
+    ],
+    "steps": [
+      {
+        "title": "Aktifkan sumber",
+        "paragraphs": [
+          "Buka Sumber produk → kartu Hanshop → Atur koneksi. Aktifkan lalu simpan. Identitas yang dipakai adalah akun owner, bukan staff; tidak perlu menempel API key akun ke form Digiflazz."
+        ],
+        "visual": {
+          "image": "/guides/steps/hanshop-connection.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 1.8055555555555551,
+              "label": "Gunakan akun Hanshop owner",
+              "w": 1.015625,
+              "x": 29.4921875,
+              "y": 53.31922743055556
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Verifikasi lalu simpan koneksi",
+              "w": 10.799560546875,
+              "x": 67.0220947265625,
+              "y": 64.08311631944444
+            }
+          ],
+          "width": 1280,
+          "caption": "Aktifkan sumber menggunakan akun Hanshop owner yang sudah tertaut."
+        }
+      },
+      {
+        "title": "Sinkronkan dan impor",
+        "paragraphs": [
+          "Tekan Sinkronkan, periksa produk dan ketersediaannya, lalu impor pilihan/all/per layanan/per kategori. Produk pemasok belum otomatis menjadi produk jual."
+        ],
+        "visual": {
+          "image": "/guides/steps/source-import.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.319444444444445,
+              "label": "Tentukan cakupan impor",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 45.69444444444444
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Mulai impor setelah diperiksa",
+              "w": 12.7593994140625,
+              "x": 66.04217529296875,
+              "y": 69.82530381944444
+            }
+          ],
+          "width": 1280,
+          "caption": "Setelah sinkronisasi Hanshop, pilih cakupan produk yang akan diimpor."
+        }
+      },
+      {
+        "title": "Periksa saldo dan markup",
+        "paragraphs": [
+          "Saldo Hanshop pemasok adalah saldo akun owner, berbeda dari saldo pelanggan toko. Atur parsing dan harga jual di Katalog & harga; pastikan margin mencukupi modal."
+        ],
+        "visual": {
+          "image": "/guides/steps/product-pricing.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.319444444444445,
+              "label": "Pilih aturan markup yang dipakai",
+              "w": 25.46875,
+              "x": 35.234375,
+              "y": 64.22634548611111
+            },
+            {
+              "h": 6.319444444444445,
+              "label": "Atur kapan harga dihitung ulang",
+              "w": 25.46875,
+              "x": 64.140625,
+              "y": 64.22634548611111
+            }
+          ],
+          "width": 1280,
+          "caption": "Periksa modal sumber dan markup yang berlaku, lalu tentukan pembaruan harga otomatis."
+        }
+      },
+      {
+        "title": "Uji sesuai lingkungan",
+        "paragraphs": [
+          "Mode pengujian mensimulasikan transaksi dan saldo pemasok Hanshop. Keberhasilan simulasi bukan bukti pembelian produksi. Gunakan panduan pengujian sebelum berjualan."
+        ],
+        "visual": {
+          "image": "/guides/steps/store-environment.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.875000000000001,
+              "label": "Pilih Sandbox untuk pengujian",
+              "w": 32.5,
+              "x": 50.0,
+              "y": 42.750651041666664
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Simpan setelah pesanan selesai",
+              "w": 12.2314453125,
+              "x": 60.13427734375,
+              "y": 76.92220052083333
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih lingkungan sebelum menguji. Pada sandbox, transaksi Hanshop disimulasikan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Gagal koneksi pusat",
+        "answer": "Pastikan akun Hanshop owner sudah tertaut. Jika tetap gagal, hubungi dukungan DigitalToko dengan keterangan kesalahan yang muncul. Jangan membagikan credential akun kepada pelanggan."
+      }
+    ],
+    "related": [
+      "katalog",
+      "pengujian"
+    ],
+    "sources": [],
+    "keywords": [
+      "saldo",
+      "sinkronisasi",
+      "api"
+    ]
+  },
+  {
+    "slug": "digiflazz",
+    "title": "Menghubungkan Digiflazz",
+    "category": "Integrasi",
+    "summary": "API key, whitelist IP, sinkronisasi katalog dan webhook.",
+    "image": "/guides/digiflazz.png",
+    "imageAlt": "Contoh Menghubungkan Digiflazz pada toko simulasi",
+    "prerequisites": [
+      "Akun buyer Digiflazz, username dan key lingkungan yang dipakai.",
+      "Hak pengelolaan pemasok dan URL callback HTTPS publik."
+    ],
+    "steps": [
+      {
+        "title": "Pilih toko dan lingkungan",
+        "paragraphs": [
+          "Buka Produk & harga → Sumber produk pada toko yang benar. Untuk uji, aktifkan mode pengujian toko; form meminta API key development. Untuk penjualan nyata gunakan key produksi. Mode tidak bisa diganti selama masih ada pesanan berjalan."
+        ],
+        "visual": {
+          "image": "/guides/steps/sources.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Klik Atur koneksi Digiflazz",
+              "w": 10.02727004716981,
+              "x": 25.14310632861635,
+              "y": 68.39156337290504
+            }
+          ],
+          "width": 1272,
+          "caption": "Pilih toko yang benar, lalu buka Atur koneksi pada kartu Digiflazz."
+        }
+      },
+      {
+        "title": "Daftarkan IP koneksi DigitalToko",
+        "paragraphs": [
+          "Pada popup Atur koneksi, lihat bagian IP koneksi DigitalToko lalu tekan Salin IP. Daftarkan IP tersebut pada whitelist akun Digiflazz untuk lingkungan pengujian atau produksi yang digunakan.",
+          "Jika muncul pesan RC 45 beserta IP yang perlu didaftarkan, gunakan IP pada pesan tersebut. Jika belum jelas, hubungi dukungan DigitalToko untuk memastikan IP yang benar."
+        ],
+        "visual": {
+          "image": "/guides/steps/digiflazz-whitelist.svg",
+          "width": 1280,
+          "height": 720,
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Tempel IP dari popup DigitalToko",
+              "x": 50,
+              "y": 35.4,
+              "w": 62.5,
+              "h": 8.1
+            },
+            {
+              "label": "Simpan whitelist akun yang sesuai",
+              "x": 73.8,
+              "y": 66.3,
+              "w": 14.8,
+              "h": 6.9
+            }
+          ],
+          "caption": "Ilustrasi pengaturan supplier: masukkan IP publik yang disalin dari popup koneksi DigitalToko."
+        }
+      },
+      {
+        "title": "Simpan koneksi",
+        "paragraphs": [
+          "Tekan Atur koneksi pada kartu Digiflazz. Isi Username Digiflazz, API key yang sesuai, aktifkan sumber lalu Periksa & simpan. Kolom credential kosong pada koneksi existing mempertahankan nilai lama. API key berbeda dari secret webhook."
+        ],
+        "visual": {
+          "image": "/guides/steps/digiflazz-connection.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Isi username Digiflazz",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 59.06792534722223
+            },
+            {
+              "h": 6.388888888888888,
+              "label": "Isi API key yang sesuai",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 71.845703125
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Periksa dan simpan koneksi",
+              "w": 10.799560546875,
+              "x": 67.0220947265625,
+              "y": 91.42903645833331
+            }
+          ],
+          "width": 1280,
+          "caption": "Isi username dan API key sesuai lingkungan, kemudian Periksa & simpan."
+        }
+      },
+      {
+        "title": "Daftarkan webhook di kedua sisi",
+        "paragraphs": [
+          "Tekan Atur webhook. Generate secret, simpan, lalu salin URL callback dan secret yang sama. Di Digiflazz buka Atur Koneksi → API → Webhook: masukkan URL ke Payload URL dan secret ke Secret ID. Webhook ID dikelola Digiflazz, tidak perlu diisi di DigitalToko.",
+          "Salin URL persis dari panel toko ke Payload URL Digiflazz. Jika akun Digiflazz yang sama dipakai pada beberapa toko, gunakan URL dan secret yang konsisten sesuai panel."
+        ],
+        "visual": {
+          "image": "/guides/steps/digiflazz-webhook.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Salin ke Payload URL Digiflazz",
+              "w": 44.21875,
+              "x": 49.6875,
+              "y": 32.610677083333336
+            },
+            {
+              "h": 5.304904513888889,
+              "label": "Buat secret webhook",
+              "w": 11.419677734375,
+              "x": 47.1392822265625,
+              "y": 53.7353515625
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan sebelum digunakan",
+              "w": 9.288330078125,
+              "x": 67.7777099609375,
+              "y": 92.36111111111111
+            }
+          ],
+          "width": 1280,
+          "caption": "Salin URL ke Payload URL Digiflazz, generate secret, samakan Secret ID di Digiflazz, lalu simpan."
+        }
+      },
+      {
+        "title": "Sinkronkan lalu impor",
+        "paragraphs": [
+          "Tekan Sinkronkan, pilih prabayar/pascabayar yang diperlukan, lalu periksa produk pemasok. Gunakan Impor produk untuk semua/per layanan/per kategori, atau checkbox tabel untuk pilihan tertentu.",
+          "Produk pemasok belum otomatis menjadi produk jual. Pada Katalog & harga periksa parsing, harga, status aktif dan ketersediaannya."
+        ],
+        "visual": {
+          "image": "/guides/steps/sources.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Sinkronkan katalog",
+              "w": 9.371929048742139,
+              "x": 35.393020341981135,
+              "y": 68.39156337290504
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Impor ke katalog toko",
+              "w": 10.701036753144654,
+              "x": 15.806493219339625,
+              "y": 74.70375785614526
+            }
+          ],
+          "width": 1272,
+          "caption": "Sinkronkan katalog terlebih dahulu, kemudian impor produk ke katalog toko."
+        }
+      },
+      {
+        "title": "Uji status pesanan",
+        "paragraphs": [
+          "Buat pesanan uji dan periksa rincian percobaan sumber. Callback valid memperbarui status. Pending belum berarti gagal; kirim ulang hanya melalui tombol manual berizin yang mempertahankan referensi awal."
+        ],
+        "visual": {
+          "image": "/guides/steps/orders-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.983240223463688,
+              "label": "Cari nomor pesanan atau tujuan",
+              "w": 30.154284591194973,
+              "x": 26.633746069182386,
+              "y": 56.00449546089385
+            },
+            {
+              "h": 3.128273393854749,
+              "label": "Buka rincian pesanan",
+              "w": 19.75235849056604,
+              "x": 21.59001572327044,
+              "y": 74.56518418296089
+            }
+          ],
+          "width": 1272,
+          "caption": "Cari nomor pesanan uji dan buka rincian untuk memeriksa pembaruan status supplier."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Sinkronisasi gagal atau dibatasi",
+        "answer": "Periksa keterangan koneksi, key dan IP. Tunggu cooldown jika dibatasi; jangan menekan sinkron berulang. Cache dipisahkan per akun."
+      },
+      {
+        "question": "Webhook 401, 404 atau 422",
+        "answer": "401: cocokkan Secret ID. 404: periksa URL publik dan path lengkap. 422: periksa payload/referensi pada rincian transaksi; hubungi admin dengan ID pesanan tanpa membagikan credential."
+      }
+    ],
+    "related": [
+      "katalog",
+      "pengujian",
+      "transaksi",
+      "hanshop"
+    ],
+    "sources": [
+      {
+        "label": "Webhook resmi Digiflazz",
+        "url": "https://developer.digiflazz.com/api/buyer/webhook/"
+      }
+    ],
+    "keywords": [
+      "api key",
+      "ip",
+      "whitelist",
+      "webhook",
+      "secret",
+      "sinkronisasi",
+      "callback"
+    ]
+  },
+  {
+    "slug": "otomax",
+    "title": "Menghubungkan supplier OtomaX",
+    "category": "Integrasi",
+    "summary": "IP Center, kelompok jawaban, katalog URL dan callback.",
+    "image": "/guides/otomax.png",
+    "imageAlt": "Contoh Menghubungkan supplier OtomaX pada toko simulasi",
+    "prerequisites": [
+      "IP/host, port, Member ID, PIN dan password supplier.",
+      "URL daftar harga ALL produk dan contoh balasan supplier."
+    ],
+    "steps": [
+      {
+        "title": "Siapkan kelompok jawaban",
+        "paragraphs": [
+          "Buka Produk & harga → Supplier OtomaX → Kelompok jawaban. Buat kelompok dengan nama jelas dan tambahkan penangkap untuk balasan awal, sukses, gagal pasti, pending, saldo serta tiket deposit.",
+          "Satu event dapat mempunyai beberapa format. Bedakan nomor transaksi supplier, kode produk, tujuan, SN, harga, saldo dan refID. Pilih penangkap pada dropdown sebelum mengedit aturannya."
+        ],
+        "visual": {
+          "image": "/guides/steps/otomax-group.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Beri nama kelompok",
+              "w": 57.34375000000001,
+              "x": 50.0,
+              "y": 44.75694444444444
+            },
+            {
+              "h": 5.304904513888889,
+              "label": "Tambahkan format respons",
+              "w": 13.570556640625,
+              "x": 71.8865966796875,
+              "y": 53.673502604166664
+            }
+          ],
+          "width": 1280,
+          "caption": "Buat satu kelompok berisi beberapa format jawaban sukses, gagal, pending, saldo, atau deposit."
+        }
+      },
+      {
+        "title": "Uji penangkap",
+        "paragraphs": [
+          "Gunakan menu Penguji jawaban yang terpisah. Tempel balasan supplier utuh, pilih kelompok dan jenis respons. Pastikan status serta field tertangkap dengan benar.",
+          "Nomor setelah # dapat merupakan ID supplier; nilai setelah R# merupakan refID. Format tiap supplier bisa berbeda. Jika saldo diikuti newline, akhiran satu spasi belum tentu cocok. Jangan memaksakan semua balasan menjadi sukses."
+        ],
+        "visual": {
+          "image": "/guides/steps/otomax-tester.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.913407821229051,
+              "label": "Pilih jenis respons",
+              "w": 30.88332841981132,
+              "x": 26.054871757075464,
+              "y": 31.59807087988827
+            },
+            {
+              "h": 30.446927374301676,
+              "label": "Tempel pesan utuh supplier",
+              "w": 30.88332841981132,
+              "x": 26.054871757075464,
+              "y": 58.02963512569833
+            },
+            {
+              "h": 5.58659217877095,
+              "label": "Uji tanpa transaksi baru",
+              "w": 30.88332841981132,
+              "x": 26.054871757075464,
+              "y": 87.70840607541899
+            }
+          ],
+          "width": 1272,
+          "caption": "Pilih jenis respons dan tempel pesan utuh supplier, lalu jalankan penguji tanpa transaksi baru."
+        }
+      },
+      {
+        "title": "Tambah koneksi IP Center",
+        "paragraphs": [
+          "Pada tab Koneksi pilih tambah. Isi nama supplier, URL/IP dan port IP Center, Member ID, PIN, password serta kelompok jawaban. Ikuti endpoint dan parameter dari supplier.",
+          "Alamat IP Center digunakan untuk saldo, transaksi dan tiket deposit; URL daftar harga diisi terpisah. DigitalToko membuat signature secara otomatis. Jika supplier meminta whitelist IP, salin IP koneksi DigitalToko dari popup pengaturan supplier lalu berikan kepada supplier."
+        ],
+        "visual": {
+          "image": "/guides/steps/otomax-connection.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.304904513888889,
+              "label": "Salin IP koneksi DigitalToko",
+              "w": 7.38525390625,
+              "x": 66.776123046875,
+              "y": 30.540907118055554
+            },
+            {
+              "h": 6.388888888888888,
+              "label": "Isi nama supplier",
+              "w": 21.5625,
+              "x": 38.359375,
+              "y": 52.74848090277777
+            },
+            {
+              "h": 6.388888888888888,
+              "label": "Isi alamat IP Center",
+              "w": 21.5625,
+              "x": 61.01562499999999,
+              "y": 52.74848090277777
+            }
+          ],
+          "width": 1280,
+          "caption": "Isi nama dan alamat IP Center; lanjutkan Member ID, PIN, password serta kelompok jawaban dari supplier."
+        }
+      },
+      {
+        "title": "Daftarkan callback",
+        "paragraphs": [
+          "Salin URL callback lengkap dari koneksi lalu berikan ke supplier. URL menyertakan ID koneksi dan token; jangan memotong bagian akhirnya. Jika membatasi IP callback, isi IP pengirim nyata dari supplier, yang dapat berbeda dari IP keluar DigitalToko.",
+          "Periksa balasan supplier di tab Callback. Gunakan URL lengkap yang disalin dari panel, dan berikan hanya kepada supplier terkait."
+        ],
+        "visual": {
+          "image": "/guides/steps/otomax-callback.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.555555555555555,
+              "label": "Salin ke URL Report akun supplier",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 65.78993055555556
+            }
+          ],
+          "width": 1280,
+          "caption": "Daftarkan URL dari koneksi ini sebagai URL Report akun Anda pada supplier."
+        }
+      },
+      {
+        "title": "Hubungkan daftar harga URL",
+        "paragraphs": [
+          "Buka Daftar harga URL pada koneksi. Tempel URL ALL produk webreport supplier, tekan Uji URL, periksa pratinjau kode/harga/status, lalu pilih interval dan Simpan & sinkronkan. URL bertoken adalah rahasia.",
+          "Penurunan jumlah drastis/daftar kosong memerlukan pemeriksaan dan persetujuan. Produk yang hilang dari feed valid ditandai tidak tersedia. Menu unggah Excel/CSV saat ini disembunyikan; gunakan URL."
+        ],
+        "visual": {
+          "image": "/guides/steps/otomax-price-url.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Tempel URL ALL dari supplier",
+              "w": 57.34375000000001,
+              "x": 50.0,
+              "y": 36.47243923611111
+            },
+            {
+              "h": 6.319444444444445,
+              "label": "Pilih interval pembaruan",
+              "w": 28.125,
+              "x": 64.609375,
+              "y": 53.298611111111114
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Uji dan periksa pratinjau",
+              "w": 7.7667236328125,
+              "x": 59.41619873046875,
+              "y": 81.91623263888889
+            }
+          ],
+          "width": 1280,
+          "caption": "Tempel URL daftar ALL, tentukan interval, lalu Uji URL sebelum Simpan & sinkronkan."
+        }
+      },
+      {
+        "title": "Impor dan pantau",
+        "paragraphs": [
+          "Hasil sinkron masuk ke Sumber produk. Impor ke katalog jual, rapikan layanan/kategori dan markup. Harga modal dari balasan transaksi dapat memperbarui produk sumber.",
+          "Setelah sinkronisasi otomatis diaktifkan, DigitalToko memperbarui daftar harga sesuai interval yang dipilih. Periksa tab Sinkronisasi harga untuk melihat hasilnya. Jika status antre tidak berubah atau sinkronisasi gagal berulang, hubungi dukungan DigitalToko. Mode pengujian tidak mengirim pembelian OtomaX nyata."
+        ],
+        "visual": {
+          "image": "/guides/steps/otomax-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Atur URL daftar harga",
+              "w": 10.640231918238994,
+              "x": 78.23125491352201,
+              "y": 87.37288320530728
+            },
+            {
+              "h": 5.446927374301676,
+              "label": "Periksa balasan supplier",
+              "w": 7.122764347484277,
+              "x": 67.40215949292453,
+              "y": 39.314551326815646
+            }
+          ],
+          "width": 1272,
+          "caption": "Periksa hasil sinkronisasi dan balasan callback; impor produk melalui Produk sumber."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Callback 401/404",
+        "answer": "Cocokkan URL lengkap, token, IP callback serta URL publik yang aktif."
+      },
+      {
+        "question": "Pesan sukses tetapi pesanan pending",
+        "answer": "Periksa pesan mentah di rincian dan uji pada Penguji jawaban. Tambahkan format sukses yang sesuai pada kelompok koneksi; jangan menebak status."
+      },
+      {
+        "question": "Harga belum masuk",
+        "answer": "Periksa Uji URL, pratinjau, jadwal dan riwayat sinkron. Produk sumber perlu diimpor sebelum tampil di etalase."
+      }
+    ],
+    "related": [
+      "katalog",
+      "pengujian",
+      "transaksi"
+    ],
+    "sources": [],
+    "keywords": [
+      "ip center",
+      "pin",
+      "password",
+      "signature",
+      "penangkap",
+      "callback",
+      "webreport",
+      "deposit",
+      "saldo"
+    ]
+  },
+  {
+    "slug": "tampilan",
+    "title": "Mengatur tampilan storefront",
+    "category": "Kanal toko",
+    "summary": "Template, warna, banner dan susunan beranda.",
+    "image": "/guides/design.png",
+    "imageAlt": "Contoh Mengatur tampilan storefront pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Pilih template dan identitas",
+        "paragraphs": [
+          "Buka Tampilan & pengaturan. Pilih Aurora, Nebula atau Atlas pada toko yang mendukung web. Atur nama, logo dan favicon di Identitas visual; ikuti format/ukuran upload pada form."
+        ],
+        "visual": {
+          "image": "/guides/steps/store-settings.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Atur identitas toko",
+              "w": 10.30426985062893,
+              "x": 47.553987323113205,
+              "y": 66.83451902932963
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Pilih template web",
+              "w": 9.468356918238994,
+              "x": 90.94192216981132,
+              "y": 66.83451902932963
+            }
+          ],
+          "width": 1272,
+          "caption": "Pilih template dan lengkapi identitas toko sebelum mengatur desain."
+        }
+      },
+      {
+        "title": "Atur warna dan urutan",
+        "paragraphs": [
+          "Pilih preset atau atur primary, secondary, background dan teks. Periksa kontras teks/tombol. Susun urutan dan visibilitas bagian beranda; quick order Aurora juga dapat dipindahkan."
+        ],
+        "visual": {
+          "image": "/guides/steps/design-layout.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.0,
+              "label": "Pindahkan urutan bagian",
+              "w": 2.8125,
+              "x": 78.046875,
+              "y": 25.555555555555554
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Terapkan lalu Simpan desain",
+              "w": 12.2528076171875,
+              "x": 75.35797119140625,
+              "y": 91.51421440972224
+            }
+          ],
+          "width": 1280,
+          "caption": "Gunakan panah untuk menyusun bagian. Atur warna pada Logo & warna, lalu simpan desain."
+        }
+      },
+      {
+        "title": "Tambahkan banner",
+        "paragraphs": [
+          "Unggah beberapa banner, atur interval otomatis dan pilih tautan kategori, URL aman atau tanpa tautan. Gunakan rasio gambar konsisten agar isi penting tidak terpotong di ponsel."
+        ],
+        "visual": {
+          "image": "/guides/steps/design-banners.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.1725296787709505,
+              "label": "Atur interval slide otomatis",
+              "w": 7.59876179245283,
+              "x": 79.04689956761007,
+              "y": 75.18494675279331
+            },
+            {
+              "h": 6.1725296787709505,
+              "label": "Tambahkan gambar dan tautan",
+              "w": 12.358122051886792,
+              "x": 89.65427230738993,
+              "y": 75.18494675279331
+            }
+          ],
+          "width": 1272,
+          "caption": "Tambahkan gambar dan tautan banner; interval slide diatur melalui Atur slide."
+        }
+      },
+      {
+        "title": "Susun promosi",
+        "paragraphs": [
+          "Pilih produk dan diskon per produk pada flash sale. Trending menampilkan kategori. Gambar kategori diubah pada Layanan & kategori. Atur iklan awal, chat CS dan bagian lain yang tersedia."
+        ],
+        "visual": {
+          "image": "/guides/steps/design-promotions.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.1725296787709505,
+              "label": "Atur popup dan chat CS",
+              "w": 10.34603478773585,
+              "x": 90.66031593946542,
+              "y": 62.61511435055866
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Pilih produk flash sale",
+              "w": 8.116524174528301,
+              "x": 46.806517786949684,
+              "y": 84.77926414106146
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Pilih kategori trending",
+              "w": 8.658854166666666,
+              "x": 91.50390625,
+              "y": 84.77926414106146
+            }
+          ],
+          "width": 1272,
+          "caption": "Atur popup iklan, chat CS, flash sale, dan kategori trending melalui modal masing-masing."
+        }
+      },
+      {
+        "title": "Simpan dan tinjau",
+        "paragraphs": [
+          "Simpan perubahan, buka storefront dan periksa desktop/ponsel. Form order/profil bersama tetap konsisten dan Powered by DigitalToko tidak dapat dihapus."
+        ],
+        "visual": {
+          "image": "/guides/steps/design-identity.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.1725296787709505,
+              "label": "Simpan seluruh perubahan",
+              "w": 11.97486733490566,
+              "x": 90.08174872248428,
+              "y": 67.26660701815642
+            }
+          ],
+          "width": 1272,
+          "caption": "Setelah seluruh modal diterapkan, Simpan desain untuk menerbitkan perubahan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Gambar masih inisial",
+        "answer": "Unggah gambar pada kategori yang tepat. Kategori manual dapat memakai fallback inisial; impor tidak menjamin setiap merek mempunyai gambar default."
+      }
+    ],
+    "related": [
+      "katalog",
+      "artikel"
+    ],
+    "sources": [],
+    "keywords": [
+      "banner",
+      "logo",
+      "favicon",
+      "warna",
+      "flash sale",
+      "aurora",
+      "nebula",
+      "atlas"
+    ]
+  },
+  {
+    "slug": "whatsapp",
+    "title": "Menghubungkan WhatsApp toko",
+    "category": "Kanal toko",
+    "summary": "Tautkan satu nomor melalui QR atau pairing code.",
+    "image": "/guides/bot.png",
+    "imageAlt": "Contoh Menghubungkan WhatsApp toko pada data simulasi",
+    "prerequisites": [
+      "Toko aktif atau sedang dalam tahap persiapan yang mengizinkan koneksi WhatsApp.",
+      "WhatsApp HP bisa membuka Perangkat tertaut."
+    ],
+    "steps": [
+      {
+        "title": "Pilih metode",
+        "paragraphs": [
+          "Buka Koneksi WhatsApp atau WhatsApp notifikasi. Isi nomor sesuai format form dan pilih QR/kode pairing. Satu nomor bot untuk setiap toko."
+        ],
+        "visual": {
+          "image": "/guides/steps/whatsapp-method.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.944444444444445,
+              "label": "Masukkan nomor WhatsApp toko",
+              "w": 31.874999999999996,
+              "x": 49.6875,
+              "y": 32.27647569444444
+            },
+            {
+              "h": 21.81857638888889,
+              "label": "Pilih QR atau kode pairing",
+              "w": 15.4296875,
+              "x": 41.46484375,
+              "y": 58.43532986111111
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Tampilkan petunjuk penautan",
+              "w": 11.5386962890625,
+              "x": 60.48065185546875,
+              "y": 91.51421440972224
+            }
+          ],
+          "width": 1280,
+          "caption": "Masukkan nomor toko dan pilih QR atau kode pairing sebelum Mulai koneksi."
+        }
+      },
+      {
+        "title": "Tautkan HP",
+        "paragraphs": [
+          "QR: WhatsApp → Perangkat tertaut → Tautkan perangkat, scan QR berlaku. Kode: pilih penautan nomor telepon pada WhatsApp dan masukkan kode panel. Jangan membagikan kode."
+        ],
+        "visual": {
+          "image": "/guides/steps/whatsapp-qr.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 4.021909916201118,
+              "label": "Scan memakai Perangkat tertaut WA",
+              "w": 13.455680031446542,
+              "x": 17.655512971698112,
+              "y": 9.9205656424581
+            },
+            {
+              "h": 6.1725296787709505,
+              "label": "Buat ulang jika QR kedaluwarsa",
+              "w": 21.5930866745283,
+              "x": 21.724216293238992,
+              "y": 80.46383990921788
+            }
+          ],
+          "width": 1272,
+          "caption": "Pada WhatsApp HP buka Perangkat tertaut → Tautkan perangkat, lalu scan QR dari panel. QR ini hanya simulasi."
+        }
+      },
+      {
+        "title": "Tunggu terhubung",
+        "paragraphs": [
+          "Tunggu hingga status menjadi Terhubung. Jika QR kedaluwarsa, minta QR baru. Hindari memulai penautan berulang saat proses masih berjalan. Jika gagal terhubung, hubungi dukungan DigitalToko."
+        ],
+        "visual": {
+          "image": "/guides/steps/whatsapp-connected.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 4.021909916201118,
+              "label": "Pastikan status sudah Terhubung",
+              "w": 17.9110161163522,
+              "x": 19.883181014150942,
+              "y": 75.28369413407822
+            }
+          ],
+          "width": 1272,
+          "caption": "Tunggu sampai status koneksi benar-benar Terhubung sebelum menguji kanal."
+        }
+      },
+      {
+        "title": "Uji kanal",
+        "paragraphs": [
+          "Bot/Web + Bot mendukung command seperti #produk/#saldo. Paket Web mengizinkan WA toko untuk OTP/notifikasi, tanpa command penjualan. Uji OTP pelanggan dan perubahan pesanan; pesan platform tetap terpisah dari pesan toko."
+        ],
+        "visual": {
+          "image": "/guides/steps/whatsapp-connected.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 4.021909916201118,
+              "label": "Pastikan status sudah Terhubung",
+              "w": 17.9110161163522,
+              "x": 19.883181014150942,
+              "y": 75.28369413407822
+            }
+          ],
+          "width": 1272,
+          "caption": "Saat terhubung, uji notifikasi. Perintah #menu dan #produk tersedia sesuai lisensi bot transaksi."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Login QR gagal",
+        "answer": "Periksa perangkat tertaut dan koneksi internet HP. Tunggu proses penautan selesai sebelum mencoba kembali. Hubungi dukungan DigitalToko jika tetap gagal."
+      },
+      {
+        "question": "Pesan terlambat",
+        "answer": "Periksa koneksi bot/antrean dengan admin. Waktu tiba juga bergantung jaringan dan WhatsApp."
+      }
+    ],
+    "related": [
+      "notifikasi",
+      "pengujian"
+    ],
+    "sources": [],
+    "keywords": [
+      "otp",
+      "qr",
+      "pairing",
+      "bot",
+      "kode"
+    ]
+  },
+  {
+    "slug": "artikel",
+    "title": "Menulis artikel dan berita",
+    "category": "Kanal toko",
+    "summary": "Draf, format tulisan, gambar dan publikasi.",
+    "image": "/guides/articles.png",
+    "imageAlt": "Contoh Menulis artikel dan berita pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Buat draf",
+        "paragraphs": [
+          "Buka Artikel & berita → Tambah artikel. Isi judul dan konten. Editor mendukung paragraf/judul, daftar, kutipan, tautan, warna dan gambar. Teks default mengikuti tema jika tidak diberi warna eksplisit."
+        ],
+        "visual": {
+          "image": "/guides/steps/article-editor.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Isi judul artikel",
+              "w": 56.71874999999999,
+              "x": 49.6875,
+              "y": 38.94422743055556
+            },
+            {
+              "h": 4.166666666666666,
+              "label": "Tambahkan gambar di isi artikel",
+              "w": 2.34375,
+              "x": 35.4296875,
+              "y": 56.999782986111114
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan tulisan sebagai draf",
+              "w": 8.36181640625,
+              "x": 74.490966796875,
+              "y": 92.02799479166669
+            }
+          ],
+          "width": 1280,
+          "caption": "Tulis judul dan isi artikel, tambahkan gambar bila diperlukan, lalu simpan draf."
+        }
+      },
+      {
+        "title": "Atur banner dan tag",
+        "paragraphs": [
+          "Isi banner, ringkasan, tag topik dan status/jadwal sesuai form. Pastikan gambar/naskah boleh dipublikasikan. Draf tidak tampil sebagai artikel publik."
+        ],
+        "visual": {
+          "image": "/guides/steps/article-publication.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.304904513888889,
+              "label": "Pilih gambar sampul artikel",
+              "w": 11.4630126953125,
+              "x": 41.71234130859375,
+              "y": 62.29546440972222
+            },
+            {
+              "h": 6.388888888888888,
+              "label": "Pisahkan topik dengan koma",
+              "w": 28.72802734375,
+              "x": 63.68286132812499,
+              "y": 59.72005208333333
+            },
+            {
+              "h": 6.319444444444445,
+              "label": "Pilih Draf atau Terbit",
+              "w": 28.72802734375,
+              "x": 63.68286132812499,
+              "y": 79.65711805555556
+            }
+          ],
+          "width": 1280,
+          "caption": "Unggah sampul, beri topik dengan koma, dan pilih status publikasi."
+        }
+      },
+      {
+        "title": "Pratinjau dan simpan",
+        "paragraphs": [
+          "Periksa ejaan, tautan, gambar dan tampilan mobile. Simpan draf atau terbitkan. Bila validasi gagal, perbaiki field yang ditandai; jangan mengulang tanpa melihat pesan kesalahan."
+        ],
+        "visual": {
+          "image": "/guides/steps/article-preview.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.694444444444445,
+              "label": "Kembali untuk memperbaiki isi",
+              "w": 16.849365234375,
+              "x": 30.2996826171875,
+              "y": 34.81987847222222
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan setelah pratinjau diperiksa",
+              "w": 8.36181640625,
+              "x": 74.490966796875,
+              "y": 79.970703125
+            }
+          ],
+          "width": 1280,
+          "caption": "Buka Pratinjau; kembali ke Isi artikel bila perlu, lalu simpan sesuai status yang dipilih."
+        }
+      },
+      {
+        "title": "Kelola perubahan bersama",
+        "paragraphs": [
+          "Jika staff lain sudah mengubah artikel, muat versi terbaru sebelum menyimpan agar tidak menimpa. Jika warna eksplisit tidak cocok setelah ganti tema, hapus warna tersebut agar mengikuti default."
+        ],
+        "visual": {
+          "image": "/guides/steps/articles-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Edit dengan pemeriksaan versi",
+              "w": 5.613084709119497,
+              "x": 87.89277466588051,
+              "y": 75.6759558310056
+            },
+            {
+              "h": 5.58659217877095,
+              "label": "Periksa hasil pada storefront",
+              "w": 14.529898781446539,
+              "x": 79.77870725235849,
+              "y": 23.044692737430168
+            }
+          ],
+          "width": 1272,
+          "caption": "Edit artikel dari daftar dan periksa versi terbaru bila ada perubahan bersamaan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Gambar tidak tampil",
+        "answer": "Periksa format, ukuran dan akses media artikel. Tautan file lokal HP tidak bisa menjadi gambar publik."
+      }
+    ],
+    "related": [
+      "tampilan",
+      "staff"
+    ],
+    "sources": [],
+    "keywords": [
+      "berita",
+      "editor",
+      "gambar",
+      "draf"
+    ]
+  },
+  {
+    "slug": "notifikasi",
+    "title": "Notifikasi dan email toko",
+    "category": "Kanal toko",
+    "summary": "Gunakan pengirim bawaan atau SMTP sendiri.",
+    "image": "/guides/notifications.png",
+    "imageAlt": "Contoh Notifikasi dan email toko pada data simulasi",
+    "prerequisites": [
+      "Permission notifikasi dan credential SMTP jika memakai pengirim sendiri."
+    ],
+    "steps": [
+      {
+        "title": "Kenali pengirim",
+        "paragraphs": [
+          "Notifikasi & email mengatur OTP pelanggan/pesanan toko. OTP owner dan invoice sewa memakai jalur platform. Mengganti email toko tidak mengubah email pusat."
+        ],
+        "visual": {
+          "image": "/guides/steps/notification-channels.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Tautkan nomor pengirim toko",
+              "w": 14.698186910377359,
+              "x": 18.27676641116352,
+              "y": 57.96580394553073
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Pilih pengirim email toko",
+              "w": 10.83431603773585,
+              "x": 61.39200078616352,
+              "y": 69.459780900838
+            }
+          ],
+          "width": 1272,
+          "caption": "WhatsApp toko dan pengirim email digunakan untuk OTP serta pemberitahuan pelanggan toko ini."
+        }
+      },
+      {
+        "title": "Pilih email bawaan atau SMTP",
+        "paragraphs": [
+          "Email bawaan DigitalToko dapat digunakan tanpa SMTP sendiri. Untuk SMTP toko isi host, port, keamanan, username/password dan identitas pengirim sesuai penyedia. Alamat Gmail saja tidak otomatis menjadi koneksi SMTP."
+        ],
+        "visual": {
+          "image": "/guides/steps/notification-email.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.875000000000001,
+              "label": "Pilih email bawaan atau SMTP",
+              "w": 32.5,
+              "x": 50.0,
+              "y": 49.09722222222222
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Simpan pilihan pengirim",
+              "w": 11.30126953125,
+              "x": 60.599365234375,
+              "y": 70.57562934027779
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih email bawaan DigitalToko atau SMTP toko sendiri, lalu simpan pengirim."
+        }
+      },
+      {
+        "title": "Uji pengiriman",
+        "paragraphs": [
+          "Simpan lalu gunakan uji yang tersedia, periksa inbox/spam dan OTP pelanggan. Domain sendiri perlu DNS autentikasi email sesuai penyedia. Jangan menonaktifkan keamanan untuk mengatasi error."
+        ],
+        "visual": {
+          "image": "/guides/steps/notification-channels.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Uji setelah konfigurasi siap",
+              "w": 11.013659591194969,
+              "x": 73.10215212264151,
+              "y": 69.459780900838
+            }
+          ],
+          "width": 1272,
+          "caption": "Kirim email uji setelah konfigurasi pengirim dinyatakan siap."
+        }
+      },
+      {
+        "title": "Tautkan WA jika digunakan",
+        "paragraphs": [
+          "Hubungkan WA toko di menu koneksi. Paket Web tetap boleh memakai WA notifikasi. Pastikan kanal pilihan pelanggan siap sebelum meminta OTP."
+        ],
+        "visual": {
+          "image": "/guides/steps/notification-channels.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Tautkan nomor pengirim toko",
+              "w": 14.698186910377359,
+              "x": 18.27676641116352,
+              "y": 57.96580394553073
+            }
+          ],
+          "width": 1272,
+          "caption": "Buka Kelola koneksi WhatsApp untuk menautkan nomor pengirim toko sendiri."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "OTP tidak sampai",
+        "answer": "Periksa kontak, spam, cooldown serta kesiapan kanal. Kode lama tidak dipakai setelah meminta kode baru."
+      },
+      {
+        "question": "SMTP gagal login",
+        "answer": "Cocokkan host/port/enkripsi dan kebijakan password aplikasi penyedia; perbarui lewat form privat."
+      }
+    ],
+    "related": [
+      "whatsapp",
+      "mulai"
+    ],
+    "sources": [],
+    "keywords": [
+      "otp",
+      "email",
+      "smtp",
+      "pengirim"
+    ]
+  },
+  {
+    "slug": "midtrans",
+    "title": "Menghubungkan Midtrans",
+    "category": "Pembayaran",
+    "summary": "Server key toko, QRIS dan Payment Notification URL.",
+    "image": "/guides/payments.png",
+    "imageAlt": "Contoh Menghubungkan Midtrans pada toko simulasi",
+    "prerequisites": [
+      "Akun Midtrans milik toko dengan metode QRIS yang diperlukan.",
+      "Owner untuk mengubah credential dan URL callback HTTPS publik."
+    ],
+    "steps": [
+      {
+        "title": "Pilih lingkungan",
+        "paragraphs": [
+          "Buka Penjualan → Pembayaran pelanggan → Atur gateway. Pilih Midtrans. Sandbox memakai Server Key dashboard sandbox; produksi memakai Server Key produksi. Jangan menukar keduanya."
+        ],
+        "visual": {
+          "image": "/guides/steps/midtrans-connection.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.319444444444445,
+              "label": "Pilih sandbox atau produksi",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 44.96527777777778
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih Sandbox untuk pengujian atau Production untuk pembayaran asli."
+        }
+      },
+      {
+        "title": "Simpan Server Key",
+        "paragraphs": [
+          "Masukkan Server Key melalui form koneksi, lalu simpan. Untuk integrasi Midtrans di DigitalToko, cukup isi Server Key; Merchant ID dan Client Key tidak perlu dimasukkan.",
+          "Hanya satu gateway aktif per toko. Ini akun Midtrans toko, berbeda dari gateway pembayaran sewa DigitalToko."
+        ],
+        "visual": {
+          "image": "/guides/steps/midtrans-connection.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Isi Server Key toko",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 57.70833333333333
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan koneksi Midtrans",
+              "w": 10.108642578125,
+              "x": 67.3675537109375,
+              "y": 83.26280381944444
+            }
+          ],
+          "width": 1280,
+          "caption": "Isi Server Key milik toko sesuai lingkungan, kemudian simpan koneksi."
+        }
+      },
+      {
+        "title": "Atur Payment Notification URL",
+        "paragraphs": [
+          "Salin URL notifikasi pada halaman pembayaran toko. Di pengaturan Notification URL Midtrans, isi Payment notification URL. Untuk alur QRIS ini jangan menaruhnya pada Recurring payment notification URL atau Account Linking notification URL.",
+          "Salin URL notifikasi lengkap yang ditampilkan panel toko Anda ke pengaturan Midtrans. Setiap toko mempunyai URL notifikasi sendiri, jadi jangan memakai URL milik toko lain."
+        ],
+        "visual": {
+          "image": "/guides/steps/midtrans-notification.svg",
+          "width": 1280,
+          "height": 720,
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Isi Payment notification URL",
+              "x": 50,
+              "y": 35.4,
+              "w": 62.5,
+              "h": 8.1
+            },
+            {
+              "label": "Klik Save setelah URL benar",
+              "x": 73.8,
+              "y": 66.3,
+              "w": 14.8,
+              "h": 6.9
+            }
+          ],
+          "caption": "Ilustrasi dashboard Midtrans: isi bagian Payment notification URL dengan URL dari popup gateway toko."
+        }
+      },
+      {
+        "title": "Tetapkan kebijakan checkout",
+        "paragraphs": [
+          "Atur transaksi guest atau wajib login, penanggung biaya dan kebijakan yang tersedia. Topup Midtrans mengkredit nominal pokok tanpa fee. Refund produk tidak mengembalikan fee gateway."
+        ],
+        "visual": {
+          "image": "/guides/steps/checkout-policy.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 1.8055555555555551,
+              "label": "Atur izin pembelian guest",
+              "w": 1.015625,
+              "x": 29.4921875,
+              "y": 45.861545138888886
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan pengaturan checkout",
+              "w": 6.0491943359375,
+              "x": 69.39727783203125,
+              "y": 65.73567708333333
+            }
+          ],
+          "width": 1280,
+          "caption": "Tentukan apakah pembeli boleh guest; nomor WhatsApp tetap wajib."
+        }
+      },
+      {
+        "title": "Uji pembayaran dan status",
+        "paragraphs": [
+          "Buat pesanan uji, periksa QRIS/invoice serta countdown. QR sandbox tidak dibayar memakai aplikasi bank nyata; gunakan simulator resmi Midtrans atau simulasi pembayaran lokal pada mode pengujian. Simulasi lokal tidak mengubah dashboard Midtrans.",
+          "Webhook valid atau pemeriksaan status server memperbarui pembayaran. Redirect sukses saja bukan bukti lunas. Halaman status pelanggan memeriksa berkala."
+        ],
+        "visual": {
+          "image": "/guides/steps/sandbox-payment.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.284916201117319,
+              "label": "Uji lunas tanpa transfer uang",
+              "w": 32.92428262578616,
+              "x": 78.26994889937107,
+              "y": 21.86299755586592
+            }
+          ],
+          "width": 1272,
+          "caption": "Pada mode pengujian gunakan simulasi lokal atau simulator resmi Midtrans, kemudian periksa status pesanan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Sudah bayar tetapi status menunggu",
+        "answer": "Periksa Notification history, URL publik, key dan lingkungan. Gunakan Periksa pembayaran pada invoice bila perlu. Berikan ID invoice ke admin, bukan Server Key."
+      },
+      {
+        "question": "QR tidak tampil/invalid",
+        "answer": "Pastikan QRIS tersedia pada akun dan lingkungan cocok. QR sandbox bukan QR untuk pembayaran nyata."
+      }
+    ],
+    "related": [
+      "pengujian",
+      "pembayaran-custom",
+      "transaksi"
+    ],
+    "sources": [
+      {
+        "label": "Notifikasi resmi Midtrans",
+        "url": "https://docs.midtrans.com/docs/https-notification-webhooks"
+      },
+      {
+        "label": "Otorisasi Server Key",
+        "url": "https://docs.midtrans.com/docs/api-authorization-headers"
+      }
+    ],
+    "keywords": [
+      "qris",
+      "server key",
+      "notification url",
+      "webhook",
+      "sandbox"
+    ]
+  },
+  {
+    "slug": "pembayaran-custom",
+    "title": "QRIS custom dan Hans Forward",
+    "category": "Pembayaran",
+    "summary": "Hubungkan QRIS toko dan penerusan notifikasi mutasi.",
+    "image": "/guides/payments.png",
+    "imageAlt": "Contoh QRIS custom dan Hans Forward pada data simulasi",
+    "prerequisites": [
+      "QRIS valid milik toko dan lisensi modul custom.",
+      "Android forwarder dengan akses notifikasi."
+    ],
+    "steps": [
+      {
+        "title": "Aktifkan modul",
+        "paragraphs": [
+          "Pada Pembayaran pelanggan beli modul QRIS custom jika belum berlisensi. Lisensi melekat pada toko, dibeli sekali dan digunakan selama sewa aktif; tidak bisa dipindah/direfund."
+        ],
+        "visual": {
+          "image": "/guides/steps/custom-module.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Gunakan voucher modul jika ada",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 49.05598958333333
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Aktifkan lisensi khusus toko ini",
+              "w": 11.9195556640625,
+              "x": 66.46209716796875,
+              "y": 66.49956597222221
+            }
+          ],
+          "width": 1280,
+          "caption": "Beli modul sekali untuk toko ini; voucher modul dapat dimasukkan sebelum membuat invoice."
+        }
+      },
+      {
+        "title": "Simpan konfigurasi",
+        "paragraphs": [
+          "Owner memilih Atur gateway → QRIS custom. Isi payload QRIS valid dan pilih aplikasi notifikasi yang didukung. Gateway ini mengganti gateway aktif sebelumnya. Payload QRIS bukan URL gambar."
+        ],
+        "visual": {
+          "image": "/guides/steps/custom-connection.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 18.1640625,
+              "label": "Tempel teks payload QRIS merchant",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 48.00021701388889
+            },
+            {
+              "h": 6.319444444444445,
+              "label": "Pilih aplikasi penerima mutasi",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 66.630859375
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan gateway aktif toko",
+              "w": 10.108642578125,
+              "x": 67.3675537109375,
+              "y": 86.15125868055556
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih QRIS custom, tempel payload merchant, pilih aplikasi mutasi, lalu simpan."
+        }
+      },
+      {
+        "title": "Hubungkan Hans Forward",
+        "paragraphs": [
+          "Ambil URL/token Hans Forward dari panel toko. Masukkan pada aplikasi sesuai URL/autentikasi yang diberikan. Izinkan akses notifikasi, notifikasi aplikasi, autostart dan baterai tanpa pembatasan sesuai perangkat.",
+          "Pastikan listener terhubung dan riwayat kirim berhasil. Token bersifat rahasia; jangan memakai konfigurasi pembayaran sewa pusat untuk mutasi toko."
+        ],
+        "visual": {
+          "image": "/guides/steps/custom-forwarder.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.58659217877095,
+              "label": "Ambil konfigurasi forwarder toko",
+              "w": 9.289013364779874,
+              "x": 91.1888266509434,
+              "y": 50.277147346368714
+            }
+          ],
+          "width": 1272,
+          "caption": "Buka Hans Forward untuk mengambil konfigurasi khusus toko, lalu pasang pada aplikasi Android."
+        }
+      },
+      {
+        "title": "Atur kebijakan dan uji",
+        "paragraphs": [
+          "Kredit kode unik topup dan refund produk adalah dua pengaturan berbeda. Tentukan apakah nominal pokok saja atau termasuk kode unik.",
+          "Pada produksi bayar satu invoice dengan nominal persis. Periksa riwayat forwarder, invoice dan pesanan. Pengujian tanpa uang mengikuti mode pengujian; jangan membuat mutasi palsu di produksi."
+        ],
+        "visual": {
+          "image": "/guides/steps/custom-forwarder.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.58659217877095,
+              "label": "Atur kode unik topup dan refund",
+              "w": 9.580139544025156,
+              "x": 15.246044614779876,
+              "y": 95.05281075418993
+            }
+          ],
+          "width": 1272,
+          "caption": "Atur kebijakan kode unik sebelum menguji mutasi, invoice, dan pesanan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Notifikasi HP muncul tetapi tidak dikirim",
+        "answer": "Periksa listener, izin notifikasi, baterai/autostart dan riwayat kirim. Jika tidak pulih, hubungi admin."
+      },
+      {
+        "question": "Mutasi masuk tetapi tidak lunas",
+        "answer": "Cocokkan nominal penuh, waktu, aplikasi sumber dan invoice berlaku. Screenshot transfer bukan verifikasi server."
+      }
+    ],
+    "related": [
+      "midtrans",
+      "pengujian",
+      "transaksi"
+    ],
+    "sources": [],
+    "keywords": [
+      "qris",
+      "mutasi",
+      "android",
+      "forwarder",
+      "dana",
+      "shopeepay"
+    ]
+  },
+  {
+    "slug": "pengujian",
+    "title": "Menguji toko tanpa uang nyata",
+    "category": "Pengujian",
+    "summary": "Bedakan sandbox toko, gateway dan simulasi pemasok.",
+    "image": "/guides/payments.png",
+    "imageAlt": "Contoh Menguji toko tanpa uang nyata pada data simulasi",
+    "prerequisites": [
+      "Owner toko dan tidak ada pesanan berjalan sebelum ganti mode."
+    ],
+    "steps": [
+      {
+        "title": "Selesaikan pesanan berjalan",
+        "paragraphs": [
+          "Periksa pesanan dan pembayaran pending. Batalkan lewat tombol yang disediakan jika belum dibayar; Midtrans memerlukan konfirmasi pembatalan. Jangan mengganti mode untuk melewati kewajiban transaksi."
+        ],
+        "visual": {
+          "image": "/guides/steps/orders-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.0754189944134085,
+              "label": "Filter status yang perlu ditangani",
+              "w": 14.290978773584907,
+              "x": 49.79977397798742,
+              "y": 56.45840607541899
+            },
+            {
+              "h": 3.128273393854749,
+              "label": "Buka rincian pesanan",
+              "w": 19.75235849056604,
+              "x": 21.59001572327044,
+              "y": 74.56518418296089
+            }
+          ],
+          "width": 1272,
+          "caption": "Temukan pesanan berjalan dan selesaikan atau batalkan sesuai statusnya sebelum mengganti mode."
+        }
+      },
+      {
+        "title": "Aktifkan mode pengujian",
+        "paragraphs": [
+          "Buka pengaturan identitas/kelola toko dan pilih pengujian. Indikator Sandbox tampil, saldo uji terpisah dan sewa tetap berjalan. Sinkronkan sumber sesuai lingkungan."
+        ],
+        "visual": {
+          "image": "/guides/steps/store-environment.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.875000000000001,
+              "label": "Pilih Sandbox untuk pengujian",
+              "w": 32.5,
+              "x": 50.0,
+              "y": 42.750651041666664
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Simpan setelah pesanan selesai",
+              "w": 12.2314453125,
+              "x": 60.13427734375,
+              "y": 76.92220052083333
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih Sandbox · Pengujian pada Mode toko lalu simpan."
+        }
+      },
+      {
+        "title": "Pahami sumber yang disimulasikan",
+        "paragraphs": [
+          "Digiflazz menggunakan development key dan testing. Hanshop, OtomaX dan stok premium disimulasikan sehingga tidak memotong saldo/stok nyata. Simulasi OtomaX bukan bukti callback supplier produksi."
+        ],
+        "visual": {
+          "image": "/guides/steps/store-environment.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.875000000000001,
+              "label": "Pilih Sandbox untuk pengujian",
+              "w": 32.5,
+              "x": 50.0,
+              "y": 42.750651041666664
+            }
+          ],
+          "width": 1280,
+          "caption": "Baca penjelasan lingkungan: Digiflazz development; Hanshop, OtomaX dan stok premium disimulasikan."
+        }
+      },
+      {
+        "title": "Simulasikan pembayaran",
+        "paragraphs": [
+          "Buat pesanan uji lalu gunakan Simulasi pembayaran pada halaman status bila tersedia. Pembayaran dicatat lunas lokal, bukan mengubah dashboard Midtrans.",
+          "Midtrans Sandbox menggunakan key/simulator resmi, bukan pembayaran bank nyata ke QR sandbox. QRIS custom tetap memerlukan payload valid pada pengaturan."
+        ],
+        "visual": {
+          "image": "/guides/steps/sandbox-payment.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.284916201117319,
+              "label": "Uji lunas tanpa transfer uang",
+              "w": 32.92428262578616,
+              "x": 78.26994889937107,
+              "y": 21.86299755586592
+            }
+          ],
+          "width": 1272,
+          "caption": "Klik Simulasikan pembayaran pada invoice pengujian; tidak ada transfer uang nyata."
+        }
+      },
+      {
+        "title": "Tinjau hasil lalu kembali produksi",
+        "paragraphs": [
+          "Periksa pembayaran, pesanan, saldo/stok uji dan notifikasi. Selesaikan semua pesanan sebelum kembali produksi, lalu cocokkan key/whitelist. Pengujian OtomaX produksi sungguhan tetap memerlukan izin serta biaya supplier; jangan menganggap simulasi membuat pembelian nyata gratis."
+        ],
+        "visual": {
+          "image": "/guides/steps/order-detail.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 4.189944134078212,
+              "label": "Periksa produk dan status pesanan",
+              "w": 16.975604363207548,
+              "x": 19.101009728773583,
+              "y": 45.72494762569832
+            },
+            {
+              "h": 5.58659217877095,
+              "label": "Periksa pembayaran saat diperlukan",
+              "w": 20.754716981132077,
+              "x": 85.29874213836477,
+              "y": 48.7135562150838
+            }
+          ],
+          "width": 1272,
+          "caption": "Periksa status dan hasil pengujian sebelum kembali ke pengaturan mode produksi."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Mode tidak bisa diganti",
+        "answer": "Masih ada pesanan nonterminal. Periksa rincian/status gateway atau minta admin membantu penyelesaian yang sah."
+      },
+      {
+        "question": "QR sandbox invalid",
+        "answer": "QR pengujian tidak untuk pembayaran nyata. Gunakan simulasi lokal atau simulator provider yang sesuai."
+      }
+    ],
+    "related": [
+      "digiflazz",
+      "midtrans",
+      "otomax",
+      "transaksi"
+    ],
+    "sources": [],
+    "keywords": [
+      "sandbox",
+      "development",
+      "simulasi",
+      "qris"
+    ]
+  },
+  {
+    "slug": "transaksi",
+    "title": "Memantau transaksi pelanggan",
+    "category": "Penjualan",
+    "summary": "Status, callback, kirim ulang dan penyelesaian gagal.",
+    "image": "/guides/orders.png",
+    "imageAlt": "Contoh Memantau transaksi pelanggan pada data simulasi",
+    "prerequisites": [
+      "Hak melihat transaksi; aksi sensitif memerlukan permission tambahan."
+    ],
+    "steps": [
+      {
+        "title": "Temukan pesanan",
+        "paragraphs": [
+          "Buka Transaksi pelanggan, cari nomor pesanan lalu periksa tujuan, mode dan pembayaran. Lunas tidak berarti produk sudah berhasil dikirim."
+        ],
+        "visual": {
+          "image": "/guides/steps/orders-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.983240223463688,
+              "label": "Cari nomor pesanan atau tujuan",
+              "w": 30.154284591194973,
+              "x": 26.633746069182386,
+              "y": 56.00449546089385
+            },
+            {
+              "h": 6.0754189944134085,
+              "label": "Filter status yang perlu ditangani",
+              "w": 14.290978773584907,
+              "x": 49.79977397798742,
+              "y": 56.45840607541899
+            },
+            {
+              "h": 3.128273393854749,
+              "label": "Buka rincian pesanan",
+              "w": 19.75235849056604,
+              "x": 21.59001572327044,
+              "y": 74.56518418296089
+            }
+          ],
+          "width": 1272,
+          "caption": "Cari atau filter pesanan, lalu buka nomor pesanan untuk rincian."
+        }
+      },
+      {
+        "title": "Baca percobaan sumber",
+        "paragraphs": [
+          "Rincian menampilkan supplier, modal, status serta pesan respons/callback. OtomaX mencantumkan nama supplier. Nomor supplier/refID bisa berbeda dari nomor pesanan pelanggan."
+        ],
+        "visual": {
+          "image": "/guides/steps/order-attempts.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.798228002793296,
+              "label": "Periksa sumber dan respons supplier",
+              "w": 10.87669516509434,
+              "x": 15.894322425314465,
+              "y": 41.422071403631286
+            },
+            {
+              "h": 7.960893854748603,
+              "label": "Kenali sumber percobaan ini",
+              "w": 18.35630404874214,
+              "x": 29.3278916077044,
+              "y": 74.0899965083799
+            }
+          ],
+          "width": 1272,
+          "caption": "Baca sumber, modal, status, serta pesan supplier pada tabel Percobaan sumber."
+        }
+      },
+      {
+        "title": "Tangani pending",
+        "paragraphs": [
+          "Pending belum hasil final. Periksa callback/status supplier. Kirim ulang hanya melalui tombol manual berizin dengan referensi sama; bukan membuat order baru. OtomaX mempunyai batas hari yang sama.",
+          "Jika respons tidak cocok, uji dan perbaiki penangkap. Callback baru dapat memperbarui status/SN, termasuk setelah penetapan manual."
+        ],
+        "visual": {
+          "image": "/guides/steps/order-attempts.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.798228002793296,
+              "label": "Periksa sumber dan respons supplier",
+              "w": 10.87669516509434,
+              "x": 15.894322425314465,
+              "y": 41.422071403631286
+            }
+          ],
+          "width": 1272,
+          "caption": "Periksa respons supplier sebelum mengambil tindakan manual atau mengirim ulang dengan refID yang sama."
+        }
+      },
+      {
+        "title": "Selesaikan gagal",
+        "paragraphs": [
+          "Refund transaksi login mengikuti saldo toko dan kebijakan invoice. Guest diselesaikan toko melalui WhatsApp wajib. Refund wallet bukan refund tunai gateway otomatis.",
+          "Jika pesanan yang direfund kemudian sukses dari supplier, koreksi dapat membuat saldo minus. Pelanggan minus dibatasi bertransaksi sampai kewajiban dipenuhi."
+        ],
+        "visual": {
+          "image": "/guides/steps/order-detail.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 4.189944134078212,
+              "label": "Periksa produk dan status pesanan",
+              "w": 16.975604363207548,
+              "x": 19.101009728773583,
+              "y": 45.72494762569832
+            }
+          ],
+          "width": 1272,
+          "caption": "Periksa hasil akhir dan penyelesaian refund sesuai jenis akun serta kebijakan toko."
+        }
+      },
+      {
+        "title": "Bantu pelanggan cek status",
+        "paragraphs": [
+          "Cek pesanan tidak wajib login. Nomor/bukti pesanan disimpan privat; halaman status memeriksa berkala dan menampilkan aktivitas pembaruannya."
+        ],
+        "visual": {
+          "image": "/guides/steps/customer-order-lookup.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 2.9329608938547485,
+              "label": "Masukkan nomor dari bukti order",
+              "w": 51.19460003930817,
+              "x": 30.864595617138363,
+              "y": 73.47568959497207
+            },
+            {
+              "h": 6.284916201117319,
+              "label": "Periksa status tanpa login",
+              "w": 51.19460003930817,
+              "x": 30.864595617138363,
+              "y": 86.74384601955308
+            }
+          ],
+          "width": 1272,
+          "caption": "Pembeli dapat mengecek nomor pesanan melalui Cek pesanan tanpa login."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Lunas tetapi pending supplier",
+        "answer": "Periksa percobaan sumber dan callback, jangan membuat checkout kedua atau refund sebelum hasil pasti."
+      },
+      {
+        "question": "Tidak ada invoice gateway",
+        "answer": "Pembayaran memakai saldo tidak selalu membuat invoice gateway baru. Pisahkan daftar pesanan dari daftar pembayaran."
+      }
+    ],
+    "related": [
+      "otomax",
+      "midtrans",
+      "pelanggan",
+      "pengujian"
+    ],
+    "sources": [],
+    "keywords": [
+      "pending",
+      "refund",
+      "callback",
+      "gagal",
+      "kirim ulang"
+    ]
+  },
+  {
+    "slug": "voucher",
+    "title": "Membuat voucher diskon",
+    "category": "Penjualan",
+    "summary": "Potongan persen/nominal dengan beberapa sasaran.",
+    "image": "/guides/vouchers.png",
+    "imageAlt": "Contoh Membuat voucher diskon pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Pilih ruang lingkup",
+        "paragraphs": [
+          "Voucher toko untuk pesanan produk; voucher admin DigitalToko untuk layanan platform seperti sewa/modul sesuai sasaran. Keduanya tidak saling berlaku."
+        ],
+        "visual": {
+          "image": "/guides/steps/vouchers-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.58659217877095,
+              "label": "Buat kode promo toko",
+              "w": 10.82694575471698,
+              "x": 92.07080385220125,
+              "y": 23.044692737430168
+            }
+          ],
+          "width": 1272,
+          "caption": "Buka Voucher diskon toko. Voucher sewa platform dikelola terpisah oleh admin."
+        }
+      },
+      {
+        "title": "Buat kode dan aturan",
+        "paragraphs": [
+          "Generate/isi kode, nama, jenis nominal/persen, periode, kuota serta batas yang tersedia. Tentukan syarat dengan jelas."
+        ],
+        "visual": {
+          "image": "/guides/steps/voucher-code.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.555555555555555,
+              "label": "Buat kode secara otomatis",
+              "w": 8.6492919921875,
+              "x": 68.09722900390625,
+              "y": 51.66666666666667
+            },
+            {
+              "h": 6.319444444444445,
+              "label": "Pilih nominal atau persen",
+              "w": 21.796875,
+              "x": 38.4765625,
+              "y": 66.70138888888889
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan setelah sasaran diperiksa",
+              "w": 10.32470703125,
+              "x": 67.259521484375,
+              "y": 86.31944444444444
+            }
+          ],
+          "width": 1280,
+          "caption": "Generate kode, pilih nominal atau persen, lalu lengkapi ketentuan promo."
+        }
+      },
+      {
+        "title": "Pilih sasaran",
+        "paragraphs": [
+          "Berlaku untuk semua atau beberapa layanan, kategori maupun produk sekaligus. Satu kode per pesanan, dihitung setelah flash sale/promo produk. Voucher toko tidak dipakai untuk topup saldo."
+        ],
+        "visual": {
+          "image": "/guides/steps/voucher-targets.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 9.832899305555555,
+              "label": "Pilih satu atau beberapa layanan",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 50.33311631944445
+            },
+            {
+              "h": 9.832899305555555,
+              "label": "Atau pilih beberapa kategori",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 62.66601562500001
+            },
+            {
+              "h": 9.832899305555555,
+              "label": "Atau batasi ke produk tertentu",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 74.99891493055556
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih satu atau beberapa layanan, kategori, atau produk sebagai sasaran."
+        }
+      },
+      {
+        "title": "Uji promo",
+        "paragraphs": [
+          "Uji checkout sandbox dan periksa total. Voucher platform 100% dapat diproses gratis tanpa gateway, tetapi aktivasi/provisioning tetap berlaku. Nonaktifkan promo yang selesai."
+        ],
+        "visual": {
+          "image": "/guides/steps/storefront-products.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 16.772870111731844,
+              "label": "Pilih produk untuk menguji checkout",
+              "w": 20.28301886792453,
+              "x": 15.408805031446542,
+              "y": 50.423358938547494
+            }
+          ],
+          "width": 1272,
+          "caption": "Pilih produk yang memenuhi sasaran, masukkan kode voucher pada checkout dan periksa total sebelum memesan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Voucher ditolak",
+        "answer": "Periksa scope toko/platform, aktif, periode, kuota, sasaran dan nominal pesanan."
+      }
+    ],
+    "related": [
+      "katalog",
+      "langganan",
+      "pengujian"
+    ],
+    "sources": [],
+    "keywords": [
+      "promo",
+      "diskon",
+      "kode"
+    ]
+  },
+  {
+    "slug": "pelanggan",
+    "title": "Pelanggan dan saldo toko",
+    "category": "Penjualan",
+    "summary": "Pendaftaran, checkout guest, topup dan mutasi.",
+    "image": "/guides/customers.png",
+    "imageAlt": "Contoh Pelanggan dan saldo toko pada toko simulasi",
+    "prerequisites": [
+      "Pilih toko yang benar dan gunakan akun dengan hak akses menu terkait."
+    ],
+    "steps": [
+      {
+        "title": "Kenali akun pembeli",
+        "paragraphs": [
+          "Akun pelanggan terpisah per toko. Pendaftaran mengisi WhatsApp, email dan password sesuai form. Login nomor memakai OTP WA; email memakai password. Akun staff bukan akun pembeli."
+        ],
+        "visual": {
+          "image": "/guides/steps/customer-login.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.424581005586592,
+              "label": "Nomor untuk OTP, email untuk login",
+              "w": 32.075471698113205,
+              "x": 50.0,
+              "y": 51.84182960893855
+            },
+            {
+              "h": 3.128273393854749,
+              "label": "Buat akun pelanggan toko ini",
+              "w": 9.078960298742139,
+              "x": 55.053557389937104,
+              "y": 94.88532210195531
+            }
+          ],
+          "width": 1272,
+          "caption": "Pelanggan mendaftar atau masuk melalui storefront; akun dan saldo terbatas pada toko tersebut."
+        }
+      },
+      {
+        "title": "Atur checkout guest",
+        "paragraphs": [
+          "Pada Pembayaran pelanggan pilih guest atau wajib login. WhatsApp pembeli tetap wajib untuk bukti/tindak lanjut. Guest gagal diselesaikan toko, bukan otomatis menjadi refund wallet setelah login belakangan."
+        ],
+        "visual": {
+          "image": "/guides/steps/checkout-policy.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 1.8055555555555551,
+              "label": "Atur izin pembelian guest",
+              "w": 1.015625,
+              "x": 29.4921875,
+              "y": 45.861545138888886
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan pengaturan checkout",
+              "w": 6.0491943359375,
+              "x": 69.39727783203125,
+              "y": 65.73567708333333
+            }
+          ],
+          "width": 1280,
+          "caption": "Atur izin checkout guest; kontak WhatsApp pembeli tetap diperlukan."
+        }
+      },
+      {
+        "title": "Periksa saldo dan topup",
+        "paragraphs": [
+          "Pelanggan membuka topup dari menu akun. Pantau invoice dan mutasi di panel. Topup Midtrans mengkredit nominal pokok tanpa fee; QRIS custom mengikuti pilihan kode unik toko. Settlement dikredit satu kali."
+        ],
+        "visual": {
+          "image": "/guides/steps/customer-account.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.362910265363129,
+              "label": "Topup saldo khusus toko ini",
+              "w": 16.352201257861637,
+              "x": 86.3993710691824,
+              "y": 36.29702775837989
+            },
+            {
+              "h": 6.480228701117319,
+              "label": "Lihat mutasi saldo pelanggan",
+              "w": 19.18238993710692,
+              "x": 86.3993710691824,
+              "y": 51.631786836592184
+            }
+          ],
+          "width": 1272,
+          "caption": "Pelanggan membuka Topup saldo dan Mutasi saldo; panel toko juga menyediakan pemeriksaan saldo."
+        }
+      },
+      {
+        "title": "Tuntaskan kewajiban",
+        "paragraphs": [
+          "Refund yang sah masuk saldo toko untuk transaksi login. Pencairan tersedia saat toko berhenti sesuai alur penyelesaian, bukan tarik rutin saat aktif. Saldo minus akibat koreksi callback harus dipenuhi sebelum transaksi kembali."
+        ],
+        "visual": {
+          "image": "/guides/steps/closure-obligations.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.3519553072625703,
+              "label": "Pastikan semua kewajiban selesai",
+              "w": 25.421948702830193,
+              "x": 23.324181898584907,
+              "y": 17.68505586592179
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Tuntaskan saldo pelanggan",
+              "w": 9.705434355345911,
+              "x": 83.7092177672956,
+              "y": 38.63313983938548
+            }
+          ],
+          "width": 1272,
+          "caption": "Tuntaskan saldo dan transaksi pelanggan sebelum penutupan atau penghapusan toko."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Saldo pengujian berbeda",
+        "answer": "Saldo sandbox terpisah. Hasil pengujian bukan bukti saldo produksi."
+      }
+    ],
+    "related": [
+      "transaksi",
+      "midtrans",
+      "penutupan"
+    ],
+    "sources": [],
+    "keywords": [
+      "saldo",
+      "topup",
+      "mutasi",
+      "login"
+    ]
+  },
+  {
+    "slug": "katalog",
+    "title": "Layanan, kategori dan harga produk",
+    "category": "Produk",
+    "summary": "Impor, parsing, input tujuan dan prioritas markup.",
+    "image": "/guides/catalog.png",
+    "imageAlt": "Contoh Layanan, kategori dan harga produk pada data simulasi",
+    "prerequisites": [
+      "Sumber sudah terhubung/sinkron atau stok premium sendiri.",
+      "Permission pengelolaan produk/harga."
+    ],
+    "steps": [
+      {
+        "title": "Impor produk sumber",
+        "paragraphs": [
+          "Pada Sumber produk pilih Impor produk: semua, per layanan atau kategori; checkbox tabel digunakan untuk pilihan massal. Pastikan sumber benar. Impor ulang sumber sama tidak dimaksudkan membuat produk ganda."
+        ],
+        "visual": {
+          "image": "/guides/steps/source-import.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.319444444444445,
+              "label": "Tentukan cakupan impor",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 45.69444444444444
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Mulai impor setelah diperiksa",
+              "w": 12.7593994140625,
+              "x": 66.04217529296875,
+              "y": 69.82530381944444
+            }
+          ],
+          "width": 1280,
+          "caption": "Impor produk dari sumber terhubung dengan cakupan yang dipilih."
+        }
+      },
+      {
+        "title": "Susun layanan dan kategori",
+        "paragraphs": [
+          "Buka Layanan & kategori. Kategori utama berada di bawah layanan, produk berada di kategori. Edit massal kategori dapat mengganti layanan/provider/pengaturan tujuan.",
+          "Untuk Pulsa, Paket data dan Voucher data, tetapkan provider secara eksplisit agar quick order Aurora tidak bergantung pada nama kategori."
+        ],
+        "visual": {
+          "image": "/guides/steps/catalog-structure.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.446927374301676,
+              "label": "Kelola kelompok layanan",
+              "w": 7.071786556603774,
+              "x": 12.734006485849058,
+              "y": 39.87321054469274
+            },
+            {
+              "h": 5.58659217877095,
+              "label": "Buat kategori di bawah layanan",
+              "w": 15.994742531446539,
+              "x": 89.48690546383648,
+              "y": 23.044692737430168
+            }
+          ],
+          "width": 1272,
+          "caption": "Susun layanan terlebih dahulu lalu kategori utama di bawahnya."
+        }
+      },
+      {
+        "title": "Atur input tujuan di kategori",
+        "paragraphs": [
+          "Game dapat memakai satu/dua kolom ID/server dengan format gabung yang ditentukan. Pulsa/data memakai nomor HP, token PLN memakai meter/ID PLN, premium memakai WhatsApp pembeli, lainnya satu tujuan. Pengecekan nickname diatur per kategori.",
+          "Jika otomatis mengikuti layanan, pastikan jenis layanan sesuai. Gunakan pengaturan eksplisit jika input yang diwariskan bukan yang diinginkan."
+        ],
+        "visual": {
+          "image": "/guides/steps/category-destination.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.319444444444445,
+              "label": "Pilih jenis input untuk kategori",
+              "w": 44.84375,
+              "x": 50.0,
+              "y": 54.514973958333336
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Terapkan ke seluruh produknya",
+              "w": 6.0491943359375,
+              "x": 69.39727783203125,
+              "y": 78.82486979166666
+            }
+          ],
+          "width": 1280,
+          "caption": "Jenis input tujuan diatur sekali pada kategori dan berlaku untuk seluruh produknya."
+        }
+      },
+      {
+        "title": "Pilih parsing dan harga",
+        "paragraphs": [
+          "Di Katalog & harga, pilih parsing/sumber, harga jual dan status aktif. Beberapa parsing dicoba mulai modal termurah; perpindahan setelah gagal pasti, bukan hasil yang masih pending.",
+          "Markup dipilih produk → kategori → layanan, bukan ditambahkan berlapis. Produk 5000 mengalahkan kategori 10%. Format: 5000, 5%, atau 5% + 5000. Kebijakan pembaruan otomatis terpisah dari nilai markup; mengikuti tingkat berikutnya mengambil kebijakan kategori/layanan."
+        ],
+        "visual": {
+          "image": "/guides/steps/product-parsing.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 9.832899305555555,
+              "label": "Pilih sumber untuk produk ini",
+              "w": 57.34375000000001,
+              "x": 50.0,
+              "y": 63.547092013888886
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan pilihan parsing",
+              "w": 9.9285888671875,
+              "x": 73.70758056640625,
+              "y": 76.10243055555556
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih parsing sumber sejenis; tab Harga mengatur markup serta pembaruan harga otomatis."
+        }
+      },
+      {
+        "title": "Periksa etalase",
+        "paragraphs": [
+          "Produk harus aktif dan parsing tersedia. Nonaktifkan sementara jika tidak dijual; checkbox tabel mendukung aktif/nonaktif/hapus massal. Periksa harga di storefront atau #produk. Modal naik melampaui harga jual saat pembelian dapat menggagalkan transaksi."
+        ],
+        "visual": {
+          "image": "/guides/steps/storefront-products.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 3.7709497206703912,
+              "label": "Periksa harga dan ketersediaan",
+              "w": 62.57861635220125,
+              "x": 36.556603773584904,
+              "y": 20.1237342877095
+            },
+            {
+              "h": 16.772870111731844,
+              "label": "Pilih produk untuk menguji checkout",
+              "w": 20.28301886792453,
+              "x": 15.408805031446542,
+              "y": 50.423358938547494
+            }
+          ],
+          "width": 1272,
+          "caption": "Buka kategori storefront untuk memastikan produk, harga, dan ketersediaan benar."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Harga masih mengikuti modal",
+        "answer": "Periksa aturan produk yang lebih prioritas, kategori yang dipilih dan pengaturan pembaruan otomatis."
+      },
+      {
+        "question": "Produk hilang dari supplier",
+        "answer": "Sinkronisasi valid menandai sumber hilang tidak tersedia; periksa parsing lain sebelum menjual."
+      }
+    ],
+    "related": [
+      "digiflazz",
+      "otomax",
+      "stok",
+      "transaksi"
+    ],
+    "sources": [],
+    "keywords": [
+      "markup",
+      "parsing",
+      "provider",
+      "tujuan",
+      "nickname",
+      "impor"
+    ]
+  },
+  {
+    "slug": "stok",
+    "title": "Mengelola stok premium",
+    "category": "Produk",
+    "summary": "Tambah stok privat dan pantau reservasi/pengiriman.",
+    "image": "/guides/stock.png",
+    "imageAlt": "Contoh Mengelola stok premium pada data simulasi",
+    "prerequisites": [
+      "Produk premium di katalog dan hak stok yang sesuai."
+    ],
+    "steps": [
+      {
+        "title": "Pilih produk",
+        "paragraphs": [
+          "Buka Stok premium dan tambah untuk produk premium toko sendiri. Produk toko lain tidak dapat dipilih."
+        ],
+        "visual": {
+          "image": "/guides/steps/stock-add.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 9.832899305555555,
+              "label": "Pilih produk premium",
+              "w": 54.21875000000001,
+              "x": 49.6875,
+              "y": 28.05447048611111
+            }
+          ],
+          "width": 1280,
+          "caption": "Pilih produk premium yang akan menerima stok privat toko."
+        }
+      },
+      {
+        "title": "Masukkan entri",
+        "paragraphs": [
+          "Isi modal pembelian dan entri sesuai form. Satu entri merupakan unit yang dapat dikirim kepada satu pembeli. Credential nyata tidak boleh di nama/deskripsi produk publik."
+        ],
+        "visual": {
+          "image": "/guides/steps/stock-add.jpg",
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.388888888888888,
+              "label": "Isi modal tiap akun",
+              "w": 27.734375,
+              "x": 35.1953125,
+              "y": 44.77647569444444
+            },
+            {
+              "h": 5.555555555555555,
+              "label": "Simpan setelah data akun diperiksa",
+              "w": 8.4375,
+              "x": 74.453125,
+              "y": 92.36111111111111
+            }
+          ],
+          "width": 1280,
+          "caption": "Isi modal serta data akun. Pisahkan setiap akun dengan baris --- sebelum Simpan stok."
+        }
+      },
+      {
+        "title": "Pantau status",
+        "paragraphs": [
+          "Stok ready dapat diedit/dihapus sebelum direservasi/dikirim. Reservasi mencegah unit sama terjual dua kali. Filter membedakan stok ready dan sent; hak melihat credential berbeda dari hak kelola."
+        ],
+        "visual": {
+          "image": "/guides/steps/stock-list.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 6.0754189944134085,
+              "label": "Filter Ready atau Terkirim",
+              "w": 19.369103773584907,
+              "x": 62.49508647798743,
+              "y": 56.45840607541899
+            },
+            {
+              "h": 5.334540851955308,
+              "label": "Buka detail dengan izin stok",
+              "w": 8.645956171383649,
+              "x": 80.69569329795597,
+              "y": 77.55379277234637
+            }
+          ],
+          "width": 1272,
+          "caption": "Filter Ready atau Terkirim dan buka data hanya dengan izin stok."
+        }
+      },
+      {
+        "title": "Uji dan jelaskan garansi",
+        "paragraphs": [
+          "Mode pengujian tidak menghabiskan stok asli. Garansi/penggantian akun mengikuti kebijakan toko; jelaskan kepada pelanggan sebelum penjualan."
+        ],
+        "visual": {
+          "image": "/guides/steps/storefront-products.jpg",
+          "height": 716,
+          "markers": [
+            {
+              "h": 16.772870111731844,
+              "label": "Pilih produk untuk menguji checkout",
+              "w": 20.28301886792453,
+              "x": 15.408805031446542,
+              "y": 50.423358938547494
+            }
+          ],
+          "width": 1272,
+          "caption": "Uji produk premium pada lingkungan pengujian dan jelaskan kebijakan garansi toko kepada pelanggan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Staff tidak bisa melihat akun",
+        "answer": "Owner perlu memberi permission credential yang sesuai, bukan hanya pengelolaan stok."
+      }
+    ],
+    "related": [
+      "katalog",
+      "pengujian",
+      "transaksi"
+    ],
+    "sources": [],
+    "keywords": [
+      "akun premium",
+      "reservasi"
+    ]
+  }
+]

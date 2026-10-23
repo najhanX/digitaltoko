@@ -653,3 +653,48 @@ Penyempurnaan reveal: durasi diperpanjang dari 480ms menjadi 900ms, stagger kart
 - Regresi pada checkpoint ini: 183 tes backend lulus, satu dilewati karena sampel XLSX eksternal, 2.103 assertions dalam 184 tes. Cakupan: OtomaxUrlCatalogTest, OtomaxTest, StoreRetentionTest, CustomerCommerceTest, StoreCatalogTest, StoreSandboxTest, NebulaStorefrontTest, StorefrontSearchTest dan QuickOrderTest. Seluruh 31 tes frontend lulus. Build TypeScript/Vite terakhir berhasil setelah perubahan source terakhir; Pint dan diff whitespace lulus sebelum commit.
 - Tes MySQL URL 6.000 sumber sudah lulus terpisah pada tahap implementasi (satu tes/13 assertions, database sementara dibuat/dibersihkan); tidak dijalankan ulang pada checkpoint dokumentasi. Detail backup/migrasi dan tiga feed yang dibaca read-only berada di OTOMAX_PROGRESS.md. Pengujian browser memakai fixture/pratinjau dan ukuran iframe mobile, bukan transaksi/pembayaran nyata atau bukti deploy produksi.
 - Bukti visual tersimpan lokal pada storage/framework/testing/screenshots (diabaikan Git); jalur spesifik ada di UI_READABILITY_AUDIT.md. Tidak memasukkan .env, cache, backup, session, build generated maupun DigitalToko.zip ke commit source. Tidak ada dependensi baru pada rangkaian perubahan ini. Restart queue worker dan jalankan migrasi saat deploy sesuai DEPLOYMENT.md.
+
+
+## 23 Oktober 2026 — Paket berdasarkan platform
+
+- Implementasi tiga platform dengan sumber Digiflazz, Hanshop, OtomaX, dan stok premium pada semuanya; filter, pembuatan toko, admin paket, perubahan paket admin, pemilihan langganan, voucher, dan landing page diselaraskan.
+- Harga/durasi/status/ID penawaran terlengkap lama dipertahankan. Enam penawaran sumber terbatas lokal dinonaktifkan; empat penawaran kanonik tetap aktif. Toko lama dinormalisasi tanpa memperpanjang atau memulai ulang masa aktif. Invoice historis tidak ditulis ulang.
+- Backup MySQL lokal tersimpan privat sebelum migrasi. Migrasi dan PackagePlanSeeder berhasil pada database lokal.
+- PHPUnit: 486 tes, 482 lulus, 4 dilewati; 6.332 assertions. Mencakup migrasi berulang, snapshot dan masa aktif tetap, penolakan pembelian baru penawaran lama, pembayaran invoice lama, perpanjangan, downgrade kanal, voucher gratis, retensi, isolasi toko, dan permission staff. Suite memakai batas memori CLI 512 MB untuk tes XLSX existing.
+- Frontend: 31 tes lulus. TypeScript dan build produksi berhasil. Pemeriksaan browser memakai database simulasi terpisah, tanpa pembayaran atau request supplier nyata: tiga pilihan platform, modal admin, pergantian platform owner, dan harga mengikuti pilihan durasi tampil sesuai.
+- Peringatan build existing: referensi `/storefront/nebula-gaming-hero.webp` tetap diselesaikan saat runtime; tidak menghambat build.
+
+
+## 23 Oktober 2026 — Pusat panduan publik
+
+- Menambahkan `/panduan` dan 20 halaman tutorial pada host platform. Index memuat metadata saja, dengan pencarian kata kunci, filter topik dan sembilan kartu per halaman. Detail memuat persiapan, daftar langkah, screenshot yang dapat diperbesar, FAQ, rujukan dan artikel panduan terkait.
+- Menambahkan navigasi/CTA halaman utama dan tombol Panduan kontekstual pada semua menu WorkspaceLayout admin/owner/staff, terbuka di tab baru. Pemetaan mengenali tab staff dan detail transaksi.
+- 18 gambar PNG berasal dari antarmuka database simulasi terpisah. Tidak ada perubahan database produksi, penambahan dependency atau pengiriman transaksi pemasok untuk membuat panduan.
+- TutorialTest: 3 tes, 541 assertions lulus, termasuk seluruh 20 detail publik, metadata index, slug tidak dikenal, host tenant, gambar dan related valid. Frontend: 32 tes lulus termasuk pemetaan panduan menu. TypeScript/build produksi berhasil.
+- Browser: pencarian Midtrans dan kata kunci OTP, perpindahan ke detail, daftar langkah, serta pembesaran gambar dengan latar modal putih/tautan gambar penuh terverifikasi. Screenshot simulasi tidak dipakai sebagai bukti transaksi/gateway produksi.
+- Pemeliharaan konten/gambar: lihat TUTORIALS.md.
+
+
+## 23 Oktober 2026 — IP whitelist pemasok pada popup
+
+- Menambahkan SUPPLIER_OUTBOUND_IP pada env web/example, config bersama dan penyajian IP publik yang valid saja. DIGIFLAZZ_OUTBOUND_IP tetap didukung untuk konfigurasi Digiflazz existing/override.
+- Popup koneksi Digiflazz dan tambah/edit OtomaX menampilkan IP koneksi serta Salin IP. Konfigurasi kosong/tidak valid menampilkan informasi belum diatur, tanpa mendeteksi IP melalui layanan luar ketika membuka menu.
+- Tutorial whitelist diperbarui agar penyewa menyalin IP dari popup. Screenshot Digiflazz diperbarui dari fixture terpisah; IP contoh bukan IP produksi.
+- Sembilan tes backend terkait lulus (618 assertions), termasuk owner/staff, konfigurasi valid/kosong, diagnostik Digiflazz dan panduan. Build/TypeScript berhasil. Browser fixture memverifikasi kedua popup dan keberhasilan tombol salin.
+
+
+## 23 Oktober 2026 — Petunjuk visual pada setiap langkah
+
+- Seluruh 20 panduan (89 langkah) mempunyai gambar dengan penanda panah, area kontrol, caption dan petunjuk bernomor. Digunakan 61 screenshot JPEG dari fixture SQLite terpisah dan dua ilustrasi SVG yang secara eksplisit dibedakan dari screenshot dashboard supplier.
+- Perbesar petunjuk membuka modal dengan area gambar yang dapat digeser; gambar lazy-loaded mempunyai dimensi file yang eksplisit agar posisi halaman dan penanda stabil. Tidak menambahkan dependency atau migrasi.
+- TutorialTest: 3 tes / 4.465 assertions lulus, memeriksa seluruh detail publik, gambar tiap langkah, dimensi aktual, koordinat, jumlah penanda, label ilustrasi serta tautan. Frontend: 32 tes lulus. TypeScript dan build produksi berhasil; peringatan aset hero Nebula yang sudah ada tetap terpisah dari perubahan panduan.
+- Browser fixture: gambar Digiflazz dan modal perbesar diperiksa; panah menunjuk kolom username/API key dan tombol simpan. Screenshot memakai data simulasi, tidak memanggil pemasok nyata. Dukungan geser layar kecil tersedia; tidak ada emulasi perangkat mobile pada pemeriksaan ini.
+
+
+## 23 Oktober 2026 — Halaman publik paket dan simulasi toko
+
+- `/paket` tersedia tanpa login pada host platform. Tautan Paket & harga ditambahkan ke beranda dan pusat panduan. Tiga platform memakai penawaran aktif plan galaxy dari database admin, termasuk harga dan durasi sebenarnya; penawaran nonaktif/legacy tidak ditampilkan.
+- Simulasi menampilkan nama toko, alamat subdomain, platform, durasi dan total sewa. Nama toko tidak unik; subdomain diperiksa lewat endpoint GET `/paket/subdomain` dengan debounce 500 ms, pembatalan permintaan lama, status loading/tersedia/tidak tersedia/gagal serta coba ulang. Endpoint dibatasi 30 permintaan per menit dan tidak menulis data atau mengakses DNS.
+- `StoreSubdomain` menyatukan normalisasi/validasi dengan pembuatan toko: 3–40 karakter, format slug, daftar nama khusus platform dan keunikan pada database. Status tersedia tidak mereservasi nama dan pengecekan diulang saat pembuatan toko. Tidak mengubah ketentuan verifikasi owner/aktivasi atau membuat invoice dari simulasi.
+- Total adalah harga sewa satu toko untuk durasi terpilih. Voucher dan kode unik pembayaran baru dihitung pada invoice. Domain mengikuti konfigurasi platform. Tidak ada dependency atau migrasi baru.
+- PublicPricingTest + PanelWorkflowTest + TutorialTest: 17 tes / 4.844 assertions lulus dengan APP_URL localhost untuk host pengujian. Meliputi harga berubah/nonaktif, tanpa penawaran, slug tersedia/terpakai/khusus/tidak valid, input array, isolasi host, tidak ada toko/invoice yang dibuat dan pemeriksaan ulang ketika nama sudah diambil. Browser fixture memverifikasi subdomain tersedia/terpakai/khusus serta perubahan total 30 ke 90 hari. TypeScript/build produksi diperiksa.

@@ -1,6 +1,6 @@
 # Arsitektur DigitalToko
 
-Status source lokal: **22 Oktober 2026**. Dokumen ini menggantikan rancangan awal yang masih menyebut skeleton, trial baru, dan checkout sebagai pekerjaan berikutnya. Catatan pengujian/deployment tidak disimpulkan dari keberadaan kode.
+Status source lokal: **23 Oktober 2026**. Dokumen ini menggantikan rancangan awal yang masih menyebut skeleton, trial baru, dan checkout sebagai pekerjaan berikutnya. Catatan pengujian/deployment tidak disimpulkan dari keberadaan kode.
 
 ## Runtime dan batas aplikasi
 
@@ -29,19 +29,13 @@ API Hanshop adalah backend Node/Express + MySQL/Redis di proyek terpisah. Bot `b
 
 ## Paket dan capability
 
-| Paket | Kanal transaksi | Sumber sendiri |
+| Paket | Kanal transaksi | Sumber produk |
 | --- | --- | --- |
-| Mercury | Bot | Stok premium |
-| Venus | Bot | Digiflazz |
-| Terra | Web | Stok premium |
-| Mars | Web | Digiflazz |
-| Jupiter | Bot | Keduanya |
-| Saturn | Web | Keduanya |
-| Uranus | Bot + Web | Stok premium |
-| Neptune | Bot + Web | Digiflazz |
-| Andromeda | Bot + Web | Keduanya |
+| Bot WhatsApp | Bot | Digiflazz, API Hanshop, OtomaX, stok premium |
+| Web Topup | Web | Digiflazz, API Hanshop, OtomaX, stok premium |
+| Web + Bot WhatsApp | Bot + Web | Digiflazz, API Hanshop, OtomaX, stok premium |
 
-Semua paket aktif termasuk akses sumber Hanshop. Nama/rincian bersumber dari `apps/web/resources/js/packageCatalog.json`. Kode internal `category=bot/web/full` dan `plan=space/orbit/galaxy` dipertahankan untuk stok/Digiflazz/keduanya. Hak sumber dan kanal diperiksa backend, bukan hanya menyembunyikan menu. Snapshot subscription menjaga hak yang sudah diberikan.
+Sejak 23 Oktober 2026 paket dibedakan hanya oleh platform, harga, dan durasi. Definisi bersama ada di `apps/web/resources/js/packageCatalog.json`. Kolom internal `plan=galaxy` dipertahankan untuk kompatibilitas; nilai lama `space/orbit` bukan pembatas sumber lagi. Backend tetap memeriksa kanal, masa aktif, dan permission per toko. Penawaran terlengkap lama dipakai kembali beserta ID, harga, durasi, dan statusnya; penawaran sumber terbatas dinonaktifkan. Migrasi tidak mengubah tanggal masa aktif, status invoice, atau snapshot invoice historis.
 
 Semua kanal dapat menghubungkan satu nomor WhatsApp toko untuk OTP/notifikasi. Paket Web tidak boleh menggunakan command katalog/saldo/pemesanan chat. Trial baru tidak tersedia; promo memakai voucher platform, termasuk 100%. Penanda trial lama dipertahankan untuk kompatibilitas.
 

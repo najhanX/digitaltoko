@@ -19,6 +19,7 @@ use App\Services\StoreRetention;
 use App\Services\SupplierCache;
 use App\Support\CatalogAccess;
 use App\Support\ListQuery;
+use App\Support\SupplierNetwork;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,7 +90,7 @@ class OtomaxController extends Controller
             });
         });
 
-        return Inertia::render('Owner/Otomax', ['role' => $role, 'store' => $store->only(['id', 'name', 'sandbox', 'status']), 'tab' => $tab, 'items' => $rows, 'filters' => $list->filters, 'pagination' => ListQuery::meta($page), 'defaults' => ['response' => [...OtomaxParser::defaults(), 'rules' => OtomaxParser::examples()], 'import' => OtomaxImports::defaults()], 'permissions' => collect(['manage', 'responses', 'import', 'deposit', 'balance'])->mapWithKeys(fn ($key) => [$key => CatalogAccess::has($request, $role, 'suppliers.'.$key)])]);
+        return Inertia::render('Owner/Otomax', ['role' => $role, 'store' => $store->only(['id', 'name', 'sandbox', 'status']), 'supplierOutboundIp' => SupplierNetwork::outboundIp('otomax'), 'tab' => $tab, 'items' => $rows, 'filters' => $list->filters, 'pagination' => ListQuery::meta($page), 'defaults' => ['response' => [...OtomaxParser::defaults(), 'rules' => OtomaxParser::examples()], 'import' => OtomaxImports::defaults()], 'permissions' => collect(['manage', 'responses', 'import', 'deposit', 'balance'])->mapWithKeys(fn ($key) => [$key => CatalogAccess::has($request, $role, 'suppliers.'.$key)])]);
     }
 
     public function options(Request $request, Store $store): JsonResponse

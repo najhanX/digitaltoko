@@ -175,7 +175,7 @@ class StoreRetentionTest extends TestCase
         app(StoreRetention::class)->review($store);
         CustomerNotice::first()->update(['wa_sent_at' => now()]);
         CustomerNotice::create(['event' => 'retention:'.$store->id.':'.$store->expires_at->timestamp.':day21:unsent', 'store_id' => $store->id, 'phone' => $customer->phone, 'message' => 'Old warning']);
-        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'web', 'plan' => 'orbit', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000]);
         $invoice = app(SubscriptionService::class)->checkout($store, $plan, $voucher->code, (string) Str::uuid());
         $this->assertSame('applied', $invoice->status);
@@ -227,7 +227,7 @@ class StoreRetentionTest extends TestCase
         }
         $this->assertModelExists($customer);
         Storage::disk('local')->assertExists('storefront/'.$store->id.'/test.png');
-        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'web', 'plan' => 'orbit', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         try {
             app(SubscriptionService::class)->checkout($store->fresh(), $plan);
             $this->fail('Purge must prevent renewal');

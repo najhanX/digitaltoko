@@ -23,7 +23,7 @@ class SubscriptionService
 
     public function features(string $category, string $plan): array
     {
-        return array_values(array_filter([$category !== 'web' ? 'bot' : null, $category !== 'bot' ? 'web' : null, $plan !== 'space' ? 'digiflazz' : null, $plan !== 'orbit' ? 'stock' : null, 'hanshop']));
+        return array_values(array_filter([$category !== 'web' ? 'bot' : null, $category !== 'bot' ? 'web' : null, 'digiflazz', 'stock', 'hanshop', 'otomax']));
     }
 
     public function checkout(Store $store, PlanOption $option, ?string $voucherCode = null, ?string $requestId = null): SubscriptionInvoice
@@ -33,7 +33,7 @@ class SubscriptionService
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
             $option = PlanOption::whereKey($option->id)->lockForUpdate()->firstOrFail();
             $this->ensure($owner->verification_status === 'approved' && $owner->email_verified_at && $owner->phone_verified_at && (bool) $owner->hanshop_user_id, 'Lengkapi verifikasi owner terlebih dahulu.');
-            $this->ensure($option->active, 'Paket tidak tersedia.');
+            $this->ensure($option->active && $option->plan === 'galaxy', 'Paket tidak tersedia.');
             $this->ensure(! $store->admin_suspended_at && ! in_array($store->status, ['purging', 'suspended_manual'], true), 'Toko ini perlu ditinjau admin.');
             if ($requestId) {
                 $previous = SubscriptionInvoice::where('store_id', $store->id)->where('snapshot->request_id', $requestId)->lockForUpdate()->first();
@@ -71,7 +71,7 @@ class SubscriptionService
         if (! $store->starts_at && ! $store->expires_at) {
             return 'initial';
         }
-        if (! $store->is_trial && $store->category === $option->category && $store->plan === $option->plan) {
+        if (! $store->is_trial && $store->category === $option->category) {
             return 'renew';
         }
         if (! $store->is_trial && $store->expires_at?->isFuture()
@@ -125,7 +125,7 @@ class SubscriptionService
                     if (! $owner->trial_used_at && $owner->trial_store_id === $store->id) {
                         $owner->forceFill(['trial_store_id' => null])->save();
                     }
-                    $store->update(['category' => $locked->snapshot['category'], 'plan' => $locked->snapshot['plan'], 'status' => 'provisioning', 'ready_at' => null, 'trial_requested_at' => null, 'is_trial' => false]);
+                    $store->update(['category' => $locked->snapshot['category'], 'plan' => 'galaxy', 'status' => 'provisioning', 'ready_at' => null, 'trial_requested_at' => null, 'is_trial' => false]);
                 } elseif ($locked->purpose !== 'downgrade' || ! $store->expires_at?->isFuture()) {
                     $base = $locked->purpose === 'renew' && $store->expires_at?->gt($locked->paid_at) ? $store->expires_at : $locked->paid_at;
                     $this->grant($store, $locked, $base);
@@ -140,7 +140,7 @@ class SubscriptionService
     private function grant(Store $store, SubscriptionInvoice $invoice, \DateTimeInterface $base): void
     {
         app(StoreRetention::class)->renewed($store);
-        $store->update(['category' => $invoice->snapshot['category'], 'plan' => $invoice->snapshot['plan'], 'subscription' => [...$invoice->snapshot, 'features' => $this->features($invoice->snapshot['category'], $invoice->snapshot['plan']), 'features_version' => 1],
+        $store->update(['category' => $invoice->snapshot['category'], 'plan' => 'galaxy', 'subscription' => [...$invoice->snapshot, 'plan' => 'galaxy', 'features' => $this->features($invoice->snapshot['category'], $invoice->snapshot['plan']), 'features_version' => 2],
             'starts_at' => $base, 'expires_at' => Carbon::instance($base)->addDays($invoice->snapshot['duration_days']),
             'status' => 'active', 'is_trial' => false, 'trial_requested_at' => null, 'ready_at' => null]);
         $invoice->update(['status' => 'applied', 'applied_at' => now()]);

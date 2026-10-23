@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import Brand from './Brand';
+import TutorialLink from './TutorialLink';
 import SidebarSection from './SidebarSection';
 import ThemeToggle from './ThemeToggle';
 import PreviewBar from './PreviewBar';
@@ -168,7 +169,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
                     <div className="panel-top-right"><ThemeToggle/><NotificationBell summary={notificationSummary} preview={preview}/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div><Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
                 </header>
                 <main className={'workspace-content panel-content '+(role==='admin'?'catalog-workspace admin-workspace ':'')+contentClassName}>
-                    <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{actions && <div className="page-heading-actions">{actions}</div>}</div>
+                    <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div><div className="page-heading-actions"><TutorialLink path={path} tab={tab}/>{actions}</div></div>
                     {role !== 'admin' && store?.admin_suspended_at && <div className="feedback warning" role="status"><strong>Toko ditangguhkan administrator</strong><p>{store.admin_suspension_reason}</p><p>Layanan bot dan web berhenti. Hubungi administrator untuk tindak lanjut. Masa sewa tetap berjalan.</p></div>}
                     {store?.sandbox && <div className="feedback warning" role="status"><strong>Sandbox · Mode pengujian</strong><p>Saldo uji terpisah. Pesanan Hanshop dan stok premium disimulasikan; Digiflazz memakai key development. Sewa toko tetap berlaku.</p></div>}
                     {children}
