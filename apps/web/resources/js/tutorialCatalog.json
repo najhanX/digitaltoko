@@ -48,7 +48,7 @@
       {
         "title": "Buat toko",
         "paragraphs": [
-          "Setelah disetujui, buka Toko saya → Buat toko. Isi nama, subdomain, platform dan template jika memakai web. Periksa ejaan; subdomain ditetapkan sejak awal.",
+          "Setelah disetujui, buka Toko saya → Buat toko. Isi nama, subdomain bawaan seperti bogor (bukan domain lengkap), platform dan template jika memakai web. Subdomain ditetapkan sejak awal. Domain pribadi dapat dihubungkan setelah toko dibuat melalui Pengaturan toko → Domain pribadi.",
           "Pilih Bot WhatsApp, Web Topup atau Web + Bot. Semua sumber termasuk. Setiap toko punya masa aktif dan konfigurasi sendiri."
         ],
         "visual": {
@@ -85,7 +85,7 @@
         "title": "Bayar lalu siapkan layanan",
         "paragraphs": [
           "Pada Langganan & aktivasi pilih durasi, masukkan voucher bila ada dan buat invoice. Bayar sesuai total atau gunakan voucher sah 100%. Pembayaran sewa berbeda dari gateway pelanggan toko.",
-          "Hubungkan pemasok dan gateway, impor produk, atur harga serta sambungkan WA bila diperlukan."
+          "Setelah pembayaran diterima, checklist Persiapan berjualan tersedia pada Langganan & aktivasi serta Ringkasan toko. Gunakan tombol tiap langkah untuk mengatur sumber atau stok premium, katalog/harga, pembayaran pelanggan, alamat web dan WhatsApp sesuai platform. Status mengikuti konfigurasi tersimpan, bukan centang manual."
         ],
         "visual": {
           "image": "/guides/steps/subscription-confirm.jpg",
@@ -113,7 +113,7 @@
       {
         "title": "Aktifkan toko",
         "paragraphs": [
-          "Setelah siap, konfirmasikan aktivasi untuk mulai menghitung masa aktif. Tanpa konfirmasi, sistem dapat mengaktifkan setelah 24 jam dalam keadaan siap. Uji checkout/notifikasi dahulu. Jika ada gangguan layanan, hubungi dukungan DigitalToko."
+          "Konfirmasikan aktivasi untuk mulai menghitung masa aktif. Syarat aktivasi tetap subdomain bawaan dan koneksi WhatsApp untuk paket Bot/Web + Bot; domain pribadi dan WhatsApp pada paket Web opsional. Checklist persiapan berjualan tidak mengubah syarat aktivasi. Lengkapi katalog dan pembayaran sebelum menerima pelanggan. Tanpa konfirmasi, sistem dapat mengaktifkan setelah 24 jam sejak syarat aktivasi terpenuhi. Uji checkout/notifikasi setelah toko aktif."
         ],
         "visual": {
           "image": "/guides/steps/subscription-activation.jpg",
@@ -1449,7 +1449,8 @@
     ],
     "related": [
       "katalog",
-      "artikel"
+      "artikel",
+      "domain"
     ],
     "sources": [],
     "keywords": [
@@ -3140,6 +3141,162 @@
     "keywords": [
       "akun premium",
       "reservasi"
+    ]
+  },
+  {
+    "slug": "domain",
+    "title": "Menghubungkan domain pribadi",
+    "category": "Tampilan",
+    "summary": "Gunakan domain sendiri dengan verifikasi DNS dan HTTPS.",
+    "image": "/guides/steps/domain-connect.jpg",
+    "imageAlt": "Modal koneksi domain pada data simulasi",
+    "prerequisites": [
+      "Owner terverifikasi dan toko memakai platform Web atau Web + Bot.",
+      "Domain yang Anda miliki serta akses DNS manager domain tersebut."
+    ],
+    "steps": [
+      {
+        "title": "Tambahkan domain milik Anda",
+        "paragraphs": [
+          "Owner membuka Tampilan & pengaturan → Pengaturan toko → Domain pribadi. Tekan Hubungkan domain, masukkan hostname tanpa https:// atau path, lalu Simpan & lihat DNS. Gratis satu domain untuk setiap toko Web atau Web + Bot. Domain utama dan www tidak otomatis menjadi alias; gunakan hostname yang benar-benar ingin dipakai."
+        ],
+        "visual": {
+          "height": 720,
+          "markers": [
+            {
+              "h": 6.944444444444445,
+              "label": "Isi satu domain yang Anda miliki",
+              "w": 32.5,
+              "x": 50.0,
+              "y": 42.389322916666664
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Simpan untuk mendapatkan record DNS",
+              "w": 12.595825195312498,
+              "x": 59.95208740234374,
+              "y": 77.31825086805556
+            }
+          ],
+          "width": 1280,
+          "image": "/guides/steps/domain-connect.jpg",
+          "caption": "Masukkan satu domain milik Anda lalu buka petunjuk DNS."
+        }
+      },
+      {
+        "title": "Tambahkan TXT kepemilikan",
+        "paragraphs": [
+          "Buka DNS manager domain Anda. Buat record TXT memakai nama dan isi persis dari popup. DNS manager yang otomatis menambahkan domain biasanya hanya meminta bagian relatif: misalnya _digitaltoko-domain.shop untuk shop.domainanda.com. Kode contoh pada gambar tidak boleh dipakai untuk verifikasi."
+        ],
+        "visual": {
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.304904513888889,
+              "label": "Salin nama record TXT",
+              "w": 6.2042236328125,
+              "x": 75.25726318359375,
+              "y": 41.9287109375
+            },
+            {
+              "h": 5.304904513888889,
+              "label": "Salin nilai kepemilikan domain",
+              "w": 6.2042236328125,
+              "x": 75.25726318359375,
+              "y": 55.67762586805556
+            }
+          ],
+          "width": 1280,
+          "image": "/guides/steps/domain-txt.jpg",
+          "caption": "Salin nama serta isi TXT dari toko Anda ke DNS manager."
+        }
+      },
+      {
+        "title": "Arahkan domain ke layanan toko",
+        "paragraphs": [
+          "Tambahkan CNAME untuk hostname toko menuju Target CNAME yang ditampilkan. Gunakan DNS only selama verifikasi. Untuk domain utama (@), gunakan CNAME flattening/ALIAS jika penyedia DNS mendukung. Jika tidak, gunakan alternatif A/AAAA dari panel bila tersedia, atau pilih subdomain seperti www. Hapus record yang bertentangan."
+        ],
+        "visual": {
+          "height": 720,
+          "markers": [
+            {
+              "h": 5.304904513888889,
+              "label": "Salin target ke record CNAME DNS",
+              "w": 6.2042236328125,
+              "x": 75.25726318359375,
+              "y": 46.398111979166664
+            },
+            {
+              "h": 6.138237847222222,
+              "label": "Periksa setelah DNS tersimpan",
+              "w": 14.518432617187498,
+              "x": 74.22515869140625,
+              "y": 91.51421440972224
+            }
+          ],
+          "width": 1280,
+          "image": "/guides/steps/domain-routing.jpg",
+          "caption": "Salin target CNAME dan simpan perubahan DNS pada penyedia domain."
+        }
+      },
+      {
+        "title": "Verifikasi lalu gunakan domain",
+        "paragraphs": [
+          "Tekan Verifikasi & aktifkan. Status Menunggu DNS berarti record belum cocok; Menunggu HTTPS berarti DNS telah cocok tetapi sertifikat atau arah HTTPS belum siap. Tunggu propagasi dan periksa kembali; hubungi dukungan jika terus tertahan. Setelah aktif, domain menjadi alamat utama toko dan subdomain bawaan tetap dapat dibuka. Pertahankan record DNS. Untuk mengganti atau melepas domain gunakan tombol di kartu, kemudian konfirmasikan; pengganti wajib diverifikasi ulang."
+        ],
+        "visual": {
+          "height": 716,
+          "markers": [
+            {
+              "h": 5.334540851955308,
+              "label": "Periksa DNS dan HTTPS",
+              "w": 13.744963639937106,
+              "x": 30.237507370283012,
+              "y": 61.2162840432961
+            },
+            {
+              "h": 5.027932960893855,
+              "label": "Lepas untuk kembali ke subdomain",
+              "w": 2.830188679245283,
+              "x": 42.61313384433962,
+              "y": 61.21573847765363
+            }
+          ],
+          "width": 1272,
+          "image": "/guides/steps/domain-verify.jpg",
+          "caption": "Periksa DNS dan HTTPS. Pelepasan koneksi mengembalikan alamat toko ke subdomain bawaan."
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "Domain sudah terdaftar di toko lain",
+        "answer": "Lepas koneksi pada toko lama terlebih dahulu. Jika bukan toko milik Anda, hubungi dukungan dengan bukti kepemilikan domain. Klaim baru wajib verifikasi TXT."
+      },
+      {
+        "question": "DNS sudah tersimpan tetapi belum cocok",
+        "answer": "Periksa record relatif, nilai TXT, CNAME, A/AAAA lama dan mode proxy. DNS tidak selalu berubah seketika. Gunakan nilai terbaru dari panel, bukan contoh pada gambar."
+      },
+      {
+        "question": "Terhenti pada Menunggu HTTPS",
+        "answer": "Sertifikat dan jalur HTTPS harus siap. Periksa ulang setelah beberapa saat atau hubungi dukungan DigitalToko. Subdomain bawaan tetap bisa dipakai selama penyiapan."
+      }
+    ],
+    "related": [
+      "tampilan",
+      "mulai",
+      "langganan"
+    ],
+    "sources": [],
+    "keywords": [
+      "domain",
+      "dns",
+      "cname",
+      "txt",
+      "https",
+      "ssl",
+      "cloudflare",
+      "www"
     ]
   }
 ]

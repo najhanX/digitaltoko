@@ -19,7 +19,9 @@ Pertahankan APP_KEY yang sudah dipakai agar credential, stok dan data profil ter
 
 Atur `APP_URL=http://localhost:8000`, `PLATFORM_DOMAIN=localhost`; alias loopback hanya berlaku saat local. `/login` untuk owner OTP, `/admin/login` untuk admin lokal, `/staff/{UUID_TOKO}/login` untuk staff lokal. Perubahan konfigurasi dapat memerlukan `php artisan optimize:clear` dan restart proses long-lived.
 
-Jalankan pada terminal/service terpisah:
+Alternatif praktis: profil laptop `pm2 start` mengelola web, Vite, queue, scheduler, bot manager, API Hanshop dan bot Hanshop sekaligus. Setelah launcher laptop dipasang, perintah tersebut dapat dipanggil dari folder mana pun. Tidak perlu menjalankan perintah manual di bawah bersamaan dengan PM2. Lihat [konfigurasi PM2](../../docs/DEPLOYMENT.md#pm2-satu-perintah).
+
+Jika tidak memakai PM2, jalankan pada terminal/service terpisah:
 
 ```powershell
 php artisan queue:work --timeout=180

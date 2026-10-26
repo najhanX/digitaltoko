@@ -28,6 +28,7 @@ use App\Http\Controllers\StaffLoginController;
 use App\Http\Controllers\StoreArticleController;
 use App\Http\Controllers\StoreClosureController;
 use App\Http\Controllers\StoreDesignController;
+use App\Http\Controllers\StoreDomainController;
 use App\Http\Controllers\StorefrontPageController;
 use App\Http\Controllers\StoreManagementController;
 use App\Http\Controllers\StoreNotificationController;
@@ -73,6 +74,9 @@ Route::post('/account/phone/otp', [CustomerAuthController::class, 'phoneOtp'])->
 Route::post('/account/phone/verify', [CustomerAuthController::class, 'phoneVerify'])->middleware('throttle:10,1');
 Route::post('/account/logout', [CustomerAuthController::class, 'logout']);
 Route::middleware('platform.host')->group(function () {
+    Route::post('/owner/stores/{store}/domain', [StoreDomainController::class, 'save'])->middleware('throttle:6,1,store-domain-save');
+    Route::post('/owner/stores/{store}/domain/verify', [StoreDomainController::class, 'verify'])->middleware('throttle:4,1,store-domain-verify')->block(45, 50);
+    Route::delete('/owner/stores/{store}/domain', [StoreDomainController::class, 'remove'])->middleware('throttle:6,1,store-domain-remove');
     Route::get('/paket', [PublicPricingController::class, 'index'])->name('pricing.index');
     Route::get('/paket/subdomain', [PublicPricingController::class, 'availability'])->middleware('throttle:30,1,pricing-subdomain')->name('pricing.availability');
     Route::get('/panduan', [TutorialController::class, 'index'])->name('tutorials.index');

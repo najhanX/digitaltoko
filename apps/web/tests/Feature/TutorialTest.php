@@ -22,7 +22,7 @@ class TutorialTest extends TestCase
     public function test_library_is_public_and_index_only_exposes_summary_data(): void
     {
         $this->get('http://localhost/panduan')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Platform/Tutorials')->has('guides', 20)->where('guide', null)
+            ->component('Platform/Tutorials')->has('guides', 21)->where('guide', null)
             ->where('guides.0.slug', 'mulai')->missing('guides.0.steps')->missing('guides.0.image'));
         Http::assertNothingSent();
     }

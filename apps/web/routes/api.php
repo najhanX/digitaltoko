@@ -7,7 +7,12 @@ use App\Http\Controllers\BotEventController;
 use App\Http\Controllers\CommerceWebhookController;
 use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\OtomaxCallbackController;
+use App\Http\Controllers\StoreDomainController;
+use App\Http\Middleware\ResolvePlatformHost;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/domains/proof', [StoreDomainController::class, 'proof'])->withoutMiddleware(ResolvePlatformHost::class)->middleware('throttle:120,1,domain-proof');
+Route::get('/domains/tls-ask/{key}', [StoreDomainController::class, 'tlsAsk'])->withoutMiddleware(ResolvePlatformHost::class)->middleware('throttle:120,1,domain-tls-ask');
 
 Route::post('/internal/bot/events', BotEventController::class)->middleware(['platform.host', 'throttle:bot-worker']);
 Route::get('/internal/bot/access', BotAccessController::class)->middleware(['platform.host', 'throttle:bot-worker']);

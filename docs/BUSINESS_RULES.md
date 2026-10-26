@@ -136,7 +136,7 @@ Usulan pemasangan: setiap tenant modul custom memakai perangkat/notifikasi QRIS 
 - Harga/fitur/durasi disnapshot pada invoice dan subscription; pengeditan paket tidak mengubah invoice lama atau hak sewa existing secara diam-diam.
 - Setiap toko maksimal satu nomor/sesi WhatsApp termasuk paket Web untuk OTP/notifikasi. Command transaksi chat tetap hanya Bot/Full. Pergantian nomor harus melalui logout/pelepasan sesi lama, bukan dua sesi aktif.
 - Owner dapat menambah maksimal lima staff lokal toko dengan permission terkonfigurasi. Rancangan permission didelegasikan kepada pengembang dan dirinci di `docs/STAFF_PERMISSIONS.md`.
-- Slug subdomain unik ditentukan saat membuat toko draft dan nama sistem ditolak. Belum ada reservasi checkout dengan TTL; custom domain masih model/resolver, belum alur klaim DNS/TLS owner lengkap.
+- Slug subdomain unik ditentukan saat membuat toko draft dan nama sistem ditolak. Belum ada reservasi checkout dengan TTL; custom domain mempunyai klaim owner, verifikasi TXT/arah DNS/HTTPS, penggantian dan pelepasan di Tampilan & pengaturan. Aktivasi storefront menunggu pemeriksaan HTTPS; sertifikat memerlukan konfigurasi origin sebagaimana CUSTOM_DOMAINS.md.
 - Koneksi domain gratis, maksimal satu domain custom per toko selain satu subdomain bawaan; pembelian/perpanjangan registrar tanggung jawab tenant. Rancangan www/apex bila didukung diperlakukan alias satu domain utama, bukan dua domain bisnis. Subdomain tidak diganti melalui fitur biasa; rename berbayar mungkin fase berikut. Slug boleh dipakai lagi setelah purge; custom domain baru wajib verifikasi.
 - Toko Bot tetap menyimpan slug sebagai identitas, tetapi tidak membuka storefront tanpa hak kanal Web.
 

@@ -6,6 +6,7 @@ use App\Models\PlanOption;
 use App\Models\Store;
 use App\Models\SubscriptionInvoice;
 use App\Services\StoreRetention;
+use App\Services\StoreSetup;
 use App\Services\SubscriptionService;
 use App\Support\BotConnection;
 use App\Support\ListQuery;
@@ -47,6 +48,7 @@ class SubscriptionController extends Controller
             'invoices' => $page->items(), 'currentInvoice' => $current, 'historyPagination' => ListQuery::meta($page), 'historyFilters' => $list->filters,
             'retention' => app(StoreRetention::class)->summary($store),
             'ready' => $service->ready($store),
+            'setup' => $store->status === 'provisioning' || $store->expires_at ? app(StoreSetup::class)->summary($store, $role === 'owner', $request->user('staff')?->permissions ?? []) : null,
             'canManage' => $role === 'owner' || (! $store->is_trial && $store->expires_at && in_array('subscription.renew', $request->user('staff')->permissions ?? [], true)),
             'canManageBot' => $role === 'owner' || in_array('bot.manage', $request->user('staff')->permissions ?? [], true),
             'botStatus' => BotConnection::state($store, false)['status'] ?? 'DISCONNECTED']);

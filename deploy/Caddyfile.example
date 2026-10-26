@@ -1,0 +1,45 @@
+# Set these environment variables on the Caddy service (not only Laravel .env):
+# PLATFORM_DOMAIN=hansdigi.biz.id
+# ACME_EMAIL=admin@example.com
+# DIGITALTOKO_PUBLIC_ROOT=/var/www/digitaltoko/apps/web/public
+# PHP_FPM_UPSTREAM=unix//run/php/php8.5-fpm.sock
+# CUSTOM_DOMAIN_TLS_ASK_KEY=<same private 32+ character key as Laravel>
+# Keep ports 80/443 reachable; this example replaces the origin web server.
+{
+    email {$ACME_EMAIL}
+    on_demand_tls {
+        ask http://127.0.0.1:8181/api/domains/tls-ask/{$CUSTOM_DOMAIN_TLS_ASK_KEY}
+    }
+}
+
+(digitaltoko_app) {
+    root * {$DIGITALTOKO_PUBLIC_ROOT}
+    encode zstd gzip
+    php_fastcgi {$PHP_FPM_UPSTREAM}
+    file_server
+}
+
+# Local permission check; no public listener on this port.
+http://127.0.0.1:8181 {
+    bind 127.0.0.1
+    @permission path /api/domains/tls-ask/*
+    handle @permission {
+        import digitaltoko_app
+    }
+    handle {
+        respond 404
+    }
+}
+
+# Platform certificate can be provisioned before tenants add domains.
+https://{$PLATFORM_DOMAIN} {
+    import digitaltoko_app
+}
+
+# Known store subdomains + TXT-verified tenant hostnames only.
+https:// {
+    tls {
+        on_demand
+    }
+    import digitaltoko_app
+}

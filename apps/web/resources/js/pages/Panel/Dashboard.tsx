@@ -3,14 +3,15 @@ import { ArrowRight, Plus, ShieldCheck, Store, CreditCard } from 'lucide-react';
 import WorkspaceLayout from '../../components/WorkspaceLayout';
 import { CreateStoreButton } from '../../components/CreateStoreModal';
 import SupplierBalances from '../../components/SupplierBalances';
+import StoreSetupChecklist, {type StoreSetup} from '../../components/StoreSetupChecklist';
 import { FilterBar, Pagination, useServerList, serviceOptions, planOptions, type PageMeta, type ListFilters } from '../../components/ListControls';
 import { packageName } from '../../components/packageCatalog';
 import { storeStatuses } from '../../components/StoreJourney';
 import { StoreCard } from '../../components/StoreJourney';
 import type { StoreSummary, WorkspaceContext } from '../../types';
 
-type Props = {role:'admin'|'owner'|'staff';preview:boolean;viewer:{name:string};stores:StoreSummary[];counts:{stores?:number;owners?:number;active?:number;setup?:number;subscribed?:number};permissions?:string[];ownerStatus?:string;listing?:boolean;storeScope?:boolean;pagination?:PageMeta;filters?:ListFilters};
-export default function Dashboard({role,preview,viewer,stores,counts,ownerStatus,permissions = [],listing = false,storeScope = false,pagination,filters = {q:'',status:'',category:'',plan:'',package:'',per_page:10}}:Props) {
+type Props = {setup?:StoreSetup|null;role:'admin'|'owner'|'staff';preview:boolean;viewer:{name:string};stores:StoreSummary[];counts:{stores?:number;owners?:number;active?:number;setup?:number;subscribed?:number};permissions?:string[];ownerStatus?:string;listing?:boolean;storeScope?:boolean;pagination?:PageMeta;filters?:ListFilters};
+export default function Dashboard({role,preview,viewer,stores,counts,ownerStatus,permissions = [],listing = false,storeScope = false,pagination,setup:storeSetup,filters = {q:'',status:'',category:'',plan:'',package:'',per_page:10}}:Props) {
     const list = useServerList(filters,['stores','pagination','filters','counts']);
     const controls = pagination && !preview ? <FilterBar filters={filters} onApply={list.apply} busy={list.busy} placeholder="Cari nama toko atau subdomain…" choices={[{key:'status',label:'Status',options:storeStatuses},{key:'package',label:'Paket',options:planOptions}]}/> : null;
     const topPager = pagination && !preview ? <Pagination compact meta={pagination} onPage={list.go} busy={list.busy} label="Navigasi atas toko"/> : null;
@@ -35,6 +36,7 @@ export default function Dashboard({role,preview,viewer,stores,counts,ownerStatus
         {!listing && !storeScope && <div className="cards three stats"><article className="card"><span>{admin?'Total toko':'Jumlah toko'}</span><strong>{counts.stores ?? stores.length}</strong><small>{storeScope?'Dalam ruang akses Anda':'Toko terdaftar'}</small></article><article className="card"><span>{admin?'Akun owner':'Toko aktif'}</span><strong>{admin?(counts.owners ?? 0):active}</strong><small>{admin?'Terdaftar di platform':'Masa sewa berjalan'}</small></article><article className="card"><span>Menunggu persiapan</span><strong>{setup}</strong><small>Paket atau aktivasi belum selesai</small></article></div>}
         {stores.filter(store => store.status === 'grace').map(store => <div className="feedback warning" key={store.id}><strong>{store.name} dalam masa tenggang</strong><p>Transaksi masih tersedia sampai tujuh hari setelah masa sewa habis. Perpanjang agar layanan tetap berjalan.</p>{!preview && (role === 'owner' || permissions.includes('subscription.view')) && <Link className="text-link" href={'/stores/'+store.id+'/subscription'}>Buka langganan <ArrowRight size={15}/></Link>}</div>)}
         {storeScope && !admin && stores[0] && <section className="scoped-store-overview"><StoreCard store={stores[0]} role={role} permissions={permissions} preview={preview} scoped/></section>}
+        {storeScope && !admin && storeSetup && <StoreSetupChecklist setup={storeSetup} preparing={stores[0]?.status==='provisioning'}/>}
         {!admin && !listing && <SupplierBalances staff={role === 'staff'}/>}
         {!admin && !storeScope && <section className="stores-section"><div className="section-toolbar"><div><h2>{storeScope?'Kelola toko ini':'Toko Anda'}</h2><p>{storeScope?'Lanjutkan dari status toko saat ini.':'Langganan dan data pelanggan terpisah pada setiap toko.'}</p></div>{!preview && !listing && !storeScope && stores.length > 3 && <Link className="text-link" href="/owner/stores">Semua toko <ArrowRight size={15}/></Link>}</div>{controls}{topPager}<div className="tenant-store-grid">{stores.map(store => <StoreCard key={store.id} store={store} role={role} permissions={permissions} preview={preview}/>)}</div>
             {pager}{!stores.length && <div className="card empty-state"><Store size={36}/><h3>{(counts.stores ?? 0)>0?"Tidak ada toko yang cocok":"Belum ada toko"}</h3><p>{(counts.stores ?? 0)>0?'Ubah atau reset filter untuk melihat toko Anda.':canCreate?'Buat toko, lalu pilih paket dan durasi sewa pada langkah berikutnya.':'Selesaikan verifikasi profil terlebih dahulu untuk membuka pembuatan toko.'}</p>{canCreate && <CreateStoreButton><Plus size={17}/>Buat toko</CreateStoreButton>}</div>}

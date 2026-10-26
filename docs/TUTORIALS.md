@@ -4,8 +4,8 @@ Diterapkan 23 Oktober 2026. Halaman `/panduan` berada di host platform, dapat di
 
 ## Konten dan gambar
 
-- `apps/web/resources/js/tutorialCatalog.json`: 20 panduan statis. Perubahan konten tidak memerlukan database/migrasi. Slug stabil digunakan tautan menu.
-- `apps/web/public/guides/steps/`: 61 screenshot JPEG dari database SQLite simulasi terpisah dan 2 ilustrasi SVG berlabel untuk whitelist Digiflazz serta Notification URL Midtrans. Sebanyak 89 langkah dalam 20 panduan masing-masing mempunyai gambar, 1–3 penanda panah dan keterangan spesifik. Gambar overview lama tetap disimpan sebagai aset kompatibilitas. Tidak ada key, PIN, password, token supplier nyata atau data pelanggan produksi. Nominal/status/IP pada gambar adalah contoh, bukan konfigurasi rekomendasi.
+- `apps/web/resources/js/tutorialCatalog.json`: 21 panduan statis. Perubahan konten tidak memerlukan database/migrasi. Slug stabil digunakan tautan menu.
+- `apps/web/public/guides/steps/`: 65 screenshot JPEG dari database SQLite simulasi terpisah dan 2 ilustrasi SVG berlabel untuk whitelist Digiflazz serta Notification URL Midtrans. Sebanyak 93 langkah dalam 21 panduan masing-masing mempunyai gambar, 1–3 penanda panah dan keterangan spesifik. Gambar overview lama tetap disimpan sebagai aset kompatibilitas. Tidak ada key, PIN, password, token supplier nyata atau data pelanggan produksi. Nominal/status/IP pada gambar adalah contoh, bukan konfigurasi rekomendasi.
 - Screenshot mempunyai caption data simulasi. Jangan menyalin localhost/store ID dari ilustrasi menjadi callback; panduan meminta URL asli dari panel toko sendiri.
 - `TutorialController` mengirim metadata ringkas pada index dan satu panduan lengkap pada detail. Index tidak memuat semua isi/gambar; detail hanya mengunduh gambar yang digunakan.
 - Materi meliputi persiapan/KTP, Digiflazz, Hanshop, OtomaX, Midtrans, QRIS custom/forwarder, sandbox, katalog/harga, stok, WhatsApp, notifikasi/email, pelanggan, transaksi, tampilan, staff, artikel, voucher, langganan, penutupan serta admin.

@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, ExternalLink, Users, ShieldCheck, UserCheck, Layo
 import WorkspaceLayout from '../../components/WorkspaceLayout';
 import TemplatePicker from '../../components/TemplatePicker';
 import StoreDesignPanel from '../../components/StoreDesignPanel';
+import StoreDomainCard, { type DomainSettings } from '../../components/StoreDomainCard';
 import type { ShopDesign, DesignProduct } from '../../components/storefrontDesign';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import Modal from '../../components/Modal';
@@ -21,7 +22,7 @@ const permissionGroups = [
     {label:'Pembayaran & saldo',keys:['vouchers.view','vouchers.manage','payments.view','payments.policy','wallet.view','wallet.settlement','suppliers.balance']},
     {label:'Toko & langganan',keys:['web.manage','articles.view','articles.manage','checkout.manage','bot.view','bot.manage','notifications.view','notifications.manage','subscription.view','subscription.renew']},
 ];
-export default function ManageStore({role = 'owner',store,staff,permissionLabels,design,designRevision,designProducts}:{role?:'owner'|'staff';store:Store;staff:Staff[];permissionLabels:Record<string,string>;design:ShopDesign;designRevision:number;designProducts:DesignProduct[]}) {
+export default function ManageStore({role = 'owner',store,staff,permissionLabels,design,designRevision,designProducts,domainSettings}:{role?:'owner'|'staff';store:Store;staff:Staff[];permissionLabels:Record<string,string>;design:ShopDesign;designRevision:number;designProducts:DesignProduct[];domainSettings?:DomainSettings}) {
     const requestedTab=new URLSearchParams(usePage().url.split('?')[1] ?? '').get('tab');
     const tab=requestedTab==='staff' && role==='owner'?'staff':requestedTab==='design' && store.category!=='bot'?'design':'settings';
     const base = role === 'owner'?'/owner/stores/'+store.id+'/manage':'/staff/'+store.id+'/settings';
@@ -57,6 +58,7 @@ export default function ManageStore({role = 'owner',store,staff,permissionLabels
         {tab==='design'?<StoreDesignPanel store={store} design={design} revision={designRevision} products={designProducts}/>:tab === 'settings'?<div className="store-settings-grid">
             <section className="card onboarding-card store-settings-identity"><header className="store-settings-card-heading"><div className="store-settings-card-title"><StoreIcon size={18}/><h2>Identitas toko</h2></div><button type="button" className="button secondary small" onClick={()=>openSettings('identity')}><Pencil size={14}/>Edit identitas</button></header><dl className="store-settings-details"><div><dt>Nama toko</dt><dd>{store.name}</dd></div><div><dt>Subdomain</dt><dd>{store.slug}<span className="store-settings-fixed">Tetap</span></dd></div>{store.category!=='bot' && <div><dt>Alamat toko</dt><dd><a href={store.url} target="_blank" rel="noreferrer">{store.url.replace(/^https?:\/\//,'').replace(/\/$/,'')}<ExternalLink size={12}/></a></dd></div>}</dl></section>
             {store.category!=='bot' && <section className="card onboarding-card store-settings-template"><header className="store-settings-card-heading"><div className="store-settings-card-title"><LayoutTemplate size={18}/><h2>Template web</h2></div><button type="button" className="button secondary small" onClick={()=>openSettings('template')}>Ganti template</button></header><div className="store-settings-template-preview"><div className={'template-mini '+(aliases[store.template] ?? store.template)} aria-hidden="true"><span className="mini-top"/><span className="mini-banner"/><span className="mini-products"><i/><i/><i/></span></div><div><strong>{({aurora:'Aurora',nebula:'Nebula',atlas:'Atlas'} as Record<string,string>)[aliases[store.template] ?? store.template]}</strong><p>{({aurora:'Produk digital & pesanan cepat',nebula:'Topup game & voucher',atlas:'Katalog bergaya marketplace'} as Record<string,string>)[aliases[store.template] ?? store.template]}</p><Link className="text-link" href={base+'?tab=design'}>Sesuaikan desain<ExternalLink size={12}/></Link></div></div></section>}
+            {role==='owner' && store.category!=='bot' && domainSettings && <StoreDomainCard storeId={store.id} settings={domainSettings}/>}
             <section className="card onboarding-card store-settings-mode"><div className="store-settings-mode-copy"><div className="store-settings-card-title"><FlaskConical size={18}/><h2>Mode transaksi</h2><span className={'store-status '+(store.sandbox?'grace':'active')}>{store.sandbox?'Pengujian':'Produksi'}</span></div><p>{store.sandbox?'Transaksi memakai lingkungan uji.':'Pembayaran dan pesanan menggunakan layanan asli.'}</p></div>{role==='owner' && <button type="button" className="button secondary small" onClick={()=>{environment.clearErrors();environment.setData('sandbox',store.sandbox);setEnvironmentOpen(true);}}>Ubah mode</button>}</section>
         </div>:<>
             <div className="staff-management">

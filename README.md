@@ -34,6 +34,8 @@ DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk di
 
 Ikuti [web](apps/web/README.md) dan [bot](apps/bot/README.md). Web memerlukan database aplikasi sendiri, cache/lock, queue worker dan scheduler; integrasi membutuhkan konfigurasi layanan terkait. Jangan menjalankan manager kedua pada port/sesi yang sama.
 
+Profil laptop menjalankan tujuh layanan pengembangan: web (8000), Vite (5173), queue, scheduler, bot manager, API Hanshop watch dan bot Hanshop watch. Pasang launcher per user lewat `deploy/install-pm2-laptop.ps1`, lalu **`pm2 start` dapat dipanggil dari folder mana pun di terminal baru**. Manager membangun bot sebelum mulai, seperti manager:dev; dependency tetap perlu disiapkan sekali. Profil VPS merupakan contoh terpisah yang perlu ditinjau kembali saat deployment. Cara menyiapkan, menghentikan proses lama dan melihat log: [PM2 satu perintah](docs/DEPLOYMENT.md#pm2-satu-perintah).
+
 Domain memakai `APP_URL`, `PLATFORM_DOMAIN`, alias, dan mapping custom host verified; pergantian domain tidak memerlukan salinan frontend per toko. Wildcard DNS, TLS dan onboarding custom domain tetap pekerjaan infrastruktur.
 
 ## Batas saat ini
@@ -63,3 +65,5 @@ URL daftar harga diatur per koneksi melalui **Supplier OtomaX → Daftar harga U
 Pusat panduan publik tersedia di `/panduan` dengan 20 tutorial bergambar. Tombol Panduan pada header menu panel membuka topik terkait di tab baru. Lihat [pemeliharaan panduan](docs/TUTORIALS.md).
 
 Halaman publik `/paket` menyediakan pilihan platform/durasi dari harga aktif admin, simulasi biaya sewa dan pengecekan subdomain tanpa membuat toko. Total final (voucher/kode unik bila ada) tetap ditentukan melalui invoice setelah owner memenuhi verifikasi.
+
+Domain pribadi toko dapat diatur owner melalui Tampilan & pengaturan. Panduan teknis DNS/HTTPS dan contoh VPS ada di [docs/CUSTOM_DOMAINS.md](docs/CUSTOM_DOMAINS.md).

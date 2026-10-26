@@ -39,7 +39,7 @@ Disinkronkan dengan source dan keputusan pengguna sampai **22 Oktober 2026**. Ke
 
 | Area | Kondisi / tindak lanjut |
 | --- | --- |
-| Domain | Otomatisasi ownership/DNS/TLS/Cloudflare for SaaS, apex, pelepasan binding dan rename slug berbayar belum lengkap |
+| Domain | Klaim TXT/arah DNS, proof HTTPS, pelepasan dan adapter Caddy tersedia. Deploy TLS nyata, Cloudflare for SaaS API, alias www/apex dan rename slug berbayar tetap pekerjaan operasional/lanjutan |
 | Purge dan backup | Hold/reminder, pratinjau, purge data/media/WA dan pembatalan renewal sudah tersedia. Aktivasi produksi, backup/log bersama, restore offline dan pelepasan DNS/TLS provider masih tugas operator; lihat RETENTION_PROGRESS.md. |
 | Gagal provisioning | SLA penanganan dan mekanisme refund sewa otomatis belum tersedia |
 | Upgrade kanal | Evaluasi UX/readiness kanal tambahan; implementasi change berlaku saat invoice lunas, readiness aktivasi pertama tidak otomatis menjadi gerbang upgrade |
@@ -62,3 +62,11 @@ ARCHITECTURE.md untuk peta source, BUSINESS_RULES.md untuk kebijakan/batas imple
 - Sesuai persetujuan owner platform, harga/durasi awal memakai penawaran terlengkap lama tiap platform. ID penawaran dipertahankan agar sasaran voucher tetap cocok; penawaran terbatas sumber dinonaktifkan untuk pembelian baru.
 - Migrasi memperbarui entitlement toko lama tanpa mengubah masa aktif dan snapshot invoice. Invoice lama tetap dapat diproses dari snapshot historisnya. Pembelian baru wajib memakai penawaran platform saat ini.
 - Pembelian ulang platform yang sama adalah perpanjangan meskipun toko masih menyimpan kode sumber lama. Perubahan dengan pengurangan kanal berlaku periode berikutnya; penambahan kanal membayar harga penuh dan memulai ulang masa aktif.
+
+## 26 Oktober 2026 — Persiapan berjualan dan aktivasi
+
+Checklist setelah pembayaran adalah panduan konfigurasi, bukan perubahan kontrak masa sewa. Sumber/stok, katalog/harga, dan gateway ditampilkan sesuai data tersimpan serta akses staff; tidak melakukan request supplier ketika checklist dibuka. Syarat aktivasi pertama dan otomatisasi 24 jam tetap menggunakan SubscriptionService::ready. Subdomain bawaan tersedia tanpa domain pribadi. Domain pribadi serta koneksi WA notifikasi pada platform Web tidak diwajibkan untuk aktivasi. Verifikasi konfigurasi tidak menggantikan uji transaksi/callback operasional.
+
+## 26 Oktober 2026 — Pengirim email bawaan platform
+
+Email bawaan memakai satu alamat pusat dari MAIL_FROM_ADDRESS, dengan nama pengirim mengikuti nama toko melalui StoreMail. Alamat lokal saat keputusan dibuat adalah info@hansdigi.biz.id; alamat domain DigitalToko ditentukan setelah layanan email siap. Tidak membuat mailbox atau alamat pengirim per subdomain tenant, tidak mengintegrasikan provisioning cPanel/Cloudflare untuk email. Pilihan SMTP milik toko tetap tersedia. Migrasi alamat pusat memerlukan konfigurasi SMTP/DNS dan uji pengiriman; koneksi SMTP keluar dari VPS perlu dipastikan. Keputusan ini tidak mengubah source atau kredensial runtime.

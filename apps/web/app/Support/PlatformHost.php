@@ -51,9 +51,10 @@ class PlatformHost
     public function storeUrl(Store $store): string
     {
         $url = parse_url((string) config('app.url'));
-        $host = $store->domain?->status === 'active' && $store->domain?->verified_at
+        $custom = $store->domain?->status === 'active' && $store->domain?->verified_at;
+        $host = $custom
             ? $store->domain->hostname : $store->slug.'.'.$this->domain();
 
-        return ($url['scheme'] ?? 'https').'://'.$host.(isset($url['port']) ? ':'.$url['port'] : '');
+        return ($custom ? 'https' : ($url['scheme'] ?? 'https')).'://'.$host.(! $custom && isset($url['port']) ? ':'.$url['port'] : '');
     }
 }

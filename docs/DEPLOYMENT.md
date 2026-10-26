@@ -24,7 +24,7 @@ Landing di root; panel /admin, /owner, dan /staff/<uuid>/login pada domain platf
 
 DNS root dan wildcard *.hansdigi.biz.id harus diarahkan ke origin yang sesuai, dengan TLS mencakup masing-masing host. Wildcard certificate dan DNS adalah konfigurasi berbeda. Periksa apakah domain awal sudah melayani aplikasi lain sebelum mengganti routing VPS; contoh tidak menimpa konfigurasi existing.
 
-Untuk custom domain, DNS saja belum cukup: verifikasi kepemilikan, routing, dan sertifikat sebelum menandai row domain active/verified. Workflow Cloudflare for SaaS belum dibuat. Host tak terdaftar ditolak aplikasi; web bot-only tidak membuka storefront. Nginx example menerima host ke satu origin dan Laravel memvalidasi mapping.
+Untuk custom domain, DNS saja belum cukup: verifikasi kepemilikan, routing, dan sertifikat sebelum menandai row domain active/verified. Alur owner dan adapter izin Caddy tersedia; konfigurasi origin/sertifikat tetap perlu diterapkan di VPS. Lihat CUSTOM_DOMAINS.md dan deploy/Caddyfile.example. Cloudflare for SaaS API belum dibuat. Host tak terdaftar ditolak aplikasi; web bot-only tidak membuka storefront. Nginx example menerima host ke satu origin dan Laravel memvalidasi mapping.
 
 ## Install pada VPS
 
@@ -42,7 +42,94 @@ php artisan optimize
 composer check-platform-reqs
 ```
 
-Simpan APP_KEY existing pada redeploy agar session/encryption tidak rusak. Siapkan permission storage dan bootstrap/cache. Jalankan queue:work sebagai service dan schedule:run setiap menit. Scheduler juga memiliki pekerjaan submenit customer-notices; hindari instance scheduler bertumpuk dan hentikan scheduler lama saat deploy sesuai supervisor. Contoh PM2 menjalankan satu manager yang membuat worker per toko, bukan satu konfigurasi PM2 manual untuk setiap tenant. Jangan clone session toko.
+Simpan APP_KEY existing pada redeploy agar session/encryption tidak rusak. Siapkan permission storage dan bootstrap/cache. Jalankan queue:work sebagai service dan satu scheduler: schedule:work melalui PM2, atau schedule:run setiap menit melalui cron. Scheduler juga memiliki pekerjaan submenit customer-notices; jangan menjalankan keduanya bersamaan. Contoh PM2 menjalankan satu manager yang membuat worker per toko, bukan satu konfigurasi PM2 manual untuk setiap tenant. Jangan clone session toko.
+
+## PM2 satu perintah
+
+Ditambahkan 26 Oktober 2026. Profil laptop diperbarui menjadi tujuh proses sesuai perintah development pengguna. Konfigurasi memakai path relatif terhadap lokasi repository. PM2 sudah terpasang pada komputer pengembangan saat perubahan ini dibuat; pada instalasi baru, pasang PM2 melalui `npm install -g pm2`. Profil produksi tetap contoh terpisah untuk ditinjau kembali ketika deployment VPS.
+
+### Lokal Windows / pengembangan
+
+Siapkan dependensi sekali mengikuti README masing-masing proyek (vendor/node_modules web, node_modules apps/bot, API Hanshop dan bot_wa_v2). Pasang launcher global per user dari root Hansbot:
+
+```powershell
+# Sekali, dari root Hansbot
+.\deploy\install-pm2-laptop.ps1
+# Tutup dan buka terminal baru, boleh dari folder mana pun
+pm2 start
+pm2 status
+```
+
+Launcher terpasang pada `%USERPROFILE%\.digitaltoko\bin`, ditambahkan di awal PATH user, dengan shim CMD dan PowerShell. File PM2 milik npm tidak ditimpa. Bare `pm2 start` diarahkan ke root `ecosystem.config.js` DigitalToko secara absolut; perintah lain dan `pm2 start <target>` tetap diteruskan ke PM2 asli. Untuk proyek lain, sebutkan target ecosystem/script secara eksplisit. Buka terminal baru; bila terminal terintegrasi VS Code/Codex masih membawa PATH lama, tutup/buka aplikasi induknya. Tanpa launcher, perintah yang sama tetap bekerja dari root Hansbot.
+
+Pada Windows, installer juga membangun `hidden-process.exe` dari source `deploy/HiddenProcess.cs`, memakai compiler .NET Framework bawaan Windows. Host GUI ini membuat console PHP tersembunyi sejak awal dengan stdout/stderr/stdin tetap diteruskan ke PM2. Proses turunan PHP CLI (serve, scheduler, tugas terjadwal) mewarisi console tersebut. Vite/manager/API/bot tetap proses Node langsung agar pemantauan memori PM2 tidak berpindah ke proxy; preload `hide-child-windows.cjs` melalui NODE_OPTIONS menyembunyikan child watch/build dan tetap mempertahankan NODE_OPTIONS existing. Tidak mengubah vendor Laravel/Symfony, PHP.ini atau instalasi PM2. Penanganan khusus ini hanya profil development Windows.
+
+Jika memperbarui host Windows ketika proses masih berjalan, hentikan dahulu `pm2 stop digitaltoko` sebelum menjalankan installer lagi. Jika jalur script/interpreter ecosystem berubah dari definisi lama, lakukan `pm2 delete digitaltoko` lalu `pm2 start` untuk mendaftarkan ulang proses; restart biasa dapat mempertahankan pm_exec_path lama. Log tetap dibaca lewat `pm2 logs`. Source host tidak ikut deployment Linux. Rujukan mekanisme: [Windows console creation](https://learn.microsoft.com/en-us/windows/console/creation-of-a-console) dan [PHP proc_open](https://www.php.net/proc-open).
+
+Tujuh proses laptop:
+
+| Nama PM2 | Tugas |
+| --- | --- |
+| digitaltoko-web | `php artisan serve`, loopback port 8000 |
+| digitaltoko-vite | Vite dev server, loopback port 5173; perubahan frontend langsung dimuat |
+| digitaltoko-queue | Queue worker, timeout 180 detik, retry 3, batas memori 256 MB dan siklus satu jam |
+| digitaltoko-scheduler | Satu `php artisan schedule:work` |
+| digitaltoko-bot-manager | Build TypeScript lalu manager, setara `npm run manager:dev`; worker toko dikelola manager |
+| api-hanshop | `tsx watch src/server.ts`, setara npm run dev pada API Hanshop |
+| hanshop-bot | `tsx watch src/index.ts`, setara npm run dev pada bot_wa_v2 |
+
+Sebelum mulai, hentikan dengan Ctrl+C ketujuh terminal manual yang menjalankan serve, Vite/npm run dev web, queue, scheduler, manager, API Hanshop dan bot Hanshop. Jika layanan sebelumnya sudah memakai PM2, kelola nama proses existing agar tidak menggandakan sesi/registry. Server web tidak berpindah diam-diam ke port lain ketika port 8000 terpakai; Vite juga memakai strictPort. Periksa log jika status errored.
+
+Queue/scheduler ini menggunakan `.env` aplikasi yang sebenarnya dan dapat memproses transaksi lunas. MySQL/Redis tetap dijalankan sebagai service tersendiri; tidak dipasang atau dinyalakan oleh konfigurasi ini. Tidak ada migrasi, seeder atau perubahan `.env` ketika `pm2 start` dipanggil. Khusus manager development, TypeScript bot dibangun sebelum manager dimulai; build gagal menghentikan startup manager. API/bot Hanshop memakai watch sumber tanpa memerlukan build dist. Perubahan source apps/bot memerlukan restart digitaltoko-bot-manager (build otomatis pada startup ulang), sesuai perilaku manager:dev.
+
+### Lokasi API Hanshop dan bot Hanshop
+
+Keduanya sudah termasuk profil laptop utama. Default folder saudara `../API Hanshop` dan `../bot_wa_v2`. Nama folder pada laptop ini tetap bot_wa_v2; label proses PM2-nya hanshop-bot. Jika lokasi dipindah, atur DIGITALTOKO_HANSHOP_API_DIR/DIGITALTOKO_HANSHOP_BOT_DIR sebelum memulai. Tiap proses membaca `.env` proyeknya sendiri.
+
+```powershell
+# Alias konfigurasi tujuh proses laptop, tetap didukung dari root Hansbot
+pm2 start deploy/ecosystem.full.config.cjs
+```
+
+Bot Hanshop untuk OTP owner berbeda dari bot manager tenant. Port API, token bridge dan alamat internal tetap diatur pada `.env` masing-masing, tidak ditulis pada ecosystem. Koneksi database/Redis harus sudah tersedia. Tidak perlu menjalankan kedua profil; ketujuh nama prosesnya sama. Jika ada proses yang memakai nama lain untuk aplikasi yang sama, hentikan proses lama terlebih dahulu.
+
+### Perintah harian
+
+```powershell
+pm2 status
+pm2 logs digitaltoko-web --lines 50
+pm2 logs digitaltoko-queue --lines 50
+pm2 logs digitaltoko-bot-manager --lines 50
+pm2 restart digitaltoko --update-env
+pm2 stop digitaltoko
+```
+
+`digitaltoko` adalah namespace ketujuh proses, sehingga stop/restart dapat dipanggil dari folder mana pun. Untuk satu layanan gunakan nama prosesnya. Ctrl+C pada tampilan `pm2 logs` hanya menutup pemantauan log; aplikasi tetap berjalan. Source apps/bot dimuat ulang melalui `pm2 restart digitaltoko-bot-manager` (build otomatis). Untuk PHP setelah perubahan source/config, restart queue/scheduler yang sudah berjalan; web lokal juga perlu restart setelah perubahan `.env` karena serve memakai no-reload. Jangan memakai reload cluster untuk sesi WhatsApp.
+
+Override opsional dibaca dari environment terminal/service yang menjalankan PM2, bukan `.env` Laravel:
+
+```powershell
+$env:DIGITALTOKO_PHP_BINARY='C:\Program Files\php-8.5.5\php.exe'
+$env:DIGITALTOKO_WEB_PORT='8000'
+pm2 start
+```
+
+Override lain: DIGITALTOKO_WEB_HOST, DIGITALTOKO_VITE_HOST, DIGITALTOKO_VITE_PORT, DIGITALTOKO_HANSHOP_API_DIR dan DIGITALTOKO_HANSHOP_BOT_DIR. Jika mengubah host/port, sesuaikan APP_URL/platform alias, WEB_BASE_URL bot dan alamat bridge yang relevan. Host default tetap loopback. Untuk akses LAN, konfigurasi host/HMR Vite dan host platform tetap perlu disesuaikan seperti deployment LAN; mengganti listen host saja tidak mendaftarkan hostname tenant.
+
+### VPS
+
+```bash
+# Dari root deployment, sesudah build web/bot dan konfigurasi layanan selesai
+pm2 start deploy/ecosystem.config.cjs
+pm2 save
+pm2 startup
+```
+
+Profil VPS menjalankan queue, scheduler dan satu bot manager. Web memakai Nginx/Caddy + PHP-FPM, aset frontend memakai `npm run build`; tidak menjalankan artisan serve/Vite di produksi. Hapus berkas `apps/web/public/hot` development yang tertinggal sebelum deploy hasil build. Jangan tambahkan cron schedule:run bila scheduler PM2 ini aktif. Sesuaikan retry_after queue agar lebih besar daripada 180 detik (bawaan database/Redis 240); PHP CLI Linux perlu PCNTL untuk enforcement timeout queue. PM2 memberi queue waktu 200 detik sebelum penghentian paksa. Worker dibiarkan selesai/berhenti lalu dimulai ulang, tidak dimuat dalam cluster.
+
+Jalankan instruksi service yang dicetak `pm2 startup` untuk user layanan yang benar pada Linux. `pm2 save` menyimpan daftar proses, tetapi bukan konfigurasi autostart Windows. Pada Windows, proses PM2 bertahan ketika terminal ditutup; startup setelah reboot memerlukan pengaturan service/Task Scheduler tersendiri dan belum dibuat oleh perubahan ini. Jangan menganggap database, Redis, web server, atau APK Android ikut dimulai PM2.
+
+Rujukan: [PM2 ecosystem](https://pm2.io/docs/runtime/reference/ecosystem-file/) dan [Laravel scheduler](https://laravel.com/framework/docs/13.x/scheduling).
 
 ## Berpindah ke domain final
 

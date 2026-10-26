@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Models\SubscriptionInvoice;
 use App\Models\User;
+use App\Services\StoreSetup;
 use App\Services\SubscriptionService;
 use App\Support\ListQuery;
 use App\Support\PackageCatalog;
@@ -91,7 +92,8 @@ class PanelController extends Controller
         abort_unless($request->user()?->role === 'owner' && $store->owner_id === $request->user()->id, 403);
 
         return Inertia::render('Panel/Dashboard', ['role' => 'owner', 'preview' => false,
-            'viewer' => $request->user()->only(['name']), 'counts' => [], 'ownerStatus' => $request->user()->verification_status, 'storeScope' => true, 'stores' => $this->summaries(collect([$store]))]);
+            'viewer' => $request->user()->only(['name']), 'counts' => [], 'ownerStatus' => $request->user()->verification_status, 'storeScope' => true, 'stores' => $this->summaries(collect([$store])),
+            'setup' => $request->user()->verification_status === 'approved' && ($store->status === 'provisioning' || $store->expires_at) ? app(StoreSetup::class)->summary($store) : null]);
     }
 
     public function staff(Request $request, Store $store)
@@ -102,7 +104,8 @@ class PanelController extends Controller
 
         return Inertia::render('Panel/Dashboard', ['role' => 'staff', 'preview' => false,
             'viewer' => ['name' => $staff->name], 'counts' => [],
-            'permissions' => $staff->permissions ?? [], 'storeScope' => true, 'stores' => $this->summaries(collect([$store]))]);
+            'permissions' => $staff->permissions ?? [], 'storeScope' => true, 'stores' => $this->summaries(collect([$store])),
+            'setup' => $store->status === 'provisioning' || $store->expires_at ? app(StoreSetup::class)->summary($store, false, $staff->permissions ?? []) : null]);
     }
 
     public function staffAccess(Request $request, Store $store)
