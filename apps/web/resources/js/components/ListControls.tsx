@@ -7,7 +7,7 @@ export type ListFilters = Record<string,string|number>;
 export type FilterChoice = {key:string;label:string;options:Record<string,string>};
 export const serviceOptions = {bot:'Bot WhatsApp',web:'Web Topup',full:'Web + Bot'};
 export { packageOptions as planOptions } from './packageCatalog';
-export const invoiceStatuses = {pending:'Menunggu pembayaran',paid:'Lunas / terjadwal',applied:'Paket diterapkan',expired:'Kedaluwarsa',review:'Perlu pemeriksaan'};
+export const invoiceStatuses = {pending:'Menunggu pembayaran',paid:'Lunas / terjadwal',applied:'Paket diterapkan',expired:'Kedaluwarsa',review:'Perlu pemeriksaan',refunded:'Dikembalikan'};
 
 export function useServerList(filters:ListFilters, only:string[], prefix = '') {
     const page = usePage();

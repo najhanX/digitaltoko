@@ -1,3 +1,4 @@
+import ProvisioningPanel, {type ProvisioningCase} from '../../components/ProvisioningPanel';
 import { Link, useForm, usePage, usePoll } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Check, CheckCircle2, Clock3, CreditCard, Copy, RefreshCw } from 'lucide-react';
@@ -16,13 +17,13 @@ type Store = {id:string;name:string;slug:string;category:string;plan:string;stat
 
 export function invoiceLabel(invoice: Invoice) {
     if (invoice.status === 'paid') return invoice.purpose === 'downgrade'?'Lunas · berlaku periode berikutnya':'Lunas · menunggu aktivasi';
-    return {pending:'Menunggu pembayaran',applied:'Lunas · paket diterapkan',expired:'Invoice kedaluwarsa',review:'Perlu pemeriksaan admin'}[invoice.status] ?? invoice.status;
+    return {pending:'Menunggu pembayaran',applied:'Lunas · paket diterapkan',expired:'Invoice kedaluwarsa',review:'Perlu pemeriksaan admin',refunded:'Sewa dikembalikan'}[invoice.status] ?? invoice.status;
 }
 export function InvoiceCard({invoice,refreshUrl}:{invoice:Invoice;refreshUrl?:string}) {
     return <article className="card onboarding-card invoice-history-card"><div className="section-toolbar"><div><h3>{packageName(invoice.snapshot.category,invoice.snapshot.plan)}</h3><p>{categories[invoice.snapshot.category]} · {invoice.snapshot.duration_days} hari</p></div><span className={'store-status '+invoice.status}>{invoiceLabel(invoice)}</span></div><dl className="invoice-meta"><div><dt>Total bayar</dt><dd>{invoice.total?money(invoice.total):money(invoice.snapshot.price)}</dd></div><div><dt>Dibayar</dt><dd>{invoice.paid_at?date(invoice.paid_at):'Belum dibayar'}</dd></div></dl><small className="invoice-id">Invoice {invoice.id}</small>{invoice.status === 'pending' && refreshUrl && <Link className="text-link" href={refreshUrl} method="post" as="button">Periksa pembayaran</Link>}</article>;
 }
-export default function Subscription({role,store,plans,invoices,ready,canManage,canManageBot,botStatus,currentInvoice,historyPagination,historyFilters,retention,setup}:{
-    setup:StoreSetup|null;retention:Retention;role:'owner'|'staff';store:Store;plans:Plan[];invoices:Invoice[];ready:boolean;canManage:boolean;canManageBot:boolean;botStatus:string;currentInvoice:Invoice|null;historyPagination:PageMeta;historyFilters:ListFilters;
+export default function Subscription({role,store,plans,invoices,ready,canManage,canManageBot,botStatus,currentInvoice,historyPagination,historyFilters,retention,setup,provisioning}:{
+    provisioning:ProvisioningCase|null;setup:StoreSetup|null;retention:Retention;role:'owner'|'staff';store:Store;plans:Plan[];invoices:Invoice[];ready:boolean;canManage:boolean;canManageBot:boolean;botStatus:string;currentInvoice:Invoice|null;historyPagination:PageMeta;historyFilters:ListFilters;
 }) {
     const history = useServerList(historyFilters,['invoices','historyPagination','historyFilters'],'history_');
     const errors = usePage().props.errors;
@@ -49,7 +50,7 @@ export default function Subscription({role,store,plans,invoices,ready,canManage,
     const displayCategory = initialInvoice?.snapshot.category ?? store.category;
     const displayPlan = store.expires_at || preparing ? ((store.is_trial?'Trial lama · ':'')+packageName(store.category,store.plan)) : initialInvoice ? 'Pilihan: '+packageName(initialInvoice.snapshot.category,initialInvoice.snapshot.plan) : 'Paket belum dipilih';
     const displayStatus = initialInvoice?.status === 'pending'?'Menunggu pembayaran':initialInvoice?.status === 'review'?'Pembayaran diperiksa':storeStatuses[store.status] ?? store.status;
-    usePoll(12000,{only:['store','plans','invoices','currentInvoice','historyPagination','historyFilters','ready','botStatus','canManage','retention','setup']});
+    usePoll(12000,{only:['store','plans','invoices','currentInvoice','historyPagination','historyFilters','ready','botStatus','canManage','retention','setup','provisioning']});
     useEffect(() => {if(!open)setCopied(false);},[open?.id]);
     function chooseCategory(value:string) {
         setCategory(value);
@@ -67,8 +68,9 @@ export default function Subscription({role,store,plans,invoices,ready,canManage,
         {store.status === 'grace' && <div className="feedback warning"><strong>Masa tenggang tujuh hari</strong><p>Transaksi masih tersedia. Segera perpanjang sebelum masa tenggang berakhir.</p></div>}
         {store.status === 'expired' && <div className="feedback warning"><strong>Layanan toko sedang berhenti</strong><p>{store.is_trial?'Trial telah selesai tanpa masa tenggang. Pilih paket berbayar untuk melanjutkan.':'Pilih perpanjangan untuk mengaktifkan kembali layanan toko.'}</p></div>}
         {blocked && <div className="feedback warning"><strong>Pembelian sementara tidak tersedia</strong><p>Toko sudah diajukan untuk penghapusan atau sedang dihapus. Hubungi administrator untuk tindak lanjut.</p></div>}
+        <ProvisioningPanel value={provisioning} store={store} owner={role==='owner'}/>
         {setup && <StoreSetupChecklist setup={setup} preparing={preparing}/>}
-        {preparing && <section className="card activation-panel"><div className="activation-heading"><CheckCircle2 size={26}/><div><span className="eyebrow">PEMBAYARAN DITERIMA</span><h2>{ready?'Konfirmasi mulai masa sewa':'Hubungkan WhatsApp untuk aktivasi'}</h2><p>Masa sewa belum dimulai. Aktivasi memerlukan subdomain bawaan dan, pada paket Bot atau Web + Bot, koneksi WhatsApp.</p></div></div>
+        {preparing && <section className="card activation-panel"><div className="activation-heading"><CheckCircle2 size={26}/><div><span className="eyebrow">PEMBAYARAN DITERIMA</span><h2>{ready?'Konfirmasi mulai masa sewa':'Persiapan belum dapat diaktifkan'}</h2><p>{provisioning && ['failed','review','refund_requested','refund_processing'].includes(provisioning.state)?'Masa sewa belum dimulai. Selesaikan penanganan persiapan toko di atas sebelum aktivasi.':'Masa sewa belum dimulai. Aktivasi memerlukan subdomain bawaan dan, pada paket Bot atau Web + Bot, koneksi WhatsApp.'}</p></div></div>
             {ready && setup && !setup.ready && <p className="summary-note">Anda dapat memulai masa sewa. Lengkapi persiapan berjualan sebelum menerima pesanan pelanggan.</p>}
             {store.ready_at && <p className="field-help">Jika belum dikonfirmasi, toko otomatis aktif pada {date(new Date(new Date(store.ready_at).getTime()+86400000).toISOString())}.</p>}
             <div className="card-actions">{role === 'owner' && <button className="button" type="button" disabled={!ready || action.processing} onClick={() => setConfirm('activate')}>Aktifkan toko & mulai masa sewa<ArrowRight size={16}/></button>}{role === 'staff' && <p className="field-help">Aktivasi pertama dikonfirmasi oleh owner toko.</p>}</div>

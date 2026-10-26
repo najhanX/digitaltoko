@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerInquiry;
 use App\Models\CustomerOrder;
 use App\Models\ModulePurchase;
+use App\Models\ProvisioningCase;
 use App\Models\Store;
 use App\Models\SubscriptionInvoice;
 
@@ -24,7 +25,8 @@ class StoreObligations
             'guests' => (clone $orders)->whereNull('customer_id')->where('status', 'failed')->where('payment_status', 'paid')->whereNull('resolution')->count(),
             'refunds' => (clone $orders)->whereNotNull('customer_id')->where('status', 'failed')->where('payment_status', 'paid')->whereNull('refunded_at')->count(),
             'inquiries' => CustomerInquiry::where('store_id', $store->id)->where('expires_at', '>', now())->whereNotIn('id', CustomerOrder::where('store_id', $store->id)->whereNotNull('inquiry_id')->select('inquiry_id'))->count(),
-            'subscriptions' => SubscriptionInvoice::where('store_id', $store->id)->whereNotIn('status', ['applied', 'expired', 'cancelled'])->count(),
+            'subscriptions' => SubscriptionInvoice::where('store_id', $store->id)->whereNotIn('status', ['applied', 'expired', 'cancelled', 'refunded'])->count(),
+            'provisioning' => ProvisioningCase::where('store_id', $store->id)->whereIn('state', ['review', 'refund_requested', 'refund_processing'])->count(),
             'modules' => ModulePurchase::where('store_id', $store->id)->whereNotIn('status', ['paid', 'expired', 'cancelled'])->count(),
         ];
     }
@@ -32,7 +34,7 @@ class StoreObligations
     public function reasons(array $obligations): array
     {
         $labels = [
-            'balance' => 'Saldo pelanggan belum dikembalikan', 'debt' => 'Saldo pelanggan masih minus',
+            'provisioning' => 'Penyiapan toko / pengembalian sewa belum selesai', 'balance' => 'Saldo pelanggan belum dikembalikan', 'debt' => 'Saldo pelanggan masih minus',
             'orders' => 'Pesanan atau pembayaran belum selesai', 'guests' => 'Penyelesaian pesanan guest belum dicatat',
             'refunds' => 'Refund pelanggan belum selesai', 'inquiries' => 'Pemeriksaan tagihan masih berlaku',
             'subscriptions' => 'Invoice sewa / jadwal paket belum selesai', 'modules' => 'Invoice modul belum selesai',

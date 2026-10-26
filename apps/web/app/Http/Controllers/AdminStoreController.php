@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CatalogProduct;
 use App\Models\PremiumStock;
+use App\Models\ProvisioningCase;
 use App\Models\Store;
 use App\Models\StoreAdminEvent;
 use App\Models\StoreStaff;
@@ -11,6 +12,7 @@ use App\Models\SubscriptionInvoice;
 use App\Models\SupplierConnection;
 use App\Models\User;
 use App\Services\PanelNotifications;
+use App\Services\Provisioning;
 use App\Services\StoreRetention;
 use App\Services\SubscriptionService;
 use App\Support\BotConnection;
@@ -46,8 +48,11 @@ class AdminStoreController extends Controller
     {
         $this->authorizeAdmin($request);
         $list = new ListQuery($request, ['status' => ['draft', 'provisioning', 'active', 'grace', 'expired', 'suspended', 'suspended_manual', 'purging'],
-            'category' => ['bot', 'web', 'full'], 'package' => PackageCatalog::keys(), 'suspension' => ['yes', 'no'], 'retention' => ['scheduled', 'requested', 'hold', 'ready', 'purging', 'error']], 10);
+            'setup' => ['attention'], 'category' => ['bot', 'web', 'full'], 'package' => PackageCatalog::keys(), 'suspension' => ['yes', 'no'], 'retention' => ['scheduled', 'requested', 'hold', 'ready', 'purging', 'error']], 10);
         $query = Store::with(['owner:id,name,email,phone,hanshop_user_id,verification_status', 'domain'])->join('users', 'users.id', '=', 'stores.owner_id')->select('stores.*');
+        if (($list->filters['setup'] ?? '') === 'attention') {
+            $query->whereIn('stores.id', ProvisioningCase::whereIn('state', ['failed', 'review', 'refund_requested', 'refund_processing'])->select('store_id'));
+        }
         $ownerId = $request->query('owner');
         $owner = is_string($ownerId) && ctype_digit($ownerId) ? User::where('role', 'owner')->find($ownerId, ['id', 'name', 'phone', 'email']) : null;
         if ($owner) {
@@ -72,6 +77,7 @@ class AdminStoreController extends Controller
         $events = $list->paginate($list->apply(StoreAdminEvent::where('store_id', $store->id)->leftJoin('users', 'users.id', '=', 'store_admin_events.admin_id')->select('store_admin_events.*', 'users.name as admin_name'), ['reason', 'users.name'], ['action' => 'action'])->orderByDesc('store_admin_events.id'));
 
         return Inertia::render('Admin/StoreDetail', ['store' => $this->payload($store->load(['owner', 'domain'])),
+            'provisioning' => app(Provisioning::class)->monitor($store),
             'retention' => app(StoreRetention::class)->summary($store, true),
             'bot' => BotConnection::state($store, false)['status'] ?? 'DISCONNECTED',
             'counts' => ['staff' => StoreStaff::where('store_id', $store->id)->count(), 'products' => CatalogProduct::where('store_id', $store->id)->count(),
@@ -107,6 +113,11 @@ class AdminStoreController extends Controller
         return to_route('admin.stores.index')->with('success', 'Toko telah dihapus permanen. Akun owner dan toko lainnya tetap tersimpan.');
     }
 
+    private function ensureNoRefund(Store $store): void
+    {
+        abort_if(ProvisioningCase::where('store_id', $store->id)->where('state', 'refund_processing')->exists(), 422, 'Selesaikan refund sewa sebelum mengubah toko.');
+    }
+
     public function update(Request $request, Store $store): RedirectResponse
     {
         $this->authorizeAdmin($request);
@@ -123,6 +134,7 @@ class AdminStoreController extends Controller
             if ($locked->status === 'purging') {
                 throw ValidationException::withMessages(['action' => 'Toko sedang dalam penghapusan dan tidak dapat diubah.']);
             }
+            $this->ensureNoRefund($locked);
             $fields = ['name', 'template', 'status', 'expires_at', 'category', 'plan', 'admin_suspended_at', 'admin_suspension_reason'];
             $before = $locked->only($fields);
             $before['package_name'] = PackageCatalog::name($locked->category, $locked->plan);

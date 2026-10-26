@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PlanOption;
 use App\Models\Store;
 use App\Models\SubscriptionInvoice;
+use App\Services\Provisioning;
 use App\Services\StoreRetention;
 use App\Services\StoreSetup;
 use App\Services\SubscriptionService;
@@ -38,7 +39,7 @@ class SubscriptionController extends Controller
         $store->refresh();
 
         $current = SubscriptionInvoice::where('store_id', $store->id)->whereIn('status', ['pending', 'paid', 'review'])->latest()->orderByDesc('id')->first();
-        $list = new ListQuery($request, ['status' => ['pending', 'paid', 'applied', 'expired', 'review']], 10, 'history_');
+        $list = new ListQuery($request, ['status' => ['pending', 'paid', 'applied', 'expired', 'review', 'refunded']], 10, 'history_');
         $history = SubscriptionInvoice::where('store_id', $store->id)->when($current, fn ($query) => $query->where('id', '!=', $current->id));
         $page = $list->paginate($list->apply($history, ['id', 'snapshot->name'], ['status' => 'status'])->latest()->orderByDesc('id'));
 
@@ -46,8 +47,9 @@ class SubscriptionController extends Controller
             'plans' => PlanOption::where('active', true)->where('plan', 'galaxy')->orderBy('duration_days')->orderBy('price')->get()
                 ->map(fn ($plan) => [...$plan->toArray(), 'purpose' => $service->purpose($store, $plan)]),
             'invoices' => $page->items(), 'currentInvoice' => $current, 'historyPagination' => ListQuery::meta($page), 'historyFilters' => $list->filters,
+            'provisioning' => app(Provisioning::class)->current($store),
             'retention' => app(StoreRetention::class)->summary($store),
-            'ready' => $service->ready($store),
+            'ready' => $service->ready($store) && ! app(Provisioning::class)->held($store),
             'setup' => $store->status === 'provisioning' || $store->expires_at ? app(StoreSetup::class)->summary($store, $role === 'owner', $request->user('staff')?->permissions ?? []) : null,
             'canManage' => $role === 'owner' || (! $store->is_trial && $store->expires_at && in_array('subscription.renew', $request->user('staff')->permissions ?? [], true)),
             'canManageBot' => $role === 'owner' || in_array('bot.manage', $request->user('staff')->permissions ?? [], true),

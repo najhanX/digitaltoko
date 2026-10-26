@@ -21,6 +21,7 @@ use App\Http\Controllers\PanelNotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PremiumStockController;
 use App\Http\Controllers\PreviewController;
+use App\Http\Controllers\ProvisioningController;
 use App\Http\Controllers\PublicArticleController;
 use App\Http\Controllers\PublicPricingController;
 use App\Http\Controllers\QuickOrderController;
@@ -149,6 +150,7 @@ Route::middleware('platform.host')->group(function () {
 
     Route::get('/stores/{store}/sources', [SupplierController::class, 'index']);
     Route::post('/stores/{store}/sources/{connection}/webhook', [SupplierController::class, 'webhook'])->middleware('throttle:6,1');
+    Route::post('/stores/{store}/provisioning', [ProvisioningController::class, 'update'])->middleware('throttle:10,1,provisioning');
     Route::get('/stores/{store}/supplier-wallets', [SupplierWalletController::class, 'index'])->name('supplier-wallets.index');
     Route::post('/stores/{store}/supplier-wallets/{connection}/refresh', [SupplierWalletController::class, 'refresh'])->middleware('throttle:12,1,supplier-wallet-refresh');
     Route::post('/stores/{store}/supplier-wallets/{connection}/deposit', [SupplierWalletController::class, 'deposit'])->middleware('throttle:6,1,supplier-wallet-deposit');

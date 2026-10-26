@@ -17,9 +17,11 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 use App\Models\OtomaxImport;
+use App\Models\ProvisioningCase;
 use App\Models\SubscriptionInvoice;
 use App\Models\User;
 use App\Services\OtomaxImports;
+use App\Services\Provisioning;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
@@ -77,6 +79,13 @@ Artisan::command('digitaltoko:subscriptions', function (SubscriptionService $ser
     });
     Store::whereIn('status', ['active', 'grace', 'expired', 'provisioning'])->each(function ($store) use ($service) {
         $service->tick($store);
+    });
+    ProvisioningCase::where('state', 'refund_processing')->whereNotNull('approved_at')->oldest('updated_at')->limit(50)->get()->each(function ($case) {
+        try {
+            app(Provisioning::class)->refund($case);
+        } catch (Throwable $error) {
+            report($error);
+        }
     });
     $this->info('Status invoice dan langganan diperiksa.');
 })->purpose('Rekonsiliasi invoice, aktivasi otomatis dan masa tenggang per toko.');

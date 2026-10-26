@@ -332,3 +332,13 @@ Migrasi lokal web dan API sudah diterapkan setelah backup privat pada 26 Oktober
 ### Tambahan prasyarat MySQL deposit Hanshop
 
 Sebelum script 20261026_digitaltoko_supplier_deposits.sql, jalankan juga 20261026_digitaltoko_payment_runtime_columns.sql dari folder scripts/migrations API Hanshop. Script ini kompatibel MySQL dan aman dijalankan ulang bila expires_at/last_checked_at/index sudah ada. Backup dahulu. Verifikasi kedua kolom pada payment. Schema yang belum lengkap kini menghasilkan alasan khusus di rincian deposit. Permintaan lama yang tidak tercatat upstream tidak dibuat ulang oleh tombol Periksa; buat permintaan baru setelah penyebab diperbaiki.
+
+## Deployment penanganan provisioning/refund
+
+1. Backup web dan API. Web: php artisan migrate --force untuk create_provisioning_cases_table. API: jalankan manual scripts/migrations/20261026_digitaltoko_rental_refunds.sql pada database API, setelah digitaltoko_invoices dan saldo_ledger lengkap (termasuk reference_type/reference_id/entry_status dari migrasi ledger existing). Verifikasi SHOW CREATE TABLE digitaltoko_invoice_refunds.
+2. Build web/API dan muat ulang proses API serta queue/scheduler yang berjalan. Jadwal digitaltoko:subscriptions tetap tiap menit, memantau kesiapan dan hanya memeriksa ulang refund yang sudah disetujui admin. Jangan menjalankan beberapa scheduler untuk profil yang sama.
+3. Panel owner: Langganan & aktivasi → Penanganan persiapan toko. Panel admin: Kelola toko → filter Penyiapan toko / Detail toko → Penanganan persiapan toko. Admin harus meninjau alasan sebelum approval; retry memeriksa kesiapan tanpa membeli ulang atau mengaktifkan paksa.
+4. Refund bukan transfer bank otomatis: total invoice termasuk kode unik masuk saldo Hanshop owner. Jangan menyetujui hanya karena owner belum menghubungkan WA atau berubah pikiran. Jika API timeout, gunakan penanganan invoice yang sama, jangan melakukan kredit saldo manual paralel. Refund invoice voucher Rp0 tidak menghubungi API dan tidak mengembalikan kuota voucher.
+5. Status refunded bukan expired/cancelled biasa. Source menyertakannya pada label/filter invoice dan pengecualian kewajiban retensi; kasus review/refund berjalan tetap menahan penghapusan. Store/account lain tidak ikut berubah.
+
+Backup lokal web: storage/app/private/backups/before-otomax-20261026-153139.sql (helper backup lama, dump seluruh DB). Backup API: storage/app/private/backups/hanshop-before-rental-refunds-1793028701103.sql. Eksekusi production tetap manual setelah backup, bukan bagian pengujian lokal.

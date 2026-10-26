@@ -42,7 +42,7 @@ class PlanController extends Controller
     {
         abort_unless($request->user()?->role === 'admin', 403);
 
-        $list = new ListQuery($request, ['status' => ['pending', 'paid', 'applied', 'expired', 'review'], 'purpose' => ['initial', 'renew', 'change', 'downgrade']]);
+        $list = new ListQuery($request, ['status' => ['pending', 'paid', 'applied', 'expired', 'review', 'refunded'], 'purpose' => ['initial', 'renew', 'change', 'downgrade']]);
         $page = $list->paginate($list->apply(SubscriptionInvoice::query(), ['id', 'store_id', 'snapshot->name'], ['status' => 'status', 'purpose' => 'purpose'])->latest()->orderByDesc('id'));
 
         return Inertia::render('Admin/Billing', ['invoices' => $page, 'filters' => $list->filters]);

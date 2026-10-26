@@ -1,3 +1,4 @@
+import ProvisioningPanel, {type ProvisioningCase} from '../../components/ProvisioningPanel';
 import { Link } from '@inertiajs/react';
 import { ArrowLeft, ExternalLink, ReceiptText, Store, UserRound, Globe2, Package, Bot } from 'lucide-react';
 import StoreRetentionPanel, {type Retention} from '../../components/StoreRetentionPanel';
@@ -10,7 +11,7 @@ import { storeStatuses, date, categories } from '../../components/StoreJourney';
 type Event = {id:number;admin_name:string|null;action:string;reason:string;created_at:string;before:Record<string,string|null>;after:Record<string,string|null>};
 const labels:Record<string,string> = {package_name:'Paket',category:'Layanan',plan:'Sumber produk',name:'Nama toko',template:'Template',status:'Status langganan',expires_at:'Masa aktif',admin_suspended_at:'Ditangguhkan sejak',admin_suspension_reason:'Alasan penangguhan'};
 function display(key:string,value:string|null) {return !value?'—':key.endsWith('_at')?date(value):key==='status'?(storeStatuses[value] ?? value):key==='category'?({bot:'Bot WhatsApp',web:'Web Topup',full:'Web + Bot'}[value] ?? value):key==='plan'?'Digiflazz · Hanshop · OtomaX · Stok premium':value;}
-export default function StoreDetail({store,bot,counts,events,filters,pagination,retention}:{retention:Retention;store:ManagedStore;bot:string;counts:{staff:number;products:number;stock:number;suppliers:number};events:Event[];filters:ListFilters;pagination:PageMeta}) {
+export default function StoreDetail({store,bot,counts,events,filters,pagination,retention,provisioning}:{provisioning:ProvisioningCase|null;retention:Retention;store:ManagedStore;bot:string;counts:{staff:number;products:number;stock:number;suppliers:number};events:Event[];filters:ListFilters;pagination:PageMeta}) {
     const list = useServerList(filters,['events','filters','pagination']);
     const botLabel:Record<string,string>={CONNECTED:'Terhubung',DISCONNECTED:'Terputus',CONNECTING:'Menghubungkan',RECONNECTING:'Menghubungkan ulang',PAIRING:'Menunggu penautan',EXPIRED:'Koneksi kedaluwarsa',ERROR:'Perlu diperiksa',STARTING:'Memulai',STOPPED:'Tidak aktif'};
     return <WorkspaceLayout role="admin" title="Detail toko" breadcrumb="Kelola toko" description="Identitas, langganan, dan pengelolaan toko." contentClassName="admin-store-detail"
@@ -26,7 +27,7 @@ export default function StoreDetail({store,bot,counts,events,filters,pagination,
             </div>
             <footer className="admin-store-actionbar"><AdminStoreActions store={store}/><Link className="button secondary small" href={'/admin/billing?q='+encodeURIComponent(store.id)}><ReceiptText size={15}/>Riwayat pembayaran</Link></footer>
         </section>
-        <StoreRetentionPanel retention={retention} admin store={store}/>
+        <ProvisioningPanel value={provisioning} store={store} admin/><StoreRetentionPanel retention={retention} admin store={store}/>
         <section className="table-card data-list-table catalog-data-card admin-store-audit"><header className="data-table-header"><h2>Riwayat tindakan admin</h2><Pagination compact meta={pagination} onPage={list.go} busy={list.busy} label="Navigasi atas riwayat"/></header>
         <FilterBar filters={filters} onApply={list.apply} busy={list.busy} placeholder="Cari alasan atau nama admin…" choices={[{key:'action',label:'Tindakan',options:adminActions}]}/>
             <div className="table-scroll"><table><thead><tr><th>Waktu / admin</th><th>Tindakan</th><th>Perubahan</th><th>Alasan</th></tr></thead><tbody>{events.map(event=><tr key={event.id}><td>{date(event.created_at)}<small>{event.admin_name ?? 'Akun admin sudah dihapus'}</small></td><td className="table-cell-center">{adminActions[event.action]}</td><td className="admin-audit-change">{Object.keys(event.after).filter(key=>event.before[key]!==event.after[key]).map(key=><div key={key}><strong>{labels[key] ?? key}</strong><small>{display(key,event.before[key])} → {display(key,event.after[key])}</small></div>)}</td><td className="catalog-note admin-store-reason">{event.reason}</td></tr>)}</tbody></table></div>

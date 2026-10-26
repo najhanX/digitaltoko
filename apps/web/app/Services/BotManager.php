@@ -22,6 +22,9 @@ class BotManager
     public function command(Store $store, string $action, array $data = []): void
     {
         if (! $this->configured()) {
+            if ($store->status === 'provisioning') {
+                app(Provisioning::class)->failure($store, 'Koneksi layanan bot platform belum dikonfigurasi. Administrator perlu memeriksa layanan.');
+            }
             throw ValidationException::withMessages(['connection' => 'Administrator perlu mengatur koneksi layanan bot terlebih dahulu.']);
         }
         try {
@@ -32,6 +35,9 @@ class BotManager
             $success = false;
         }
         if (! $success) {
+            if ($store->status === 'provisioning' && $action !== 'message') {
+                app(Provisioning::class)->failure($store, 'Layanan bot belum menerima permintaan penyiapan. Administrator perlu memeriksa manager dan koneksi worker.');
+            }
             if ($action === 'message') {
                 $message = match (isset($response) ? $response->status() : null) {
                     404 => 'Bot manager masih memakai versi lama. Hentikan manager lalu jalankan npm run manager:dev kembali.',

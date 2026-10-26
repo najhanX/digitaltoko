@@ -70,3 +70,7 @@ Checklist setelah pembayaran adalah panduan konfigurasi, bukan perubahan kontrak
 ## 26 Oktober 2026 — Pengirim email bawaan platform
 
 Email bawaan memakai satu alamat pusat dari MAIL_FROM_ADDRESS, dengan nama pengirim mengikuti nama toko melalui StoreMail. Alamat lokal saat keputusan dibuat adalah info@hansdigi.biz.id; alamat domain DigitalToko ditentukan setelah layanan email siap. Tidak membuat mailbox atau alamat pengirim per subdomain tenant, tidak mengintegrasikan provisioning cPanel/Cloudflare untuk email. Pilihan SMTP milik toko tetap tersedia. Migrasi alamat pusat memerlukan konfigurasi SMTP/DNS dan uji pengiriman; koneksi SMTP keluar dari VPS perlu dipastikan. Keputusan ini tidak mengubah source atau kredensial runtime.
+
+## 26 Oktober 2026 — Refund sewa awal gagal provisioning
+
+Disetujui owner platform: admin dapat mengembalikan pembayaran penuh termasuk kode unik ke saldo Hanshop untuk sewa awal yang belum pernah aktif dan gagal karena platform. Tidak otomatis untuk kelalaian persiapan owner/pembatalan sepihak. Paket voucher gratis dibatalkan tanpa uang dan tanpa reset kuota. Invoice sudah aktif atau renewal/change tetap di luar cakupan. Approval dicatat sebelum request uang dan memblokir aktivasi; rekonsiliasi memakai UUID invoice tetap agar timeout/retry tidak menggandakan kredit. Akun Hanshop owner dan toko lain dipertahankan.

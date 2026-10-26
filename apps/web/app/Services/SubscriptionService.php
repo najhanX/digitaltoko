@@ -144,6 +144,9 @@ class SubscriptionService
             'starts_at' => $base, 'expires_at' => Carbon::instance($base)->addDays($invoice->snapshot['duration_days']),
             'status' => 'active', 'is_trial' => false, 'trial_requested_at' => null, 'ready_at' => null]);
         $invoice->update(['status' => 'applied', 'applied_at' => now()]);
+        if ($invoice->purpose === 'initial') {
+            app(Provisioning::class)->resolved($store);
+        }
     }
 
     public function ready(Store $store): bool
@@ -155,23 +158,33 @@ class SubscriptionService
 
     public function activate(Store $store): void
     {
-        DB::transaction(function () use ($store) {
-            $owner = User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
-            $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
-            $this->ensure(! $store->admin_suspended_at, 'Toko ditangguhkan administrator. Hubungi administrator sebelum mengaktifkan.');
-            if ($store->status === 'active') {
-                return;
-            }
-            $this->ensure($store->status === 'provisioning' && $this->ready($store), 'Toko belum siap. Hubungkan WhatsApp untuk layanan bot.');
-            $this->ensure(! $store->is_trial && ! $store->trial_requested_at, 'Trial tidak tersedia. Pilih paket dan gunakan voucher promo jika ada.');
-            $invoice = SubscriptionInvoice::where('store_id', $store->id)->where('purpose', 'initial')->where('status', 'paid')->lockForUpdate()->first();
-            $this->ensure($invoice !== null, 'Selesaikan pembelian paket sebelum mengaktifkan toko.');
-            $this->grant($store, $invoice, now());
-        });
+        try {
+            DB::transaction(function () use ($store) {
+                $owner = User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
+                $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+                $this->ensure(! $store->admin_suspended_at, 'Toko ditangguhkan administrator. Hubungi administrator sebelum mengaktifkan.');
+                if ($store->status === 'active') {
+                    return;
+                }
+                $this->ensure(! app(Provisioning::class)->held($store), 'Penyiapan toko sedang ditinjau atau diproses refund. Tunggu penyelesaian admin.');
+                $this->ensure($store->status === 'provisioning' && $this->ready($store), 'Toko belum siap. Hubungkan WhatsApp untuk layanan bot.');
+                $this->ensure(! $store->is_trial && ! $store->trial_requested_at, 'Trial tidak tersedia. Pilih paket dan gunakan voucher promo jika ada.');
+                $invoice = SubscriptionInvoice::where('store_id', $store->id)->where('purpose', 'initial')->where('status', 'paid')->lockForUpdate()->first();
+                $this->ensure($invoice !== null, 'Selesaikan pembelian paket sebelum mengaktifkan toko.');
+                $this->grant($store, $invoice, now());
+            });
+        } catch (ValidationException $error) {
+            throw $error;
+        } catch (\Throwable $error) {
+            report($error);
+            app(Provisioning::class)->failure($store->fresh(), 'Aktivasi belum berhasil karena gangguan proses platform. Admin perlu memeriksa layanan.');
+            throw ValidationException::withMessages(['subscription' => 'Aktivasi belum berhasil. Masa sewa belum dimulai. Kendala sudah dicatat untuk admin.']);
+        }
     }
 
     public function tick(Store $store): void
     {
+        app(Provisioning::class)->monitor($store);
         $auto = false;
         DB::transaction(function () use ($store, &$auto) {
             User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
@@ -183,7 +196,7 @@ class SubscriptionService
                 $store->update(['status' => 'draft', 'is_trial' => false, 'trial_requested_at' => null, 'ready_at' => null]);
                 User::whereKey($store->owner_id)->whereNull('trial_used_at')->where('trial_store_id', $store->id)->update(['trial_store_id' => null]);
             }
-            if ($store->status === 'provisioning') {
+            if ($store->status === 'provisioning' && ! app(Provisioning::class)->held($store)) {
                 if ($this->ready($store)) {
                     if (! $store->ready_at) {
                         $store->update(['ready_at' => now()]);
