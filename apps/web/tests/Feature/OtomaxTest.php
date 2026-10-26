@@ -23,6 +23,7 @@ use App\Services\CustomerFulfillment;
 use App\Services\OtomaxClient;
 use App\Services\OtomaxImports;
 use App\Services\OtomaxParser;
+use App\Services\SupplierWallets;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -48,6 +49,24 @@ class OtomaxTest extends TestCase
         $this->assertSame('1JfNlQ7xGM9scGANRYuQBxlukCM', OtomaxClient::sign('DEMO', '1111', 'test-only', 'transaction', ['product' => 'TEST', 'dest' => '08123456789', 'refID' => 'REF1']));
         $this->assertSame('3zFOqcsZYP91H_4lpTyuvLor1sU', OtomaxClient::sign('DEMO', '1111', 'test-only', 'balance'));
         $this->assertSame('uLepH8CkjhW6rFZTtJjNXPjW3Ns', OtomaxClient::sign('DEMO', '1111', 'test-only', 'ticket', ['amount' => 50000]));
+    }
+
+    public function test_callback_updates_supplier_balance_by_event_time_without_late_callback_regression(): void
+    {
+        $connection = $this->connection();
+        $order = $this->order($connection);
+        Http::fake(fn () => Http::response('#12345 TEST.08123456789 akan diproses @12:00. Saldo 100.000 - 10.000 = 90.000'));
+        app(CustomerFulfillment::class)->run($order);
+        $attempt = $order->attempts()->sole();
+        $url = '/api/commerce/otomax/'.$connection->id.'/'.str_repeat('a', 48);
+        $time = now('Asia/Jakarta')->subMinute()->startOfSecond();
+        $message = fn ($amount, $at) => '#12345 TEST.08123456789 SUKSES. SN/Ref: RESULT. Saldo 100.000 - 10.000 = '.$amount.' @'.$at->format('d/m/Y H:i:s').' R#'.$attempt->reference;
+        foreach ([[90000, $time], [95000, $time->copy()->subSecond()]] as [$balance, $at]) {
+            $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->getJson($url.'?'.http_build_query(['refid' => $attempt->reference, 'status' => '20', 'price' => 10000, 'message' => $message($balance, $at)]))->assertOk();
+            $this->assertSame(90000, app(SupplierWallets::class)->account($connection)->balance);
+        }
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame('callback', app(SupplierWallets::class)->account($connection)->source);
     }
 
     public function test_definitive_failure_of_final_source_fails_order_and_refunds_once(): void

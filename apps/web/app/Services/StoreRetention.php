@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class StoreRetention
 {
-    public const TABLES = ['otomax_profiles', 'otomax_imports', 'otomax_tickets', 'otomax_events', 'store_domains', 'store_staff', 'supplier_connections', 'supplier_products', 'catalog_services', 'catalog_categories', 'catalog_products', 'product_mappings', 'premium_stocks', 'pricing_rules', 'customers', 'customer_inquiries', 'customer_orders', 'customer_ledgers', 'customer_notices', 'store_payment_settings', 'subscription_invoices', 'module_purchases', 'store_articles', 'article_assets', 'discount_vouchers', 'panel_notifications', 'store_admin_events'];
+    public const TABLES = ['supplier_accounts', 'supplier_deposits', 'otomax_profiles', 'otomax_imports', 'otomax_tickets', 'otomax_events', 'store_domains', 'store_staff', 'supplier_connections', 'supplier_products', 'catalog_services', 'catalog_categories', 'catalog_products', 'product_mappings', 'premium_stocks', 'pricing_rules', 'customers', 'customer_inquiries', 'customer_orders', 'customer_ledgers', 'customer_notices', 'store_payment_settings', 'subscription_invoices', 'module_purchases', 'store_articles', 'article_assets', 'discount_vouchers', 'panel_notifications', 'store_admin_events'];
 
     /** Called under the store row lock, including supplier callbacks and wallet mutations. */
     public static function guard(Store $store): void

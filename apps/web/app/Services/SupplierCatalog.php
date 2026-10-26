@@ -107,6 +107,7 @@ class SupplierCatalog
             return ['amount' => 1000000, 'simulated' => true, 'observed_at' => now()->toIso8601String()];
         }
         $snapshot = $this->cache->remember($connection->kind, $this->account($connection), 'balance', function () use ($connection) {
+            $startedAt = now()->toIso8601String();
             if ($connection->kind === 'digiflazz') {
                 $data = $this->digi($connection, 'cek-saldo', 'prepaid');
                 $balance = $data['deposit'] ?? null;
@@ -115,11 +116,11 @@ class SupplierCatalog
                 abort_unless(($data['id_user'] ?? null) === $connection->store->owner->hanshop_user_id, 422);
                 $balance = $data['balance'] ?? null;
             }
-            if (! is_numeric($balance) || ! is_finite((float) $balance) || (float) $balance < 0) {
+            if (! is_numeric($balance) || ! is_finite((float) $balance) || abs((float) $balance) > 1000000000000) {
                 throw ValidationException::withMessages(['supplier' => 'Respons saldo pemasok tidak valid.']);
             }
 
-            return ['amount' => (int) floor((float) $balance)];
+            return ['amount' => (int) floor((float) $balance), 'requested_at' => $startedAt];
         });
 
         return [...$snapshot['value'], 'observed_at' => $snapshot['observed_at']];

@@ -109,6 +109,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         const overview = role === 'owner' ? '/owner/stores/'+store.id : '/staff/'+store.id+'/dashboard';
         if (role === 'owner' || permissions.includes('dashboard.view')) scopedLinks.push({href:overview,label:'Ringkasan toko',icon:LayoutDashboard,active:path === overview});
         if (role === 'owner' || permissions.includes('subscription.view')) scopedLinks.push({href:'/stores/'+store.id+'/subscription',label:'Langganan & aktivasi',section:'management',icon:CreditCard,active:path === '/stores/'+store.id+'/subscription'});
+        if (role === 'owner' || permissions.includes('suppliers.balance')) scopedLinks.push({href:'/stores/'+store.id+'/supplier-wallets',label:'Saldo & deposit pemasok',section:'catalog',icon:CreditCard,active:path === '/stores/'+store.id+'/supplier-wallets'});
         if (role === 'owner' || permissions.some(value=>['products.view','products.manage','pricing.manage','suppliers.manage','suppliers.responses','suppliers.import','suppliers.balance','suppliers.deposit'].includes(value))) {
             scopedLinks.push({href:'/stores/'+store.id+'/otomax',label:'Supplier OtomaX',section:'catalog',icon:Package,active:path.startsWith('/stores/'+store.id+'/otomax')});
             scopedLinks.push({href:'/stores/'+store.id+'/sources',label:'Sumber produk',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/sources'});

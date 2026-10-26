@@ -83,6 +83,7 @@ Artisan::command('digitaltoko:subscriptions', function (SubscriptionService $ser
 Schedule::command('digitaltoko:subscriptions')->everyMinute()->withoutOverlapping();
 Schedule::command('digitaltoko:catalog-sync')->everyTwoMinutes()->withoutOverlapping();
 Schedule::command('digitaltoko:otomax-catalogs')->everyMinute()->withoutOverlapping();
+Schedule::command('digitaltoko:supplier-wallets')->everyTwoMinutes()->withoutOverlapping();
 
 Schedule::command('digitaltoko:commerce')->everyMinute()->withoutOverlapping();
 Schedule::command('digitaltoko:customer-notices')->everyFiveSeconds()->withoutOverlapping()->runInBackground();

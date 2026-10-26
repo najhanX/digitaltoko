@@ -40,7 +40,7 @@ Domain memakai `APP_URL`, `PLATFORM_DOMAIN`, alias, dan mapping custom host veri
 
 ## Batas saat ini
 
-Retensi per toko sudah tersedia: jadwal 7/30 hari, hold kewajiban, reminder, pratinjau admin, pembatalan saat renewal, dan purge data/media/sesi WhatsApp. Persetujuan penutupan manual tersedia melalui modal admin, termasuk toko tanpa langganan. Penghapusan otomatis dinonaktifkan secara bawaan (`STORE_PURGE_ENABLED=false`) dan terpisah dari persetujuan manual. Kebijakan backup/log server bersama, otomatisasi DNS/TLS, refund sewa gagal provisioning, dan hardening worker multi-host tetap memerlukan tindak lanjut operasional. Panel topup saldo Hanshop owner juga belum tersedia; jangan menyamakannya dengan topup wallet pelanggan yang sudah tersedia.
+Retensi per toko sudah tersedia: jadwal 7/30 hari, hold kewajiban, reminder, pratinjau admin, pembatalan saat renewal, dan purge data/media/sesi WhatsApp. Persetujuan penutupan manual tersedia melalui modal admin, termasuk toko tanpa langganan. Penghapusan otomatis dinonaktifkan secara bawaan (`STORE_PURGE_ENABLED=false`) dan terpisah dari persetujuan manual. Kebijakan backup/log server bersama, otomatisasi DNS/TLS, refund sewa gagal provisioning, dan hardening worker multi-host tetap memerlukan tindak lanjut operasional. Pemantauan saldo dan permintaan deposit Digiflazz/Hanshop/OtomaX tersedia di Produk & harga → Saldo & deposit pemasok; saldo pemasok terpisah dari wallet pelanggan. Deposit nyata dan konfirmasi tiap supplier tetap perlu diuji pada lingkungan operasional.
 
 Source di working tree dapat lebih baru daripada commit/deployment. Pengujian historis tercatat dengan tanggal dan lingkungannya; keberadaan source/test tidak membuktikan layanan produksi sudah diperbarui.
 

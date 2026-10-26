@@ -53,3 +53,7 @@ Owner-only: pengelolaan staff, identitas/KTP, credential Digiflazz/Hanshop dan g
 Refund terminal customer login dijalankan sistem tanpa menunggu staff. Callback Digiflazz dapat mengoreksi keputusan manual dan menarik refund kembali; status/riwayat tetap dapat diperiksa meskipun saldo minus membatasi pembelian baru.
 
 Login staff menghapus sesi web owner/admin di browser itu, dan sebaliknya. Password staff kosong saat edit mempertahankan hash lama; reset password mandiri belum menjadi alur lengkap. Lihat BUSINESS_RULES.md dan ARCHITECTURE.md untuk lifecycle serta pemisahan wallet.
+
+## Saldo pemasok (26 Oktober 2026)
+
+suppliers.balance membuka pemantauan saldo, pemeriksaan manual dan snapshot pemasok toko. suppliers.deposit mengizinkan permintaan/rincian deposit Digiflazz/OtomaX melalui modul baru bila staff juga mempunyai suppliers.balance. Saldo/deposit Hanshop hanya owner karena akun dan saldonya dipakai bersama beberapa toko. Tidak memberi staff credential pemasok atau akses saldo pelanggan melalui izin ini.

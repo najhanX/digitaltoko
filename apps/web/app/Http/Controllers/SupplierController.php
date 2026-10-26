@@ -7,6 +7,7 @@ use App\Models\Store;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Services\SupplierCatalog;
+use App\Services\SupplierWallets;
 use App\Support\CatalogAccess;
 use App\Support\ListQuery;
 use App\Support\SupplierNetwork;
@@ -155,7 +156,8 @@ class SupplierController extends Controller
                 continue;
             }
             try {
-                $result[$kind] = ['status' => 'connected', ...$catalog->balance($connection)];
+                $account = app(SupplierWallets::class)->refresh($connection);
+                $result[$kind] = ['status' => 'connected', 'amount' => $account->balance, 'observed_at' => $account->observed_at?->toIso8601String(), 'simulated' => $store->sandbox];
             } catch (\Throwable $error) {
                 $result[$kind] = ['status' => 'error', 'message' => 'Saldo belum dapat dibaca. Periksa koneksi pemasok.'];
             }

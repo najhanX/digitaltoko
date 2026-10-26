@@ -42,6 +42,7 @@ class CustomerFulfillment
                 if ($order->payment_status !== 'paid' || $order->purpose !== 'product' || ! $attempt->last_checked_at || ! in_array($attempt->status, ['dispatching', 'pending', 'success', 'failed'], true)) {
                     return;
                 }
+                app(SupplierWallets::class)->transaction($order, $attempt, $data, 'callback');
                 $snapshot = $attempt->request_snapshot;
                 if (($snapshot['kind'] ?? '') === 'postpaid' && ! ($snapshot['pay_started'] ?? false)) {
                     return;
@@ -99,6 +100,7 @@ class CustomerFulfillment
                 if ($parsed['error'] || ! in_array($status, ['success', 'failed', 'pending'], true)) {
                     return;
                 }
+                app(SupplierWallets::class)->transaction($order, $attempt, $fields, 'callback');
                 $latest = $order->attempts()->whereNotNull('last_checked_at')->orderByDesc('position')->first();
                 if ($latest?->id !== $attempt->id) {
                     $attempt->update(['message' => 'Callback parsing lama diterima; perlu rekonsiliasi.', 'result' => $fields['sn'] ?? $attempt->result]);
@@ -374,6 +376,9 @@ class CustomerFulfillment
             }
 
             $this->updateOtomaxPrice($order, $attempt, $response);
+            if (! $response['error']) {
+                app(SupplierWallets::class)->transaction($order, $attempt, $fields, 'transaction');
+            }
 
             return ['status' => $response['error'] ? 'pending' : $response['status'], 'uncertain' => (bool) $response['error'], 'cost' => OtomaxParser::amount($fields['harga'] ?? null), 'result' => $fields['sn'] ?? '', 'message' => $response['error'] ? 'Jawaban OtomaX perlu diperiksa; menunggu callback.' : 'Hasil OtomaX diterima.'];
         }
@@ -388,6 +393,7 @@ class CustomerFulfillment
                 return ['status' => 'pending', 'uncertain' => true, 'message' => 'Referensi hasil pemasok belum cocok.'];
             }
             $status = $result['status'] ?? 'PENDING';
+            app(SupplierWallets::class)->transaction($order, $attempt, $result, 'transaction');
 
             return ['status' => $status === 'SUCCESS' ? 'success' : ($status === 'FAILED' ? 'failed' : 'pending'), 'result' => (string) ($result['result'] ?? ''),
                 'price_changed' => ($result['code'] ?? '') === 'PRICE_CHANGED', 'cost' => $result['price'] ?? null, 'message' => $status === 'FAILED' ? 'Sumber Hanshop menolak transaksi ('.preg_replace('/[^A-Z0-9_]/', '', (string) ($result['code'] ?? 'FAILED')).').' : 'Menunggu hasil Hanshop.'];
@@ -442,6 +448,7 @@ class CustomerFulfillment
             return ['status' => 'pending', 'uncertain' => true, 'message' => 'Respons pemasok belum dapat dipastikan.'];
         }
         $status = $body['status'] ?? '';
+        app(SupplierWallets::class)->transaction($order, $attempt, $body, 'transaction');
         $rc = (string) ($body['rc'] ?? '');
         $final = $status === 'Sukses' && $rc === '00' ? 'success' : ($status === 'Gagal' && in_array($rc, self::DIGIFLAZZ_FAILURES, true) ? 'failed' : 'pending');
 

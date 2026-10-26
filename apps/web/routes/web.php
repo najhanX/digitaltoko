@@ -34,6 +34,7 @@ use App\Http\Controllers\StoreManagementController;
 use App\Http\Controllers\StoreNotificationController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplierWalletController;
 use App\Http\Controllers\TutorialController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\VoucherController;
@@ -148,6 +149,10 @@ Route::middleware('platform.host')->group(function () {
 
     Route::get('/stores/{store}/sources', [SupplierController::class, 'index']);
     Route::post('/stores/{store}/sources/{connection}/webhook', [SupplierController::class, 'webhook'])->middleware('throttle:6,1');
+    Route::get('/stores/{store}/supplier-wallets', [SupplierWalletController::class, 'index'])->name('supplier-wallets.index');
+    Route::post('/stores/{store}/supplier-wallets/{connection}/refresh', [SupplierWalletController::class, 'refresh'])->middleware('throttle:12,1,supplier-wallet-refresh');
+    Route::post('/stores/{store}/supplier-wallets/{connection}/deposit', [SupplierWalletController::class, 'deposit'])->middleware('throttle:6,1,supplier-wallet-deposit');
+    Route::post('/stores/{store}/supplier-deposits/{deposit}/check', [SupplierWalletController::class, 'check'])->middleware('throttle:12,1,supplier-deposit-check');
     Route::post('/stores/{store}/sources/{connection}/webhook-secret', [SupplierController::class, 'webhookSecret'])->middleware('throttle:6,1,supplier-webhook-secret');
     Route::post('/stores/{store}/sources', [SupplierController::class, 'save'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/sources/{connection}/sync', [SupplierController::class, 'sync'])->middleware('throttle:6,1');

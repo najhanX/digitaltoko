@@ -317,3 +317,18 @@ Migrasi `2026_10_23_003547_consolidate_platform_subscription_packages` menonakti
 Isi `SUPPLIER_OUTBOUND_IP` pada `.env` web dengan IP publik keluar VPS yang digunakan koneksi pemasok. IP ini muncul dengan tombol Salin IP pada popup Digiflazz dan tambah/edit supplier OtomaX. Jika kosong/tidak valid, panel menyatakan IP belum diatur; tidak menampilkan IP tebakan atau melakukan deteksi jaringan saat halaman dibuka.
 
 `DIGIFLAZZ_OUTBOUND_IP` tetap didukung sebagai override khusus Digiflazz. Kosongkan override jika memakai IP bersama. Sesudah mengubah env di deployment yang memakai config cache, jalankan `php artisan config:cache`. Untuk instalasi tanpa config cache, `php artisan config:clear` cukup. Jangan mengisi IP contoh sebagai IP produksi. IP callback OtomaX adalah IP pengirim supplier dan tetap diatur terpisah.
+
+## Deploy saldo & deposit pemasok — 26 Oktober 2026
+
+1. Backup database web dan API Hanshop. Web: php artisan migrate --force (migration 2026_10_26_103804_create_supplier_monitoring_tables).
+2. API Hanshop: jalankan manual scripts/migrations/20261026_digitaltoko_supplier_deposits.sql pada database API, setelah migrasi payment/ledger lama, khususnya 20260830_payment_reconciliation_worker.sql. Verifikasi SHOW CREATE TABLE digitaltoko_deposits; tabel payment wajib mempunyai created_at dan expires_at. Script baru bersifat additive, tidak mengganti saldo atau payment lama.
+3. Build web (npm run build) dan API Hanshop (npm run build), restart API serta worker web. Scheduler web mengantrekan digitaltoko:supplier-wallets tiap dua menit; queue:work diperlukan. Rekonsiliasi mutasi API Hanshop harus aktif agar deposit terbayar mengkredit saldo lewat settlement asli.
+4. Pada laptop PM2: pm2 restart api-hanshop digitaltoko-queue digitaltoko-scheduler setelah source/build/migrasi siap; jangan membuka queue/scheduler kedua. Restart service dilakukan operator pada waktu yang sesuai, bukan otomatis oleh proses validasi.
+5. Owner membuka Produk & harga → Saldo & deposit pemasok; tambahkan koneksi melalui Sumber produk bila belum ada. Perbarui memanfaatkan cache akun; Topup membuat tiket/invoice saja dan tidak mentransfer dana. Hanshop khusus owner. Staff perlu suppliers.balance untuk modul dan suppliers.deposit untuk tiket pemasok toko lainnya.
+6. OtomaX: periksa zona waktu dan profil tangkapan saldo_akhir/tanggal/jam. Instruksi tiket dapat tidak mempunyai penangkap khusus; teks supplier tetap dapat dibaca. Jangan menganggap instruksi atau saldo bertambah sebagai bukti deposit tertentu lunas. Digiflazz mengikuti pilihan bank/method yang tersedia pada jenis akun.
+
+Migrasi lokal web dan API sudah diterapkan setelah backup privat pada 26 Oktober. Backup web: storage/app/private/backups/before-otomax-20261026-104954.sql (nama helper lama, berisi full database sebelum modul ini). Backup API: storage/app/private/backups/hanshop-before-supplier-deposits-1793011796448.sql. Tidak ada migrasi production, pembayaran, atau deposit nyata pada validasi.
+
+### Tambahan prasyarat MySQL deposit Hanshop
+
+Sebelum script 20261026_digitaltoko_supplier_deposits.sql, jalankan juga 20261026_digitaltoko_payment_runtime_columns.sql dari folder scripts/migrations API Hanshop. Script ini kompatibel MySQL dan aman dijalankan ulang bila expires_at/last_checked_at/index sudah ada. Backup dahulu. Verifikasi kedua kolom pada payment. Schema yang belum lengkap kini menghasilkan alasan khusus di rincian deposit. Permintaan lama yang tidak tercatat upstream tidak dibuat ulang oleh tombol Periksa; buat permintaan baru setelah penyebab diperbaiki.

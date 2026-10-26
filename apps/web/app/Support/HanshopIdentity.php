@@ -37,6 +37,16 @@ class HanshopIdentity
         if (! $response->successful() || $response->json('status') !== 'SUCCESS') {
             if ($supplier) {
                 $status = $response->status();
+                if (in_array($path, ['supplier/deposit', 'supplier/deposit-status'], true)) {
+                    $depositMessage = match ($response->json('data.code')) {
+                        'DEPOSIT_SCHEMA_NOT_READY' => 'Database deposit Hanshop belum lengkap. Administrator perlu menjalankan migrasi payment runtime dan deposit DigitalToko pada API Hanshop.',
+                        'DEPOSIT_NOT_FOUND' => 'Permintaan deposit belum tercatat di Hanshop. Pemeriksaan ini tidak membuat invoice baru. Anda dapat membuat permintaan baru setelah penyebab kegagalan diperbaiki.',
+                        default => null,
+                    };
+                    if ($depositMessage !== null) {
+                        throw new SupplierFailure($depositMessage);
+                    }
+                }
                 $message = match (true) {
                     $status === 429 => 'Hanshop sedang membatasi permintaan.',
                     in_array($status, [401, 403], true) => 'Token integrasi Hanshop ditolak. Administrator perlu menyamakan token pada web dan API Hanshop.',

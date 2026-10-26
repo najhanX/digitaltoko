@@ -37,7 +37,7 @@ class OtomaxParser
 
         return [
             ['name' => 'Sukses OtomaX', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' SUKSES.', 'case_sensitive' => false, 'priority' => 0, 'captures' => [
-                $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' SUKSES.'), $capture('sn', 'SN/Ref: ', '. Saldo '), $capture('saldo_awal', 'Saldo ', ' - '), $capture('harga', ' - ', ' = '), $capture('saldo_akhir', ' = ', ' @'), $capture('refid', ' R#', ''),
+                $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' SUKSES.'), $capture('sn', 'SN/Ref: ', '. Saldo '), $capture('saldo_awal', 'Saldo ', ' - '), $capture('harga', ' - ', ' = '), $capture('saldo_akhir', ' = ', ' @'), $capture('tanggal', '@', ' '), $capture('jam', ' ', ' R#'), $capture('refid', ' R#', ''),
             ]],
             ['name' => 'Permintaan diterima', 'event' => 'transaction', 'outcome' => 'pending', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' akan diproses ', 'case_sensitive' => false, 'priority' => 10, 'captures' => [
                 $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' akan diproses'), $capture('saldo_awal', 'Saldo ', ' - '), $capture('harga', ' - ', ' = '), $capture('saldo_akhir', ' = ', ''),
@@ -103,6 +103,9 @@ class OtomaxParser
 
     private function captureType(string $field, bool $hasSuffix): string
     {
+        if ($field === 'jam') {
+            return '[0-9]{2}:[0-9]{2}(?::[0-9]{2})?';
+        }
         if (in_array($field, ['harga', 'saldo', 'saldo_awal', 'saldo_akhir', 'amount'], true)) {
             return '[0-9]+(?:[.,][0-9]+)*';
         }

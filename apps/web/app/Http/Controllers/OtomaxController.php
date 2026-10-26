@@ -16,7 +16,7 @@ use App\Services\OtomaxImports;
 use App\Services\OtomaxParser;
 use App\Services\PanelNotifications;
 use App\Services\StoreRetention;
-use App\Services\SupplierCache;
+use App\Services\SupplierWallets;
 use App\Support\CatalogAccess;
 use App\Support\ListQuery;
 use App\Support\SupplierNetwork;
@@ -173,7 +173,7 @@ class OtomaxController extends Controller
             $this->connection($store, $connection);
         }
         $data = $request->validate(['name' => 'required|string|max:100', 'response_profile_id' => 'required|uuid', 'member_id' => 'required|string|max:100|regex:/^[A-Za-z0-9_-]+$/', 'pin' => 'nullable|string|max:100', 'password' => 'nullable|string|max:255', 'enabled' => 'required|boolean', 'settings' => 'required|array']);
-        $settings = $request->validate(['settings.base_url' => 'required|string|max:250', 'settings.transaction_path' => 'required|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.balance_path' => 'required|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.ticket_path' => 'required|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.status_path' => 'nullable|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.callback_ips' => 'required|array|min:1|max:10', 'settings.callback_ips.*' => 'required|ip', 'settings.catalog_hours' => 'required|integer|min:1|max:168', 'settings.ticket_cmd' => 'required|boolean', 'settings.price_limit_ack' => 'accepted'])['settings'];
+        $settings = $request->validate(['settings.timezone' => 'sometimes|in:Asia/Jakarta,Asia/Makassar,Asia/Jayapura', 'settings.base_url' => 'required|string|max:250', 'settings.transaction_path' => 'required|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.balance_path' => 'required|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.ticket_path' => 'required|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.status_path' => 'nullable|regex:~^/[a-zA-Z0-9/_-]{1,100}$~', 'settings.callback_ips' => 'required|array|min:1|max:10', 'settings.callback_ips.*' => 'required|ip', 'settings.catalog_hours' => 'required|integer|min:1|max:168', 'settings.ticket_cmd' => 'required|boolean', 'settings.price_limit_ack' => 'accepted'])['settings'];
         app(OtomaxClient::class)->endpoint($settings);
         $profile = OtomaxProfile::where('store_id', $store->id)->where('type', 'response')->findOrFail($data['response_profile_id']);
         $credentials = $connection?->credentials ?? ['callback_token' => Str::random(48)];
@@ -215,13 +215,9 @@ class OtomaxController extends Controller
         $this->access($request, $store, 'suppliers.balance');
         $this->connection($store, $connection);
         abort_unless($connection->enabled, 422);
-        $snapshot = app(SupplierCache::class)->remember('otomax', app(OtomaxImports::class)->fingerprint($connection).':'.($store->sandbox ? 'sandbox' : 'production'), 'balance', fn () => app(OtomaxClient::class)->send($connection, 'balance'));
-        $result = $snapshot['value'];
-        $balance = OtomaxParser::amount($result['fields']['saldo'] ?? null);
-        abort_if($balance === null, 422, 'Saldo belum tertangkap. Sesuaikan pola jawaban saldo pada kelompok supplier.');
-        $connection->update(['verified_at' => $store->sandbox ? null : now()]);
+        $account = app(SupplierWallets::class)->refresh($connection);
 
-        return response()->json(['balance' => $balance, 'observed_at' => $snapshot['observed_at'], 'simulated' => $store->sandbox]);
+        return response()->json(['balance' => $account->balance, 'observed_at' => $account->observed_at?->toIso8601String(), 'simulated' => $store->sandbox]);
     }
 
     public function ticket(Request $request, Store $store, SupplierConnection $connection): RedirectResponse
