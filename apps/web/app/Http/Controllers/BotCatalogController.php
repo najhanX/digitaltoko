@@ -28,6 +28,39 @@ class BotCatalogController extends Controller
         return $value !== null ? $query->whereRaw('LOWER('.$column.') = ?', [mb_strtolower($value)]) : $query;
     }
 
+    private function orderedProducts(Builder $query, Store $store): Builder
+    {
+        $sqlite = $query->getConnection()->getDriverName() === 'sqlite';
+        $positions = array_map(fn ($digit) => "CASE WHEN INSTR(code, '$digit') = 0 THEN LENGTH(code) + 1 ELSE INSTR(code, '$digit') END", range(0, 9));
+        $position = ($sqlite ? 'MIN' : 'LEAST').'('.implode(', ', $positions).')';
+        $query->orderByRaw("LOWER(SUBSTR(code, 1, ($position) - 1))");
+
+        $design = $store->branding['design'] ?? [];
+        $flashActive = collect($design['sections'] ?? [])->contains(fn ($section) => $section['key'] === 'flash_sale' && $section['enabled'])
+            && (empty($design['flash_starts_at']) || now()->gte($design['flash_starts_at']))
+            && (empty($design['flash_ends_at']) || now()->lt($design['flash_ends_at']));
+        $cases = [];
+        $bindings = [];
+        if ($flashActive) {
+            foreach ($design['flash_product_ids'] ?? [] as $id) {
+                $rule = $design['flash_discounts'][$id] ?? null;
+                if (! $rule) {
+                    continue;
+                }
+                $discount = $rule['type'] === 'percent' ? ($sqlite ? 'CAST(sale_price * ? / 10000 AS INTEGER)' : 'FLOOR(sale_price * ? / 10000)') : '?';
+                $cases[] = "WHEN id = ? AND kind <> 'postpaid' THEN ".($sqlite ? 'MAX' : 'GREATEST')."(0, sale_price - $discount)";
+                array_push($bindings, $id, $rule['type'] === 'percent' ? (int) round((float) $rule['value'] * 100) : (int) $rule['value']);
+            }
+        }
+        if ($cases) {
+            $query->orderByRaw('CASE '.implode(' ', $cases).' ELSE sale_price END', $bindings);
+        } else {
+            $query->orderBy('sale_price');
+        }
+
+        return $query->orderByRaw("CAST(SUBSTR(code, $position) AS ".($sqlite ? 'INTEGER' : 'UNSIGNED').')')->orderByRaw('LOWER(code)')->orderBy('id');
+    }
+
     public function browse(Request $request, StoreCatalog $catalog): JsonResponse
     {
         $store = $this->authorizedStore($request);
@@ -60,7 +93,7 @@ class BotCatalogController extends Controller
             } else {
                 $products = $this->scope($catalog->query($store)->where('active', true), 'category', $category);
                 $this->scope($products, 'service', $service);
-                $page = $list->paginate($products->orderBy('name')->orderBy('id'));
+                $page = $list->paginate($this->orderedProducts($products, $store));
                 $items = $page->getCollection()->map(fn ($product) => $catalog->present($product, $store));
             }
         }
@@ -73,7 +106,7 @@ class BotCatalogController extends Controller
     {
         $store = $this->authorizedStore($request);
         $list = new ListQuery($request, ['kind' => ['ppob', 'premium', 'postpaid']], 10);
-        $page = $list->paginate($list->apply($catalog->query($store)->where('active', true), ['name', 'code', 'category', 'service'], ['kind' => 'kind'])->orderBy('category')->orderBy('name')->orderBy('id'));
+        $page = $list->paginate($this->orderedProducts($list->apply($catalog->query($store)->where('active', true), ['name', 'code', 'category', 'service'], ['kind' => 'kind']), $store));
 
         return response()->json(['status' => 'SUCCESS', 'data' => ['store_name' => $store->name, 'items' => $page->getCollection()->map(fn ($product) => $catalog->present($product, $store)),
             'pagination' => ListQuery::meta($page)]])->header('Cache-Control', 'private, no-store');

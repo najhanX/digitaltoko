@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {navigationQuery,navigationCommand,navigationUrl,navigationPage,navigationText} from '../dist/navigation.js';
+import {navigationQuery,navigationCommand,navigationUrl,navigationPage,navigationText,navigationControls} from '../dist/navigation.js';
 import {MenuTokens} from '../dist/menu.js';
 import {handleCustomerMessage} from '../dist/customer.js';
 
@@ -34,12 +34,28 @@ test('navigation response validates modes counts and public product shape',()=>{
 test('product fallback retains category and service on next page and provides parent navigation',()=>{
     const query={type:'browse',view:'products',service:'Aplikasi Premium',category:'Canva Pro',page:1};
     const data=page('products',[],{service:query.service,category:query.category,pagination:{current_page:1,last_page:2,total:12}});
-    const text=navigationText(navigationPage(data),query);
+    const listing=navigationText(navigationPage(data),query);
+    assert.doesNotMatch(listing,/#stok|#menu|NAVIGASI|CARA MEMESAN/);
+    const text=navigationControls(navigationPage(data),query);
     assert.match(text,/#stok "Canva Pro" --layanan "Aplikasi Premium" --halaman 2/);
     assert.match(text,/Kategori utama : #list "Aplikasi Premium"/);
     assert.doesNotMatch(text,/#produk 2/);
     const ambiguous=page('categories',[{name:'Canva Pro',service:'Premium',product_count:2},{name:'Canva Pro',service:'Langganan',product_count:1}],{category:'Canva Pro'});
     assert.match(navigationText(navigationPage(ambiguous),{...query,service:undefined}),/beberapa layanan/);
+});
+
+test('text-only clients receive scoped navigation separately from a compact uppercase store product list',async()=>{
+    const sent=[],chat='628000000001@s.whatsapp.net';
+    const query={type:'browse',view:'products',service:'Aplikasi Premium',category:'Canva Pro',page:1};
+    const item={name:'Canva 1 Bulan',code:'CV1',service:query.service,category:query.category,price:15000,price_label:'Harga',available:true,quantity:2};
+    await handleCustomerMessage({user:{id:chat},sendMessage:async(_,body)=>sent.push(body),relayMessage:async()=>{throw Error('desktop should not relay');}},
+        {key:{remoteJid:chat,id:'desktop-message'},message:{conversation:'#stok "Canva Pro" --layanan "Aplikasi Premium"'}},new MenuTokens(),
+        async path=>({data:path==='/api/internal/bot/access'?{allowed:true,store_name:'Toko Contoh'}:page('products',[item],{store_name:'Toko Contoh',service:query.service,category:query.category,pagination:{current_page:1,last_page:2,total:12}})}));
+    assert.equal(sent.length,2);
+    assert.ok(sent[0].text.startsWith('*TOKO CONTOH*'));
+    assert.match(sent[0].text,/Canva 1 Bulan/);assert.doesNotMatch(sent[0].text,/#menu|#stok|#list|━━|┊/);
+    assert.match(sent[1].text,/#stok "Canva Pro" --layanan "Aplikasi Premium" --halaman 2/);
+    assert.match(sent[1].text,/#menu/);
 });
 
 test('actual native list selection goes service -> category -> products with scoped next and back buttons',async()=>{

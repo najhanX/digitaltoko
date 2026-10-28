@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { loadConfig } from "./config.js";
 import { MenuTokens } from "./menu.js";
 import { createNoticePump } from "./commerce.js";
+import { QrisMessages } from "./qris-messages.js";
 import { handleCustomerMessage } from "./customer.js";
 import { deliverDirectMessage, validDirectMessage } from "./direct-message.js";
 import {
@@ -47,7 +48,8 @@ async function api(path: string, body?: unknown) {
   if (!response.ok) throw new Error(`Backend HTTP ${response.status}`);
   return response.json();
 }
-const noticePump = createNoticePump(()=>config.waEnabled && !stopping && !starting && !paused && state.status==="CONNECTED" ? socket : undefined, api, ()=>logger.warn("Antrean notifikasi pelanggan belum dapat dikirim."));
+const qrisMessages = new QrisMessages(config.sessionPath,api,()=>logger.warn("Pencatatan pesan pesanan tertunda; akan dicoba kembali."));
+const noticePump = createNoticePump(()=>config.waEnabled && !stopping && !starting && !paused && state.status==="CONNECTED" ? socket : undefined, api, ()=>logger.warn("Antrean notifikasi pelanggan belum dapat dikirim."),qrisMessages,tokens);
 async function report(next: typeof state) {
   state = next;
   const payload = {...next, ...(config.connectionId ? {connection_id: config.connectionId} : {})};
@@ -190,7 +192,7 @@ async function startSocket() {
       if (batch.type !== "notify" || stopping || halt || paused || state.status !== "CONNECTED") return;
       for (const message of batch.messages) {
         try {
-          await handleCustomerMessage(sock, message, tokens, api);
+          await handleCustomerMessage(sock, message, tokens, api,qrisMessages);
         } catch {
           logger.warn("Pesan tidak diproses: backend/transport belum siap.");
         }

@@ -76,6 +76,33 @@ class CustomerCommerceTest extends TestCase
         return [...['purpose' => 'product', 'product_id' => $p->id, 'phone' => '6281234567890', 'destination' => '6281234567890', 'payment' => 'wallet', 'idempotency_key' => (string) Str::uuid()], ...$extra];
     }
 
+    public function test_bot_product_quote_exposes_category_input_and_prepares_destination_without_ordering(): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $product = $this->product($store);
+        $token = str_repeat('q', 40);
+        $store->update(['worker_token_hash' => hash('sha256', $token)]);
+        $input = ['phone' => $customer->phone, 'action' => 'quote', 'code' => $product->code];
+        $this->withToken($token)->postJson('/api/internal/bot/commerce', $input)->assertOk()
+            ->assertJsonPath('data.destination_profile.type', 'premium')->assertJsonPath('data.destination', $customer->phone);
+        $product->update(['kind' => 'ppob']);
+        $store->update(['branding' => ['category_destinations' => [$product->category_id => ['type' => 'premium']]]]);
+        $this->postJson('/api/internal/bot/commerce', $input)->assertOk()->assertJsonPath('data.destination_profile.type', 'other')->assertJsonMissingPath('data.destination');
+        $this->postJson('/api/internal/bot/commerce', [...$input, 'destination_id' => '12345678'])->assertOk()->assertJsonPath('data.destination', '12345678');
+        $store->update(['branding' => ['category_destinations' => [$product->category_id => ['type' => 'phone']]]]);
+        $this->postJson('/api/internal/bot/commerce', [...$input, 'destination_id' => '0812 3456 7890'])->assertOk()
+            ->assertJsonPath('data.destination_profile.label', 'Nomor HP tujuan')->assertJsonPath('data.destination', '081234567890');
+        $this->postJson('/api/internal/bot/commerce', [...$input, 'destination_id' => 'wrong'])->assertUnprocessable();
+        $store->update(['branding' => ['category_destinations' => [$product->category_id => ['type' => 'game', 'columns' => '2']], 'category_games' => [$product->category_id => ['game' => 'none', 'destination_format' => 'pipe']]]]);
+        $this->postJson('/api/internal/bot/commerce', [...$input, 'destination_id' => '12345678', 'destination_server' => '1234'])->assertOk()
+            ->assertJsonPath('data.destination_profile.columns', 2)->assertJsonPath('data.destination', '12345678|1234');
+        $this->postJson('/api/internal/bot/commerce', [...$input, 'destination_id' => '12345678'])->assertUnprocessable();
+        $this->assertDatabaseCount('customer_orders', 0);
+        $this->assertSame(100000, $customer->fresh()->balance);
+        Http::assertNothingSent();
+    }
+
     private function gateway(Store $s, string $type = 'midtrans'): void
     {
         app(CustomerCommerce::class)->settings($s)->update(['gateway' => $type, 'credentials' => ['server_key' => 'test-only-server-key', 'qris_payload' => $this->qris(), 'forward_token' => str_repeat('f', 40), 'application_package' => 'id.dana'], 'custom_licensed_at' => $type === 'custom' ? now() : null]);
@@ -432,10 +459,51 @@ class CustomerCommerceTest extends TestCase
         $this->withSession(['guest_checkout_key' => 'browser-a'])->post($url)->assertSessionHasNoErrors();
         $this->assertSame('expired', $o->fresh()->status);
         $this->assertTrue($o->fresh()->snapshot['cancelled_by_customer']);
+        $this->assertSame(1, CustomerNotice::where('event', 'order:'.$o->id.':expired:cancelled')->count());
         $this->assertNotNull($o->fresh()->active_amount_key);
         $new = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway', 'guest_checkout_hash' => hash('sha256', 'browser-a')]), null);
         $this->assertNotSame($o->total, $new->total);
         $this->assertNull(app(GuestCheckout::class)->pending($this->store(), hash('sha256', 'browser-a')));
+    }
+
+    public function test_expiry_from_scheduler_and_midtrans_each_create_one_final_notice(): void
+    {
+        Queue::fake();
+        $store = $this->store();
+        $product = $this->product($store);
+        $this->gateway($store, 'custom');
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product, ['payment' => 'gateway']), null)->fresh();
+        $this->travel(16)->minutes();
+        $this->artisan('digitaltoko:commerce')->assertSuccessful();
+        $this->artisan('digitaltoko:commerce')->assertSuccessful();
+        $this->assertSame('expired', $order->fresh()->status);
+        $this->assertSame(1, CustomerNotice::where('event', 'order:'.$order->id.':expired')->count());
+        $this->travelBack();
+        $this->gateway($store);
+        $remote = app(CustomerCommerce::class)->begin($store, $this->input($product, ['payment' => 'gateway']), null)->fresh();
+        Http::fake(['*/status' => Http::response(['order_id' => $remote->number, 'gross_amount' => $remote->total.'.00', 'transaction_id' => 'remote-expired', 'status_code' => '407', 'transaction_status' => 'expire'])]);
+        app(CustomerPayments::class)->refresh($remote);
+        app(CustomerPayments::class)->refresh($remote);
+        $this->assertSame(1, CustomerNotice::where('event', 'order:'.$remote->id.':expired')->count());
+    }
+
+    public function test_owner_cancellation_enqueues_one_final_notice_without_changing_balance_or_sending_to_supplier(): void
+    {
+        $store = $this->store();
+        $product = $this->product($store);
+        $this->gateway($store, 'custom');
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product, ['payment' => 'gateway']), null)->fresh();
+        $this->actingAs($store->owner)->post('/stores/'.$store->id.'/orders/'.$order->id, ['action' => 'cancel'])->assertRedirect()->assertSessionHasNoErrors();
+        $event = 'order:'.$order->id.':expired:cancelled';
+        $notice = CustomerNotice::where('event', $event)->sole();
+        $this->assertSame($order->phone, $notice->phone);
+        $this->assertStringContainsString('Pesanan dibatalkan', $notice->message);
+        $this->assertSame('expired', $order->fresh()->status);
+        $this->assertSame('unpaid', $order->fresh()->payment_status);
+        app(CustomerPayments::class)->cancel($order, $store->owner_id);
+        $this->assertSame(1, CustomerNotice::where('event', $event)->count());
+        $this->assertDatabaseCount('customer_ledgers', 0);
+        Http::assertNothingSent();
     }
 
     public function test_midtrans_cancellation_confirms_remote_cancel_and_preserves_settled_payments(): void
@@ -487,6 +555,7 @@ class CustomerCommerceTest extends TestCase
         } catch (ValidationException) {
         }
         $this->assertSame('awaiting_payment', $o->fresh()->status);
+        $this->assertSame(0, CustomerNotice::where('event', 'order:'.$o->id.':expired:cancelled')->count());
         $this->assertSame($o->id, app(GuestCheckout::class)->pending($s, $key)->id);
     }
 
@@ -674,6 +743,49 @@ class CustomerCommerceTest extends TestCase
         $this->get('/stores/'.$this->store()->id.'/orders')->assertForbidden();
     }
 
+    public function test_payment_expiry_stays_fifteen_minutes_after_creation_when_order_is_updated(): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $product = $this->product($store);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product), $customer);
+        $expiry = $order->fresh()->expires_at;
+        $this->assertEqualsWithDelta(900, $order->created_at->diffInSeconds($expiry), 1);
+        $this->travel(2)->minutes();
+        $order->update(['message' => 'Payment prepared', 'provider_id' => 'test-provider']);
+        $this->assertSame($expiry->toIso8601String(), $order->fresh()->expires_at->toIso8601String());
+        $this->travelBack();
+    }
+
+    public function test_panel_partial_refresh_keeps_filters_and_exposes_only_requested_attempt_data_for_authorized_staff(): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $product = $this->product($store);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product), $customer);
+        $order->attempts()->firstOrFail()->update(['position' => 1, 'source' => 'otomax', 'reference' => 'TEST-POLL', 'cost' => 10000, 'status' => 'pending', 'request_snapshot' => ['otomax' => ['connection_name' => 'Supplier Test'], 'supplier_response' => ['message' => 'Masih diproses', 'parser_error' => null]]]);
+        $staff = StoreStaff::create(['store_id' => $store->id, 'username' => 'pollreader', 'email' => 'pollreader@example.test', 'name' => 'Reader', 'password' => 'test-password-only', 'permissions' => ['orders.view'], 'active' => true]);
+        $base = '/stores/'.$store->id.'/orders';
+        $this->actingAs($store->owner)->get($base)->assertOk();
+        $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => (string) Inertia::getVersion(), 'X-Inertia-Partial-Component' => 'Owner/Orders', 'X-Inertia-Partial-Data' => 'items,pagination'];
+        $this->actingAs($store->owner)->get($base.'?q='.$order->number.'&per_page=5', $headers)->assertOk()->assertJsonCount(1, 'props.items')->assertJsonPath('props.items.0.id', $order->id)->assertJsonMissingPath('props.store');
+        $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => (string) Inertia::getVersion(), 'X-Inertia-Partial-Component' => 'Owner/OrderDetail', 'X-Inertia-Partial-Data' => 'attempts'];
+        $this->app['auth']->guard('web')->logout();
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($staff, 'staff')->get($base.'/'.$order->id, $headers)->assertOk()->assertJsonPath('props.attempts.0.supplier_response.message', 'Masih diproses')->assertJsonMissingPath('props.order')->assertJsonMissingPath('props.attempts.0.request_snapshot');
+        $order->attempts()->first()->recordSupplierResponse('Transaksi SUKSES');
+        $this->get($base.'/'.$order->id, $headers)->assertOk()->assertJsonPath('props.attempts.0.supplier_response.message', 'Transaksi SUKSES');
+        $order->update(['status' => 'success', 'payment_status' => 'paid', 'result' => 'PRIVATE-RESULT']);
+        $headers['X-Inertia-Partial-Data'] = 'store,order,attempts,canResolve,canResend,canReveal,canReview,canCancel,canManual,canRetrySupplier,decisions';
+        $this->get($base.'/'.$order->id, $headers)->assertOk()->assertJsonPath('props.order.status', 'success')
+            ->assertJsonPath('props.order.payment_status', 'paid')->assertJsonPath('props.canManual', false)
+            ->assertJsonPath('props.canReveal', false)->assertJsonMissingPath('props.order.result')
+            ->assertJsonMissingPath('props.order.phone')->assertJsonMissingPath('props.attempts.0.request_snapshot');
+        $other = $this->store();
+        $this->get('/stores/'.$other->id.'/orders/'.$order->id, $headers)->assertForbidden();
+        Http::assertNothingSent();
+    }
+
     public function test_close_and_cash_settlement_require_stopping_and_zero_obligations(): void
     {
         $s = $this->store();
@@ -857,13 +969,14 @@ class CustomerCommerceTest extends TestCase
         $p = $this->product($s);
         $token = Str::random(64);
         $s->update(['worker_token_hash' => hash('sha256', $token)]);
-        $data = ['action' => 'buy', 'phone' => '6281234567890', 'product_id' => $p->id, 'destination' => '6281234567890', 'payment' => 'wallet', 'idempotency_key' => 'bot-test-123'];
+        $data = ['action' => 'buy', 'phone' => '6281234567890', 'product_id' => $p->id, 'destination' => '6289999999999', 'payment' => 'wallet', 'idempotency_key' => 'bot-test-123'];
         $this->postJson('/api/internal/bot/commerce', $data)->assertUnauthorized();
         $c = $this->customer($s);
         $response = $this->withToken($token)->postJson('/api/internal/bot/commerce', $data)->assertOk()->assertJsonPath('data.order.amount', 15000);
         $this->postJson('/api/internal/bot/commerce', $data)->assertJsonPath('data.order.id', $response->json('data.order.id'));
         $this->assertSame(85000, $c->fresh()->balance);
         $this->assertDatabaseCount('customer_orders', 1);
+        $this->assertDatabaseHas('customer_orders', ['id' => $response->json('data.order.id'), 'destination' => $c->phone]);
     }
 
     public function test_gateway_creation_is_idempotent_and_qris_identity_does_not_change_with_amount(): void

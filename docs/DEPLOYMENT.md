@@ -342,3 +342,24 @@ Sebelum script 20261026_digitaltoko_supplier_deposits.sql, jalankan juga 2026102
 5. Status refunded bukan expired/cancelled biasa. Source menyertakannya pada label/filter invoice dan pengecualian kewajiban retensi; kasus review/refund berjalan tetap menahan penghapusan. Store/account lain tidak ikut berubah.
 
 Backup lokal web: storage/app/private/backups/before-otomax-20261026-153139.sql (helper backup lama, dump seluruh DB). Backup API: storage/app/private/backups/hanshop-before-rental-refunds-1793028701103.sql. Eksekusi production tetap manual setelah backup, bukan bagian pengujian lokal.
+
+### Penarikan QRIS WhatsApp setelah lunas
+
+Untuk pembaruan ini, backup database web dan direktori sesi bot privat, jalankan php artisan migrate --force untuk 2026_10_27_082941_create_bot_qris_messages_table sebelum memuat build bot baru. npm run build pada apps/bot, kemudian reload manager/worker existing. Lokal telah dimigrasikan setelah backup penuh before-otomax-20261027-083229.sql. Tidak ada migrasi API Hanshop/dependency baru. Sertakan tabel bot_qris_messages pada backup web; APP_KEY diperlukan untuk membaca key pesan terenkripsi. File qris-message-outbox.json berada di folder sesi per toko dan ikut lifecycle/backup privat sesi.
+
+Fitur hanya dapat menarik gambar QR yang key-nya dicatat sejak versi ini, bukan pesan lama yang ID-nya tidak pernah dicatat. Verifikasi produksi dengan pembayaran uji yang sah: gambar hilang setelah payment_status paid, bukti teks tetap, notifikasi pembayaran tetap sampai. Revoke mengikuti pembatasan WhatsApp; kegagalan akan dicoba kembali dan tidak dianggap sukses. Jangan menghapus semua pesan, mereset sesi, atau mengubah saldo untuk mencoba cleanup.
+
+
+### Perluasan penghapusan pesan transaksi (2026-10-27)
+
+Backup database web/sesi bot, lalu terapkan `php artisan migrate --force`, termasuk migrasi `2026_10_27_085410_add_order_context_to_bot_qris_messages_table`, sebelum memuat worker baru. Build `apps/bot` dengan `npm run build`, restart layanan bot manager yang sudah ada, dan minta queue memuat source baru melalui `php artisan queue:restart`. Jangan menghapus sesi atau outbox privat. Tabel lama sekarang juga mencatat pesan teks dan tombol per pesanan beserta revisinya; format registrasi QR lama tetap didukung. Tidak ada migrasi API Hanshop. Key pesan lama yang belum pernah dicatat tidak bisa dipulihkan dari fitur ini.
+
+
+### Perbaikan expires_at MySQL (2026-10-27)
+
+Backup database sebelum menjalankan migrasi 2026_10_27_094531_fix_customer_order_expiry_automatic_timestamp_updates. Pada MySQL yang membuat timestamp wajib pertama dengan ON UPDATE implisit, expires_at bisa berubah setiap update record. Migrasi mengubah kolom deadline customer_orders/customer_inquiries/otomax_imports menjadi DATETIME; hanya invoice biasa dengan pola korupsi yang dapat dibuktikan dipulihkan ke created_at +15 menit. Tidak mengubah status pembayaran/saldo, tidak menebak ulang batas inquiry. Verifikasi metadata kolom tidak memiliki on update dan uji update invoice tanpa menggeser tenggat. Tidak ada perubahan database API Hanshop.
+
+
+### Keputusan pengelolaan VPS — 28 Oktober 2026
+
+Gunakan PM2 yang sudah dipakai API Hanshop/bot Hanshop untuk queue:work, schedule:work dan bot manager DigitalToko juga. Tidak membutuhkan cron tambahan bila schedule:work sudah aktif. Aktifkan startup/resurrect PM2 pada host produksi dan verifikasi setelah reboot saat deployment; konfigurasi laptop tidak menggantikan langkah ini. Web produksi memakai Nginx/Caddy dan PHP-FPM, tanpa artisan serve/Vite development. Perubahan .env Laravel: config:clear lalu restart layanan yang perlu memuat ulang konfigurasi. Jangan menjalankan dua scheduler atau dua manager pada sesi yang sama.

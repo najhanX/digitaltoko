@@ -40,6 +40,7 @@ class ProcessCustomerCommerce extends Command
                         $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->first();
                         if ($locked->payment_status === 'unpaid' && $locked->status === 'awaiting_payment') {
                             $locked->update(['status' => 'expired', 'message' => 'Waktu pembayaran berakhir.']);
+                            app(CustomerCommerce::class)->notice($locked, 'expired');
                         }
                     });
                 }

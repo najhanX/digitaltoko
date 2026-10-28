@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import Brand from '../../components/Brand';
+import PlatformHeader from '../../components/PlatformHeader';
 import Modal from '../../components/Modal';
 import TutorialStepImage, { AnnotatedTutorialImage, type TutorialVisual } from '../../components/TutorialStepImage';
 
@@ -20,7 +21,7 @@ export default function Tutorials({guides,guide}:{guides:Summary[];guide:Guide|n
     const related = guide ? guide.related.map(slug=>guides.find(item=>item.slug===slug)).filter((item):item is Summary=>!!item) : [];
     const card = (item:Summary) => <Link href={'/panduan/'+item.slug} className="tutorial-card" key={item.slug}><span className="tutorial-category">{item.category}</span><h2>{item.title}</h2><p>{item.summary}</p><span className="tutorial-read">Baca panduan<ArrowRight size={17}/></span></Link>;
     return <div className="tutorial-site"><Head title={guide?.title ?? 'Pusat panduan'}><meta name="description" content={guide?.summary ?? 'Panduan DigitalToko untuk menghubungkan pemasok, pembayaran, WhatsApp dan mengelola toko.'}/></Head>
-        <header className="tutorial-header wrap"><Brand/><nav aria-label="Navigasi panduan"><Link href="/">Beranda</Link><Link href="/paket">Paket & harga</Link><Link href="/panduan" aria-current="page">Panduan</Link><Link className="button small" href="/login">Masuk panel<ArrowRight size={16}/></Link></nav></header>
+        <PlatformHeader/>
         <main className="tutorial-main wrap">
             {!guide ? <><section className="tutorial-hero"><span className="eyebrow"><BookOpen size={17}/>PUSAT PANDUAN</span><h1>Toko siap, langkah demi langkah.</h1><p>Pelajari koneksi pemasok, pembayaran dan pengelolaan toko dengan petunjuk serta gambar antarmuka.</p><label className="tutorial-search"><Search size={21}/><span className="sr-only">Cari panduan</span><input type="search" placeholder="Cari Digiflazz, Midtrans, banner…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label></section>
                 <div className="tutorial-filters" role="group" aria-label="Topik panduan">{['Semua',...new Set(guides.map(item=>item.category))].map(name=><button type="button" key={name} aria-pressed={category===name} onClick={()=>{setCategory(name);setPage(1);}}>{name}</button>)}</div>

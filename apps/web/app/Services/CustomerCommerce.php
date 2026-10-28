@@ -256,26 +256,17 @@ class CustomerCommerce
 
     public function notice(CustomerOrder $order, string $status, ?string $revision = null): void
     {
-        $labels = ['awaiting_payment' => 'Pesanan dibuat · menunggu pembayaran', 'paid' => 'Pembayaran diterima', 'pending' => 'Transaksi masih pending. Silakan cek status pesanan secara berkala', 'success' => 'Pesanan berhasil', 'failed' => 'Pesanan gagal', 'review' => 'Pesanan memerlukan pemeriksaan toko'];
-        $message = ($order->is_sandbox ? '[PENGUJIAN] ' : '').$order->store->name.' · '.$order->number.'\n'.($labels[$status] ?? $status).'\n'.($order->message ?? '');
-        if ($status === 'awaiting_payment') {
-            $message .= '\nProduk: '.($order->snapshot['name'] ?? 'Produk digital').'\nTotal: Rp'.number_format($order->total, 0, ',', '.').'\nSelesaikan pembayaran melalui tautan pesanan berikut.';
-        }
-        if ($order->refunded_at) {
-            $message .= '\nDana Rp'.number_format($order->refund_amount, 0, ',', '.').' dikembalikan ke saldo pelanggan toko.';
-        }
-        if ($status === 'failed' && ! $order->customer_id) {
-            $message .= '\nHubungi toko untuk tindak lanjut pembelian ulang atau refund manual.';
-        }
-        $message .= '\n'.$this->url($order);
+        $labels = ['expired' => (($order->snapshot['cancelled_by_customer'] ?? false) || filled($order->snapshot['cancelled_by_owner'] ?? null)) ? 'Pesanan dibatalkan' : 'Waktu pembayaran berakhir', 'awaiting_payment' => 'Pesanan dibuat · menunggu pembayaran', 'paid' => 'Pembayaran diterima', 'pending' => 'Transaksi masih pending. Silakan cek status pesanan secara berkala', 'success' => 'Pesanan berhasil', 'failed' => 'Pesanan gagal', 'review' => 'Pesanan memerlukan pemeriksaan toko'];
+        $message = app(CustomerNoticeText::class)->order($order, $status, $this->url($order));
         $event = 'order:'.$order->id.':'.$status.($revision ? ':'.$revision : '');
-        CustomerNotice::firstOrCreate(['event' => $event], ['store_id' => $order->store_id, 'order_id' => $order->id, 'phone' => $order->phone, 'email' => $order->email, 'message' => str_replace('\n', "\n", $message)]);
+        CustomerNotice::firstOrCreate(['event' => $event], ['store_id' => $order->store_id, 'order_id' => $order->id, 'phone' => $order->phone, 'email' => $order->email, 'message' => $message]);
         app(PanelNotifications::class)->forStore($order->store, 'Pesanan '.$order->number, $labels[$status] ?? $status, $status === 'failed' ? 'warning' : 'info', $event, 'orders.view');
     }
 
     public function publicData(CustomerOrder $order): array
     {
         return [...$order->only(['id', 'number', 'is_sandbox', 'purpose', 'status', 'payment_status', 'destination', 'amount', 'fee', 'unique_code', 'total', 'credit_amount', 'refund_amount', 'gateway', 'message', 'created_at', 'expires_at', 'paid_at', 'refunded_at']),
+            'wa_revision' => CustomerNotice::where('order_id', $order->id)->latest()->orderByDesc('id')->value('id') ?? 'none',
             'can_simulate_payment' => app(CustomerPayments::class)->canSimulate($order), 'simulated_payment' => ($order->snapshot['payment_simulation']['method'] ?? null) === 'local',
             'midtrans_sandbox' => $order->gateway === 'midtrans' && (bool) ($order->snapshot['sandbox'] ?? true),
             'sandbox_qr_url' => $order->gateway === 'midtrans' && ($order->snapshot['sandbox'] ?? true) && is_string($order->provider_id) && preg_match('/^[a-zA-Z0-9-]{1,100}$/', $order->provider_id) ? 'https://api.sandbox.midtrans.com/v2/qris/'.rawurlencode($order->provider_id).'/qr-code' : null,

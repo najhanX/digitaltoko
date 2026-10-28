@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Bot, Check, CheckCircle2, Globe2, Layers3, LoaderCircle, ShieldCheck, Store, XCircle } from 'lucide-react';
 import Brand from '../../components/Brand';
+import PlatformHeader from '../../components/PlatformHeader';
 import { packages } from '../../components/packageCatalog';
 
 type Offer = {id:number;name:string;category:string;price:number;duration_days:number};
@@ -50,7 +51,7 @@ export default function Pricing({domain,offers}:{domain:string;offers:Offer[]}) 
 
     const StatusIcon = currentAvailability?.state==='checking'?LoaderCircle:currentAvailability?.state==='available'?CheckCircle2:XCircle;
     return <div className="pricing-site"><Head title="Paket & harga"><meta name="description" content="Pilih paket Web Topup, Bot WhatsApp, atau keduanya. Cek subdomain dan hitung biaya sewa toko Anda."/></Head>
-        <header className="topbar wrap"><Brand/><nav aria-label="Navigasi utama"><Link href="/">Beranda</Link><Link href="/paket" aria-current="page">Paket & harga</Link><Link href="/panduan">Panduan</Link><Link className="button small" href="/login">Masuk panel<ArrowRight size={16}/></Link></nav></header>
+        <PlatformHeader/>
         <main className="wrap pricing-main"><section className="pricing-intro"><span className="eyebrow">PAKET DIGITALTOKO</span><h1>Pilih platform.<br/><span>Siapkan toko Anda.</span></h1><p>Semua sumber produk sudah termasuk. Pilih cara berjualan dan durasi yang sesuai dengan usaha Anda.</p></section>
             <section aria-label="Pilihan platform" className="pricing-platforms">{packages.map(item=>{
                 const Icon = icons[item.key as keyof typeof icons];

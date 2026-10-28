@@ -4,6 +4,7 @@ use App\Http\Controllers\BotAccessController;
 use App\Http\Controllers\BotCatalogController;
 use App\Http\Controllers\BotCommerceController;
 use App\Http\Controllers\BotEventController;
+use App\Http\Controllers\BotQrisMessageController;
 use App\Http\Controllers\CommerceWebhookController;
 use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\OtomaxCallbackController;
@@ -26,5 +27,7 @@ Route::post('/commerce/forward/{store}', [CommerceWebhookController::class, 'for
 Route::post('/internal/bot/commerce', [BotCommerceController::class, 'handle'])->middleware(['platform.host', 'throttle:bot-worker']);
 Route::get('/internal/bot/notices', [BotCommerceController::class, 'notices'])->middleware(['platform.host', 'throttle:bot-notices']);
 Route::post('/internal/bot/notices/{notice}/delivered', [BotCommerceController::class, 'delivered'])->middleware(['platform.host', 'throttle:bot-notices']);
+Route::post('/internal/bot/qris-messages', [BotQrisMessageController::class, 'store'])->middleware(['platform.host', 'throttle:bot-notices']);
+Route::post('/internal/bot/qris-messages/{message}/revoked', [BotQrisMessageController::class, 'revoked'])->middleware(['platform.host', 'throttle:bot-notices']);
 
 Route::match(['get', 'post'], '/commerce/otomax/{connection}/{token}', OtomaxCallbackController::class)->middleware(['platform.host', 'throttle:300,1,otomax-callback']);

@@ -133,3 +133,14 @@ Server pemeriksaan sementara dihentikan setelah audit; server development milik 
 - Tidak mengganti tema toko yang sudah tersimpan. Alur Terapkan ke desain dan Simpan desain tetap digunakan. Tidak ada perubahan backend, migrasi atau dependensi.
 - 31 tes frontend lulus, termasuk pemeriksaan seluruh 24 nama unik, delapan preset per kelompok, kelengkapan/validitas warna, pemetaan CSS, kontras teks utama/pendukung/aksen terhadap background/kartu serta teks tombol terhadap primary minimal 4,5:1. Ini uji kombinasi token, bukan audit aksesibilitas seluruh komponen. Build TypeScript/Vite dan diff whitespace lulus.
 - Browser memakai panel toko fixture terpisah: filter Pastel/Gelap masing-masing delapan, memilih Lavender memperbarui tujuh warna dan pratinjau tanpa menyimpan desain. Bukti perpustakaan: apps/web/storage/framework/testing/screenshots/theme-presets-library.png. Tidak mengubah tema toko aktif milik user.
+
+
+## 2026-10-27 — Panel mobile lebih ringkas
+
+- Tambahkan workspace-mobile.css pada bundle CSS awal, dibatasi ke workspace panel <=700px, sehingga admin/owner/staff memakai aturan yang sama dan storefront tetap memakai layoutnya sendiri.
+- Header 60px, konteks nama toko lebih jelas, pemilih tema menjadi satu tombol dropdown di mobile; desktop tetap memiliki tiga pilihan tema.
+- Drawer navigasi maksimal 310px atau lebar layar dikurangi 40px, padding/link/sidebar footer lebih rapat. Drawer tetap scroll, Escape dan focus trap existing tetap dipakai.
+- Judul, kartu ringkasan, langkah onboarding, tab, toolbar, tombol, baris tabel, serta modal diringkas melalui jarak/padding. Input tetap 16px agar tidak memicu zoom otomatis pada ponsel. Tabel besar tetap digeser di wadahnya tanpa melebarkan halaman.
+- FilterBar panel mempertahankan pencarian/Terapkan/Reset di mobile; jenis/status/jumlah data dibuka melalui tombol Filter dengan indikator jumlah filter aktif. Filter tambahan yang sebelumnya memakai details terbuka dalam satu langkah. Pagination atas memakai tombol panah dengan aria-label tetap tersedia. Desktop tidak menampilkan tombol Filter mobile.
+- Validasi build web dan 32 tes frontend lulus. Browser memakai router/data SQLite simulasi terisolasi pada port8010, bukan mengubah data toko nyata: owner dan admin/staff, drawer admin, modal tambah produk tanpa menyimpan, filter staff/per_page5, lebar320/390 serta desktop1440, tema terang/gelap. Lebar dokumen terukur tidak melampaui viewport; tombol mobile terverifikasi tersembunyi di desktop. Tidak melakukan pembayaran/sinkronisasi atau mengubah izin akun nyata.
+- Bukti visual: panel-mobile-compact.png pada direktori visualisasi sesi. Server/tab pengujian dan viewport sementara ditutup/dipulihkan setelah verifikasi. Tidak ada perubahan dependency/migrasi database.

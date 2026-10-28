@@ -71,22 +71,20 @@ export function navigationChoices(page:BrowsePage):{title:string;description:str
         action:page.view==='services'?{type:'browse',view:'categories',service:item.name,page:1}:{type:'browse',view:'products',service:item.service!,category:item.name,page:1}}));
 }
 export function navigationText(page:BrowsePage,query:BrowseQuery):string {
-    if (page.view==='products') {
-        const productPage=catalogPage(page);
-        const lines=['*NAVIGASI PRODUK*',...(page.pagination.current_page>1?['Sebelumnya : '+navigationCommand({...query,page:page.pagination.current_page-1})]:[]),
-            ...(page.pagination.current_page<page.pagination.last_page?['Berikutnya : '+navigationCommand({...query,page:page.pagination.current_page+1})]:[]),
-            ...(query.service?['Kategori utama : '+navigationCommand({type:'browse',view:'categories',service:query.service,page:1})]:[]),'Layanan : #list','Menu utama : #menu'];
-        return catalogText(productPage,{page:page.pagination.current_page,search:''},lines);
-    }
+    if(page.view==='products')return catalogText(catalogPage(page),{page:page.pagination.current_page,search:''},{service:page.service??query.service,category:page.category??query.category});
     const lines=[`Halaman ${page.pagination.current_page}/${page.pagination.last_page} · ${page.pagination.total} ${page.view==='services'?'layanan':'kategori'}`,
-        ...(page.service?['Layanan : '+inline(page.service)]:[]),...(page.category && !page.service?['Kategori ini ada di beberapa layanan.','Pilih layanan yang Anda maksud.']:[]),''];
-    for (const choice of navigationChoices(page)) lines.push('*'+inline(choice.title)+'*',inline(choice.description),'Ketik : '+navigationCommand(choice.action),'');
-    if (!page.items.length) lines.push(page.view==='services'?'Belum ada layanan yang ditampilkan.':'Kategori belum ditemukan di layanan ini.','');
-    if (page.pagination.current_page>1) lines.push('Sebelumnya : '+navigationCommand({...query,page:page.pagination.current_page-1}));
-    if (page.pagination.current_page<page.pagination.last_page) lines.push('Berikutnya : '+navigationCommand({...query,page:page.pagination.current_page+1}));
-    if (page.view==='categories') lines.push('Kembali ke layanan : #list');
-    lines.push('Menu utama : #menu');
+        ...(page.service?[inline(page.service)]:[]),...(page.category&&!page.service?['Kategori ini ada di beberapa layanan.']:[]),''];
+    navigationChoices(page).forEach((choice,index)=>lines.push(`*${index+1}. ${inline(choice.title)}*`,inline(choice.description),navigationCommand(choice.action),''));
+    if(!page.items.length)lines.push('Belum ada pilihan yang ditampilkan.');
     return shopReply(page.store_name,page.view==='services'?'LIST LAYANAN':'LIST KATEGORI UTAMA',lines);
+}
+export function navigationControls(page:BrowsePage,query:BrowseQuery):string {
+    return [page.view==='products'?'Pilih produk melalui tombol daftar.':page.view==='services'?'Pilih layanan melalui tombol daftar.':'Pilih kategori melalui tombol daftar.',
+        ...(page.pagination.current_page>1?['Sebelumnya : '+navigationCommand({...query,page:page.pagination.current_page-1})]:[]),
+        ...(page.pagination.current_page<page.pagination.last_page?['Berikutnya : '+navigationCommand({...query,page:page.pagination.current_page+1})]:[]),
+        ...(page.view==='products'&&query.service?['Kategori utama : '+navigationCommand({type:'browse',view:'categories',service:query.service,page:1})]:[]),
+        ...(page.view==='categories'?['Kembali : #list']:[]),
+        page.view==='products'?'Pesan lewat teks : #beli KODE':'', 'Menu : #menu'].filter(Boolean).join('\n');
 }
 export function navigationHelp(storeName:string):string {
     return shopReply(storeName,'PANDUAN KATALOG',['Layanan : #list','Kategori utama : #list "Aplikasi premium"','Produk : #stok "Canva" --layanan "Aplikasi premium"','Halaman berikut : #list --halaman 2','Pencarian langsung : #produk canva']);

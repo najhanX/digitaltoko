@@ -4,26 +4,38 @@ import { menuText } from './replies.js';
 import { readCustomerMessage } from './messages.js';
 import { withOperationTimeout } from './utils/operationTimeout.js';
 
+const menuButtons:readonly (readonly [MenuAction,string])[]=[['services','Layanan & produk'],['balance','Saldo pelanggan'],['status','Status pesanan']];
+
 export async function sendMenu(sock:WASocket,message:WAMessage,chat:string,sender:string,tokens:MenuTokens,storeName:string) {
     // Text stays usable even when WhatsApp does not render native controls.
     await sock.sendMessage(chat,{text:menuText(storeName)},{quoted:message});
-    await sendControls(sock,message,chat,sender,tokens,[['services','Layanan & produk'],['balance','Saldo pelanggan'],['status','Status pesanan']],'Pilih menu toko');
+    await sendControls(sock,message,chat,sender,tokens,menuButtons,'Pilih menu toko');
 }
 
 type NativeButton={name:string;buttonParamsJson:string};
-async function sendNative(sock:WASocket,message:WAMessage,chat:string,body:string,buttons:()=>NativeButton[]) {
+async function sendNative(sock:WASocket,message:WAMessage|null,chat:string,body:string,buttons:()=>NativeButton[]) {
     try {
-        const device=message.key.id?getDevice(message.key.id):'unknown';
-        if ((device!=='android'&&device!=='ios')||isJidGroup(chat)||!sock.user?.id) return;
+        const device=message?.key.id?getDevice(message.key.id):'unknown';
+        if ((message&&device!=='android'&&device!=='ios')||isJidGroup(chat)||!sock.user?.id) return false;
         const outgoing=generateWAMessageFromContent(chat,{viewOnceMessage:{message:{messageContextInfo:{deviceListMetadata:{},deviceListMetadataVersion:2},interactiveMessage:{header:{hasMediaAttachment:false},body:{text:body},footer:{text:'DigitalToko'},nativeFlowMessage:{buttons:buttons(),messageParamsJson:''}}}}},{userJid:sock.user.id});
-        if (!outgoing.message||!outgoing.key.id) return;
+        if (!outgoing.message||!outgoing.key.id) return false;
         await withOperationTimeout(()=>sock.relayMessage(chat,outgoing.message!,{messageId:outgoing.key.id!,additionalNodes:[{tag:'biz',attrs:{},content:[{tag:'interactive',attrs:{type:'native_flow',v:'1'},content:[{tag:'native_flow',attrs:{name:'mixed',v:'9'}}]}]},{tag:'bot',attrs:{biz_bot:'1'}}]}),8000,'Menu tombol');
-    } catch { /* Never retry ambiguous native send; the text was already sent. */ }
+        return {id:outgoing.key.id,remoteJid:chat,fromMe:true as const};
+    } catch { return false; /* Never retry ambiguous native send. */ }
 }
-export async function sendControls(sock:WASocket,message:WAMessage,chat:string,sender:string,tokens:MenuTokens,buttons:readonly (readonly [MenuAction,string])[],body:string) {
-    await sendNative(sock,message,chat,body,()=>buttons.map(([action,label])=>({name:'quick_reply',buttonParamsJson:JSON.stringify({display_text:label,id:tokens.issue(chat,sender,action,readCustomerMessage(message).scope)})})));
+export async function sendControls(sock:WASocket,message:WAMessage,chat:string,sender:string,tokens:MenuTokens,buttons:readonly (readonly [MenuAction,string])[],body:string,fallback?:string) {
+    const sent=await sendNative(sock,message,chat,body,()=>buttons.map(([action,label])=>({name:'quick_reply',buttonParamsJson:JSON.stringify({display_text:label,id:tokens.issue(chat,sender,action,readCustomerMessage(message).scope)})})));
+    if(!sent&&fallback)return (await sock.sendMessage(chat,{text:fallback},{quoted:message}))?.key;
+    return sent||undefined;
 }
 export async function sendChoices(sock:WASocket,message:WAMessage,chat:string,sender:string,tokens:MenuTokens,choices:readonly {title:string;description:string;action:MenuAction}[],title:string) {
     if (!choices.length) return;
     await sendNative(sock,message,chat,title,()=>[{name:'single_select',buttonParamsJson:JSON.stringify({title,sections:[{title,rows:choices.map(choice=>({title:choice.title.slice(0,72),description:choice.description.slice(0,100),id:tokens.issue(chat,sender,choice.action,readCustomerMessage(message).scope)}))}]})}]);
+}
+
+/** Unsolicited notices have no incoming device ID; tokens remain bound to the recipient. */
+export async function sendNoticeControls(sock:WASocket,chat:string,tokens:MenuTokens) {
+ const sent=await sendNative(sock,null,chat,'Pilih menu toko',()=>menuButtons.map(([action,label])=>({name:'quick_reply',buttonParamsJson:JSON.stringify({display_text:label,id:tokens.issue(chat,chat,action)})})));
+ if(sent)return sent;
+ return (await sock.sendMessage(chat,{text:'Menu toko: #menu · #produk · #saldo · #status'}))?.key;
 }

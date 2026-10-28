@@ -217,6 +217,7 @@ class CustomerPayments
                 $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->first();
                 if ($locked->payment_status === 'unpaid' && $locked->status === 'awaiting_payment') {
                     $locked->update(['status' => 'expired', 'message' => 'Pembayaran tidak diselesaikan.']);
+                    app(CustomerCommerce::class)->notice($locked, 'expired');
                 }
             });
         } elseif (is_string($data['transaction_id'] ?? null)) {
@@ -309,6 +310,7 @@ class CustomerPayments
                 $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $commerce->ensure($locked->payment_status === 'unpaid' && in_array($locked->status, ['awaiting_payment', 'expired'], true), 'Pesanan sudah dibayar atau statusnya berubah. Pembatalan dihentikan.');
                 $locked->update(['status' => 'expired', 'completed_at' => now(), 'qr_image' => null, 'snapshot' => [...$locked->snapshot, 'cancelled_by_customer' => $ownerId === null, 'cancelled_by_owner' => $ownerId, ...($recovery ? ['cancellation_recovery' => ['reason' => 'sandbox_uncreated_stale_key', 'at' => now()->toIso8601String()]] : [])], 'message' => $ownerId === null ? 'Pesanan dibatalkan oleh pelanggan. Jangan membayar invoice ini.' : 'Pesanan dibatalkan oleh owner toko. Jangan membayar invoice ini.']);
+                $commerce->notice($locked, 'expired', 'cancelled');
             });
         });
     }

@@ -1,7 +1,10 @@
-import { inline, divider, shopReply } from './replies.js';
+import { inline, shopReply } from './replies.js';
 import type { MenuAction } from './menu.js';
 export type CatalogQuery={page:number;search:string};
 export type CatalogPage={store_name:string;items:{code:string;name:string;category:string;service:string;price:number;available:boolean;quantity:number|null;price_label:string}[];pagination:{current_page:number;last_page:number;total:number}};
+export function productChoices(page:CatalogPage):{title:string;description:string;action:MenuAction}[] {
+    return page.items.filter(item=>item.available).slice(0,10).map(item=>({title:inline(item.name),description:new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(item.price)+' · '+inline(item.code),action:{type:'select-product',code:item.code}}));
+}
 export function catalogQuery(text:string,action:MenuAction|null):CatalogQuery|null {
     if(action==='products')return {page:1,search:''};
     if(action && typeof action==='object' && action.type==='products')return {page:action.page,search:action.search};
@@ -23,24 +26,23 @@ export function catalogPage(value:unknown):CatalogPage {
     }
     return page;
 }
-export function catalogText(page:CatalogPage,query:CatalogQuery,navigation?:readonly string[]):string {
+export function catalogText(page:CatalogPage,query:CatalogQuery,context?:{service?:string;category?:string}):string {
     const money=(price:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(price);
-    const lines:string[]=[`Halaman ${page.pagination.current_page}/${page.pagination.last_page} · ${page.pagination.total} produk`,
-        ...(query.search ? [`Pencarian : ${inline(query.search)}`] : []), ''];
+    const lines:string[]=[...(context?.category?[inline(context.category)+(context.service?' · '+inline(context.service):'')]:[]),
+        `Halaman ${page.pagination.current_page}/${page.pagination.last_page} · ${page.pagination.total} produk`,
+        ...(query.search?[`Cari: ${inline(query.search)}`]:[]),''];
     page.items.forEach((item,index)=>{
-        if (index>0) lines.push(divider.slice(2));
-        lines.push(`*${inline(item.name)}*`, `Kode : ${inline(item.code)}`, `Kategori : ${inline(item.service)} / ${inline(item.category)}`,
-            `${inline(item.price_label)} : *${money(item.price)}*`,
-            `Status : ${item.available?'✅ Tersedia':'❌ Tidak tersedia'}`+(item.quantity!==null?` · ${item.quantity} stok`:''));
+        if(index>0)lines.push('');
+        lines.push(`*${index+1}. ${inline(item.name)}*`,`${item.price_label==='Harga'?'':inline(item.price_label)+': '}${money(item.price)} · ${inline(item.code)}`,
+            !item.available?'Tidak tersedia':item.quantity!==null?`${item.quantity} stok`:'Tersedia');
     });
-    if (!page.items.length) lines.push('Produk belum ditemukan.', 'Coba kata kunci lain atau hubungi admin toko.');
-    if (navigation) lines.push('',...navigation);
-    else {
-        lines.push('', '*PANDUAN KATALOG*', 'Layanan : #list', 'Cari produk : #produk canva');
-        const suffix=query.search ? ' '+inline(query.search) : '';
-        if (page.pagination.current_page>1) lines.push(`Sebelumnya : #produk ${page.pagination.current_page-1}${suffix}`);
-        if (page.pagination.current_page<page.pagination.last_page) lines.push(`Berikutnya : #produk ${page.pagination.current_page+1}${suffix}`);
-        lines.push('Menu utama : #menu');
-    }
-    return shopReply(page.store_name,'KATALOG PRODUK',lines);
+    if(!page.items.length)lines.push('Produk belum ditemukan.');
+    return shopReply(page.store_name,'DAFTAR PRODUK',lines);
+}
+export function catalogNavigation(page:CatalogPage,query:CatalogQuery):string {
+    const suffix=query.search?' '+inline(query.search):'';
+    return ['Pilih produk melalui tombol daftar.',
+        ...(page.pagination.current_page>1?[`Sebelumnya : #produk ${page.pagination.current_page-1}${suffix}`]:[]),
+        ...(page.pagination.current_page<page.pagination.last_page?[`Berikutnya : #produk ${page.pagination.current_page+1}${suffix}`]:[]),
+        'Ketik #beli KODE untuk mulai, atau #menu.'].join('\n');
 }

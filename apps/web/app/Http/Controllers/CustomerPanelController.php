@@ -39,25 +39,33 @@ class CustomerPanelController extends Controller
     {
         $role = CatalogAccess::authorize($request, $store, 'orders.view');
         abort_unless($order->store_id === $store->id, 404);
-        $data = app(CustomerCommerce::class)->publicData($order);
-        unset($data['url'],$data['qr_image'],$data['payment_url'],$data['result'],$data['phone']);
-        if (CatalogAccess::has($request, $role, 'customers.contacts')) {
-            $data['phone'] = $order->phone;
-        }
-        $attempts = $order->attempts()->orderBy('position')->get();
-        $supplierNames = SupplierConnection::where('store_id', $store->id)->where('kind', 'otomax')
-            ->whereIn('id', $attempts->where('source', 'otomax')->map(fn ($attempt) => $attempt->request_snapshot['connection_id'] ?? null)->filter())
-            ->pluck('name', 'id');
+        $orderData = function () use ($request, $role, $order): array {
+            $data = app(CustomerCommerce::class)->publicData($order);
+            unset($data['url'], $data['qr_image'], $data['payment_url'], $data['result'], $data['phone']);
+            if (CatalogAccess::has($request, $role, 'customers.contacts')) {
+                $data['phone'] = $order->phone;
+            }
+
+            return [...$data, 'customer_id' => $order->customer_id, 'resolution' => $order->resolution];
+        };
+        $attemptData = function () use ($order, $store) {
+            $attempts = $order->attempts()->orderBy('position')->get();
+            $supplierNames = SupplierConnection::where('store_id', $store->id)->where('kind', 'otomax')
+                ->whereIn('id', $attempts->where('source', 'otomax')->map(fn ($attempt) => $attempt->request_snapshot['connection_id'] ?? null)->filter())
+                ->pluck('name', 'id');
+
+            return $attempts->map(fn ($a) => [...$a->only(['id', 'position', 'source', 'reference', 'cost', 'status', 'message', 'created_at', 'updated_at']), 'supplier_name' => $a->source === 'otomax' ? ($a->request_snapshot['otomax']['connection_name'] ?? $supplierNames->get($a->request_snapshot['connection_id'] ?? '')) : null, 'supplier_response' => $a->source === 'otomax' ? ($a->request_snapshot['supplier_response'] ?? null) : null]);
+        };
         Inertia::encryptHistory();
 
-        return Inertia::render('Owner/OrderDetail', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'order' => [...$data, 'customer_id' => $order->customer_id, 'resolution' => $order->resolution],
-            'attempts' => $attempts->map(fn ($a) => [...$a->only(['id', 'position', 'source', 'reference', 'cost', 'status', 'message', 'created_at', 'updated_at']), 'supplier_name' => $a->source === 'otomax' ? ($a->request_snapshot['otomax']['connection_name'] ?? $supplierNames->get($a->request_snapshot['connection_id'] ?? '')) : null, 'supplier_response' => $a->source === 'otomax' ? ($a->request_snapshot['supplier_response'] ?? null) : null]),
-            'canRetrySupplier' => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerFulfillment::class)->canRetrySupplier($order),
-            'canCancel' => $role === 'owner' && ! $data['cancelled'] && $order->payment_status === 'unpaid' && in_array($order->status, ['awaiting_payment', 'expired'], true),
-            'canReview' => $role === 'owner' && $order->status === 'review' && $order->payment_status === 'paid' && ! $order->attempts()->whereNotNull('last_checked_at')->exists(), 'canResolve' => CatalogAccess::has($request, $role, 'guests.resolve'), 'canResend' => CatalogAccess::has($request, $role, 'orders.resend'),
-            'canManual' => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerOrderDecision::class)->eligible($order),
-            'decisions' => $order->snapshot['decision_history'] ?? [],
-            'canReveal' => CatalogAccess::has($request, $role, 'stock.credentials')]);
+        return Inertia::render('Owner/OrderDetail', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'order' => $orderData,
+            'attempts' => $attemptData,
+            'canRetrySupplier' => fn () => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerFulfillment::class)->canRetrySupplier($order),
+            'canCancel' => fn () => $role === 'owner' && ! $orderData()['cancelled'] && $order->payment_status === 'unpaid' && in_array($order->status, ['awaiting_payment', 'expired'], true),
+            'canReview' => fn () => $role === 'owner' && $order->status === 'review' && $order->payment_status === 'paid' && ! $order->attempts()->whereNotNull('last_checked_at')->exists(), 'canResolve' => fn () => CatalogAccess::has($request, $role, 'guests.resolve'), 'canResend' => fn () => CatalogAccess::has($request, $role, 'orders.resend'),
+            'canManual' => fn () => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerOrderDecision::class)->eligible($order),
+            'decisions' => fn () => $order->snapshot['decision_history'] ?? [],
+            'canReveal' => fn () => CatalogAccess::has($request, $role, 'stock.credentials')]);
     }
 
     public function action(Request $request, Store $store, CustomerOrder $order): RedirectResponse

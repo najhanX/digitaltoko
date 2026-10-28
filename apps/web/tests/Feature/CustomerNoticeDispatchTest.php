@@ -98,6 +98,32 @@ class CustomerNoticeDispatchTest extends TestCase
         $this->assertSame(3, (new SendCustomerNotice($notice->id))->tries);
     }
 
+    public function test_success_revision_outbox_adds_result_before_footer_only_while_order_is_successful(): void
+    {
+        $store = $this->shop();
+        $token = str_repeat('v', 40);
+        $store->update(['worker_token_hash' => hash('sha256', $token)]);
+        $product = CatalogProduct::create(['store_id' => $store->id, 'code' => 'NOTICE-APP', 'name' => 'Test premium', 'kind' => 'premium', 'service' => 'Aplikasi', 'category' => 'Canva', 'sale_price' => 15000, 'active' => true]);
+        ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'source' => 'stock', 'source_key' => 'stock', 'active' => true]);
+        $engine = app(CustomerCommerce::class);
+        $engine->settings($store)->update(['allow_guest' => true]);
+        $order = $engine->begin($store, ['product_id' => $product->id, 'phone' => '6281234567890', 'payment' => 'gateway', 'idempotency_key' => (string) Str::uuid()], null);
+        $order->update(['status' => 'success', 'result' => "Email: test@example.test\nPassword: test-only", 'completed_at' => now()]);
+        $engine->notice($order, 'success', 'decision:demo');
+        $engine->notice($order, 'success', 'decision:demo');
+        $this->assertSame(1, CustomerNotice::where('event', 'order:'.$order->id.':success:decision:demo')->count());
+        $items = collect($this->withToken($token)->getJson('http://localhost/api/internal/bot/notices')->assertOk()->json('data'))->keyBy('id');
+        $initialId = CustomerNotice::where('event', 'order:'.$order->id.':awaiting_payment')->value('id');
+        $successId = CustomerNotice::where('event', 'order:'.$order->id.':success:decision:demo')->value('id');
+        $this->assertStringNotContainsString('Password:', $items[$initialId]['message']);
+        $this->assertStringContainsString("*Hasil pesanan*\nEmail: test@example.test\nPassword: test-only", $items[$successId]['message']);
+        $this->assertStringEndsWith('_Powered by DigitalToko_', $items[$successId]['message']);
+        $order->update(['status' => 'failed']);
+        foreach ($this->getJson('http://localhost/api/internal/bot/notices')->assertOk()->json('data') as $item) {
+            $this->assertStringNotContainsString('Password:', $item['message']);
+        }
+    }
+
     public function test_web_order_initial_notice_is_idempotent_and_bot_does_not_duplicate_direct_receipt(): void
     {
         $store = $this->shop();
@@ -112,7 +138,7 @@ class CustomerNoticeDispatchTest extends TestCase
         $this->assertSame(1, CustomerNotice::count());
         $notice = CustomerNotice::firstOrFail();
         $this->assertSame('order:'.$order->id.':awaiting_payment', $notice->event);
-        $this->assertStringContainsString('menunggu pembayaran', $notice->message);
+        $this->assertStringContainsString('Menunggu pembayaran', $notice->message);
         $this->assertStringContainsString('15.000', $notice->message);
         Queue::assertPushed(SendCustomerNotice::class, 1);
     }

@@ -103,3 +103,26 @@ test('text-only clients keep usable commands, aliases and readable tenant brandi
     await h.run(incoming({conversation:'#list canva'}));assert.equal(h.paths.at(-1),'/api/internal/bot/catalog?view=categories&page=1&service=canva');
     await h.run(incoming({conversation:'#stok canva'}));assert.equal(h.paths.at(-1),'/api/internal/bot/catalog?view=products&page=1&category=canva');
 });
+
+
+test('unknown hashtag commands receive branded menu recovery without reading catalogue or creating purchases',async()=>{
+ for(const command of ['#meni','#test','#SALDOO','#menu salah']){
+  const h=harness();await h.run(incoming({conversation:command}));
+  assert.match(h.sent[0].text,/TOKO CONTOH/);assert.match(h.sent[0].text,/PERINTAH TIDAK DIKENAL/);assert.match(h.sent[0].text,/#menu/);
+  assert.deepEqual(h.paths,['/api/internal/bot/access']);
+  const button=JSON.parse(h.relays[0].message.viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons[0].buttonParamsJson);
+  assert.equal(button.display_text,'Menu utama');await h.run(incoming(response(button.id)));assert.equal(h.sent.at(-1).text,menuText('Toko Contoh'));
+ }
+ const blocked=harness({allowed:false});await blocked.run(incoming({conversation:'#meni'}));assert.equal(blocked.sent.length,0);
+ const desktop=harness();const msg=incoming({conversation:'#test'});msg.key.id='desktop-message';await desktop.run(msg);assert.match(desktop.sent[0].text,/#menu/);
+});
+
+test('unknown commands do not discard an unfinished checkout or pending destination input',async()=>{
+ const h=harness();
+ const purchase={type:'purchase',productId:'test-product',code:'TEST',destination:'08123456789',price:10000,payment:'wallet'};
+ const checkout=h.tokens.beginCheckout(pn,pn,purchase,[]);
+ h.tokens.waitForProduct(pn,pn,'TEST');
+ await h.run(incoming({conversation:'#meni'}));
+ assert.equal(h.tokens.checkoutId(pn,pn),checkout);assert.equal(h.tokens.takeProductInput(pn,pn).code,'TEST');
+ assert.deepEqual(h.paths,['/api/internal/bot/access']);
+});

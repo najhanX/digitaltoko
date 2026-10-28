@@ -1,0 +1,106 @@
+/* Panel-only mobile density. Storefront layouts retain their own breakpoints. */
+.mobile-filter-toggle,.mobile-theme-picker{display:none}
+.workspace-shell .panel-list-filters .mobile-filter-toggle{display:none}
+@media(max-width:700px){
+    .workspace-shell{--text-body:.875rem;--text-small:.8125rem}
+    .panel-surface.workspace-shell .panel-main{min-width:0}
+    .panel-surface.workspace-shell .workspace-topbar{height:60px;min-height:60px;padding:9px 12px;gap:8px}
+    .workspace-shell .topbar-location{min-width:0;gap:8px}
+    .workspace-shell .topbar-location>span{font-size:13px;min-width:0}
+    .workspace-shell .topbar-location .topbar-panel-name,.workspace-shell .breadcrumb-separator{display:none}
+    .workspace-shell .panel-top-right{gap:6px;flex-shrink:0}
+    .workspace-shell .icon-button,.workspace-shell .account-menu>summary{min-width:40px;min-height:40px}
+    .workspace-shell .account-menu>summary{padding:5px}
+    .workspace-shell .account-menu .account-name,.workspace-shell .account-menu>summary>svg{display:none}
+    .workspace-shell .desktop-theme-picker{display:none}
+    .workspace-shell .mobile-theme-picker{display:block;position:relative}
+    .mobile-theme-picker>summary{display:grid;place-items:center;width:40px;height:40px;list-style:none;border:1px solid var(--border);border-radius:10px;background:var(--panel-soft);cursor:pointer}
+    .mobile-theme-picker>summary::-webkit-details-marker{display:none}
+    .mobile-theme-picker>div{position:absolute;top:calc(100% + 8px);right:0;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--panel-card);box-shadow:0 10px 28px #0002;z-index:60}
+    .workspace-shell .mobile-theme-picker .theme-switch button{width:40px;height:40px}
+    .panel-surface.workspace-shell .workspace-content{padding:18px 12px 32px;max-width:100%;min-width:0}
+    .workspace-shell .page-heading{gap:12px;margin-bottom:18px}
+    .workspace-shell .page-heading h1{font-size:24px;line-height:1.25;overflow-wrap:anywhere}
+    .workspace-shell .page-heading .eyebrow{font-size:12px;letter-spacing:.09em;margin-bottom:6px}
+    .workspace-shell .page-heading p{font-size:14px;line-height:1.5;margin-top:7px}
+    .workspace-shell .page-heading-actions{display:flex;gap:7px;flex-wrap:wrap;width:100%;margin:0}
+    .workspace-shell .page-heading-actions .button{flex:0 1 auto;min-width:0}
+    .workspace-shell .button,.workspace-shell .button.small,.workspace-shell .text-link{font-size:13px;gap:6px;line-height:1.4}
+    .workspace-shell .button,.workspace-shell .button.small{min-height:40px;padding:9px 12px;border-radius:9px}
+    .workspace-shell .button>svg{width:16px;height:16px;flex-shrink:0}
+    .workspace-shell .row-actions{gap:7px;flex-wrap:wrap}
+    .workspace-shell .workspace-sidebar,.workspace-shell.compact-navigation .workspace-sidebar{width:min(310px,calc(100vw - 40px));padding:12px;overscroll-behavior:contain;max-height:100dvh}
+    .workspace-shell .sidebar-brand{height:48px;margin-bottom:10px}
+    .workspace-shell .sidebar-brand .brand img{width:145px;height:44px}
+    .workspace-shell .sidebar-label,.workspace-shell.compact-navigation .sidebar-label{font-size:11px;letter-spacing:.08em;margin:16px 10px 7px}
+    .workspace-shell .workspace-nav{gap:3px}
+    .workspace-shell .nav-item,.workspace-shell .sidebar-section-toggle{min-height:42px;padding:10px 11px;font-size:14px;gap:9px;line-height:1.35}
+    .workspace-shell .sidebar-section-links .nav-item{min-height:40px;padding-block:9px;font-size:13px}
+    .workspace-shell .store-switcher select{min-height:42px;padding:9px 11px;font-size:14px}
+    .workspace-shell .sidebar-bottom{padding:12px 8px;margin-top:14px;gap:9px}
+    .workspace-shell .sidebar-bottom strong{font-size:14px}
+    .workspace-shell .sidebar-bottom small{font-size:12px}
+    .workspace-shell .getting-started{padding:16px;gap:16px;margin-bottom:16px}
+    .workspace-shell .getting-started h2{font-size:19px;line-height:1.3;margin:8px 0}
+    .workspace-shell .getting-started p{font-size:13px;line-height:1.55}
+    .workspace-shell .getting-started .button{margin-top:12px}
+    .workspace-shell .account-checklist{gap:9px}
+    .workspace-shell .account-checklist li{font-size:12px;gap:7px;line-height:1.4}
+    .workspace-shell .account-checklist li>span{width:23px;height:23px;font-size:12px;flex-shrink:0}
+    .workspace-shell .cards,.workspace-shell .onboarding-grid,.workspace-shell .store-settings-grid,.workspace-shell .sales-order-layout{gap:12px}
+    .workspace-shell .stats{gap:8px;margin-bottom:16px}
+    .workspace-shell .stats .card{padding:12px 10px;border-radius:12px}
+    .workspace-shell .stats .card>span{font-size:12px;line-height:1.4}
+    .workspace-shell .stats .card>strong{font-size:24px;line-height:1.2;margin-block:6px}
+    .workspace-shell .stats .card>small{font-size:12px;line-height:1.4}
+    .workspace-shell .onboarding-card,.workspace-shell .catalog-data-card,.workspace-shell .admin-data-card,.workspace-shell .sales-data-card{padding:14px;gap:12px;border-radius:13px}
+    .workspace-shell .onboarding-card h2,.workspace-shell .data-table-header h2{font-size:17px;line-height:1.35}
+    .workspace-shell .onboarding-card p{line-height:1.6}
+    .workspace-shell .data-table-header{padding:0;gap:10px}
+    .workspace-shell .data-table-header .pagination-top{gap:8px;margin:0;flex-wrap:nowrap;align-items:center;justify-content:space-between}
+    .workspace-shell .pagination-top p{max-width:58%;font-size:12px;line-height:1.4}
+    .workspace-shell .pagination-top nav{flex:none;gap:5px}
+    .workspace-shell .pagination-top nav button{font-size:0;min-width:38px;width:38px;height:38px;padding:0;gap:0}
+    .workspace-shell .pagination-top nav button svg{width:16px;height:16px}
+    .workspace-shell .list-pagination{gap:8px;margin-block:12px;font-size:12px}
+    .workspace-shell .list-pagination p{font-size:12px;line-height:1.4}
+    .workspace-shell .list-pagination button{min-width:36px;height:36px;padding-inline:8px;font-size:12px}
+    .workspace-shell .panel-list-filters{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px;margin-block:12px}
+    .workspace-shell .panel-list-filters .list-search{grid-column:1;grid-row:1;min-width:0;width:auto}
+    .workspace-shell .panel-list-filters .list-search>span{display:none}
+    .workspace-shell .panel-list-filters .mobile-filter-toggle{display:inline-flex;grid-column:2;grid-row:1;align-self:end;min-height:42px}
+    .workspace-shell .mobile-filter-count{display:grid;place-items:center;min-width:19px;height:19px;border-radius:6px;background:var(--primary);color:white;font-size:11px}
+    .workspace-shell .panel-list-filters label{min-width:0;font-size:13px}
+    .workspace-shell .panel-list-filters :is(input,select){font-size:16px;min-height:42px;padding:9px 10px}
+    .workspace-shell .panel-list-filters .list-search>div{min-width:0;width:100%}
+    .workspace-shell .panel-list-filters:not(.mobile-filters-open) :is(.list-filter-choice,.list-page-size,.list-extra-filters){display:none}
+    .workspace-shell .panel-list-filters .filter-actions{grid-column:1/-1;width:100%;gap:7px;display:flex}
+    .workspace-shell .panel-list-filters .filter-actions .button{flex:1;min-height:40px}
+    .workspace-shell .panel-list-filters .list-extra-filters{grid-column:1/-1}
+    .workspace-shell .panel-list-filters.mobile-filters-open .list-extra-filters{padding:0;border:0;background:transparent}
+    .workspace-shell .panel-list-filters.mobile-filters-open .list-extra-filters>summary{display:none}
+    .workspace-shell .panel-list-filters.mobile-filters-open .list-extra-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+    .workspace-shell .data-list-table table :is(th,td){padding:11px 10px;font-size:14px;line-height:1.5}
+    .workspace-shell .data-list-table td small{font-size:12px;line-height:1.5}
+    .workspace-shell .table-scroll{max-width:100%;min-width:0;overscroll-behavior-x:contain}
+    .workspace-shell .table-scroll .row-actions{flex-wrap:nowrap;gap:5px}
+    .workspace-shell .table-scroll .button{padding:7px 9px;min-height:36px;white-space:nowrap}
+    .workspace-shell .content-tabs{gap:6px;padding:5px;margin-bottom:16px}
+    .workspace-shell .content-tabs>a{font-size:13px;min-height:40px;padding:9px 10px}
+    .workspace-shell .feedback{padding:12px 14px;margin-block:12px;font-size:13px;border-radius:11px}
+    .workspace-shell .feedback p{font-size:13px;line-height:1.5}
+    .workspace-shell .table-auto-refresh{gap:6px}
+    .workspace-shell .table-auto-refresh>label{font-size:13px;padding:8px 10px;min-height:40px}
+    .workspace-shell .table-auto-refresh>span{font-size:12px}
+    .workspace-shell .interactive-modal{width:calc(100% - 16px);max-height:calc(100dvh - 24px);border-radius:14px}
+    .workspace-shell .interactive-modal .modal-header{padding:15px;gap:10px}
+    .workspace-shell .interactive-modal .modal-header h2{font-size:18px;line-height:1.3}
+    .workspace-shell .interactive-modal .modal-header p{font-size:13px;line-height:1.5;margin-top:6px}
+    .workspace-shell .interactive-modal .modal-body{padding:15px}
+    .workspace-shell .interactive-modal .modal-footer{padding:12px 15px;gap:8px}
+    .workspace-shell .interactive-modal .modal-footer .button{min-height:42px}
+    .workspace-shell .interactive-modal :is(.form-stack,.field-grid){gap:12px}
+    .workspace-shell .interactive-modal .onboarding-card form{gap:12px;margin-block:12px}
+    .workspace-shell .interactive-modal .modal-body :is(input,select,textarea):not([type=checkbox]):not([type=radio]){font-size:16px;padding:10px 11px}
+    .workspace-shell .interactive-modal .catalog-select-control input:not([type=checkbox]):not([type=radio]){padding:7px 0}
+}

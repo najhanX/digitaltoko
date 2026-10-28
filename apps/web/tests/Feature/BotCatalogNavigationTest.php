@@ -63,6 +63,34 @@ class BotCatalogNavigationTest extends TestCase
             ->assertJsonMissingPath('data.items.0.payload')->assertDontSee($other->code);
     }
 
+    public function test_product_pages_group_codes_then_sort_prices_and_numeric_codes_before_paginating(): void
+    {
+        $token = str_repeat('p', 40);
+        $shop = $this->shop($token);
+        $products = [];
+        foreach (['G-A10' => 5000, 'G-A2' => 5000, 'G-A1' => 8000, 'G-B1' => 1000, 'G-B2' => 2000, 'G-A20' => 12000, 'G-A30' => 16000] as $code => $price) {
+            $product = $this->product($shop, 'Layanan Uji', 'Kategori Uji');
+            $product->update(['code' => $code, 'sale_price' => $price]);
+            $products[$code] = $product;
+        }
+        $shop->update(['branding' => ['design' => ['sections' => [['key' => 'flash_sale', 'enabled' => true]],
+            'flash_product_ids' => [$products['G-A20']->id, $products['G-A30']->id],
+            'flash_discounts' => [$products['G-A20']->id => ['type' => 'fixed', 'value' => 10000], $products['G-A30']->id => ['type' => 'percent', 'value' => 75]],
+        ]]]);
+        $this->product($this->shop(str_repeat('x', 40)), 'Toko lain', 'Kategori Uji')->update(['code' => 'G-A0', 'sale_price' => 1]);
+        $expected = ['G-A20', 'G-A30', 'G-A2', 'G-A10', 'G-A1', 'G-B1', 'G-B2'];
+        $this->withToken($token);
+        foreach (['/api/internal/bot/products?', '/api/internal/bot/catalog?view=products&service=Layanan%20Uji&category=Kategori%20Uji&'] as $url) {
+            $first = $this->getJson($url.'per_page=5')->assertOk()->assertJsonPath('data.pagination.total', 7);
+            $second = $this->getJson($url.'per_page=5&page=2')->assertOk();
+            $this->assertSame($expected, [...array_column($first->json('data.items'), 'code'), ...array_column($second->json('data.items'), 'code')]);
+            $this->assertSame([2000, 4000, 5000, 5000, 8000], array_column($first->json('data.items'), 'price'));
+        }
+        $this->assertSame(array_slice($expected, 0, 5), array_column($this->getJson('/api/internal/bot/products?q=G-A')->assertOk()->json('data.items'), 'code'));
+        $shop->update(['branding' => []]);
+        $this->assertSame(['G-A2', 'G-A10', 'G-A1', 'G-A20', 'G-A30', 'G-B1', 'G-B2'], array_column($this->getJson('/api/internal/bot/products')->assertOk()->json('data.items'), 'code'));
+    }
+
     public function test_every_level_rejects_missing_auth_suspension_expiry_and_web_only_shops(): void
     {
         $token = str_repeat('a', 40);

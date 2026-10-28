@@ -76,3 +76,60 @@ Manager menyediakan POST `/qr` pada loopback dengan bearer manager existing untu
 - Source auth masih file per toko; hardening durability/multi-host/purge belum lengkap. Status source ini tidak membuktikan pengiriman WhatsApp nyata di server tujuan.
 
 Untuk laptop, profil PM2 root Hansbot sekarang juga mencakup manager development ini. `pm2 start` (sesudah launcher global dipasang) menjalankan build bot lalu manager beserta enam layanan lainnya. Perubahan kode apps/bot dimuat lewat `pm2 restart digitaltoko-bot-manager`; API/bot Hanshop terpisah memakai tsx watch. Lihat docs/DEPLOYMENT.md pada root Hansbot. Jangan menjalankan manager:dev manual bersamaan dengan manager PM2.
+
+## 27 Oktober 2026 — Respons dan navigasi pelanggan
+
+Pesan bot menggunakan format lebih ringkas tanpa bingkai di setiap baris: nama toko, judul dengan ikon, bagian informasi, dan petunjuk berikutnya. Menu, layanan/kategori, katalog, saldo, konfirmasi, serta bukti pesanan mempertahankan fallback perintah teks. Hasil produk hanya ditampilkan ketika sukses; rincian biaya/kode unik nol tidak memenuhi bukti pesanan.
+
+Tombol saldo menyediakan petunjuk Isi saldo tanpa membuat tagihan. Riwayat menyediakan daftar pilihan pesanan; tombol Cek status pesanan membawa nomor pesanan spesifik, terikat chat/pengirim dan sekali pakai. Cek status hanya membaca melalui action status, tidak mengirim ulang produk atau membeli. Pembuatan topup tetap memerlukan nominal, dan pembelian tetap memerlukan konfirmasi Saldo/QRIS. Saldo minus ditampilkan dengan petunjuk pelunasan, bukan error umum.
+
+Validasi: 48 tes bot lulus, termasuk alur tombol saldo → petunjuk topup tanpa invoice, pilih pesanan → refresh pesanan yang sama, replay token, saldo minus, dan kerahasiaan hasil sebelum sukses. Build TypeScript lulus. Pengujian memakai socket/API palsu dan transport fixture; tampilan native pada WhatsApp Android/iOS nyata belum diverifikasi. Tidak mengirim pesan nyata, mengubah saldo, atau merestart sesi pengguna. Muat hasil build melalui `pm2 restart digitaltoko-bot-manager` untuk profil laptop yang sudah berjalan; tidak perlu menghapus sesi atau pairing ulang. Notifikasi outbox yang diformat backend serta OTP tidak diubah pada tahap ini.
+
+## 27 Oktober 2026 — Pilih produk sampai konfirmasi melalui chat
+
+Daftar produk dari kategori maupun pencarian sekarang menyediakan single-select **Pilih produk & pesan**, hanya untuk produk tersedia pada halaman yang sedang dibaca. Pemilihan membaca ulang harga/ketersediaan melalui quote dan tidak membuat order. Premium memakai nomor WhatsApp pelanggan sesuai profil kategori; profil lain meminta balasan tujuan, dengan format `ID ; ZONA/SERVER` untuk dua kolom. Server mengembalikan profil dan menormalisasi tujuan mengikuti konfigurasi kategori/format pemasok (termasuk pipe). Tidak menambahkan lookup nickname eksternal pada tahap ini.
+
+Konteks isian berlaku 5 menit, terikat chat/pengirim serta alias PN/LID yang berasal dari key Baileys, sekali dikonsumsi, dan dibatasi jumlahnya. `#batal`, menu/perintah lain, atau memilih tombol lain mengakhiri konteks isian. Balasan tanpa konteks tidak dianggap order. Isian gagal dapat dicoba ulang tanpa membuat pesanan. Setelah tujuan benar, bot menampilkan konfirmasi dan pilihan Saldo/QRIS yang sudah ada; hanya konfirmasi tersebut yang memanggil buy. Bukti pesanan tetap memiliki Cek status/Belanja lagi/Menu utama. Fallback teks tetap ada; tujuan yang mengandung pipe di-encode pada perintah konfirmasi teks agar pemisah tidak rusak.
+
+Validasi: 53 tes bot dan 55 tes web terkait commerce/tujuan/katalog lulus (583 assertions web). Mencakup produk tersedia saja, harga terbaru, tujuan → konfirmasi → buy, premium tanpa isian tambahan, dua kolom/pipe, isian ulang, pembatalan, TTL dan isolasi pengirim; quote tidak membuat order/debit. Tidak mengirim pesan, transaksi atau lookup provider nyata. Tidak ada migrasi/dependency baru. Perlu reload worker manager existing untuk menggunakan build terbaru; pengujian visual daftar native pada WhatsApp perangkat nyata masih perlu dilakukan oleh operator.
+
+## 27 Oktober 2026 — Tahapan checkout mengikuti pola Hanshop
+
+Dari pemeriksaan source bot_wa_v2 (checkoutText/transaksiController), pemilihan metode dan konfirmasi pembelian adalah tahap berbeda. Bot DigitalToko kini mengikuti pola: pilih produk → tujuan (selain APK premium) → pilih Saldo/QRIS → konfirmasi akhir → order. Pilihan pembayaran tidak memanggil buy. Alternatif teks singkat: #pilihbayar saldo / #pilihbayar qris (direct juga diterima), lalu #konfirmasi. #batal/perintah lain mengakhiri alur. Perintah #pesan lama tetap diterima sebagai konfirmasi eksplisit untuk kompatibilitas, tetapi tidak lagi memenuhi pesan panduan.
+
+APK premium bisa dipesan cukup #beli KODE, langsung ke pembayaran tanpa pertanyaan tujuan. Tujuan tambahan pada perintah premium ditolak dengan petunjuk yang benar. Nomor pengiriman berasal dari PN WhatsApp yang terautentikasi, dan API memaksanya kembali pada buy premium. Non-premium selalu meminta tujuan walaupun kategori keliru berprofil premium. Kategori game dua isian tetap memakai normalisasi yang ditentukan toko.
+
+Checkout berumur 5 menit, terikat chat/pengirim dan ID alur, hanya boleh memilih metode sekali, lalu konfirmasi sekali. Memulai alur baru membatalkan alur lama. Token metode lain/tombol lama, pengirim lain, konfirmasi sebelum metode, dan konfirmasi berulang tidak menghasilkan pembelian baru. 57 tes bot serta 55 tes commerce/tujuan/katalog web lulus sebelum perubahan urutan katalog berikutnya; tidak ada WhatsApp/transaksi nyata atau restart worker pengguna.
+
+## Urutan produk bot
+
+Daftar kategori produk dan hasil pencarian dikelompokkan menurut awalan kode sebelum digit pertama (contoh G-A dan G-B), lalu harga jual termurah di dalam kelompok. Harga sama memakai angka awal secara numerik (A2 sebelum A10), lalu kode dan ID sebagai penentu urutan stabil. Promo flash sale aktif nominal/persen ikut diperhitungkan; aturan admin postpaid tidak diberi diskon flash sale. Pengurutan dilakukan di query database sebelum pagination, sehingga tidak memuat seluruh katalog ke memori worker. Tidak mengubah urutan katalog panel/storefront. Tes terbaru web: 56 lulus / 603 assertions, termasuk dua endpoint, halaman lanjutan, pencarian, harga promo dan isolasi toko. Tidak ada migrasi atau dependency baru.
+
+## 27 Oktober 2026 — Pesan bot lebih ringkas
+
+Nama toko pada formatter perintah menjadi uppercase. Menghapus bingkai/separator panjang, ikon berulang dan instruksi panjang. Menu/topup/saldo/tujuan/pembayaran/konfirmasi dipadatkan; informasi wajib seperti nominal, status, hasil sukses, refund serta label biaya admin tagihan tetap ada.
+
+Isi katalog hanya konteks kategori/halaman dan nama, harga/kode, stok atau ketersediaan. Perintah halaman/kembali/menu serta petunjuk pesan dipindahkan ke body navigasi tersendiri di luar pesan daftar. Jika native navigation tidak dapat dikirim (termasuk desktop), worker mengirim fallback navigasi teks terpisah dengan scope kategori/pencarian/halaman yang sama. Pilihan produk, konfirmasi dua tahap, isolasi dan idempotensi tidak diubah.
+
+58 tes bot penuh lulus; setelah perapian label admin, 27 tes katalog/navigasi/commerce lulus kembali. Build TypeScript berhasil. Manager PM2 dimuat ulang untuk menerapkan format baru, tanpa logout atau penghapusan sesi. Operator perlu membuka #menu baru. Pengujian otomatis memakai socket/API palsu, bukan pengiriman pesan nyata ke pelanggan.
+
+## 27 Oktober 2026 — Penarikan pesan QRIS setelah pembayaran
+
+- Worker mencatat key gambar QRIS yang berhasil dikirim (bukan pesan bukti teks atau pesan customer). Referensi order/phone/key ditulis atomik di qris-message-outbox.json pada direktori sesi privat, kemudian diregistrasikan ke web. Antrean lokal dicoba ulang ketika backend sementara gagal dan tetap tersedia setelah worker restart; dihapus dari antrean hanya setelah ACK berisi UUID registrasi yang sah.
+- Web menyimpan key terenkripsi pada bot_qris_messages dengan identitas store/order dan hash deduplikasi. Beberapa gambar QR dari pengecekan ulang pesanan yang sama semuanya tercatat. Endpoint worker memeriksa bearer store, phone order, key milik bot, dan target PN/LID. Callback pembayaran tidak diberi kemampuan menghapus pesan langsung.
+- Pengambilan outbox juga memuat daftar QR yang perlu ditarik berdasarkan payment_status paid dari database. Notifikasi baru bukan syarat cleanup; antrean kosong pun masih mengembalikan cleanup. Worker mengirim delete memakai key yang tersimpan, lalu ACK revoked hanya setelah send berhasil. Jika gagal, pesan pembayaran tetap dikirim dan QR dicoba lagi. Tidak menghapus bukti teks/hasil produk, tidak membatalkan pesanan, serta tidak mengubah saldo/status pembayaran. QR sebelum pembaruan ini tidak memiliki key tercatat dan tidak dapat ditarik secara retrospektif oleh fitur ini. Penghapusan tetap mengikuti kemampuan/kebijakan revoke WhatsApp.
+- 62 tes bot penuh dan 69 tes web terkait QR/notifikasi/commerce/retensi lulus (663 assertions web). Empat tes QR diulang setelah validasi ACK ditambahkan. Mencakup kegagalan registrasi/restart, concurrency, key salah/foreign, hanya gambar QR, beberapa gambar per order, pembayaran mendahului registrasi, ACK berulang, ciphertext dan cascade retensi. Tes tidak mengirim pesan atau transaksi nyata.
+- Migrasi lokal web 2026_10_27_082941_create_bot_qris_messages_table diterapkan sesudah full backup privat before-otomax-20261027-083229.sql. Tidak ada perubahan database API Hanshop atau dependency baru. Urutan deploy: backup web, migrate web, build bot, reload manager/worker. Jangan menghapus sesi saat memperbarui. Kegagalan disk/izin tulis dapat menghalangi pencatatan ID dan perlu diperbaiki operator; gambar/credential pembayaran tidak disimpan di antrean lokal.
+
+### QRIS kedaluwarsa
+
+Cleanup QR WA juga berlaku ketika order berstatus expired (termasuk pembatalan yang sudah disahkan), atau masih awaiting_payment/unpaid tetapi expires_at telah lewat. Tidak perlu menunggu scheduler mengubah label order untuk menyembunyikan QR yang sudah melewati batas bayar. Pemilihan cleanup dan ACK memakai scope readyToRevoke yang sama. Penghapusan gambar tidak mengubah status order, status pembayaran, atau saldo. Status pending/review yang belum lunas tidak dianggap kedaluwarsa hanya karena waktu lamanya lewat. Tidak ada migrasi/dependency/rebuild bot baru pada perluasan ini; server web memilih tugas cleanup dan worker existing mengeksekusinya. Validasi: 54 tes QR/notifikasi/commerce lulus (561 assertions), termasuk batas waktu, status expired, status aktif dan isolasi sebelumnya.
+
+
+### 2026-10-27 — Pesan transaksi WhatsApp mengikuti pembaruan
+
+Pencatatan pesan diperluas dari gambar QRIS ke bukti/status pesanan, notifikasi otomatis, serta tombol pesanan. Saat status pembayaran/pesanan berubah atau notifikasi koreksi hasil dibuat, key pesan versi lama masuk antrean penghapusan; versi terbaru dipertahankan. Notifikasi tertunda yang sudah digantikan pembaruan lebih baru di-ACK tanpa mengirim teks usang. Pesan pemilihan metode pembayaran ditarik ketika masuk konfirmasi; key tahap konfirmasi ikut pesanan setelah order berhasil dibuat. Pesan katalog, pesan pelanggan, dan pesanan lain tidak ikut dihapus.
+
+Tabel/endpoint `bot_qris_messages` dan outbox privat `qris-message-outbox.json` tetap dipakai untuk kompatibilitas. Kolom baru menyimpan jenis pesan, versi notifikasi, serta snapshot status pesanan/pembayaran. Key tetap terenkripsi di database; antrean registrasi tetap tahan restart. Kegagalan revoke tidak menahan notifikasi terbaru dan dicoba lagi oleh pump. Tidak ada perubahan saldo, pembelian ulang, dependency baru, atau perubahan API Hanshop.
+
+Migrasi lokal `2026_10_27_085410_add_order_context_to_bot_qris_messages_table` sudah diterapkan setelah backup penuh `before-otomax-20261027-085756.sql`. Pengujian menggunakan transport WhatsApp palsu dan database terisolasi, bukan penghapusan pesan atau pembayaran nyata. Pesan sebelum pencatatan key tersedia tidak dapat ditarik secara retrospektif; kemampuan revoke tetap mengikuti ketentuan WhatsApp.

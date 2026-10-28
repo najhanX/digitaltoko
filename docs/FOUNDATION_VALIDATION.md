@@ -780,3 +780,127 @@ Penyempurnaan reveal: durasi diperpanjang dari 480ms menjadi 900ms, stagger kart
 - Migrasi web dan tabel refund API lokal diterapkan setelah backup privat. VPS perlu menjalankan script manual API Hanshop/scripts/migrations/20261026_digitaltoko_rental_refunds.sql setelah prasyarat invoice/payment/ledger, lalu migrasi Laravel dan memperbarui kedua layanan. Urutan dan verifikasi ada di DEPLOYMENT.md.
 - Validasi akhir: 83 tes web / 801 assertions lulus; 14 tes API lulus termasuk database MySQL terisolasi untuk replay, concurrency, nominal lengkap dan rollback setelah penulisan saldo/ledger gagal. Pint, kontrak respons API dan build TypeScript/Vite web/API lulus. Warning aset hero Nebula existing tetap ada.
 - Browser memakai SQLite fixture terisolasi: panel owner menahan aktivasi saat ditinjau, admin melihat alasan dan modal persetujuan Rp50.123 lengkap dengan checkbox serta konfirmasi subdomain. Bukti lokal: storage/framework/testing/screenshots/provisioning-refund-review.png. Tidak ada refund/pembayaran/OTP nyata, perubahan saldo pengguna, panggilan pemasok, atau restart proses PM2 pengguna. Kredit uang nyata pada VPS belum diuji.
+
+## 26 Oktober 2026 — Landing page layanan DigitalToko
+
+- Checkpoint penanganan penyiapan/refund sebelum revisi landing: Hansbot 7218966 dan API Hanshop 16c2c76. Tidak memasukkan arsip pengguna DigitalToko.zip.
+- Merancang ulang Platform/Home dengan identitas ungu/cyan DigitalToko: hero dan ilustrasi panel, navigasi sticky/menu mobile, tiga pilihan platform dari definisi paket bersama, koneksi pemasok, enam kelompok fitur, pilihan ilustrasi Nebula/Aurora/Atlas, empat langkah onboarding, tautan panduan bergambar, FAQ dan CTA ke simulator paket/subdomain.
+- Informasi calon penyewa mengikuti source/keputusan saat ini: seluruh sumber pada setiap platform; saldo/stok/biaya gateway/domain terpisah dari sewa; Midtrans akun toko atau QRIS custom berlisensi; maksimal lima staff; domain pribadi; WA notifikasi paket Web dan SMTP/platform email; KTP manual; aktivasi/masa sewa; perpanjangan/ubah paket dan masa tenggang. Tidak menambahkan harga tetap, testimoni, statistik penggunaan atau jaminan keuntungan yang tidak punya data. Tampilan panel/template pada landing diberi label ilustrasi.
+- CSS landing dipisah dan dibatasi .dt-home/dt-* agar tidak mengubah panel maupun storefront. Menggunakan hook reveal existing dan transisi CSS, bukan dependency baru. Output HTML awal tetap terlihat; menghormati prefers-reduced-motion. Pilihan template mendukung keyboard, FAQ memakai details native, menu mobile memiliki aria-expanded, dan tersedia skip link.
+- Validasi: TypeScript/Vite build lulus; 22 tes PublicPricingTest/PlatformFoundationTest lulus (201 assertions). Browser memeriksa desktop dan viewport mobile 390px (documentWidth=390), buka/tutup menu, pergantian Aurora/Atlas, jawaban FAQ, dan reduced motion (animation-name none). Log browser tidak menunjukkan error/warning saat alur ini. Bukti lokal di storage/framework/testing/screenshots/platform-landing-desktop.png dan platform-landing-mobile.png. Browser memakai fixture SQLite terisolasi; tidak membuat toko, invoice atau transaksi nyata.
+- Tidak ada perubahan schema atau migrasi baru pada revisi landing. Warning bundling referensi hero Nebula existing tetap ada, terpisah dari aset landing. Server pengujian sementara dihentikan setelah pemeriksaan.
+
+### Konsistensi navbar publik
+
+- Beranda, paket, daftar/detail panduan dan login owner memakai komponen PlatformHeader yang sama, dengan stylesheet mandiri. Ukuran logo, tinggi, urutan menu, tombol masuk, sticky/backdrop dan menu mobile kini satu sumber. Halaman staff/admin serta storefront tetap memakai navigasi sesuai ruangnya.
+- Menu Layanan/Tampilan toko/Cara mulai mengarah ke anchor beranda dari halaman mana pun. Halaman paket/panduan/login menandai halaman aktif; menu mobile tertutup setelah navigasi dan dapat ditutup dengan Escape. Login owner memakai navbar publik dan menghindari logo ganda di kartu formulir.
+- Verifikasi browser pada lima rute menunjukkan tinggi header 87px dan logo 153px yang sama di desktop. Mobile 390px memakai tinggi 74px, tidak overflow, dan navigasi dari paket ke /#tampilan berhasil dengan menu tertutup serta posisi section di bawah header. Tidak ada warning/error browser pada alur uji. Build lulus; 25 tes halaman publik/panduan/platform lulus (4.878 assertions). Bukti lokal: storage/framework/testing/screenshots/platform-shared-navbar.png. Server fixture sementara dihentikan setelah uji.
+
+## 27 Oktober 2026 — Perapian respons bot toko
+
+- Respons perintah menu/katalog/layanan/kategori/saldo/konfirmasi/bukti pesanan memakai format ringkas dengan nama toko, ikon dan kelompok informasi; bingkai panjang di setiap baris dihapus. Perintah ketik tetap tersedia saat tombol tidak dirender klien WhatsApp.
+- Tombol saldo membuka petunjuk topup tanpa membuat tagihan. Riwayat menyediakan single-select pesanan dan tombol refresh membawa nomor pesanan tertentu; token terikat penerima/chat, kedaluwarsa dan sekali pakai tetap berlaku. Pembelian tetap konfirmasi eksplisit; pengecekan status tidak membeli/mengirim ulang. Saldo minus ditampilkan dengan petunjuk, tidak mengubah saldo maupun pembatasan backend. Hasil produk tetap hanya keluar pada status sukses.
+- Build dan 48 tes bot lulus memakai socket/API palsu dan transport fixture, termasuk alur baru serta pairing/manager existing. Tidak mengirim pesan/transaksi WhatsApp nyata, mengubah schema, atau merestart manager/sesi pengguna. Operator perlu memuat ulang worker melalui supervisor existing (laptop: pm2 restart digitaltoko-bot-manager). Native button rendering pada perangkat nyata masih perlu dicoba; fallback teks selalu dikirim. Pesan outbox/OTP backend tetap terpisah dan tidak ditulis ulang.
+
+### 27 Oktober 2026 — Kelanjutan interaksi produk bot
+
+- Menambahkan single-select produk tersedia pada halaman kategori dan hasil pencarian. Harga/ketersediaan dibaca ulang saat memilih. Premium menuju konfirmasi memakai nomor WA; kategori lain meminta tujuan dalam chat, mendukung ID/zona dua isian dan format tujuan kategori. Konfirmasi pembayaran existing tetap menjadi satu-satunya langkah pembuatan pesanan.
+- Konteks tujuan dibatasi lima menit/5.000 entri dan terikat chat/pengirim/alias terautentikasi; menu/perintah/tombol lain membatalkannya. Isian invalid dapat diulang. Setelah order, tombol status dan belanja lagi melanjutkan navigasi. Fallback teks dipertahankan termasuk encoding pemisah pipe pada tujuan. Quote backend menambah metadata/proses normalisasi, bukan lookup nickname atau transaksi pemasok.
+- 53 tes bot dan 55 tes commerce/tujuan/katalog web lulus (583 assertions); Pint dan TypeScript build lulus. Pengujian memakai socket/API/HTTP palsu, tanpa pesan/transaksi/provider nyata. Tidak ada schema/dependency baru atau restart proses pengguna. Reload manager/worker diperlukan untuk memuat build bot terbaru. Dukungan render list native pada perangkat nyata belum diklaim sebagai sudah teruji.
+
+### 27 Oktober 2026 — Checkout bot dan urutan katalog
+
+- Source bot Hanshop dipakai sebagai acuan alur: produk → tujuan selain APK premium → metode pembayaran → konfirmasi akhir → pembuatan order. Ditambahkan #pilihbayar saldo/qris/direct, #konfirmasi dan pembatalan; native memakai ID checkout terikat penerima/TTL lima menit dan final sekali pakai. Pemilihan metode belum membeli. Token metode alternatif dan checkout lama tidak dapat menghasilkan order kedua. Harga/voucher/inquiry tetap dibawa ke konfirmasi.
+- #beli KODE cukup untuk APK premium, tanpa input tujuan; parameter tujuan tambahan diberi petunjuk ulang. Backend memakai nomor WA pelanggan untuk buy premium. Non-premium tetap meminta tujuan, termasuk ketika kategori salah disetel premium. Produk game dua isian mempertahankan format pemasok. Tidak mengubah fitur nickname web atau menambah lookup eksternal.
+- Katalog bot sekarang dikelompokkan awalan kode sebelum digit pertama, diurutkan harga jual termasuk promo aktif, lalu angka kode/kode/id sebagai tie-break. Berlaku untuk kategori dan pencarian sebelum pagination; tidak memuat semua produk ke RAM. SQL mendukung MySQL/MariaDB target dan SQLite pengujian, tanpa schema baru.
+- Validasi akhir: 57 tes bot lulus dan 56 tes web / 603 assertions lulus; Pint dan build bot berhasil. Tes mencakup checkout native/teks, mandatory tujuan, premium tanpa tujuan, order sekali, replay/TTL, sorting lintas halaman, flash sale nominal/persen, pencarian dan isolasi toko. Tidak ada pesan/transaksi/provider nyata atau restart proses pengguna. Rendering tombol WhatsApp nyata belum diuji; perlu reload worker untuk menggunakan build bot baru.
+
+### 27 Oktober 2026 — Reload worker karena pilihan produk belum terlihat
+
+Pemeriksaan runtime menemukan manager/worker masih dimulai pada 26 Oktober 21.47, sedangkan build pemilihan produk/checkout sudah diperbarui 27 Oktober. Sampel katalog Bogor Topup tetap tersedia (bukan terfilter habis). Memuat ulang hanya digitaltoko-bot-manager melalui PM2; worker baru dibuat dan status cache kembali CONNECTED tanpa menghapus sesi/pairing. 24 tes navigasi/commerce lulus. Tidak mengirim pesan uji atau membuat transaksi; operator perlu membuka #menu baru karena token dari proses sebelumnya tidak dipertahankan. Ini tindak lanjut operasional atas catatan sebelumnya yang belum merestart layanan.
+
+### 27 Oktober 2026 — Pemadatan pesan dan pemisahan navigasi
+
+- Nama toko uppercase, header tanpa bingkai panjang/ikon berulang, menu dan instruksi checkout lebih singkat. Katalog hanya nama produk, harga/kode, stok/ketersediaan dan konteks halaman; label Biaya admin pada postpaid dipertahankan agar tidak disangka total tagihan.
+- Navigasi halaman/kategori/menu berada di pesan controls terpisah. Native yang tidak dikirim memperoleh fallback teks terpisah; konteks layanan/kategori/search tetap utuh. Tidak menaruh navigasi/tutorial belanja di pesan daftar produk lagi.
+- 58 tes bot penuh lulus, lalu 27 tes terkait katalog/navigasi/commerce lulus setelah label admin dirapikan. Build berhasil; manager PM2 dimuat ulang tanpa logout/purge sesi untuk memuat perubahan. Tidak ada pesan uji, order atau saldo nyata yang dibuat oleh validasi otomatis. Format native perangkat nyata tetap perlu dilihat operator memakai #menu baru.
+
+### 27 Oktober 2026 — Notifikasi pesanan dan saldo
+
+- Menambahkan formatter CustomerNoticeText untuk pesan outbox pesanan dibuat, pembayaran diterima, pending, sukses, gagal, review dan kedaluwarsa. Header nama toko uppercase, satu ikon status, penekanan nama produk/nominal, nomor pesanan, tujuan non-premium, waktu kejadian tersimpan dalam WIB, batas bayar bila menunggu pembayaran, tautan bukti dan atribusi DigitalToko. Tidak menyalin pesan diagnostik pemasok mentah ke notifikasi ringkas.
+- Topup sukses membedakan total dibayar dari saldo yang dikreditkan. Refund hanya disebut sudah masuk jika refunded_at terisi; guest diarahkan menghubungi toko untuk penyelesaian manual. Sandbox diberi label pengujian. Tidak menambah klaim nominal/waktu yang tidak tercatat.
+- Hasil akun/SN disisipkan sebelum footer pada jalur WA, tetap mentah agar karakter password tidak berubah. Guard mensyaratkan order masih success dan event sukses milik order tersebut; termasuk event revisi/koreksi. Event idempotensi dan ACK pengiriman tidak diubah, pesan lama tidak ditulis ulang atau dikirim ulang. Email tetap memakai transport toko existing dan isi outbox bersama; OTP dan notifikasi langganan platform tidak disentuh.
+- 92 tes terkait notifikasi/commerce/mail/webhook lulus (946 assertions), termasuk nominal topup/refund, uppercase, timezone, premium tanpa tujuan, revisi sukses dan pencegahan hasil bocor setelah gagal. Tes outbox juga dijalankan kembali setelah assertion diikat ke ID notice agar tidak bergantung urutan timestamp yang sama. Pint lulus. Tidak ada dependency/schema baru atau pengiriman uji/transaksi nyata. Queue diberi sinyal queue:restart agar pekerja selesai menjalankan job aktif lalu supervisor memuat kode baru, tanpa restart bot atau penghapusan sesi.
+
+### 27 Oktober 2026 — QRIS WA ditarik setelah pembayaran sah
+
+- Menambahkan persistensi key pesan gambar QRIS per store/order, deduplikasi, penyimpanan terenkripsi, endpoint registrasi/ACK terikat worker dan query cleanup berbasis payment_status paid. Worker menyimpan registrasi tertunda pada file privat atomik per sesi agar bertahan saat backend gagal/restart. Tidak mencatat gambar QR atau credential gateway.
+- Revoke hanya memakai key fromMe milik bot pada target PN/LID yang tercatat. Kegagalan delete/ACK dicoba kembali dan tidak menahan notifikasi lunas. Setiap gambar QR yang dikirim ulang bisa dibersihkan; bukti teks dan hasil tetap ada. Tidak bisa menghapus QR lama sebelum fitur ini karena key belum dicatat. Mengikuti kemampuan revoke WhatsApp.
+- Validasi: 62 tes bot dan 69 tes web / 663 assertions lulus, termasuk restart, concurrency, ACK palsu, store/phone/key asing, paid-before-register dan cleanup cascade. Tes QR diulang setelah pemeriksaan ID ACK. Tidak ada pengiriman/pembayaran uji nyata.
+- Full backup lokal dibuat sebelum migrasi bot_qris_messages diterapkan. Dokumen deploy memuat urutan web migration → bot build → reload. Tidak ada perubahan API Hanshop/dependency. Manager/worker dimuat ulang untuk menerapkan kode; sesi tidak dihapus.
+
+### 27 Oktober 2026 — Penarikan QRIS kedaluwarsa
+
+- Scope readyToRevoke menyatukan kriteria query cleanup dan ACK: payment_status paid, status expired, atau unpaid/awaiting_payment yang melewati expires_at. Ini hanya membersihkan gambar WA, bukan mengonfirmasi pembatalan gateway atau mengubah order/saldo. Pending/review belum lunas tidak direvoke berdasarkan tanggal saja.
+- 54 tes web QR/notifikasi/commerce lulus / 561 assertions; Pint lulus. Tidak ada migrasi atau dependency baru dan tidak perlu restart bot karena perubahan pemilihan cleanup berada di endpoint web. Batas cakupan key QR sejak versi pencatatan dan kemampuan revoke WhatsApp tetap berlaku. Tidak mengirim QR/pembayaran uji nyata.
+
+
+### 2026-10-27 — Pesan transaksi WhatsApp mengikuti pembaruan
+
+Pencatatan pesan diperluas dari gambar QRIS ke bukti/status pesanan, notifikasi otomatis, serta tombol pesanan. Saat status pembayaran/pesanan berubah atau notifikasi koreksi hasil dibuat, key pesan versi lama masuk antrean penghapusan; versi terbaru dipertahankan. Notifikasi tertunda yang sudah digantikan pembaruan lebih baru di-ACK tanpa mengirim teks usang. Pesan pemilihan metode pembayaran ditarik ketika masuk konfirmasi; key tahap konfirmasi ikut pesanan setelah order berhasil dibuat. Pesan katalog, pesan pelanggan, dan pesanan lain tidak ikut dihapus.
+
+Tabel/endpoint `bot_qris_messages` dan outbox privat `qris-message-outbox.json` tetap dipakai untuk kompatibilitas. Kolom baru menyimpan jenis pesan, versi notifikasi, serta snapshot status pesanan/pembayaran. Key tetap terenkripsi di database; antrean registrasi tetap tahan restart. Kegagalan revoke tidak menahan notifikasi terbaru dan dicoba lagi oleh pump. Tidak ada perubahan saldo, pembelian ulang, dependency baru, atau perubahan API Hanshop.
+
+Migrasi lokal `2026_10_27_085410_add_order_context_to_bot_qris_messages_table` sudah diterapkan setelah backup penuh `before-otomax-20261027-085756.sql`. Pengujian menggunakan transport WhatsApp palsu dan database terisolasi, bukan penghapusan pesan atau pembayaran nyata. Pesan sebelum pencatatan key tersedia tidak dapat ditarik secara retrospektif; kemampuan revoke tetap mengikuti ketentuan WhatsApp.
+
+
+### 2026-10-27 — Refresh parsial transaksi panel dan navigasi WA sesudah sukses
+
+Daftar transaksi pelanggan owner/staff dan bagian Percobaan sumber pada detail mendapat checkbox Auto refresh (awal nonaktif). Interval 10 detik memakai partial reload Inertia, mode rest tanpa permintaan tumpang tindih, dan pause ketika tab browser tersembunyi. Indikator putar tampil selama permintaan. Daftar hanya mengambil items/pagination sambil mempertahankan filter, halaman dan scroll; detail hanya mengambil attempts, dijeda saat modal/form tindakan terbuka. Prop detail lain dijadikan closure agar polling attempts tidak menghitung data detail/hak tindakan yang tidak diminta. Ini pembacaan database, bukan polling atau kirim ulang transaksi ke pemasok.
+
+Notifikasi otomatis keberhasilan produk kini mendapat tombol Lihat layanan, Lihat produk, dan Menu utama hanya jika toko memiliki platform bot/full dan masih menerima pesanan. Web-only tetap menerima notifikasi tanpa navigasi transaksi. Token memakai MenuTokens worker yang sama, terikat penerima, serta key tombol ikut registrasi pesan per revisi untuk pembersihan pada pembaruan berikutnya. Notifikasi tanpa incoming device ID memakai native flow tersendiri dengan fallback perintah teks jika pengiriman tombol gagal. Kegagalan tombol tidak memicu pengiriman ulang notifikasi sukses yang sudah terkirim.
+
+Validasi: build TypeScript/Vite web berhasil; 65 tes bot penuh sebelumnya tetap lulus, ditambah tes tombol notifikasi (8 tes file pesan WA lulus). 57 tes web terkait commerce, notifikasi dan pembersihan pesan lulus setelah penambahan tes partial response, filter, akses staff/lintas toko, dan batas lisensi tombol. Tidak ada dependency atau migrasi baru. Tes memakai database terisolasi dan transport WA palsu; belum merupakan bukti tampilan tombol pada perangkat WhatsApp nyata.
+
+
+Revisi navigasi notifikasi akhir WA: tombol kini memakai definisi yang sama dengan `#menu` (Layanan & produk, Saldo pelanggan, Status pesanan), termasuk alur layanan ke kategori/produk. Dikirim untuk notifikasi akhir success/failed/expired, termasuk topup, selama paket bot/full masih operasional; bukan hanya produk sukses. Notifikasi pending dan toko web-only tidak mendapat tombol transaksi. Validasi revisi: 27 tes bot dan 11 tes web terkait lulus; transport WA tetap disimulasikan.
+
+
+### 2026-10-27 — Batas bayar pada instruksi bot
+
+Bukti pembayaran bot dan caption QRIS menampilkan expires_at invoice sebagai tanggal/jam/detik WIB serta sisa waktu saat pengiriman. Ini informasi statis dalam pesan, bukan pesan yang diedit tiap detik; countdown berjalan tetap tersedia pada tautan web. Pengecekan status kembali menghitung sisa waktu. Pesanan lunas/selesai tidak menampilkan instruksi tenggat aktif, tanggal kosong/rusak tidak dikarang, dan QR tidak dikirim ulang jika batas bayar telah lewat. Tidak mengubah tenggat invoice atau status pembayaran. Tes format WIB/sisa waktu/lunas/invalid/QR kedaluwarsa menggunakan transport palsu.
+
+
+### 2026-10-27 — Koreksi tenggat invoice yang bergeser sekitar tujuh jam
+
+Pemeriksaan MySQL lokal menemukan expires_at pada customer_orders/customer_inquiries/otomax_imports memiliki DEFAULT current_timestamp() ON UPDATE current_timestamp() implisit. Setiap update kolom lain mengganti tenggat dengan NOW() database; sesi database memakai SYSTEM (+07) sementara aplikasi menyimpan representasi UTC. Akibatnya invoice bot terbaru terlihat sekitar tujuh jam, padahal batas biasa yang dibuat CustomerCommerce adalah 15 menit (pascabayar mengikuti inquiry).
+
+Migrasi 2026_10_27_094531_fix_customer_order_expiry_automatic_timestamp_updates mengganti tiga kolom menjadi DATETIME tanpa default/on-update implisit. Untuk instalasi yang terdeteksi memakai ON UPDATE lama, invoice biasa tanpa inquiry hanya dipulihkan ke created_at +15 menit bila expires_at tepat cocok pola updated_at + offset waktu database (toleransi dua detik) dan melampaui tenggat standar. Tenggat inquiry dan penyesuaian lain tidak ditebak; status, saldo dan nominal tidak diubah. Rollback tidak mengembalikan perilaku koruptif. Data invoice lama tidak diperpanjang saat diperiksa ulang.
+
+Backup lokal penuh before-otomax-20261027-094709.sql dibuat sebelum migrasi. Metadata MySQL sesudah migrasi terverifikasi DATETIME tanpa EXTRA on update; dua invoice terbaru kembali berdurasi 15 menit. 56 tes web terkait commerce/notifikasi/key pesan lulus (636 assertions), termasuk batas tetap setelah update provider/message. Bukti ini bukan pembayaran gateway baru. Instruksi WA lama yang sudah terkirim tetap statis; #status NOMOR_PESANAN membaca tenggat terkoreksi.
+
+
+### 2026-10-27 — Notifikasi pembatalan dan kedaluwarsa pelanggan
+
+Jalur CustomerPayments::cancel sebelumnya hanya menyimpan expired/snapshot pembatalan dan menghapus QR tanpa membuat CustomerNotice. Sekarang pembatalan yang telah disahkan membuat event order:<id>:expired:cancelled di dalam transaksi database, sehingga job notifikasi terpicu setelah commit dan worker mengirim status baru beserta menu untuk paket bot/full. Format membedakan Pesanan dibatalkan dari Pembayaran kedaluwarsa dan melarang penggunaan ulang QR; tidak mengklaim refund/pembayaran yang tidak terjadi. Pembatalan pelanggan juga memakai jalur ini, tanpa perubahan hak akses panel.
+
+Kedaluwarsa dari status Midtrans dan rekonsiliasi scheduler turut membuat event order:<id>:expired saat status benar-benar berubah. FirstOrCreate menjaga idempotensi; gateway yang belum mengonfirmasi pembatalan tidak menghasilkan notifikasi final palsu. Pembersihan key/QR dan tombol menu memakai infrastruktur versi pesan yang sudah tersedia. Status/nominal/saldo tidak diubah di luar perilaku pembatalan existing; tidak ada dependency/migrasi baru.
+
+Validasi: 64 tes terkait commerce/notifikasi/cleanup awal lulus, lalu 9 tes terfokus mencakup pembatalan owner/pelanggan, pembatalan berulang, penolakan gateway, format pembatalan, expiry scheduler dan status Midtrans berulang. Semua transport eksternal dipalsukan; tidak melakukan pembatalan pembayaran atau pengiriman WhatsApp nyata. Pembatalan lama yang telanjur tanpa event tidak diputar ulang secara massal.
+
+
+### 2026-10-27 — Pemulihan perintah bot tidak dikenal
+
+Pesan berawalan # yang tidak cocok perintah apa pun (contoh #meni/#test) mendapat respons beridentitas toko PERINTAH TIDAK DIKENAL, arahan #menu dan tombol Menu utama/Layanan & produk. Tidak mengeksekusi tebakan perintah dan tidak memanggil katalog/mesin pesanan. Pesan percakapan biasa tetap diabaikan; toko tanpa izin bot transaksi tetap tidak merespons. Typo tidak lagi menghapus konteks checkout/tujuan yang belum selesai; pilihan tombol menu yang disengaja tetap memakai aturan pembatalan konteks existing. Test mencakup tombol recovery yang benar-benar diklik lewat token, desktop tanpa native controls, akses ditolak, dan konteks pemesanan tetap tersimpan. Tidak ada dependency/migrasi baru.
+
+
+Revisi cakupan auto refresh detail transaksi owner/staff: checkbox dipindah ke header halaman dekat Kembali ke transaksi, karena kini memperbarui seluruh data detail (store, order, attempts, izin/tombol tindakan, keputusan). Tetap partial reload Inertia tiap 10 detik, tanpa reload dokumen penuh, menjaga scroll/state dan menjeda saat modal/form aktif. Daftar transaksi tetap hanya memperbarui tabel/pagination. Tes respons detail memastikan status/pembayaran baru diterima, sementara hasil rahasia, kontak tanpa izin dan snapshot pemasok tetap tidak bocor.
+
+
+## Checkpoint 28 Oktober 2026 — sebelum modul kesehatan sistem
+
+Pekerjaan yang sudah tersedia dan dicatat pada checkpoint ini: landing/navbar publik konsisten; alur bot layanan-kategori-produk, konfirmasi checkout, urutan harga/kode dan respons lebih ringkas; format notifikasi pelanggan; pencatatan/penghapusan pesan QRIS, bukti dan tombol sesuai revisi; menu setelah notifikasi akhir, batas bayar WIB, fallback perintah tidak dikenal; notifikasi pembatalan/kedaluwarsa; perbaikan expires_at MySQL; auto refresh daftar dan seluruh detail owner/staff; kepadatan mobile panel bersama. Audit mobile dan bukti pengujian ada di UI_READABILITY_AUDIT.md. Arsip DigitalToko.zip milik pengguna tidak dimasukkan checkpoint.
+
+Keputusan operasional terbaru: VPS dapat memakai PM2 untuk API/bot Hanshop yang sudah ada, bot manager tenant, queue:work dan schedule:work. Web produksi tetap Nginx/Caddy + PHP-FPM. Tidak memasang cron scheduler kedua bersamaan. Konfigurasi VPS masih contoh dan perlu validasi deployment nyata. Setelah .env Laravel berubah, config:clear dan restart proses terkait diperlukan; --update-env hanya memperbarui environment PM2, bukan menghapus config cache Laravel. Domain ngrok baru harus tercantum sebagai alias platform; 404 callback pernah terjadi pada proses web yang masih memakai konfigurasi host lama.
+
+Tahap berikutnya yang disetujui pengguna: modul Kesehatan sistem khusus admin. Cakupan: bukti heartbeat scheduler dan queue, status bot manager/worker, antrean tertahan/gagal, sinkronisasi pemasok dan webhook bermasalah, ringkasan/diagnostik aman serta tindakan yang jelas. Tidak mengirim ulang transaksi, membatalkan invoice, atau merestart layanan otomatis melalui halaman pemantauan. Data sensitif/kredensial/payload pelanggan tidak ditampilkan. Setelah modul selesai, dokumentasikan konfigurasi dan bukti tes/visual; pengujian produksi tetap dibedakan dari simulasi.
