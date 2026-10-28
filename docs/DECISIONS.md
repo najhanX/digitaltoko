@@ -45,7 +45,7 @@ Disinkronkan dengan source dan keputusan pengguna sampai **22 Oktober 2026**. Ke
 | Upgrade kanal | Evaluasi UX/readiness kanal tambahan; implementasi change berlaku saat invoice lunas, readiness aktivasi pertama tidak otomatis menjadi gerbang upgrade |
 | Akun | Reset password mandiri dan prosedur cleanup lanjutan; endpoint membersihkan data diri owner tanpa toko sudah ada, jangan menganggap label permission sama dengan endpoint fitur |
 | Wallet owner | Topup saldo Hanshop dari panel tenant belum memiliki alur tersendiri; saldo customer sudah bisa topup |
-| Operasional | Spesifikasi VPS/kapasitas pilot, monitoring, backup recovery, secret rotation, domain/SMTP/provider aktual perlu diverifikasi lingkungan |
+| Operasional | Monitoring aplikasi admin tersedia (28 Oktober: layanan, queue, WhatsApp, pemasok, callback). Spesifikasi VPS/kapasitas pilot, pemantauan eksternal saat host/web mati total, backup recovery, secret rotation, domain/SMTP/provider aktual tetap perlu diverifikasi lingkungan |
 | Worker | Durability auth/key, crash recovery, multi-host perlu hardening; purge sekarang meminta ACK disconnect manager sebelum menghapus data toko |
 | Layanan pihak ketiga | Validasi pemakaian komersial endpoint nickname dan hak penggunaan aset brand; fallback saat layanan tidak tersedia |
 | Kesiapan peluncuran | Pilot pembayaran/pemasok/OTP nyata terkontrol dan pengujian idle Android jangka panjang belum dapat disimpulkan dari tes lokal |

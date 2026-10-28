@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, ClipboardCheck, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Activity, type LucideIcon } from 'lucide-react';
 import Brand from './Brand';
 import TutorialLink from './TutorialLink';
 import SidebarSection from './SidebarSection';
@@ -93,6 +93,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     }, [mobileOpen]);
     const globalLinks: NavLink[] = role === 'admin' ? [
         {href:'/admin',label:'Ringkasan',icon:LayoutDashboard,active:path === '/admin'},
+        {href:'/admin/system-health',label:'Kesehatan sistem',icon:Activity,active:path.startsWith('/admin/system-health')},
         {href:'/admin/stores',label:'Kelola toko',icon:Store,active:path.startsWith('/admin/stores')},
         {href:'/admin/verifications',label:'Verifikasi owner',icon:ShieldCheck,active:path === '/admin/verifications'},
         {href:'/admin/plans',label:'Paket & harga',icon:Package,active:path === '/admin/plans'},

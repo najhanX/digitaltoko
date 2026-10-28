@@ -5,9 +5,12 @@ namespace App\Providers;
 use App\Jobs\SendCustomerNotice;
 use App\Models\CustomerNotice;
 use App\Models\Store;
+use App\Services\SystemHealth;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Queue::looping(fn (Looping $event) => app(SystemHealth::class)->workerLoop($event));
         CustomerNotice::created(function (CustomerNotice $notice) {
             $id = $notice->id;
             DB::afterCommit(function () use ($id) {

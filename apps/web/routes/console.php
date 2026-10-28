@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Services\OtomaxImports;
 use App\Services\Provisioning;
 use App\Services\SubscriptionService;
+use App\Services\SystemHealth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
@@ -107,3 +108,6 @@ Schedule::call(function () {
         $record->update(['payload' => [], 'status' => $record->status === 'completed' ? 'completed' : 'expired']);
     });
 })->hourly()->name('otomax-import-cleanup')->withoutOverlapping();
+
+Schedule::call(fn () => app(SystemHealth::class)->schedulerTick())
+    ->everyMinute()->name('system-health-heartbeat');

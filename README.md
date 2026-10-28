@@ -29,6 +29,7 @@ DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk di
 - Aurora, Nebula dan Atlas memiliki susunan mobile khusus, navigasi ringkas, pencarian dropdown dengan infinite scroll, quick order Aurora dengan dropdown scroll/loading 500 ms, dan 24 preset warna (terang/gelap/pastel). Ketiganya memakai katalog/checkout bersama: desain warna/section/banner, flash sale, trending, artikel, leaderboard, cek pesanan, profil dan pengecekan akun game sesuai konfigurasi.
 - Mode pengujian per toko: Digiflazz development, pembayaran simulasi atau Midtrans Sandbox, wallet/kuota uji terpisah; sumber Hanshop dan stok premium disimulasikan.
 - UI panel responsif, tema terang/gelap, sidebar collapsed, modal aksi, tabel berfilter/pagination, notifikasi lonceng dengan infinite scroll dan toast.
+- Kesehatan sistem khusus admin (`/admin/system-health`, 28 Oktober): database/cache aplikasi dan pemasok, heartbeat scheduler/queue, API Hanshop, bot manager, koneksi WhatsApp toko, sinkronisasi pemasok, antrean dan ringkasan callback. Pemeriksaan setiap menit; auto refresh panel dan notifikasi lonceng saat indikator gangguan berubah. [Operasional dan batas pemeriksaan](docs/DEPLOYMENT.md#kesehatan-sistem-admin--28-oktober-2026).
 
 ## Menjalankan
 

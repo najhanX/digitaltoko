@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminLoginController;
 use App\Http\Controllers\AdminStoreController;
+use App\Http\Controllers\AdminSystemHealthController;
 use App\Http\Controllers\BotConnectionController;
 use App\Http\Controllers\BotStateController;
 use App\Http\Controllers\CatalogController;
@@ -83,6 +84,9 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/paket/subdomain', [PublicPricingController::class, 'availability'])->middleware('throttle:30,1,pricing-subdomain')->name('pricing.availability');
     Route::get('/panduan', [TutorialController::class, 'index'])->name('tutorials.index');
     Route::get('/panduan/{slug}', [TutorialController::class, 'index'])->where('slug', '[a-z0-9-]+')->name('tutorials.show');
+    Route::get('/admin/system-health', [AdminSystemHealthController::class, 'index'])->name('admin.system-health');
+    Route::post('/admin/system-health/refresh', [AdminSystemHealthController::class, 'refresh'])->middleware('throttle:4,1,system-health');
+    Route::post('/admin/system-health/queue-probe', [AdminSystemHealthController::class, 'retryQueue'])->middleware('throttle:2,1,system-health-queue-probe');
     Route::get('/admin/vouchers', [VoucherController::class, 'index']);
     Route::get('/admin/vouchers/options', [VoucherController::class, 'options']);
     Route::post('/admin/vouchers', [VoucherController::class, 'save']);

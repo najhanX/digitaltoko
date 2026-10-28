@@ -71,6 +71,8 @@ Katalog publik dan bot memakai proyeksi yang sama tanpa credential/modal/stok ra
 
 ## Batas yang belum selesai
 
+Pembaruan 28 Oktober: **Admin → Kesehatan sistem** tersedia di `/admin/system-health`. Mengamati layanan inti, antrean/failed jobs, koneksi WhatsApp, sinkronisasi pemasok dan callback. Collector berjalan tiap menit melalui scheduler existing; `php artisan digitaltoko:health-check` menjalankan pemeriksaan manual tanpa memalsukan heartbeat scheduler. Setelah migrasi, muat ulang worker memakai `php artisan queue:restart`. Tidak ada dependency baru, akses publik, retry transaksi atau restart layanan dari panel. Detail instalasi dan batas monitoring ada di `../../docs/DEPLOYMENT.md` bagian Kesehatan sistem.
+
 Belum ada otomatisasi DNS/TLS/custom-host provider, purge seluruh data toko setelah 30 hari, penghapusan sesi/file/provider terkoordinasi, refund sewa gagal provisioning otomatis, dan hardening sesi WA multi-host. Pembersihan KTP ditolak, upload artikel, dan endpoint membersihkan profil owner ketika tidak ada toko tersedia, berbeda dari purge toko. Panel topup saldo Hanshop owner belum memiliki alur tersendiri. Label `customers.manage` belum menyediakan CRUD profil customer penuh.
 
 Penutupan manual dan pemeriksaan kewajiban tersedia; pencairan hanya mencatat transfer yang dilakukan toko. Keputusan manual produk dibatasi Digiflazz eligible, bukan pembatalan sembarang request pemasok ambigu. Callback terverifikasi tetap dapat mengoreksi hasil.

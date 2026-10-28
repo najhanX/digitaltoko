@@ -3,6 +3,7 @@
 use App\Http\Middleware\CapturePanelNotifications;
 use App\Http\Middleware\ConfiguredTrustProxies;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ObserveCommerceWebhook;
 use App\Http\Middleware\ProtectPurgingStore;
 use App\Http\Middleware\RequirePlatformHost;
 use App\Http\Middleware\ResolvePlatformHost;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(ObserveCommerceWebhook::class);
         $middleware->web(prepend: [ResolvePlatformHost::class], append: [ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->trimStrings(except: ['pin', 'payload', 'entries.*', 'content.*.text', 'config.rules.*.captures.*.prefix', 'config.rules.*.captures.*.suffix', 'config.rules.*.keyword', 'config.rules.*.regex', 'config.rules.*.template', 'text']);
