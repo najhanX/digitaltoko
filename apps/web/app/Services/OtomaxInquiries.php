@@ -22,7 +22,7 @@ class OtomaxInquiries
         $inquiry = CustomerInquiry::create([...$attributes, 'status' => 'pending', 'connection_id' => $connection->id, 'amount' => 0, 'cost' => 0,
             'data' => ['sandbox' => $store->sandbox, 'customer_name' => '', 'period' => '', 'admin' => $settings['admin'], 'candidates' => [$candidate],
                 'otomax' => $snapshot, 'inquiry_sku' => $check->sku, 'payment_sku' => $mapping->item->sku,
-                'pricing' => $pricing, 'pricing_fingerprint' => $pricing['fingerprint'] ?? null, 'adjustment' => (int) ($mapping->item->billing['adjustment'] ?? $mapping->item->cost), 'markup' => $markup]]);
+                'fallback_candidates' => $pricing['fallback_candidates'] ?? [], 'pricing' => $pricing, 'pricing_fingerprint' => $pricing['fingerprint'] ?? null, 'adjustment' => (int) ($mapping->item->billing['adjustment'] ?? $mapping->item->cost), 'markup' => $markup]]);
         try {
             if ($store->sandbox) {
                 $parsed = ['status' => 'success', 'error' => null, 'fields' => ['refid' => $inquiry->reference, 'kode_produk' => $check->sku, 'tujuan' => $inquiry->destination,

@@ -108,6 +108,7 @@ class CustomerCommerce
                 if ($product->kind === 'postpaid') {
                     $inquiry = CustomerInquiry::where('store_id', $store->id)->where('product_id', $product->id)->whereKey($input['inquiry_id'] ?? '')->lockForUpdate()->first();
                     $this->ensure($inquiry && $inquiry->status === 'ready' && (bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox && $inquiry->phone === $phone && $inquiry->destination === $destination && $inquiry->expires_at->isFuture(), 'Periksa tagihan kembali sebelum membayar.');
+                    $this->ensure(empty($inquiry->data['failover_order_id']), 'Hasil cek internal sudah terikat ke pesanan yang sedang diproses.');
                     $this->ensure(! CustomerOrder::where('inquiry_id', $inquiry->id)->exists(), 'Pemeriksaan tagihan sudah dipakai pesanan lain.');
                     if ($inquiry->connection_id) {
                         $quotedConnection = SupplierConnection::with('store')->where('store_id', $store->id)->where('enabled', true)->find($inquiry->connection_id);
@@ -115,6 +116,13 @@ class CustomerCommerce
                     }
                     $amount = $inquiry->amount;
                     $candidates = $inquiry->data['candidates'];
+                    $primary = $candidates[0]['mapping_id'];
+                    foreach ($inquiry->data['fallback_candidates'] ?? [] as $candidate) {
+                        if ($candidate['mapping_id'] !== $primary) {
+                            $candidate['cost'] = $inquiry->data['bill'] + $candidate['cost'] + ($candidate['commission'] ?? 0);
+                            $candidates[] = $candidate;
+                        }
+                    }
                     $snapshot['bill_customer'] = $inquiry->data['customer_name'];
                     $snapshot['bill_period'] = $inquiry->data['period'];
                     $snapshot['bill_breakdown'] = array_intersect_key($inquiry->data, array_flip(['bill', 'amount', 'supplier_admin', 'commission', 'supplier_total', 'markup', 'store_admin', 'admin']));
@@ -171,8 +179,8 @@ class CustomerCommerce
                 $mapping = ProductMapping::with('item.connection')->findOrFail($candidate['mapping_id']);
                 $connection = $mapping->item?->connection;
                 OrderAttempt::create(['order_id' => $order->id, 'reference' => $inquiry && $index === 0 && $candidate['source'] === 'digiflazz' ? $inquiry->reference : 'DT'.Str::ulid(), 'position' => $index + 1, 'source' => $candidate['source'], 'cost' => $candidate['cost'],
-                    'request_snapshot' => ['sku' => $mapping->item?->sku, 'mode' => $mapping->item?->mode, 'inquiry_reference' => $inquiry?->reference, 'kind' => $product->kind, 'connection_id' => $connection?->id,
-                        'otomax' => $connection?->kind === 'otomax' ? ($inquiry?->data['otomax'] ?? app(OtomaxClient::class)->snapshot($connection)) : null, 'testing' => $order->is_sandbox, 'credentials' => $connection?->kind === 'digiflazz' ? app(StoreEnvironment::class)->credentials($connection) : [], 'id_user' => $store->owner->hanshop_user_id]]);
+                    'request_snapshot' => ['sku' => $mapping->item?->sku, 'mode' => $mapping->item?->mode, 'mapping_id' => $candidate['mapping_id'], 'postpaid_preparing' => $inquiry && $index > 0, 'inquiry_reference' => $index === 0 ? $inquiry?->reference : null, 'kind' => $product->kind, 'connection_id' => $connection?->id,
+                        'otomax' => $connection?->kind === 'otomax' ? ($index === 0 && $inquiry ? ($inquiry->data['otomax'] ?? app(OtomaxClient::class)->snapshot($connection)) : app(OtomaxClient::class)->snapshot($connection)) : null, 'testing' => $order->is_sandbox, 'credentials' => $connection?->kind === 'digiflazz' ? app(StoreEnvironment::class)->credentials($connection) : [], 'id_user' => $store->owner->hanshop_user_id]]);
             }
             if ($gateway === 'wallet') {
                 app(CustomerWallet::class)->apply($customer, -$amount, 'order:'.$order->id.':debit', 'purchase', [], $order->is_sandbox);

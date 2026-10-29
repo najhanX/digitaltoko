@@ -14,15 +14,15 @@ use Illuminate\Support\Str;
 
 class CustomerInquiryService
 {
-    public function quote(Store $store, string $productId, string $destination, string $phone, string $key): CustomerInquiry
+    public function quote(Store $store, string $productId, string $destination, string $phone, string $key, ?string $mappingId = null): CustomerInquiry
     {
         $engine = app(CustomerCommerce::class);
         $engine->ensure($store->acceptsOrders() && ! $engine->settings($store)->closing, 'Toko tidak menerima pesanan baru.');
         $phone = HanshopIdentity::phone($phone);
-        $hash = hash('sha256', json_encode([...($store->sandbox ? ['sandbox'] : []), $store->id, $productId, $destination, $phone]));
+        $hash = hash('sha256', json_encode([...($store->sandbox ? ['sandbox'] : []), $store->id, $productId, $destination, $phone, ...($mappingId ? [$mappingId, $key] : [])]));
         $requestKey = hash('sha256', $store->id.':'.$key);
 
-        return Cache::lock('inquiry:'.$hash, 45)->block(3, function () use ($engine, $store, $productId, $destination, $phone, $hash, $requestKey) {
+        return Cache::lock('inquiry:'.$hash, 45)->block(3, function () use ($engine, $store, $productId, $destination, $phone, $hash, $requestKey, $mappingId) {
             $old = CustomerInquiry::where('request_key', $requestKey)->first();
             if ($old) {
                 $engine->ensure(hash_equals($old->request_hash, $hash) && $old->expires_at->isFuture(), 'Referensi cek tagihan sudah dipakai atau kedaluwarsa. Periksa tagihan kembali.');
@@ -44,6 +44,10 @@ class CustomerInquiryService
             }
             $engine->ensure($product->kind === 'postpaid' && $quote['available'], 'Produk tagihan tidak tersedia.');
             $candidates = array_values(array_filter($quote['candidates'], fn ($row) => in_array($row['source'], ['digiflazz', 'otomax'], true)));
+            $allCandidates = $candidates;
+            if ($mappingId) {
+                $candidates = array_values(array_filter($candidates, fn ($row) => $row['mapping_id'] === $mappingId));
+            }
             $engine->ensure(count($candidates) > 0, 'Siapkan sumber pascabayar dan pasangan kode cek/bayar terlebih dahulu.');
             foreach ($candidates as $position => $candidate) {
                 $mapping = ProductMapping::with('item.connection')->findOrFail($candidate['mapping_id']);
@@ -53,7 +57,7 @@ class CustomerInquiryService
                 $engine->ensure($expiry->gt(now()->addSeconds(30)), 'Pemeriksaan terlalu dekat pergantian hari. Coba setelah tengah malam.');
                 if ($candidate['source'] === 'otomax') {
                     return app(OtomaxInquiries::class)->start($store, $mapping, $candidate, ['store_id' => $store->id, 'product_id' => $product->id, 'phone' => $phone,
-                        'destination' => $destination, 'reference' => $reference, 'request_key' => $requestKey, 'request_hash' => $hash, 'expires_at' => $expiry], max(0, $quote['price'] - $candidate['cost'] - ($candidate['commission'] ?? 0)), ['auto_update' => $quote['rule']['auto_update'], 'markup_rule' => $quote['rule']['markup'], 'fingerprint' => $fingerprint, 'fixed_fee' => $quote['rule']['auto_update'] ? null : $quote['price'], 'basis' => $quote['rule']['pricing_basis']]);
+                        'destination' => $destination, 'reference' => $reference, 'request_key' => $requestKey, 'request_hash' => $hash, 'expires_at' => $expiry], max(0, $quote['price'] - $candidate['cost'] - ($candidate['commission'] ?? 0)), ['auto_update' => $quote['rule']['auto_update'], 'markup_rule' => $quote['rule']['markup'], 'fingerprint' => $fingerprint, 'fixed_fee' => $quote['rule']['auto_update'] ? null : $quote['price'], 'basis' => $quote['rule']['pricing_basis'], 'fallback_candidates' => $allCandidates]);
                 }
                 $credentials = app(StoreEnvironment::class)->credentials($mapping->item->connection);
                 try {
@@ -77,13 +81,13 @@ class CustomerInquiryService
                 $candidate['commission'] = -$values['commission'];
                 $engine->ensure($amount >= $cost && $amount <= 100000000, 'Harga jual tagihan di bawah modal.');
 
-                return DB::transaction(function () use ($store, $engine, $product, $phone, $destination, $reference, $requestKey, $hash, $amount, $cost, $expiry, $candidate, $values, $fingerprint) {
+                return DB::transaction(function () use ($store, $engine, $product, $phone, $destination, $reference, $requestKey, $hash, $amount, $cost, $expiry, $candidate, $values, $fingerprint, $allCandidates) {
                     $locked = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
                     StoreRetention::guard($locked);
                     $engine->ensure($locked->sandbox === $store->sandbox, 'Mode toko berubah. Periksa tagihan kembali.');
 
                     return CustomerInquiry::create(['status' => 'ready', 'store_id' => $store->id, 'product_id' => $product->id, 'phone' => $phone, 'destination' => $destination, 'reference' => $reference, 'request_key' => $requestKey, 'request_hash' => $hash, 'amount' => $amount, 'cost' => $cost, 'expires_at' => $expiry,
-                        'data' => [...$values, 'pricing_fingerprint' => $fingerprint, 'sandbox' => $store->sandbox, 'candidates' => [$candidate]]]);
+                        'data' => [...$values, 'pricing_fingerprint' => $fingerprint, 'fallback_candidates' => $allCandidates, 'sandbox' => $store->sandbox, 'candidates' => [$candidate]]]);
                 });
             }
             $engine->ensure(false, 'Tagihan belum dapat diperiksa. Pastikan nomor tujuan benar dan jenis tagihan mendukung format standar.');

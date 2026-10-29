@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessCustomerOrder;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
 use App\Models\CustomerInquiry;
+use App\Models\CustomerLedger;
 use App\Models\CustomerOrder;
 use App\Models\OtomaxEvent;
 use App\Models\OtomaxProfile;
@@ -22,6 +24,7 @@ use App\Services\OtomaxInquiries;
 use App\Services\OtomaxParser;
 use App\Services\OtomaxWebCatalog;
 use App\Services\PostpaidBilling;
+use App\Services\PostpaidFailover;
 use App\Services\ProductPricing;
 use App\Services\StoreCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,6 +41,16 @@ class PostpaidCommerceTest extends TestCase
 
     private string $responseMode = 'success';
 
+    private string $paymentStatus = 'success';
+
+    private string $digiPaymentStatus = 'success';
+
+    private string $digiName = 'Pelanggan Digiflazz';
+
+    private string $digiPeriod = '202610';
+
+    private array $failedSkus = [];
+
     private int $digiCommission = 500;
 
     private int $otomaxAdjustment = -500;
@@ -53,8 +66,12 @@ class PostpaidCommerceTest extends TestCase
         Http::preventStrayRequests();
         Http::fake(function ($request) {
             if (str_contains($request->url(), 'api.digiflazz.com')) {
-                return Http::response(['data' => ['status' => 'Sukses', 'rc' => '00', 'ref_id' => $request['ref_id'], 'customer_no' => $request['customer_no'], 'buyer_sku_code' => $request['buyer_sku_code'],
-                    'price' => 103000 - $this->digiCommission, 'selling_price' => 103000, 'admin' => 3000, 'customer_name' => 'Pelanggan Digiflazz', 'periode' => '202610', 'sn' => 'DG-SUCCESS']]);
+                $payment = $request['commands'] === 'pay-pasca';
+                $failed = $payment && $this->digiPaymentStatus === 'failed';
+                $pending = $payment && $this->digiPaymentStatus === 'pending';
+
+                return Http::response(['data' => ['status' => $failed ? 'Gagal' : ($pending ? 'Pending' : 'Sukses'), 'rc' => $failed ? '44' : ($pending ? '03' : '00'), 'ref_id' => $request['ref_id'], 'customer_no' => $request['customer_no'], 'buyer_sku_code' => $request['buyer_sku_code'],
+                    'price' => 103000 - $this->digiCommission, 'selling_price' => 103000, 'admin' => 3000, 'customer_name' => $this->digiName, 'periode' => $this->digiPeriod, 'sn' => 'DG-SUCCESS']]);
             }
             parse_str(parse_url($request->url(), PHP_URL_QUERY) ?? '', $query);
             $this->requests[] = $query;
@@ -74,6 +91,13 @@ class PostpaidCommerceTest extends TestCase
                 $sn = $this->responseMode === 'malformed' ? 'TIDAK ADA TAGIHAN' : 'NAMA:PELANGGAN/ALAMAT:TEST/TAG:100000/ADM::3000/TTAG:103000 RC:00 INQUIRY';
 
                 return Http::response(['status' => '20', 'price' => 0, 'refid' => $ref, 'message' => '#1 '.$sku.'.'.$dest.' SUKSES. SN/Ref: '.$sn.'. Saldo 200.000 - 0 = 200.000 @29/10 12:00:00 R#'.$ref]);
+            }
+
+            if (in_array($sku, $this->failedSkus, true)) {
+                return Http::response(['status' => '40', 'price' => 102500, 'refid' => $ref, 'message' => $sku.'.'.$dest.' GAGAL. R#'.$ref]);
+            }
+            if ($this->paymentStatus !== 'success') {
+                return Http::response(['status' => $this->paymentStatus === 'failed' ? '40' : '1', 'price' => 103000 + $this->otomaxAdjustment, 'refid' => $ref, 'message' => $sku.'.'.$dest.' '.($this->paymentStatus === 'failed' ? 'GAGAL' : 'PENDING').'. R#'.$ref]);
             }
 
             return Http::response(['status' => '20', 'price' => 103000 + $this->otomaxAdjustment, 'refid' => $ref, 'message' => '#2 '.$sku.'.'.$dest.' SUKSES. SN/Ref: NAMA:PELANGGAN/TAG:100000/ADMIN:3000/TTAG:103000. Saldo 200.000 - 102.500 = 97.500 @29/10 12:00:00 R#'.$ref]);
@@ -576,7 +600,7 @@ class PostpaidCommerceTest extends TestCase
         $order = $this->order($f, $inquiry);
         app(CustomerFulfillment::class)->run($order);
         $this->assertSame('success', $order->fresh()->status);
-        $this->assertSame('otomax', $order->attempts()->sole()->source);
+        $this->assertSame('otomax', $order->attempts()->where('status', 'success')->sole()->source);
         $this->assertSame(97090, $f['customer']->fresh()->balance);
         Http::assertSentCount(3);
     }
@@ -601,5 +625,212 @@ class PostpaidCommerceTest extends TestCase
         $this->assertSame(102550, $cheap->amount);
         $this->assertSame(103550, $inquiry->fresh()->amount);
         $this->assertSame('digiflazz', $cheap->data['candidates'][0]['source']);
+    }
+
+    private function addDigiflazzFallback(array $f, int $commission = 100): void
+    {
+        $connection = SupplierConnection::create(['store_id' => $f['store']->id, 'kind' => 'digiflazz', 'enabled' => true, 'verified_at' => now(), 'synced_at' => now(), 'catalog_modes' => ['pasca'], 'credentials' => ['username' => 'TEST', 'api_key' => 'TEST-KEY']]);
+        $item = SupplierProduct::create(['store_id' => $f['store']->id, 'connection_id' => $connection->id, 'sku' => 'pln', 'mode' => 'pasca', 'name' => 'PLN', 'kind' => 'postpaid', 'service' => 'Pascabayar', 'category' => 'PLN', 'cost' => 3000, 'billing' => ['admin' => 3000, 'commission' => $commission], 'available' => true, 'observed_at' => now()]);
+        ProductMapping::create(['store_id' => $f['store']->id, 'product_id' => $f['product']->id, 'source' => 'digiflazz', 'source_key' => 'item:'.$item->id, 'supplier_product_id' => $item->id, 'active' => true]);
+        $this->digiCommission = $commission;
+        $this->digiName = 'PELANGGAN';
+        $this->digiPeriod = '';
+    }
+
+    public function test_otomax_definitive_failure_fails_over_to_digiflazz_without_another_customer_charge(): void
+    {
+        $f = $this->fixture();
+        $this->addDigiflazzFallback($f);
+        $this->paymentStatus = 'failed';
+        $inquiry = $this->quote($f);
+        $order = $this->order($f, $inquiry);
+        $this->assertSame([102500, 102900], $order->attempts()->orderBy('position')->pluck('cost')->all());
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(['failed', 'success'], $order->attempts()->orderBy('position')->pluck('status')->all());
+        $this->assertSame(96000, $f['customer']->fresh()->balance);
+        $this->assertNull($order->fresh()->refunded_at);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $payments = Http::recorded()->filter(fn ($pair) => str_contains($pair[0]->url(), 'api.digiflazz.com') && $pair[0]['commands'] === 'pay-pasca');
+        $this->assertCount(1, $payments);
+    }
+
+    public function test_pending_payment_never_checks_or_pays_another_source(): void
+    {
+        $f = $this->fixture();
+        $this->addDigiflazzFallback($f);
+        $this->paymentStatus = 'pending';
+        $order = $this->order($f, $this->quote($f));
+        app(CustomerFulfillment::class)->run($order);
+        $this->travel(2)->minutes();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame('ready', $order->attempts()->where('position', 2)->sole()->status);
+        Http::assertSentCount(2);
+    }
+
+    public function test_mismatched_fallback_bill_is_not_paid_and_refunds_only_once(): void
+    {
+        $f = $this->fixture();
+        $this->addDigiflazzFallback($f);
+        $this->digiName = 'OTHER CUSTOMER';
+        $this->paymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        app(CustomerFulfillment::class)->run($order);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame(200000, $f['customer']->fresh()->balance);
+        $this->assertSame(1, CustomerLedger::where('reason', 'refund')->count());
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'api.digiflazz.com') && $request['commands'] === 'pay-pasca');
+    }
+
+    public function test_digiflazz_failure_waits_for_otomax_inquiry_callback_before_fallback_payment(): void
+    {
+        $f = $this->fixture();
+        $f['pay']->update(['cost' => 500, 'billing' => ['adjustment' => 500]]);
+        $this->otomaxAdjustment = 500;
+        $this->addDigiflazzFallback($f, 500);
+        $this->digiPaymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        $this->responseMode = 'pending';
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('pending', $order->fresh()->status);
+        $fallback = $order->attempts()->where('position', 2)->sole();
+        $check = CustomerInquiry::findOrFail($fallback->request_snapshot['fallback_inquiry_id']);
+        $this->assertSame('pending', $check->status);
+        $this->assertSame(['CEKPLN30'], array_column($this->requests, 'product'));
+        app(OtomaxInquiries::class)->apply($check, ['status' => 'success', 'error' => null, 'fields' => ['refid' => $check->reference, 'kode_produk' => 'CEKPLN30', 'tujuan' => '12345678', 'nama_pelanggan' => 'PELANGGAN', 'tagihan' => '100000', 'admin' => '3000', 'total_tagihan' => '103000'], 'text' => 'TEST']);
+        $this->assertSame($order->id, $check->fresh()->data['failover_order_id']);
+        try {
+            $this->order($f, $check->fresh());
+            $this->fail('Internal fallback inquiry cannot create another order');
+        } catch (ValidationException $error) {
+            $this->assertStringContainsString('internal', implode(' ', $error->errors()['order'] ?? $error->validator->errors()->all()));
+        }
+        $this->travel(61)->seconds();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(['CEKPLN30', 'BYRPLN30'], array_column($this->requests, 'product'));
+        $this->assertSame(96000, $f['customer']->fresh()->balance);
+    }
+
+    public function test_exhausted_postpaid_sources_refund_once_and_over_budget_source_is_never_paid(): void
+    {
+        $f = $this->fixture();
+        $this->addDigiflazzFallback($f);
+        $this->paymentStatus = 'failed';
+        $this->digiPaymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        app(CustomerFulfillment::class)->run($order);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame(200000, $f['customer']->fresh()->balance);
+        $this->assertSame(1, CustomerLedger::where('reason', 'refund')->count());
+    }
+
+    public function test_cheapest_pricing_does_not_allow_more_expensive_fallback_above_locked_total(): void
+    {
+        $f = $this->fixture();
+        $this->addDigiflazzFallback($f, 100);
+        $f['product']->update(['markup' => '0', 'auto_update' => true]);
+        PricingRule::create(['store_id' => $f['store']->id, 'scope' => 'category', 'key' => 'pln', 'pricing_basis' => 'cheapest']);
+        $this->paymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        $this->assertSame(102500, $order->amount);
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame(200000, $f['customer']->fresh()->balance);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'api.digiflazz.com'));
+    }
+
+    public function test_late_success_from_failed_digiflazz_source_marks_double_payment_review(): void
+    {
+        $f = $this->fixture();
+        $f['pay']->update(['cost' => 500, 'billing' => ['adjustment' => 500]]);
+        $this->otomaxAdjustment = 500;
+        $this->addDigiflazzFallback($f, 500);
+        $this->digiPaymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('success', $order->fresh()->status);
+        $first = $order->attempts()->where('position', 1)->sole();
+        app(CustomerFulfillment::class)->digiflazzCallback($order->fresh(), $first, ['status' => 'Sukses', 'rc' => '00', 'price' => 102500, 'sn' => 'LATE-SUCCESS']);
+        $this->assertSame('review', $order->fresh()->status);
+        $this->assertSame(96000, $f['customer']->fresh()->balance);
+        $this->assertNull($order->fresh()->refunded_at);
+    }
+
+    public function test_otomax_to_otomax_uses_each_suppliers_own_credentials_and_check_sku(): void
+    {
+        $f = $this->fixture();
+        $connection = $f['connection']->replicate();
+        $connection->fill(['slot' => (string) Str::uuid(), 'credentials' => ['member_id' => 'DEMO2', 'pin' => '1234', 'password' => 'OTHER-TEST', 'callback_token' => str_repeat('q', 48)]])->save();
+        $check = $f['check']->replicate();
+        $check->fill(['connection_id' => $connection->id, 'sku' => 'CEKPLN40'])->save();
+        $pay = $f['pay']->replicate();
+        $pay->fill(['connection_id' => $connection->id, 'sku' => 'BYRPLN40', 'billing' => ['adjustment' => -100]])->save();
+        ProductMapping::create(['store_id' => $f['store']->id, 'product_id' => $f['product']->id, 'source' => 'otomax', 'source_key' => 'item:'.$pay->id, 'supplier_product_id' => $pay->id, 'active' => true, 'postpaid' => ['inquiry_id' => $check->id, 'admin' => 3000]]);
+        $this->failedSkus = ['BYRPLN30'];
+        $order = $this->order($f, $this->quote($f));
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(['CEKPLN30', 'BYRPLN30', 'CEKPLN40', 'BYRPLN40'], array_column($this->requests, 'product'));
+        $this->assertSame(['DEMO', 'DEMO', 'DEMO2', 'DEMO2'], array_column($this->requests, 'memberID'));
+        $this->assertNotSame($this->requests[1]['refID'], $this->requests[3]['refID']);
+        $this->assertSame(96000, $f['customer']->fresh()->balance);
+    }
+
+    public function test_uncertain_fallback_inquiry_is_not_repeated_and_never_sends_payment(): void
+    {
+        $f = $this->fixture();
+        $f['pay']->update(['cost' => 500, 'billing' => ['adjustment' => 500]]);
+        $this->addDigiflazzFallback($f, 500);
+        $this->digiPaymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        $this->responseMode = 'timeout';
+        app(CustomerFulfillment::class)->run($order);
+        $this->travel(61)->seconds();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame(['CEKPLN30'], array_column($this->requests, 'product'));
+        $this->assertSame(96000, $f['customer']->fresh()->balance);
+        $this->travel(5)->minutes();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame(200000, $f['customer']->fresh()->balance);
+        $this->assertSame(['CEKPLN30'], array_column($this->requests, 'product'));
+    }
+
+    public function test_confirmed_failed_payment_webhook_queues_and_continues_postpaid_fallback(): void
+    {
+        $f = $this->fixture();
+        $f['pay']->update(['cost' => 500, 'billing' => ['adjustment' => 500]]);
+        $this->otomaxAdjustment = 500;
+        $this->addDigiflazzFallback($f, 500);
+        $this->digiPaymentStatus = 'pending';
+        $order = $this->order($f, $this->quote($f));
+        app(CustomerFulfillment::class)->run($order);
+        $first = $order->attempts()->where('position', 1)->sole();
+        app(CustomerFulfillment::class)->digiflazzCallback($order->fresh(), $first, ['status' => 'Gagal', 'rc' => '44', 'price' => 102500]);
+        Queue::assertPushed(ProcessCustomerOrder::class);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(96000, $f['customer']->fresh()->balance);
+        $this->assertSame(['CEKPLN30', 'BYRPLN30'], array_column($this->requests, 'product'));
+    }
+
+    public function test_period_formats_match_but_different_bill_admin_customer_or_period_do_not(): void
+    {
+        $f = $this->fixture();
+        $order = $this->order($f, $this->quote($f));
+        $snapshot = $order->snapshot;
+        $snapshot['bill_period'] = 'SEPTEMBER 2026';
+        $order->update(['snapshot' => $snapshot]);
+        $values = ['bill' => 100000, 'supplier_admin' => 3000, 'customer_name' => 'pelanggan', 'period' => '202609'];
+        $service = app(PostpaidFailover::class);
+        $this->assertTrue($service->matches($order, $values));
+        foreach (['bill' => 100001, 'supplier_admin' => 3500, 'customer_name' => 'OTHER', 'period' => '202610'] as $key => $value) {
+            $this->assertFalse($service->matches($order, [...$values, $key => $value]));
+        }
     }
 }

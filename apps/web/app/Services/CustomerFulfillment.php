@@ -50,6 +50,10 @@ class CustomerFulfillment
                 $latest = $order->attempts()->whereNotNull('last_checked_at')->where('status', '!=', 'ready')->orderByDesc('position')->first();
                 if ($latest?->id !== $attempt->id) {
                     $attempt->update(['status' => $data['status'] === 'Sukses' && $data['rc'] === '00' ? 'success' : ($data['status'] === 'Gagal' && self::isDefinitiveFailure($data['rc']) ? 'failed' : 'pending'), 'result' => mb_substr((string) ($data['sn'] ?? ''), 0, 20000), 'message' => 'Callback parsing sebelumnya dicatat; pesanan mengikuti parsing terakhir yang telah dikirim.']);
+                    if (($snapshot['kind'] ?? '') === 'postpaid' && $data['status'] === 'Sukses' && $data['rc'] === '00' && $order->status !== 'review') {
+                        $order->update(['status' => 'review', 'message' => 'Parsing sebelumnya melaporkan sukses setelah berpindah sumber. Periksa kemungkinan pembayaran ganda.']);
+                        app(CustomerCommerce::class)->notice($order, 'review');
+                    }
 
                     return;
                 }
@@ -261,7 +265,7 @@ class CustomerFulfillment
 
                     return null;
                 }
-                if ($attempt->source !== 'stock' && $attempt->last_checked_at !== null) {
+                if ($attempt->source !== 'stock' && $attempt->last_checked_at !== null && empty($attempt->request_snapshot['postpaid_preparing'])) {
                     return null;
                 }
                 if ($attempt->status === 'success') {
@@ -293,6 +297,11 @@ class CustomerFulfillment
                         continue;
                     }
                     if ($attempt->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount) || ($current && $current->cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
+                        if (($data['kind'] ?? '') === 'postpaid') {
+                            $attempt->update(['status' => 'failed', 'message' => 'Modal sumber melebihi harga pesanan; mencoba cadangan.']);
+
+                            continue;
+                        }
                         app(CustomerCommerce::class)->fail($order, 'Modal pemasok naik melebihi harga jual pesanan.');
 
                         return null;
@@ -345,6 +354,10 @@ class CustomerFulfillment
 
     private function remote(CustomerOrder $order, OrderAttempt $attempt): array
     {
+        $preparation = app(PostpaidFailover::class)->prepare($order, $attempt);
+        if ($preparation) {
+            return $preparation;
+        }
         $data = $attempt->request_snapshot;
         if ($attempt->source === 'otomax') {
             $connection = SupplierConnection::with('store')->where('store_id', $order->store_id)->findOrFail($data['connection_id']);
@@ -433,6 +446,14 @@ class CustomerFulfillment
             if ((int) $inquiry['price'] > (int) ($order->snapshot['subtotal'] ?? $order->amount)) {
                 return ['status' => 'failed', 'price_changed' => true, 'message' => 'Modal tagihan melebihi harga pesanan.'];
             }
+            try {
+                $values = app(PostpaidBilling::class)->amounts((int) $inquiry['price'], (int) ($inquiry['selling_price'] ?? 0), (int) ($inquiry['admin'] ?? 0), 0, (string) ($inquiry['customer_name'] ?? ''), (string) ($inquiry['periode'] ?? ''));
+                if (! app(PostpaidFailover::class)->matches($order, $values)) {
+                    return ['status' => 'failed', 'message' => 'Rincian tagihan berubah; pembayaran sumber ini tidak dikirim.'];
+                }
+            } catch (ValidationException) {
+                return ['status' => 'pending', 'message' => 'Rincian cek tagihan belum valid; pembayaran belum dikirim.'];
+            }
             // Persist before I/O: after a crash or uncertain response only status-pasca is permitted.
             $data['pay_started'] = true;
             $attempt->update(['request_snapshot' => $data]);
@@ -481,10 +502,10 @@ class CustomerFulfillment
             $attempt->update(['status' => $status, 'message' => $outcome['message'] ?? null, ...($cost !== null && is_numeric($cost) && $cost >= 0 ? ['cost' => (int) $cost] : []), ...($status === 'success' ? ['result' => mb_substr($outcome['result'] ?: 'Pesanan berhasil.', 0, 20000)] : [])]);
             if ($status === 'success') {
                 $this->success($order, $attempt->result);
-            } elseif ($status === 'failed' && ($outcome['price_changed'] ?? false)) {
+            } elseif ($status === 'failed' && ($outcome['price_changed'] ?? false) && ($order->snapshot['kind'] ?? '') !== 'postpaid') {
                 app(CustomerCommerce::class)->fail($order, 'Modal pemasok naik melebihi batas harga pesanan.');
             } elseif ($status === 'pending') {
-                $order->update(['status' => 'pending', 'message' => 'Transaksi sedang diproses pemasok. Silakan cek kembali.']);
+                $order->update(['status' => 'pending', 'message' => ! empty($attempt->request_snapshot['postpaid_preparing']) ? ($outcome['message'] ?? 'Menunggu cek tagihan cadangan.') : 'Transaksi sedang diproses pemasok. Silakan cek kembali.']);
             }
         }, 3);
     }
