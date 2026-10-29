@@ -6,6 +6,7 @@ use App\Jobs\ImportOtomaxProducts;
 use App\Jobs\ProcessCustomerOrder;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
+use App\Models\CustomerNotice;
 use App\Models\CustomerOrder;
 use App\Models\OtomaxEvent;
 use App\Models\OtomaxImport;
@@ -25,6 +26,7 @@ use App\Services\OtomaxImports;
 use App\Services\OtomaxParser;
 use App\Services\SupplierWallets;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -133,15 +135,15 @@ class OtomaxTest extends TestCase
         return '#12345 TEST.08123456789 '.$status.'. SN/Ref: 001/hasil. Saldo 100.000 - 10.000 = 90.000 @21/10 16:52:34 R#'.$ref;
     }
 
-    private function order(SupplierConnection $c): CustomerOrder
+    private function order(SupplierConnection $c, string $kind = 'ppob'): CustomerOrder
     {
         $s = $c->store;
         $customer = Customer::create(['store_id' => $s->id, 'name' => 'Pelanggan uji', 'phone' => '6281234567890', 'phone_verified_at' => now(), 'balance' => 100000, 'sandbox_balance' => 100000]);
-        $item = SupplierProduct::create(['store_id' => $s->id, 'connection_id' => $c->id, 'sku' => 'TEST', 'mode' => 'prepaid', 'name' => 'Produk uji', 'kind' => 'ppob', 'service' => 'Pulsa', 'category' => 'Umum', 'cost' => 10000, 'available' => true, 'observed_at' => now()]);
-        $p = CatalogProduct::create(['store_id' => $s->id, 'code' => 'TEST', 'name' => 'Produk uji', 'kind' => 'ppob', 'service' => 'Pulsa', 'category' => 'Umum', 'active' => true, 'sale_price' => 15000, 'markup' => '5000', 'auto_update' => true]);
+        $item = SupplierProduct::create(['store_id' => $s->id, 'connection_id' => $c->id, 'sku' => 'TEST', 'mode' => 'prepaid', 'name' => 'Produk uji', 'kind' => $kind, 'service' => 'Pulsa', 'category' => 'Umum', 'cost' => 10000, 'available' => true, 'observed_at' => now()]);
+        $p = CatalogProduct::create(['store_id' => $s->id, 'code' => 'TEST', 'name' => 'Produk uji', 'kind' => $kind, 'service' => 'Pulsa', 'category' => 'Umum', 'active' => true, 'sale_price' => 15000, 'markup' => '5000', 'auto_update' => true]);
         ProductMapping::create(['store_id' => $s->id, 'product_id' => $p->id, 'supplier_product_id' => $item->id, 'source' => 'otomax', 'source_key' => 'item:'.$item->id]);
 
-        return app(CustomerCommerce::class)->begin($s, ['purpose' => 'product', 'product_id' => $p->id, 'phone' => $customer->phone, 'destination' => '08123456789', 'payment' => 'wallet', 'idempotency_key' => (string) Str::uuid()], $customer);
+        return app(CustomerCommerce::class)->begin($s, ['purpose' => 'product', 'product_id' => $p->id, 'phone' => $customer->phone, 'destination' => $kind === 'premium' ? $customer->phone : '08123456789', 'payment' => 'wallet', 'idempotency_key' => (string) Str::uuid()], $customer);
     }
 
     public function test_transaction_response_updates_source_price_and_only_automatic_sale_prices(): void
@@ -278,7 +280,7 @@ class OtomaxTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_csv_preview_reimport_is_idempotent_and_price_zero_rejected(): void
+    public function test_csv_preview_reimport_is_idempotent_and_price_zero_is_a_postpaid_candidate(): void
     {
         $c = $this->connection();
         $s = $c->store;
@@ -289,15 +291,17 @@ class OtomaxTest extends TestCase
         $config['prefix_group'] = false;
         $config['columns']['status'] = 'D';
         $csv = "SKU;Nama;Modal;Status\nA01;Produk A;8.700;Open\nA02;Produk B;;Open\nA03;Produk C;0;Open\nA04;Produk D;9.000;Gangguan\n";
-        $r = $this->postJson($this->base($s).'/connections/'.$c->id.'/preview', ['file' => UploadedFile::fake()->createWithContent('produk.csv', $csv), 'config' => $config])->assertOk()->assertJsonPath('summary.valid', 2)->assertJsonPath('summary.rejected', 2)->assertJsonPath('sample.0.cost', 8700);
+        $r = $this->postJson($this->base($s).'/connections/'.$c->id.'/preview', ['file' => UploadedFile::fake()->createWithContent('produk.csv', $csv), 'config' => $config])->assertOk()->assertJsonPath('summary.valid', 3)->assertJsonPath('summary.rejected', 1)->assertJsonPath('sample.0.cost', 8700);
         $id = $r->json('id');
         $this->postJson($this->base($s).'/imports/'.$id.'/confirm', ['accept_partial' => false, 'missing' => 'keep'])->assertUnprocessable();
         $this->postJson($this->base($s).'/imports/'.$id.'/confirm', ['accept_partial' => true, 'missing' => 'keep'])->assertRedirect();
         $this->assertSame('completed', OtomaxImport::find($id)->status);
-        $this->assertSame(2, SupplierProduct::where('connection_id', $c->id)->count());
+        $this->assertSame(3, SupplierProduct::where('connection_id', $c->id)->count());
+        $this->assertSame('postpaid', SupplierProduct::where('sku', 'A03')->value('kind'));
         $this->assertFalse((bool) SupplierProduct::where('sku', 'A04')->value('available'));
         $this->postJson($this->base($s).'/imports/'.$id.'/confirm', ['accept_partial' => true, 'missing' => 'keep'])->assertRedirect();
-        $this->assertSame(2, SupplierProduct::where('connection_id', $c->id)->count());
+        $this->assertSame(3, SupplierProduct::where('connection_id', $c->id)->count());
+        $this->assertSame('postpaid', SupplierProduct::where('sku', 'A03')->value('kind'));
     }
 
     public function test_large_excel_preview_keeps_database_packets_small_and_imports_all_rows(): void
@@ -951,5 +955,68 @@ class OtomaxTest extends TestCase
         $this->assertLessThan(32768, strlen($record->getRawOriginal('payload')));
         $this->assertSame(count($result['rows']), count($service->previewRows($record, $record->payload)));
 
+    }
+
+    public function test_descriptions_follow_prepaid_and_premium_order_results_and_later_callbacks_without_duplicate_wallet_changes(): void
+    {
+        foreach (['ppob', 'premium'] as $kind) {
+            Http::swap(new Factory);
+            Http::preventStrayRequests();
+            $connection = $this->connection();
+            $config = OtomaxParser::defaults();
+            $config['rules'] = [];
+            foreach (['transaction', 'callback'] as $event) {
+                foreach (['pending', 'success', 'failed'] as $status) {
+                    $config['rules'][] = ['name' => $event.' '.$status, 'event' => $event, 'active' => true, 'outcome' => $status, 'template' => '[kode_produk].[tujuan] [status] KET:[keterangan] SN:[sn] R#[refid]'];
+                }
+            }
+            OtomaxProfile::findOrFail($connection->response_profile_id)->update(['config' => $config]);
+            $order = $this->order($connection, $kind);
+            Http::fake(fn ($request) => Http::response(['status' => '1', 'price' => 10000, 'refid' => $request['refID'], 'message' => 'TEST.'.$order->destination.' PENDING KET:MASIH DIPROSES SN:WAIT R#'.$request['refID']]));
+            app(CustomerFulfillment::class)->run($order);
+            $this->assertSame('MASIH DIPROSES', app(CustomerCommerce::class)->publicData($order->fresh())['description']);
+            $attempt = $order->attempts()->firstOrFail();
+            $url = '/api/commerce/otomax/'.$connection->id.'/'.str_repeat('a', 48);
+            $body = ['refid' => $attempt->reference, 'status' => '20', 'price' => 10000, 'message' => 'TEST.'.$order->destination.' SUKSES KET:PESANAN TERKIRIM SN:SN-PRIVATE R#'.$attempt->reference];
+            $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->postJson($url, $body)->assertOk();
+            $this->assertSame('success', $order->fresh()->status);
+            $this->assertSame('PESANAN TERKIRIM', $order->fresh()->supplierDescription());
+            $this->assertSame(85000, $order->customer->fresh()->balance);
+            $notice = CustomerNotice::where('order_id', $order->id)->where('event', 'like', '%:success')->firstOrFail();
+            $this->assertStringContainsString('Keterangan: PESANAN TERKIRIM', $notice->message);
+            $this->assertStringNotContainsString('SN-PRIVATE', $notice->message);
+            $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->postJson($url, $body)->assertOk();
+            $this->assertSame(85000, $order->customer->fresh()->balance);
+            $body['message'] = str_replace('PESANAN TERKIRIM', 'GARANSI SESUAI KEBIJAKAN TOKO', $body['message']);
+            $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->postJson($url, $body)->assertOk();
+            $this->assertSame('GARANSI SESUAI KEBIJAKAN TOKO', $order->fresh()->supplierDescription());
+            $this->assertSame(85000, $order->customer->fresh()->balance);
+            $body['status'] = '40';
+            $body['message'] = 'TEST.'.$order->destination.' GAGAL KET:DIBATALKAN OLEH PEMASOK SN:NONE R#'.$attempt->reference;
+            $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->postJson($url, $body)->assertOk();
+            $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->postJson($url, $body)->assertOk();
+            $this->assertSame('failed', $order->fresh()->status);
+            $this->assertSame('DIBATALKAN OLEH PEMASOK', app(CustomerCommerce::class)->publicData($order->fresh())['description']);
+            $this->assertSame(100000, $order->customer->fresh()->balance);
+            $this->actingAs($connection->store->owner)->get('/stores/'.$connection->store_id.'/orders/'.$order->id)->assertInertia(fn (AssertableInertia $page) => $page->where('order.description', 'DIBATALKAN OLEH PEMASOK')->missing('order.snapshot'));
+        }
+    }
+
+    public function test_fallback_to_another_supplier_clears_previous_description(): void
+    {
+        $connection = $this->connection();
+        $config = OtomaxParser::defaults();
+        $config['rules'][] = ['name' => 'Gagal dengan keterangan', 'event' => 'transaction', 'active' => true, 'outcome' => 'failed', 'template' => 'GAGAL [refid] KET:[keterangan]'];
+        OtomaxProfile::findOrFail($connection->response_profile_id)->update(['config' => $config]);
+        $order = $this->order($connection);
+        $next = $this->connection($connection->store);
+        SupplierProduct::create(['store_id' => $connection->store_id, 'connection_id' => $next->id, 'sku' => 'TEST2', 'mode' => 'prepaid', 'name' => 'Sumber cadangan', 'kind' => 'ppob', 'service' => 'Pulsa', 'category' => 'Umum', 'cost' => 10000, 'available' => true, 'observed_at' => now()]);
+        $first = $order->attempts()->firstOrFail();
+        $second = $order->attempts()->create(['reference' => 'DTFALLBACK', 'position' => 2, 'source' => 'otomax', 'cost' => 10000, 'status' => 'ready', 'request_snapshot' => [...$first->request_snapshot, 'sku' => 'TEST2', 'connection_id' => $next->id, 'otomax' => app(OtomaxClient::class)->snapshot($next)]]);
+        Http::fake(fn ($request) => Http::response($request['product'] === 'TEST' ? ['status' => '40', 'price' => 10000, 'refid' => $request['refID'], 'message' => 'GAGAL '.$request['refID'].' KET:SUMBER PERTAMA GANGGUAN'] : ['status' => '20', 'price' => 10000, 'refid' => $request['refID']]));
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertNull($order->fresh()->supplierDescription());
+        $this->assertSame('SUMBER PERTAMA GANGGUAN', $first->fresh()->request_snapshot['supplier_description']);
     }
 }

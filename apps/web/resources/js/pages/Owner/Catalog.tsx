@@ -1,3 +1,4 @@
+import PostpaidMappings, {type PostpaidPair} from '../../components/PostpaidMappings';
 import CatalogHelp from '../../components/CatalogHelp';
 import { Link, useForm, usePage } from "@inertiajs/react";
 import { useEffect, useState } from "react";
@@ -48,6 +49,8 @@ type Product = {
     service_id: string | null;
     category_id: string | null;
     price: number;
+    postpaid_commission?: number|null;
+    postpaid_fees?: {service_admin:number;store_admin:number}|null;
     sale_price: number;
     active: boolean;
     available: boolean;
@@ -55,6 +58,7 @@ type Product = {
     quantity: number | null;
     markup: string | null;
     auto_update: boolean | null;
+    pricing_basis: "cheapest" | "highest";
     use_stock: boolean;
     mapping_details: MappingOption[];
     price_blocked: boolean;
@@ -67,6 +71,7 @@ type PricingRule = {
     key: string;
     markup: string | null;
     auto_update: boolean | null;
+    pricing_basis: "cheapest" | "highest" | null;
 };
 type Props = {
     selectedCategory?: {
@@ -165,6 +170,7 @@ export default function Catalog({
         markup: "",
         auto_update: "inherit",
         mapping_ids: [] as string[],
+        postpaid_pairs: {} as Record<string,PostpaidPair>,
         use_stock: false,
     });
     const rule = useForm({
@@ -172,6 +178,7 @@ export default function Catalog({
             key: "",
             markup: "",
             auto_update: "inherit",
+            pricing_basis: "inherit" as "inherit" | "cheapest" | "highest",
         }),
         deletion = useForm({});
     const [productTab, setProductTab] = useState<
@@ -205,6 +212,7 @@ export default function Catalog({
             auto_update: tri(item?.auto_update ?? null),
             mapping_ids: item?.mapping_details.map((value) => value.id) ?? [],
             use_stock: item?.use_stock ?? false,
+            postpaid_pairs: Object.fromEntries((item?.mapping_details??[]).filter(value=>value.postpaid).map(value=>[value.id,{inquiry_id:value.postpaid!.inquiry_id,admin:String(value.postpaid!.admin),inquiry:value.inquiry_item?{...value,...value.inquiry_item}:undefined}])),
         });
         setProductOpen(true);
     }
@@ -228,6 +236,7 @@ export default function Catalog({
             key: item?.key ?? "",
             markup: item?.markup ?? "",
             auto_update: tri(item?.auto_update ?? null),
+            pricing_basis: item?.pricing_basis ?? "inherit",
         });
         setRuleOpen(true);
     }
@@ -276,6 +285,7 @@ export default function Catalog({
             return {
                 ...details,
                 mapping_ids: mappings.map((item) => item.id),
+                postpaid_pairs: data.kind==='postpaid'?Object.fromEntries(mappings.filter(item=>item.source==='otomax').map(item=>[item.id,{inquiry_id:data.postpaid_pairs[item.id]?.inquiry_id??'',admin:data.postpaid_pairs[item.id]?.admin===''?null:Number(data.postpaid_pairs[item.id]?.admin??'')}])):{},
                 ...(canPrice ? price : {}),
             };
         });
@@ -286,12 +296,12 @@ export default function Catalog({
                 const keys = Object.keys(errors);
                 setProductTab(
                     keys.some((key) =>
-                        ["sale_price", "markup", "auto_update"].includes(key),
+                        ["sale_price", "markup", "auto_update", "pricing_basis"].includes(key),
                     )
                         ? "price"
                         : keys.some(
                                 (key) =>
-                                    key.startsWith("mapping_ids") ||
+                                    key.startsWith("mapping_ids") || key.startsWith("postpaid_pairs") ||
                                     key === "use_stock",
                             )
                           ? "sources"
@@ -364,7 +374,7 @@ export default function Catalog({
             <CatalogHelp title={tab === "products" ? "Cara kerja sumber dan harga produk" : "Prioritas aturan: produk → kategori → layanan"}>
                 <p>
                     {tab === "products"
-                        ? "Sumber aktif dengan modal termurah menjadi dasar harga. Modal melebihi harga jual membuat produk tidak tersedia sampai harganya diperbaiki atau pembaruan otomatis diaktifkan."
+                        ? "Harga jual otomatis memakai modal parsing termurah atau termahal sesuai pilihan produk; transaksi mencoba parsing termurah lebih dahulu. Modal melebihi harga jual membuat produk tidak tersedia sampai harganya diperbaiki atau pembaruan otomatis diaktifkan."
                         : "Markup dan pembaruan otomatis diatur terpisah. Masing-masing mengikuti urutan produk → kategori → layanan. Jika tidak ada aturan, markup 0 dan pembaruan otomatis nonaktif."}
                 </p>
             </CatalogHelp>
@@ -561,9 +571,10 @@ export default function Catalog({
                                         </td>
                                         <td className="table-cell-center">
                                             {item.kind === "postpaid"
-                                                ? "Admin "
+                                                ? "Total admin "
                                                 : ""}
                                             {rupiah(item.price)}
+                                            {item.postpaid_fees&&<small>Layanan {rupiah(item.postpaid_fees.service_admin)} · Toko {rupiah(item.postpaid_fees.store_admin)}</small>}
                                             <small>
                                                 {item.rule.auto_update
                                                     ? "Otomatis · " +
@@ -745,6 +756,7 @@ export default function Catalog({
                                     <th>Tingkat</th>
                                     <th>Nama</th>
                                     <th>Markup</th>
+                                    <th>Dasar modal</th>
                                     <th>Pembaruan otomatis</th>
                                     <th>Tindakan</th>
                                 </tr>
@@ -764,6 +776,7 @@ export default function Catalog({
                                                     item.scope,
                                                 )}
                                         </td>
+                                        <td className="table-cell-center">{item.pricing_basis === "cheapest" ? "Parsing termurah" : item.pricing_basis === "highest" ? "Parsing termahal" : item.scope === "category" ? "Ikuti layanan" : "Bawaan: termahal"}</td>
                                         <td className="table-cell-center">
                                             {item.auto_update === null
                                                 ? inheritedUpdateLabel(
@@ -1013,7 +1026,7 @@ export default function Catalog({
                             <div className="field-grid">
                                 <label>
                                     {product.data.kind === "postpaid"
-                                        ? "Biaya admin"
+                                        ? "Total biaya admin (layanan + toko)"
                                         : "Harga tetap"}
                                     <RupiahInput
                                         value={product.data.sale_price}
@@ -1026,7 +1039,9 @@ export default function Catalog({
                                     />
                                 </label>
                             </div>
+                            <p className="field-help">Dasar modal mengikuti aturan kategori, lalu layanan. Jika belum diatur, gunakan parsing termahal. Atur sekaligus melalui tab Aturan harga.</p>
                             <PricingSettings
+                                postpaid={product.data.kind === "postpaid"}
                                 scope="product"
                                 mode={productMarkupMode}
                                 markup={product.data.markup}
@@ -1044,8 +1059,8 @@ export default function Catalog({
                             />
                             {editing?.cost !== null && editing && (
                                 <p>
-                                    Modal aktif termurah:{" "}
-                                    {rupiah(editing.cost!)}. Markup yang berlaku
+                                    {product.data.kind === "postpaid" ? "Admin layanan:" : "Modal dasar harga tersimpan:"}{" "}
+                                    {rupiah(editing.cost!)}.{product.data.kind === "postpaid" && editing.postpaid_commission !== null && editing.postpaid_commission !== undefined && <> Penyesuaian modal sumber: {rupiah(editing.postpaid_commission)}.</>} Markup yang berlaku
                                     sebelum perubahan: {editing.rule.markup}.
                                     Pembaruan otomatis:{" "}
                                     {editing.rule.auto_update
@@ -1056,7 +1071,7 @@ export default function Catalog({
                             )}
                             {product.data.kind === "postpaid" && (
                                 <p>
-                                    Harga yang ditampilkan hanya biaya admin.
+                                    Total pelanggan = tagihan + admin layanan + penyesuaian sumber + markup. Harga OtomaX negatif mengurangi modal, positif menambah modal. Persen memakai besar penyesuaian sumber dasar yang dipilih. Harga katalog belum termasuk pokok tagihan.
                                     Nominal tagihan perlu inquiry pada tahap
                                     pemesanan.
                                 </p>
@@ -1067,7 +1082,7 @@ export default function Catalog({
                         <section className="catalog-form-section">
                             <h3>Parsing produk</h3>
                             <p>
-                                Pilih hingga 20 sumber sejenis. Sistem mendahulukan modal termurah.
+                                {product.data.kind === 'postpaid' ? 'Pilih produk bayar. Untuk OtomaX, pasangkan kode cek tagihannya pada bagian di bawah.' : 'Pilih hingga 20 sumber sejenis. Sistem mendahulukan modal termurah.'}
                             </p>
                             {product.data.kind === "premium" && (
                                 <label className="checkbox-label">
@@ -1095,11 +1110,13 @@ export default function Catalog({
                                 enabled={productOpen}
                                 url={base + "/products/mappings"}
                                 kind={product.data.kind}
+                                searchLabel={product.data.kind === 'postpaid' ? 'Pilih produk bayar' : undefined}
                                 selected={mappings}
                                 onToggle={(option) =>
                                     toggleMapping(option as MappingOption)
                                 }
                             />
+                            {product.data.kind === 'postpaid' && <PostpaidMappings base={base} items={mappings} values={product.data.postpaid_pairs} onChange={values=>product.setData('postpaid_pairs',values)}/>}
                         </section>
                     )}
                 </form>
@@ -1155,6 +1172,7 @@ export default function Catalog({
                                     ? data.markup.trim()
                                     : null,
                             auto_update: autoValue(data.auto_update),
+                            pricing_basis: data.pricing_basis === "inherit" ? null : data.pricing_basis,
                         }));
                         const options = {
                             preserveScroll: true,
@@ -1207,6 +1225,14 @@ export default function Catalog({
                             ? "Berlaku untuk seluruh kategori dan produk dalam layanan yang dipilih, kecuali yang memiliki markup sendiri."
                             : "Pilih nama kategori utama, misalnya Mobile Legends. Untuk seluruh kategori dalam Game, pilih tingkat Layanan."}
                     </p>
+                    <label>Dasar modal untuk markup
+                        <select value={rule.data.pricing_basis} onChange={event=>rule.setData("pricing_basis",event.target.value as "inherit"|"cheapest"|"highest")}>
+                            <option value="inherit">{rule.data.scope==="category"?"Ikuti layanan (bawaan: termahal)":"Bawaan: parsing termahal"}</option>
+                            <option value="cheapest">Parsing dengan modal termurah</option>
+                            <option value="highest">Parsing dengan modal termahal</option>
+                        </select>
+                    </label>
+                    <p className="field-help">Berlaku untuk seluruh produk pada kategori atau layanan ini, termasuk produk dengan markup sendiri. Kategori didahulukan dari layanan. Urutan transaksi tetap dari parsing termurah.</p>
                     <PricingSettings
                         scope={
                             rule.data.scope === "service"

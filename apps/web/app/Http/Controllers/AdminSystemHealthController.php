@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\FailedJobDiagnostics;
 use App\Services\SystemHealth;
 use App\Support\ListQuery;
 use Illuminate\Database\QueryException;
@@ -65,7 +66,8 @@ class AdminSystemHealthController extends Controller
             if (! in_array(config('queue.failed.driver'), ['database', 'database-uuids'], true)) {
                 return ['items' => [], 'pagination' => $this->emptyMeta($filters['per_page'])];
             }
-            $query = DB::connection(config('queue.failed.database'))->table(config('queue.failed.table', 'failed_jobs'))->select(['id', 'uuid', 'connection', 'queue', 'failed_at']);
+            $query = DB::connection(config('queue.failed.database'))->table(config('queue.failed.table', 'failed_jobs'))->select(['id', 'uuid', 'connection', 'queue', 'failed_at'])
+                ->selectRaw('SUBSTR(payload, 1, 32768) AS diagnostic_payload, SUBSTR(exception, 1, 4096) AS diagnostic_exception');
             $search = ['queue', 'uuid'];
         } else {
             $connection = config('queue.default');
@@ -135,8 +137,11 @@ class AdminSystemHealthController extends Controller
                     'count' => (int) $row->request_count, 'observed_at' => Carbon::parse($row->last_seen_at)->toIso8601String(), 'url' => null];
             }
             if ($tab === 'failed') {
-                return ['id' => 'failed:'.$row->id, 'label' => 'Job gagal #'.$row->id, 'source' => $row->connection.' / '.$row->queue, 'status' => 'error',
-                    'message' => 'Periksa log worker dan idempotensi sebelum mencoba ulang melalui operator VPS. Payload dan exception tidak ditampilkan.', 'observed_at' => Carbon::parse($row->failed_at)->toIso8601String(), 'url' => null];
+                $diagnostic = app(FailedJobDiagnostics::class)->describe($row->diagnostic_payload, $row->diagnostic_exception);
+
+                return ['id' => 'failed:'.$row->id, 'label' => $diagnostic['process'], 'reference' => 'Job gagal #'.$row->id, 'source' => $row->connection.' / '.$row->queue, 'status' => 'error',
+                    'message' => $diagnostic['reason'], 'impact' => $diagnostic['impact'], 'next_steps' => $diagnostic['next_steps'],
+                    'observed_at' => Carbon::parse($row->failed_at)->toIso8601String(), 'url' => null];
             }
             $reserved = $row->reserved_at !== null;
             $delayed = $row->available_at > now()->timestamp;
@@ -144,7 +149,7 @@ class AdminSystemHealthController extends Controller
             $stuck = $reserved ? $row->reserved_at < now()->subSeconds($retryAfter)->timestamp : (! $delayed && $row->available_at < now()->subMinutes(5)->timestamp);
 
             return ['id' => 'queue:'.$row->id, 'label' => 'Job #'.$row->id, 'source' => $row->queue.' · percobaan '.(int) $row->attempts, 'status' => $stuck ? 'warning' : 'ok',
-                'message' => $reserved ? ($stuck ? 'Reservasi job melewati retry_after. Periksa worker dan idempotensi sebelum mencoba ulang.' : 'Sedang diambil worker; reserved tidak menjamin proses sudah selesai.') : ($delayed ? 'Menunggu waktu eksekusi yang dijadwalkan.' : ($stuck ? 'Antrean siap lebih dari 5 menit. Periksa worker dan beban antrean.' : 'Siap diproses worker.')),
+                'message' => $reserved ? ($stuck ? 'Waktu pengambilan job sudah melewati batas. Periksa proses queue di PM2 dan hasil proses terkait sebelum mencoba ulang agar pesanan atau saldo tidak diproses dua kali.' : 'Sedang diambil worker; proses belum tentu sudah selesai.') : ($delayed ? 'Menunggu waktu eksekusi yang dijadwalkan.' : ($stuck ? 'Antrean siap lebih dari 5 menit. Administrator perlu memeriksa proses queue di PM2 dan beban antrean.' : 'Siap diproses worker.')),
                 'observed_at' => Carbon::createFromTimestampUTC($row->created_at)->toIso8601String(), 'url' => null];
         }), 'pagination' => ListQuery::meta($page)];
     }

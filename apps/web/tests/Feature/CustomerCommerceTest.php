@@ -10,6 +10,7 @@ use App\Models\CustomerLedger;
 use App\Models\CustomerNotice;
 use App\Models\CustomerOrder;
 use App\Models\PremiumStock;
+use App\Models\PricingRule;
 use App\Models\ProductMapping;
 use App\Models\Store;
 use App\Models\StoreStaff;
@@ -24,6 +25,7 @@ use App\Services\CustomerInquiryService;
 use App\Services\CustomerPayments;
 use App\Services\CustomQris;
 use App\Services\GuestCheckout;
+use App\Services\StoreCatalog;
 use App\Support\HanshopIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -35,6 +37,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia as Page;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class CustomerCommerceTest extends TestCase
@@ -865,7 +868,7 @@ class CustomerCommerceTest extends TestCase
             $command = $r['commands'];
             $status = $command === 'pay-pasca' ? 'Pending' : 'Sukses';
 
-            return Http::response(['data' => ['ref_id' => $r['ref_id'], 'buyer_sku_code' => strtolower($r['buyer_sku_code']), 'customer_no' => $r['customer_no'], 'status' => $status, 'rc' => $status === 'Pending' ? '03' : '00', 'price' => 52000, 'customer_name' => 'Nama Dummy', 'periode' => '202610', 'sn' => 'BILL-SN']]);
+            return Http::response(['data' => ['ref_id' => $r['ref_id'], 'buyer_sku_code' => strtolower($r['buyer_sku_code']), 'customer_no' => $r['customer_no'], 'status' => $status, 'rc' => $status === 'Pending' ? '03' : '00', 'price' => 52000, 'selling_price' => 52000, 'admin' => 2500, 'customer_name' => 'Nama Dummy', 'periode' => '202610', 'sn' => 'BILL-SN']]);
         });
         $service = app(CustomerInquiryService::class);
         $inquiry = $service->quote($s, $p->id, '12345678', $c->phone, 'inquiry-test-key');
@@ -1128,5 +1131,88 @@ class CustomerCommerceTest extends TestCase
         $this->assertSame('success', $order->fresh()->status);
         $this->assertSame(85000, $customer->fresh()->balance);
         $this->assertSame(1, PremiumStock::where('status', 'sent')->count());
+    }
+
+    public static function automaticPricingKinds(): array
+    {
+        return [['ppob'], ['premium']];
+    }
+
+    #[DataProvider('automaticPricingKinds')]
+    public function test_highest_source_sets_price_but_prepaid_and_premium_failover_try_cheapest_first(string $kind): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $product = $this->product($store, 0);
+        $product->update(['kind' => $kind, 'markup' => '1000', 'auto_update' => true]);
+        $cheap = $this->remote($store, $product, 8000);
+        $cheap->update(['kind' => $kind, 'sku' => 'CHEAP']);
+        $expensive = $cheap->replicate();
+        $expensive->fill(['cost' => 12000, 'sku' => 'EXPENSIVE'])->save();
+        ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'source' => 'digiflazz', 'supplier_product_id' => $expensive->id, 'source_key' => 'item:'.$expensive->id, 'active' => true]);
+        $skus = [];
+        Http::fake(function ($request) use (&$skus) {
+            $skus[] = $request['buyer_sku_code'];
+            $failed = $request['buyer_sku_code'] === 'CHEAP';
+
+            return Http::response(['data' => ['ref_id' => $request['ref_id'], 'buyer_sku_code' => $request['buyer_sku_code'], 'customer_no' => $request['customer_no'], 'status' => $failed ? 'Gagal' : 'Sukses', 'rc' => $failed ? '44' : '00', 'price' => $failed ? 8000 : 12000, 'sn' => 'TEST-SUCCESS']]);
+        });
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product), $customer);
+        $this->assertSame(13000, $order->amount);
+        $this->assertSame([8000, 12000], $order->attempts()->orderBy('position')->pluck('cost')->all());
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(['CHEAP', 'EXPENSIVE'], $skus);
+        $this->assertSame(87000, $customer->fresh()->balance);
+        $this->assertNull($order->fresh()->refunded_at);
+    }
+
+    public function test_premium_price_covers_highest_ready_stock_while_delivery_uses_cheapest_stock_first(): void
+    {
+        $store = $this->store();
+        $customer = $this->customer($store);
+        $product = $this->product($store);
+        $product->update(['markup' => '10%', 'auto_update' => true]);
+        $expensive = PremiumStock::create(['store_id' => $store->id, 'product_id' => $product->id, 'payload' => 'EXPENSIVE-TEST', 'cost' => 18000]);
+        $this->remote($store, $product, 12000);
+        Http::fake(fn ($request) => Http::response(['data' => ['ref_id' => $request['ref_id'], 'buyer_sku_code' => $request['buyer_sku_code'], 'customer_no' => $request['customer_no'], 'status' => 'Gagal', 'rc' => '44', 'price' => 12000]]));
+        $first = app(CustomerCommerce::class)->begin($store, $this->input($product), $customer);
+        $this->assertSame(19800, $first->amount);
+        app(CustomerFulfillment::class)->run($first);
+        $this->assertSame('success', $first->fresh()->status);
+        $this->assertSame(10000, $first->attempts()->where('status', 'success')->sole()->cost);
+        $this->assertSame('ready', $expensive->fresh()->status);
+        Http::assertNothingSent();
+        $second = app(CustomerCommerce::class)->begin($store, $this->input($product), $customer);
+        $this->assertSame(19800, $second->amount);
+        $this->assertSame([12000, 18000], $second->attempts()->orderBy('position')->pluck('cost')->all());
+        app(CustomerFulfillment::class)->run($second);
+        $this->assertSame('success', $second->fresh()->status);
+        $this->assertSame('sent', $expensive->fresh()->status);
+        $this->assertSame(60400, $customer->fresh()->balance);
+        Http::assertSentCount(1);
+    }
+
+    public function test_premium_stock_basis_can_switch_between_cheapest_and_highest_without_changing_dispatch_order(): void
+    {
+        $store = $this->store();
+        $product = $this->product($store);
+        $product->update(['markup' => '10%', 'auto_update' => true]);
+        $basisRule = PricingRule::create(['store_id' => $store->id, 'scope' => 'category', 'key' => mb_strtolower($product->category), 'pricing_basis' => 'cheapest']);
+        PremiumStock::create(['store_id' => $store->id, 'product_id' => $product->id, 'payload' => 'TEST-ONLY', 'cost' => 18000]);
+        $catalog = app(StoreCatalog::class);
+        $low = $catalog->present($catalog->query($store, false)->findOrFail($product->id), $store, true);
+        $this->assertSame(11000, $low['price']);
+        $basisRule->update(['pricing_basis' => 'highest']);
+        $catalog->reprice($store);
+        $high = $catalog->present($catalog->query($store, false)->findOrFail($product->id), $store, true);
+        $this->assertSame(19800, $high['price']);
+        $this->assertSame(10000, $low['candidates'][0]['cost']);
+        $this->assertSame(10000, $high['candidates'][0]['cost']);
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($product), $this->customer($store));
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(10000, $order->attempts()->where('status', 'success')->sole()->cost);
+        Http::assertNothingSent();
     }
 }

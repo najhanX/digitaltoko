@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\StoreStaff;
 use App\Models\SupplierConnection;
 use App\Models\User;
+use App\Services\FailedJobDiagnostics;
 use App\Services\SystemHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Events\Looping;
@@ -205,6 +206,44 @@ class SystemHealthTest extends TestCase
         $this->assertTrue($this->health()->queueMetrics()['unavailable']);
         $this->actingAs(User::factory()->create(['role' => 'admin']))->get('/admin/system-health?tab=queue')
             ->assertInertia(fn (Assert $page) => $page->where('listingUnavailable', true)->where('overview.queue.unavailable', true));
+    }
+
+    public function test_failed_wallet_jobs_show_safe_causes_and_role_specific_recovery_steps(): void
+    {
+        $payload = json_encode(['displayName' => 'App\\Jobs\\RefreshSupplierWallet', 'data' => ['command' => 'SECRET-SERIALIZED-COMMAND', 'phone' => 'SECRET-CONTACT']]);
+        foreach (['Endpoint pemasok Hanshop belum tersedia.', 'Pembacaan akun Hanshop ditolak.'] as $message) {
+            DB::table('failed_jobs')->insert(['uuid' => (string) Str::uuid(), 'connection' => 'database', 'queue' => 'default', 'payload' => $payload,
+                'exception' => 'App\\Services\\SupplierFailure: '.$message.' SECRET-TOKEN in SECRET-PATH:32', 'failed_at' => now()]);
+        }
+        $response = $this->actingAs(User::factory()->create(['role' => 'admin']))->get('/admin/system-health?tab=failed');
+        $response->assertInertia(fn (Assert $page) => $page->has('items', 2)
+            ->where('items.0.label', 'Pembaruan saldo pemasok')->where('items.0.reference', 'Job gagal #1')
+            ->where('items.0.message', 'Endpoint pemasok Hanshop belum tersedia saat proses dijalankan.')
+            ->where('items.0.next_steps.0', fn ($value) => str_contains($value, 'Administrator:') && str_contains($value, 'HANSHOP_API_URL'))
+            ->where('items.0.next_steps.1', fn ($value) => str_contains($value, 'Owner:') && str_contains($value, 'Saldo & deposit pemasok'))
+            ->where('items.0.impact', fn ($value) => str_contains($value, 'tidak menyatakan transaksi pelanggan gagal'))
+            ->where('items.1.message', 'Hanshop menolak pembacaan akun saat proses dijalankan.')
+            ->where('items.1.next_steps.0', fn ($value) => str_contains($value, 'masa aktif toko')));
+        foreach (['SECRET-SERIALIZED-COMMAND', 'SECRET-CONTACT', 'SECRET-TOKEN', 'SECRET-PATH', 'diagnostic_payload', 'diagnostic_exception'] as $secret) {
+            $response->assertDontSee($secret);
+        }
+        $this->assertDatabaseCount('failed_jobs', 2);
+        Http::assertNothingSent();
+    }
+
+    public function test_unknown_job_or_exception_uses_safe_fallback_and_never_treats_stack_text_as_cause(): void
+    {
+        $diagnostics = app(FailedJobDiagnostics::class);
+        $unknown = $diagnostics->describe('not json SECRET-PAYLOAD', "RuntimeException: SECRET-ERROR\nApp\\Services\\SupplierFailure: Endpoint pemasok Hanshop belum tersedia.");
+        $this->assertSame('Proses latar belakang', $unknown['process']);
+        $this->assertStringContainsString('belum dapat dikenali', $unknown['reason']);
+        $this->assertStringNotContainsString('SECRET', json_encode($unknown));
+        $this->assertStringNotContainsString('Endpoint pemasok Hanshop', json_encode($unknown));
+        $timeout = $diagnostics->describe(json_encode(['displayName' => 'App\\Jobs\\SendCustomerNotice']), 'Illuminate\\Queue\\TimeoutExceededException: SECRET-PHONE');
+        $this->assertSame('Pengiriman notifikasi pelanggan', $timeout['process']);
+        $this->assertSame('Proses melewati batas waktu yang diizinkan.', $timeout['reason']);
+        $this->assertStringContainsString('tidak otomatis berarti pesanan', $timeout['impact']);
+        $this->assertStringNotContainsString('SECRET', json_encode($timeout));
     }
 
     public function test_redis_queue_statistics_use_counts_without_reading_job_payloads(): void

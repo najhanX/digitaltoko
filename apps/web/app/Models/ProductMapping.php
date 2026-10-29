@@ -14,7 +14,7 @@ class ProductMapping extends Model
 
     protected function casts(): array
     {
-        return ['active' => 'boolean'];
+        return ['postpaid' => 'array', 'active' => 'boolean'];
     }
 
     public function item(): BelongsTo

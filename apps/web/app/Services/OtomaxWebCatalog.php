@@ -155,15 +155,16 @@ class OtomaxWebCatalog
                 }
                 $sku = strtoupper($values[$columns['sku']]);
                 $name = $values[$columns['name']];
-                $cost = OtomaxParser::amount($values[$columns['cost']]);
+                $cost = PostpaidBilling::adjustment($values[$columns['cost']]);
                 $status = mb_strtolower($values[$columns['status']]);
                 if ($sku === '' || strlen($sku) > 150 || $name === '' || $group === '' || mb_strlen($group) > 100 || preg_match('/[\x00-\x20]/', $sku) || isset($products[$sku]) || ! in_array($status, [...$open, ...$closed], true)) {
                     $this->reject('Produk '.mb_substr($sku, 0, 80).' memiliki kode duplikat, harga/nama/kelompok tidak valid, atau status belum dipetakan. Periksa pratinjau dan format supplier.');
                 }
                 $validPrice = $cost !== null && $cost > 0 && $cost <= 1000000000000;
-                $available = $validPrice && in_array($status, $open, true);
-                $products[$sku] = ['sku' => $sku, 'name' => mb_substr($name, 0, 150), 'kind' => 'ppob', 'mode' => 'prepaid', 'service' => $profile['service'], 'category' => $group,
-                    'cost' => $validPrice ? $cost : 0, 'available' => $available, 'quantity' => null, 'availability_reason' => ! $validPrice ? 'Harga supplier nol/tidak valid; produk tidak dapat dipesan.' : ($available ? null : 'Tidak tersedia menurut daftar harga supplier.')];
+                $postpaid = $cost !== null && $cost <= 0;
+                $available = ($validPrice || $postpaid) && in_array($status, $open, true);
+                $products[$sku] = ['sku' => $sku, 'name' => mb_substr($name, 0, 150), 'kind' => $postpaid ? 'postpaid' : 'ppob', 'mode' => 'prepaid', 'service' => $profile['service'], 'category' => $group,
+                    'billing' => $postpaid ? ['adjustment' => $cost] : null, 'cost' => $validPrice ? $cost : 0, 'available' => $available, 'quantity' => null, 'availability_reason' => $postpaid ? 'Pascabayar: atur pasangan produk cek dan bayar di katalog toko.' : (! $validPrice ? 'Harga supplier nol/tidak valid; produk tidak dapat dipesan.' : ($available ? null : 'Tidak tersedia menurut daftar harga supplier.'))];
                 if (count($products) > 20000) {
                     $this->reject('Daftar harga melebihi 20.000 produk.');
                 }

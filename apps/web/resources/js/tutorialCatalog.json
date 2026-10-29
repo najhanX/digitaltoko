@@ -2935,7 +2935,7 @@
       {
         "title": "Pilih parsing dan harga",
         "paragraphs": [
-          "Di Katalog & harga, pilih parsing/sumber, harga jual dan status aktif. Beberapa parsing dicoba mulai modal termurah; perpindahan setelah gagal pasti, bukan hasil yang masih pending.",
+          "Di Katalog & harga, pilih parsing/sumber, harga jual dan status aktif. Atur dasar modal termurah atau termahal di Aturan harga per kategori atau layanan. Produk mengikutinya secara otomatis. Beberapa parsing dicoba mulai modal termurah; perpindahan setelah gagal pasti, bukan hasil yang masih pending.",
           "Markup dipilih produk → kategori → layanan, bukan ditambahkan berlapis. Produk 5000 mengalahkan kategori 10%. Format: 5000, 5%, atau 5% + 5000. Kebijakan pembaruan otomatis terpisah dari nilai markup; mengikuti tingkat berikutnya mengambil kebijakan kategori/layanan."
         ],
         "visual": {

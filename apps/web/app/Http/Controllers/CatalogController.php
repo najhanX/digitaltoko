@@ -13,6 +13,7 @@ use App\Models\Store;
 use App\Models\SupplierConnection;
 use App\Models\SupplierProduct;
 use App\Services\ImportedCategoryImage;
+use App\Services\PostpaidBilling;
 use App\Services\ProductPricing;
 use App\Services\StoreCatalog;
 use App\Support\CatalogAccess;
@@ -56,7 +57,7 @@ class CatalogController extends Controller
         CatalogAccess::operational($store);
         abort_if($product && $product->store_id !== $store->id, 404);
         $canPrice = CatalogAccess::has($request, $role, 'pricing.manage');
-        abort_if(! $canPrice && $request->hasAny(['sale_price', 'markup', 'auto_update']), 403);
+        abort_if(! $canPrice && $request->hasAny(['sale_price', 'markup', 'auto_update', 'pricing_basis']), 403);
         $request->validate(['category_id' => ['sometimes', 'nullable', 'uuid', Rule::exists('catalog_categories', 'id')->where('store_id', $store->id)]]);
         if ($request->filled('category_id')) {
             $category = CatalogCategory::with('service')->where('store_id', $store->id)->findOrFail($request->input('category_id'));
@@ -66,15 +67,27 @@ class CatalogController extends Controller
         $data = $request->validate(['code' => ['required', 'regex:/^[A-Z0-9][A-Z0-9_.-]{0,49}$/', Rule::unique('catalog_products')->where('store_id', $store->id)->ignore($product?->id)],
             'name' => 'required|string|max:150', 'description' => 'nullable|string|max:3000', 'kind' => 'required|in:ppob,premium,postpaid',
             'category_id' => 'sometimes|nullable|uuid', 'service' => 'required|string|max:100', 'category' => 'required|string|max:100', 'active' => 'required|boolean',
+            'postpaid_pairs' => 'sometimes|array|max:20', 'postpaid_pairs.*.inquiry_id' => 'required|uuid', 'postpaid_pairs.*.admin' => 'required|integer|min:0|max:100000000',
             'mapping_ids' => 'present|array|max:20', 'mapping_ids.*' => 'required|uuid|distinct', 'use_stock' => 'required|boolean',
-            'sale_price' => 'sometimes|nullable|integer|min:0|max:1000000000000', 'markup' => 'sometimes|nullable|string|max:100', 'auto_update' => 'sometimes|nullable|boolean']);
+            'sale_price' => 'sometimes|nullable|integer|min:0|max:1000000000000', 'markup' => 'sometimes|nullable|string|max:100', 'auto_update' => 'sometimes|nullable|boolean', 'pricing_basis' => 'prohibited']);
         if ($data['use_stock']) {
             abort_unless($data['kind'] === 'premium' && CatalogAccess::supports($store, 'stock'), 403);
         }
         $items = SupplierProduct::with('connection')->where('store_id', $store->id)->whereIn('id', $data['mapping_ids'])->get();
         abort_unless($items->count() === count($data['mapping_ids']), 422);
         foreach ($items as $item) {
-            abort_unless($item->kind === $data['kind'] && $item->connection->enabled && CatalogAccess::supports($store, $item->connection->kind), 422, 'Parsing tidak sesuai jenis produk atau paket.');
+            abort_unless(($item->kind === $data['kind'] || ($data['kind'] === 'postpaid' && $item->connection->kind === 'otomax' && $item->kind === 'ppob')) && $item->connection->enabled && CatalogAccess::supports($store, $item->connection->kind), 422, 'Parsing tidak sesuai jenis produk atau paket.');
+        }
+        abort_if(array_diff(array_keys($data['postpaid_pairs'] ?? []), $data['mapping_ids']), 422, 'Pengaturan pascabayar tidak sesuai parsing terpilih.');
+        foreach ($items as $item) {
+            if ($data['kind'] !== 'postpaid' || $item->connection->kind !== 'otomax') {
+                continue;
+            }
+            $pair = $data['postpaid_pairs'][$item->id] ?? null;
+            if (! $pair || ! SupplierProduct::where('store_id', $store->id)->where('connection_id', $item->connection_id)->where('cost', 0)->where('id', '!=', $item->id)->where('available', true)
+                ->where(fn ($q) => $q->whereNull('billing')->orWhere('billing->adjustment', 0))->whereKey($pair['inquiry_id'])->exists()) {
+                throw ValidationException::withMessages(['postpaid_pairs' => 'Pilih produk cek gratis pada supplier yang sama dan isi biaya admin untuk setiap parsing OtomaX.']);
+            }
         }
         if ($canPrice && array_key_exists('markup', $data)) {
             $data['markup'] = $pricing->parse($data['markup'])['text'] ?? null;
@@ -89,7 +102,7 @@ class CatalogController extends Controller
                 }
             }
             $new = ! $product;
-            $values = Arr::except($data, ['mapping_ids', 'use_stock']);
+            $values = Arr::except($data, ['mapping_ids', 'use_stock', 'postpaid_pairs']);
             if (($values['sale_price'] ?? null) === null) {
                 unset($values['sale_price']);
             }
@@ -99,7 +112,7 @@ class CatalogController extends Controller
             foreach ($items as $item) {
                 $keys[] = 'item:'.$item->id;
                 ProductMapping::updateOrCreate(['product_id' => $product->id, 'source_key' => 'item:'.$item->id],
-                    ['store_id' => $store->id, 'supplier_product_id' => $item->id, 'source' => $item->connection->kind, 'active' => true]);
+                    ['store_id' => $store->id, 'supplier_product_id' => $item->id, 'source' => $item->connection->kind, 'active' => true, 'postpaid' => $data['kind'] === 'postpaid' && $item->connection->kind === 'otomax' ? ['inquiry_id' => $data['postpaid_pairs'][$item->id]['inquiry_id'], 'admin' => (int) $data['postpaid_pairs'][$item->id]['admin']] : null]);
             }
             if ($data['use_stock']) {
                 $keys[] = 'stock';
@@ -107,7 +120,16 @@ class CatalogController extends Controller
             }
             ProductMapping::where('product_id', $product->id)->whereNotIn('source_key', $keys)->delete();
             if ($new && ! array_key_exists('sale_price', $values) && $items->isNotEmpty()) {
-                $product->update(['sale_price' => $pricing->apply((int) $items->min('cost'), $pricing->resolve($product)['markup'])]);
+                $markup = $pricing->resolve($product)['markup'];
+                if ($data['kind'] === 'postpaid') {
+                    $sorted = $items->sortBy(fn ($item) => ($item->connection->kind === 'otomax' ? (int) $data['postpaid_pairs'][$item->id]['admin'] : $item->cost) + app(PostpaidBilling::class)->sourceAdjustment($item->connection->kind, $item->billing));
+                    $first = $pricing->resolve($product)['pricing_basis'] === 'cheapest' ? $sorted->first() : $sorted->last();
+                    $admin = $first->connection->kind === 'otomax' ? (int) $data['postpaid_pairs'][$first->id]['admin'] : $first->cost;
+                    $billing = app(PostpaidBilling::class);
+                    $product->update(['sale_price' => $admin + $billing->sourceAdjustment($first->connection->kind, $first->billing) + $billing->storeFee($billing->sourceAdjustment($first->connection->kind, $first->billing), $markup)]);
+                } else {
+                    $product->update(['sale_price' => $pricing->apply((int) ($pricing->resolve($product)['pricing_basis'] === 'cheapest' ? $items->min('cost') : $items->max('cost')), $markup)]);
+                }
             }
         });
         $catalog->reprice($store);
@@ -208,7 +230,7 @@ class CatalogController extends Controller
                 $code = substr($originalCode, 0, 50 - strlen($suffix)).$suffix;
                 $counter++;
             }
-            $product = new CatalogProduct(['store_id' => $store->id, 'code' => $code, 'name' => $item->name, 'kind' => $item->kind, 'service' => $item->service, 'category' => $item->category, 'active' => true]);
+            $product = new CatalogProduct(['store_id' => $store->id, 'code' => $code, 'name' => $item->name, 'kind' => $item->kind, 'service' => $item->service, 'category' => $item->category, 'active' => ! ($item->kind === 'postpaid' && $item->connection->kind === 'otomax')]);
             $product->sale_price = $pricing->apply($item->cost, $pricing->resolve($product)['markup']);
             $product->save();
             if (! isset($knownCategories[$product->category_id])) {
@@ -283,7 +305,7 @@ class CatalogController extends Controller
         CatalogAccess::authorize($request, $store, 'pricing.manage');
         CatalogAccess::operational($store);
         abort_unless($product->store_id === $store->id, 404);
-        $data = $request->validate(['sale_price' => 'required|integer|min:0|max:1000000000000', 'markup' => 'nullable|string|max:100', 'auto_update' => 'present|nullable|boolean']);
+        $data = $request->validate(['sale_price' => 'required|integer|min:0|max:1000000000000', 'markup' => 'nullable|string|max:100', 'auto_update' => 'present|nullable|boolean', 'pricing_basis' => 'prohibited']);
         $data['markup'] = $pricing->parse($data['markup'] ?? null)['text'] ?? null;
         $product->update($data);
         $catalog->reprice($store);
@@ -295,9 +317,22 @@ class CatalogController extends Controller
     {
         CatalogAccess::authorize($request, $store, 'products.manage');
         $list = new ListQuery($request, ['kind' => ['ppob', 'premium', 'postpaid']], 10);
-        $page = $list->paginate($list->apply(SupplierProduct::with('connection')->where('store_id', $store->id)->whereHas('connection', fn ($q) => $q->where('enabled', true)), ['name', 'sku'], ['kind' => 'kind'])->orderBy('name')->orderBy('id'));
+        $query = SupplierProduct::with('connection')->where('store_id', $store->id)->whereHas('connection', fn ($q) => $q->where('enabled', true));
+        if ($request->filled('connection_id')) {
+            $request->validate(['connection_id' => 'uuid']);
+            $query->where('connection_id', $request->query('connection_id'));
+        }
+        if ($request->boolean('inquiry')) {
+            $query->where('cost', 0)->where('available', true)->where(fn ($q) => $q->whereNull('billing')->orWhere('billing->adjustment', 0));
+        }
+        if ($list->filters['kind'] === 'postpaid') {
+            $query->where(fn ($q) => $q->where('kind', 'postpaid')->orWhere(fn ($q) => $q->where('kind', 'ppob')->whereHas('connection', fn ($q) => $q->where('kind', 'otomax'))));
+        } elseif ($list->filters['kind'] !== '') {
+            $query->where('kind', $list->filters['kind']);
+        }
+        $page = $list->paginate($list->apply($query, ['name', 'sku'])->orderBy('name')->orderBy('id'));
 
-        return response()->json(['items' => $page->getCollection()->map(fn ($item) => [...$item->only(['id', 'name', 'sku', 'mode', 'cost', 'kind']), 'source' => $item->connection->kind, 'allowed' => CatalogAccess::supports($store, $item->connection->kind)]), 'pagination' => ListQuery::meta($page)])->header('Cache-Control', 'private, no-store');
+        return response()->json(['items' => $page->getCollection()->map(fn ($item) => [...$item->only(['id', 'name', 'sku', 'mode', 'cost', 'kind', 'billing', 'connection_id']), 'source' => $item->connection->kind, 'allowed' => CatalogAccess::supports($store, $item->connection->kind)]), 'pagination' => ListQuery::meta($page)])->header('Cache-Control', 'private, no-store');
     }
 
     public function saveRule(Request $request, Store $store, ProductPricing $pricing, StoreCatalog $catalog, ?PricingRule $rule = null): RedirectResponse
@@ -307,7 +342,7 @@ class CatalogController extends Controller
         abort_if($rule && $rule->store_id !== $store->id, 404);
         $request->merge(['key' => mb_strtolower(trim((string) $request->input('key')))]);
         $data = $request->validate(['scope' => 'required|in:category,service', 'key' => ['required', 'string', 'max:100', Rule::unique('pricing_rules')->where('store_id', $store->id)->where('scope', $request->input('scope'))->ignore($rule?->id)],
-            'markup' => 'nullable|string|max:100', 'auto_update' => 'present|nullable|boolean']);
+            'markup' => 'nullable|string|max:100', 'auto_update' => 'present|nullable|boolean', 'pricing_basis' => 'sometimes|nullable|in:cheapest,highest']);
         $target = $data['scope'] === 'service' ? CatalogService::query() : CatalogCategory::query();
         if (! $target->where('store_id', $store->id)->where('name_key', $data['key'])->exists()) {
             $message = $data['scope'] === 'service'

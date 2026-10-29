@@ -63,7 +63,7 @@ class CustomerFulfillment
                 }
                 $rc = $data['rc'];
                 $status = $data['status'] === 'Sukses' && $rc === '00' ? 'success' : ($data['status'] === 'Gagal' && in_array($rc, self::DIGIFLAZZ_FAILURES, true) ? 'failed' : 'pending');
-                $this->finish($order, $attempt, ['status' => $status, 'cost' => $data['price'] ?? null, 'result' => (string) ($data['sn'] ?? ''), 'price_changed' => $rc === '69', 'message' => $status === 'failed' ? $this->digiflazzFailureMessage($rc, $order->is_sandbox, $data['message'] ?? null) : 'Status diterima melalui webhook Digiflazz.']);
+                $this->finish($order, $attempt, ['status' => $status, 'description' => $data['description'] ?? $data['keterangan'] ?? null, 'cost' => $data['price'] ?? null, 'result' => (string) ($data['sn'] ?? ''), 'price_changed' => $rc === '69', 'message' => $status === 'failed' ? $this->digiflazzFailureMessage($rc, $order->is_sandbox, $data['message'] ?? null) : 'Status diterima melalui webhook Digiflazz.']);
                 if ($status === 'failed' && $order->fresh()->status !== 'failed') {
                     if (! $order->attempts()->where('status', '!=', 'failed')->exists()) {
                         app(CustomerCommerce::class)->fail($order->fresh(), 'Semua sumber produk telah gagal atau tidak tersedia.');
@@ -112,12 +112,12 @@ class CustomerFulfillment
                     return;
                 }
                 $this->updateOtomaxPrice($order, $attempt, $parsed);
-                $outcome = ['status' => $status, 'cost' => OtomaxParser::amount($fields['harga'] ?? null), 'result' => $fields['sn'] ?? '', 'message' => 'Callback OtomaX diterima.'];
+                $outcome = ['status' => $status, 'description' => $fields['keterangan'] ?? null, 'cost' => OtomaxParser::amount($fields['harga'] ?? null), 'result' => $fields['sn'] ?? '', 'message' => 'Callback OtomaX diterima.'];
                 if (isset($fields['id_transaksi'])) {
                     $attempt->update(['provider_id' => $fields['id_transaksi']]);
                 }
                 if (in_array($order->status, ['success', 'failed', 'review'], true) || in_array($attempt->status, ['success', 'failed'], true)) {
-                    app(CustomerOrderDecision::class)->callback($order, $attempt, ['status' => $status === 'success' ? 'Sukses' : ($status === 'failed' ? 'Gagal' : 'Pending'), 'rc' => $status === 'success' ? '00' : ($status === 'failed' ? '01' : '03'), 'price' => $outcome['cost'], 'sn' => $outcome['result']]);
+                    app(CustomerOrderDecision::class)->callback($order, $attempt, ['status' => $status === 'success' ? 'Sukses' : ($status === 'failed' ? 'Gagal' : 'Pending'), 'rc' => $status === 'success' ? '00' : ($status === 'failed' ? '01' : '03'), 'description' => $outcome['description'] ?? null, 'price' => $outcome['cost'], 'sn' => $outcome['result']]);
 
                     return;
                 }
@@ -193,7 +193,7 @@ class CustomerFulfillment
                     if (in_array($outcome['status'], ['success', 'failed', 'pending'], true) && empty($outcome['uncertain'])) {
                         app(CustomerOrderDecision::class)->callback($locked, $attempt, [
                             'status' => $outcome['status'] === 'success' ? 'Sukses' : ($outcome['status'] === 'failed' ? 'Gagal' : 'Pending'), 'rc' => $outcome['status'] === 'success' ? '00' : ($outcome['status'] === 'failed' ? '01' : '03'),
-                            'price' => $outcome['cost'] ?? null, 'sn' => $outcome['result'] ?? '',
+                            'description' => $outcome['description'] ?? null, 'price' => $outcome['cost'] ?? null, 'sn' => $outcome['result'] ?? '',
                         ], true);
                     }
 
@@ -298,6 +298,7 @@ class CustomerFulfillment
                         return null;
                     }
                 }
+                $order->recordSupplierDescription($attempt, null);
                 $attempt->update(['status' => 'dispatching', 'last_checked_at' => now()]);
                 $order->update(['status' => 'processing']);
 
@@ -347,6 +348,9 @@ class CustomerFulfillment
         $data = $attempt->request_snapshot;
         if ($attempt->source === 'otomax') {
             $connection = SupplierConnection::with('store')->where('store_id', $order->store_id)->findOrFail($data['connection_id']);
+            if (($data['kind'] ?? '') === 'postpaid' && empty($data['otomax_sent']) && ! $order->created_at->timezone('Asia/Jakarta')->isSameDay(now('Asia/Jakarta'))) {
+                return ['status' => 'failed', 'message' => 'Hari pembayaran berubah. Tagihan harus diperiksa kembali.'];
+            }
             $event = ! empty($data['otomax_sent']) ? 'status' : 'transaction';
             if ($event === 'status' && empty($data['otomax']['settings']['status_path'])) {
                 $firstSentAt = isset($data['otomax_first_sent_at'])
@@ -380,7 +384,7 @@ class CustomerFulfillment
                 app(SupplierWallets::class)->transaction($order, $attempt, $fields, 'transaction');
             }
 
-            return ['status' => $response['error'] ? 'pending' : $response['status'], 'uncertain' => (bool) $response['error'], 'cost' => OtomaxParser::amount($fields['harga'] ?? null), 'result' => $fields['sn'] ?? '', 'message' => $response['error'] ? 'Jawaban OtomaX perlu diperiksa; menunggu callback.' : 'Hasil OtomaX diterima.'];
+            return ['description' => empty($response['error']) ? ($fields['keterangan'] ?? null) : null, 'status' => $response['error'] ? 'pending' : $response['status'], 'uncertain' => (bool) $response['error'], 'cost' => OtomaxParser::amount($fields['harga'] ?? null), 'result' => $fields['sn'] ?? '', 'message' => $response['error'] ? 'Jawaban OtomaX perlu diperiksa; menunggu callback.' : 'Hasil OtomaX diterima.'];
         }
 
         if ($order->is_sandbox && $attempt->source === 'hanshop') {
@@ -395,7 +399,7 @@ class CustomerFulfillment
             $status = $result['status'] ?? 'PENDING';
             app(SupplierWallets::class)->transaction($order, $attempt, $result, 'transaction');
 
-            return ['status' => $status === 'SUCCESS' ? 'success' : ($status === 'FAILED' ? 'failed' : 'pending'), 'result' => (string) ($result['result'] ?? ''),
+            return ['description' => $result['description'] ?? $result['keterangan'] ?? null, 'status' => $status === 'SUCCESS' ? 'success' : ($status === 'FAILED' ? 'failed' : 'pending'), 'result' => (string) ($result['result'] ?? ''),
                 'price_changed' => ($result['code'] ?? '') === 'PRICE_CHANGED', 'cost' => $result['price'] ?? null, 'message' => $status === 'FAILED' ? 'Sumber Hanshop menolak transaksi ('.preg_replace('/[^A-Z0-9_]/', '', (string) ($result['code'] ?? 'FAILED')).').' : 'Menunggu hasil Hanshop.'];
         }
         $credentials = $data['credentials'];
@@ -452,7 +456,7 @@ class CustomerFulfillment
         $rc = (string) ($body['rc'] ?? '');
         $final = $status === 'Sukses' && $rc === '00' ? 'success' : ($status === 'Gagal' && in_array($rc, self::DIGIFLAZZ_FAILURES, true) ? 'failed' : 'pending');
 
-        return ['status' => $final, 'result' => (string) ($body['sn'] ?? ''), 'cost' => $body['price'] ?? null, 'price_changed' => $rc === '69', 'message' => $final === 'failed' ? $this->digiflazzFailureMessage($rc, $order->is_sandbox, $body['message'] ?? null) : 'Menunggu hasil Digiflazz.'];
+        return ['description' => $body['description'] ?? $body['keterangan'] ?? null, 'status' => $final, 'result' => (string) ($body['sn'] ?? ''), 'cost' => $body['price'] ?? null, 'price_changed' => $rc === '69', 'message' => $final === 'failed' ? $this->digiflazzFailureMessage($rc, $order->is_sandbox, $body['message'] ?? null) : 'Menunggu hasil Digiflazz.'];
     }
 
     private function finish(CustomerOrder $order, OrderAttempt $attempt, array $outcome): void
@@ -466,13 +470,14 @@ class CustomerFulfillment
             }
             $status = $outcome['status'];
             $cost = $outcome['cost'] ?? null;
-            if ($status === 'success' && (! is_numeric($cost) || (int) $cost < 0 || (int) $cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
+            if ($status === 'success' && (! is_numeric($cost) || ((int) $cost < 0 || (($order->snapshot['kind'] ?? '') === 'postpaid' && (int) $cost === 0)) || (int) $cost > (int) ($order->snapshot['subtotal'] ?? $order->amount))) {
                 $attempt->update(['status' => 'pending', 'result' => mb_substr((string) ($outcome['result'] ?? ''), 0, 20000), 'message' => 'Harga hasil pemasok perlu ditinjau.']);
                 $order->update(['status' => 'review', 'message' => 'Hasil pemasok perlu diperiksa toko.']);
                 app(CustomerCommerce::class)->notice($order, 'review');
 
                 return;
             }
+            $order->recordSupplierDescription($attempt, $outcome['description'] ?? null);
             $attempt->update(['status' => $status, 'message' => $outcome['message'] ?? null, ...($cost !== null && is_numeric($cost) && $cost >= 0 ? ['cost' => (int) $cost] : []), ...($status === 'success' ? ['result' => mb_substr($outcome['result'] ?: 'Pesanan berhasil.', 0, 20000)] : [])]);
             if ($status === 'success') {
                 $this->success($order, $attempt->result);
@@ -487,7 +492,7 @@ class CustomerFulfillment
     private function updateOtomaxPrice(CustomerOrder $order, OrderAttempt $attempt, array $parsed): void
     {
         $cost = OtomaxParser::amount($parsed['fields']['harga'] ?? null);
-        if ($order->is_sandbox || ! empty($parsed['error']) || $cost === null || $cost <= 0 || $cost > 1000000000000) {
+        if (($attempt->request_snapshot['kind'] ?? '') === 'postpaid' || $order->is_sandbox || ! empty($parsed['error']) || $cost === null || $cost <= 0 || $cost > 1000000000000) {
             return;
         }
         $snapshot = $attempt->request_snapshot;

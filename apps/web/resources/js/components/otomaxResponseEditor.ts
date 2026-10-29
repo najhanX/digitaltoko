@@ -1,9 +1,9 @@
 export type ResponseCapture={field:string;prefix:string|null;suffix:string|null;required:boolean};
 export type ResponseRule = {name:string;event:string;outcome:string;active:boolean;template?:string;matcher?:'template'|'boundaries'|'regex';keyword?:string;regex?:string;captures?:ResponseCapture[];case_sensitive?:boolean;priority?:number};
 export type ResponseConfig={text_status_map?:Record<string,string>;message_field:string;ref_field:string;status_field:string;price_field:string;status_map:Record<string,string>;rules:ResponseRule[]};
-export const responseFields:Record<string,string>={id_transaksi:'ID transaksi supplier',kode_produk:'Kode produk',tujuan:'Tujuan',status:'Status teks',sn:'SN / referensi hasil',refid:'RefID pesanan',harga:'Harga beli',saldo_awal:'Saldo awal',saldo_akhir:'Saldo akhir',saldo:'Saldo',tanggal:'Tanggal',jam:'Jam',keterangan:'Keterangan',amount:'Nominal'};
+export const responseFields:Record<string,string>={id_transaksi:'ID transaksi supplier',kode_produk:'Kode produk',tujuan:'Tujuan',status:'Status teks',sn:'SN / referensi hasil',refid:'RefID pesanan',harga:'Harga beli',saldo_awal:'Saldo awal',saldo_akhir:'Saldo akhir',saldo:'Saldo',tanggal:'Tanggal',jam:'Jam',keterangan:'Keterangan',amount:'Nominal',nama_pelanggan:'Nama pelanggan tagihan',tagihan:'Tagihan pokok',admin:'Admin tagihan',total_tagihan:'Total tagihan termasuk admin',periode:'Periode tagihan'};
 export const responseEvents:Record<string,string> = {
-    transaction:'Balasan awal transaksi', callback:'Callback / laporan susulan',
+    transaction:'Balasan awal cek tagihan / transaksi', callback:'Callback / laporan susulan',
     status:'Balasan cek status', balance:'Balasan cek saldo', ticket:'Balasan tiket deposit',
 };
 export const responseOutcomes:Record<string,string> = {success:'Berhasil',failed:'Gagal pasti',pending:'Sedang diproses'};

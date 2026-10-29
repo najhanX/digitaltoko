@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CustomerInquiry;
 use App\Models\CustomerOrder;
 use App\Models\OrderAttempt;
 use App\Models\OtomaxEvent;
 use App\Models\SupplierConnection;
 use App\Services\CustomerFulfillment;
 use App\Services\OtomaxClient;
+use App\Services\OtomaxInquiries;
 use App\Services\OtomaxParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +35,26 @@ class OtomaxCallbackController extends Controller
         $attempts = OrderAttempt::where('source', 'otomax')->whereIn('reference', $references)->whereHas('order', fn ($q) => $q->where('store_id', $connection->store_id))->get();
         $attempt = $attempts->first(fn ($a) => ($a->request_snapshot['connection_id'] ?? null) === $connection->id);
         if (! $attempt) {
-            return response()->json(['status' => 'IGNORED']);
+            $inquiry = CustomerInquiry::where('store_id', $connection->store_id)->where('connection_id', $connection->id)->whereIn('reference', $references)->first();
+            if (! $inquiry) {
+                return response()->json(['status' => 'IGNORED']);
+            }
+            $snapshot = $inquiry->data;
+            $parsed = $parser->parse($snapshot['otomax']['profile'], 'callback', $input);
+            abort_unless(($parsed['fields']['refid'] ?? '') === $inquiry->reference, 422, 'RefID cek tagihan tidak sesuai.');
+            abort_unless(! isset($parsed['fields']['kode_produk']) || strcasecmp($parsed['fields']['kode_produk'], $snapshot['inquiry_sku']) === 0, 422, 'Kode cek tagihan tidak sesuai.');
+            abort_unless(! isset($parsed['fields']['tujuan']) || $parsed['fields']['tujuan'] === $inquiry->destination, 422, 'Tujuan cek tagihan tidak sesuai.');
+            $parsed['text'] = (string) ($input[$snapshot['otomax']['profile']['message_field'] ?? 'message'] ?? '');
+            app(OtomaxInquiries::class)->apply($inquiry, $parsed);
+            $inquiry->refresh();
+            $review = ! empty($parsed['error']) || ! empty($inquiry->data['parser_incomplete']);
+            $eventStatus = $review ? 'unmatched' : match ($inquiry->status) {
+                'ready' => 'success', 'failed' => 'failed', default => 'pending'
+            };
+            OtomaxEvent::create(['store_id' => $connection->store_id, 'connection_id' => $connection->id, 'operation' => 'callback', 'status' => $eventStatus, 'reference' => $inquiry->reference,
+                'data' => ['message' => $parsed['text'], 'parsed' => $parsed]]);
+
+            return response()->json(['status' => $review ? 'REVIEW' : 'SUCCESS']);
         }
         $order = CustomerOrder::findOrFail($attempt->order_id);
         $snapshot = $attempt->request_snapshot;

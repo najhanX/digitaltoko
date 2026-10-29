@@ -48,6 +48,7 @@ class ProductPricing
 
         return ['markup' => $product->markup ?? $category?->markup ?? $service?->markup ?? '0',
             'auto_update' => $product->auto_update ?? $category?->auto_update ?? $service?->auto_update ?? false,
+            'pricing_basis' => $category?->pricing_basis ?? $service?->pricing_basis ?? 'highest',
             'level' => $product->markup !== null ? 'product' : ($category?->markup !== null ? 'category' : ($service?->markup !== null ? 'service' : 'default'))];
     }
 

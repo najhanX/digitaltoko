@@ -1,6 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CheckCircle2, ReceiptText, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, ReceiptText, ShieldCheck, LoaderCircle } from 'lucide-react';
 import { money } from './Commerce';
 import { FormErrors } from './CatalogForms';
 import GameAccountFields from './GameAccountFields';
@@ -8,7 +8,7 @@ import { categoryDestination, type DestinationProfile } from './categoryDestinat
 import type { GameAccount, GameProfile } from './gameIdentity';
 import { checkoutBlockers } from './checkoutReadiness';
 
-export type CheckoutProduct={id:string;name:string;code:string;kind:string;price:number;available:boolean;description:string|null};
+export type CheckoutProduct={id:string;name:string;code:string;kind:string;price:number;available:boolean;description:string|null;postpaid_fees?:{service_admin:number;store_admin:number}|null};
 export type CheckoutCustomer={name:string;phone:string;email:string|null;balance:number}|null;
 export type CheckoutOptions={customer:CheckoutCustomer;allowGuest:boolean;gateway:string|null;feeMarkup:string;gameProfile?:GameProfile|null;destinationProfile?:DestinationProfile;initialDestination?:string;guestPendingOrder?:{number:string;url:string}|null};
 export default function CheckoutForm({product,customer,allowGuest,gateway,feeMarkup,nominals,gameProfile,destinationProfile,initialDestination='',guestPendingOrder=null}:{product:CheckoutProduct|null;nominals?:ReactNode}&CheckoutOptions) {
@@ -16,23 +16,40 @@ export default function CheckoutForm({product,customer,allowGuest,gateway,feeMar
     const [voucherInput,setVoucherInput]=useState(''),[voucher,setVoucher]=useState<{code:string;discount:number;total:number}|null>(null),[voucherBusy,setVoucherBusy]=useState(false),[voucherError,setVoucherError]=useState('');
     const voucherRequest=useRef<AbortController|null>(null);
     const [gameAccount,setGameAccount]=useState<GameAccount|null>(null);
-    const [inquiry,setInquiry]=useState<{id:string;amount:number;customer_name:string;period:string}|null>(null);
+    const [inquiry,setInquiry]=useState<{id:string;amount:number;customer_name:string;period:string;bill?:number|null;admin?:number|null;description?:string;billing?:{bill:number;service_admin:number;store_admin:number}|null}|null>(null);
+    const [billPending,setBillPending]=useState(false);
+    const [billMessage,setBillMessage]=useState('');
     const [checking,setChecking]=useState(false),[inquiryError,setInquiryError]=useState('');
     const request=useRef<AbortController|null>(null);
-    useEffect(()=>{request.current?.abort();setChecking(false);setInquiry(null);setInquiryError('');form.setData(data=>({...data,product_id:product?.id ?? '',expected_price:product?.price ?? 0,inquiry_id:'',idempotency_key:crypto.randomUUID()}));return()=>request.current?.abort();},[product?.id,product?.price,form.data.destination,form.data.phone,form.data.payment]);
+    const inquiryRequestKey=useRef('');
+    const billBusy=useRef(false);
+    useEffect(()=>{request.current?.abort();request.current=null;billBusy.current=false;inquiryRequestKey.current='';setChecking(false);setBillPending(false);setInquiry(null);setInquiryError('');setBillMessage('');form.setData(data=>({...data,product_id:product?.id ?? '',expected_price:product?.price ?? 0,inquiry_id:'',idempotency_key:crypto.randomUUID()}));return()=>request.current?.abort();},[product?.id,product?.price,form.data.destination,form.data.phone,form.data.payment]);
     useEffect(()=>{form.setData('idempotency_key',crypto.randomUUID());},[form.data.voucher_code]);
     async function checkBill(){
-        if(!product)return;
+        if(!product || billBusy.current || form.processing)return;
+        billBusy.current=true;
+        setInquiry(null);form.setData('inquiry_id','');
+        const started=performance.now();
+        if(!billPending||!inquiryRequestKey.current)inquiryRequestKey.current=crypto.randomUUID();
         const controller=new AbortController();request.current?.abort();request.current=controller;setChecking(true);setInquiryError('');
         try {
             const cookie=document.cookie.split('; ').find(v=>v.startsWith('XSRF-TOKEN='));
-            const response=await fetch('/checkout/inquiry',{method:'POST',credentials:'same-origin',signal:controller.signal,headers:{Accept:'application/json','Content-Type':'application/json','X-XSRF-TOKEN':cookie?decodeURIComponent(cookie.slice(11)):''},body:JSON.stringify({product_id:product.id,destination:form.data.destination,phone:form.data.phone,idempotency_key:crypto.randomUUID()})});
+            const response=await fetch('/checkout/inquiry',{method:'POST',credentials:'same-origin',signal:controller.signal,headers:{Accept:'application/json','Content-Type':'application/json','X-XSRF-TOKEN':cookie?decodeURIComponent(cookie.slice(11)):''},body:JSON.stringify({product_id:product.id,destination:form.data.destination,phone:form.data.phone,idempotency_key:inquiryRequestKey.current})});
             const result=await response.json();if(controller.signal.aborted)return;
             if(!response.ok)throw Error(Object.values(result.errors??{}).flat()[0] as string ?? 'Tagihan belum dapat diperiksa.');
+            setBillMessage(result.data.description || result.data.message || '');
+            if(result.data.status==='pending'){setBillPending(true);setInquiry(null);return;}
+            setBillPending(false);
+            if(result.data.status==='failed')throw Error(result.data.description || result.data.message || 'Pemeriksaan tagihan ditolak supplier. Periksa nomor tujuan lalu coba kembali.');
             setInquiry(result.data);form.setData(data=>({...data,inquiry_id:result.data.id,expected_price:result.data.amount}));
-        }catch(error){if(!controller.signal.aborted)setInquiryError(error instanceof Error?error.message:'Pemeriksaan tagihan gagal.');}
-        finally{if(!controller.signal.aborted)setChecking(false);}
+        }catch(error){if(!controller.signal.aborted)setBillPending(false);if(!controller.signal.aborted)setInquiryError(error instanceof Error?error.message:'Pemeriksaan tagihan gagal.');}
+        finally{
+            const remaining=500-(performance.now()-started);
+            if(remaining>0)await new Promise(resolve=>window.setTimeout(resolve,remaining));
+            if(request.current===controller){billBusy.current=false;if(!controller.signal.aborted)setChecking(false);}
+        }
     }
+    useEffect(()=>{if(!billPending||checking)return;const timer=window.setTimeout(()=>void checkBill(),5000);return()=>window.clearTimeout(timer);},[billPending,checking,product?.id,form.data.destination,form.data.phone]);
     useEffect(()=>{voucherRequest.current?.abort();setVoucherBusy(false);setVoucher(null);setVoucherError('');form.setData('voucher_code','');return()=>voucherRequest.current?.abort();},[product?.id,product?.price,inquiry?.id]);
     async function applyVoucher(){
         if(!product || !voucherInput.trim())return;
@@ -45,12 +62,12 @@ export default function CheckoutForm({product,customer,allowGuest,gateway,feeMar
     const effectiveDestination=premium?form.data.phone:form.data.destination;
     function updateGame(id:string,server:string){form.setData(data=>({...data,destination_id:id,destination_server:server,destination:categoryDestination(target,id,server)}));}
     const blockers=checkoutBlockers({product,phone:form.data.phone,destination:effectiveDestination,premium,columns:target.columns,server:form.data.destination_server,requiresGameVerification:!!gameProfile,gameVerification:form.data.game_verification,hasInquiry:!!inquiry,payment:form.data.payment,gateway,loggedIn:!!customer});
-    const valid=blockers.length===0 && !guestPendingOrder;
+    const valid=blockers.length===0 && !guestPendingOrder && !checking && !billPending;
     return <form className="ng-checkout-layout" onSubmit={event=>{event.preventDefault();if(valid && form.data.idempotency_key){form.transform(data=>({...data,destination:effectiveDestination}));form.post('/checkout');}}}>
         <div className="ng-checkout-steps">
             {!premium && <section className="sf-form-card ng-checkout-step"><h2><b>1</b>Masukkan data tujuan</h2><p>Data tujuan ini dipakai untuk semua pilihan produk dalam kategori yang sama.</p>{gameProfile?<GameAccountFields key={gameProfile.category_id+gameProfile.game+gameProfile.destination_format} profile={gameProfile} disabled={form.processing} onChange={(destination,account)=>{setGameAccount(account);form.setData(data=>({...data,destination,game_verification:account?.verification ?? ''}));}}/>:target.type==='game'?<div className={target.columns===2?'ng-contact-fields':'form-stack'}><label>ID game / tujuan<input required maxLength={100} value={form.data.destination_id} onChange={event=>updateGame(event.target.value,form.data.destination_server)} placeholder="Masukkan ID game / tujuan"/></label>{target.columns===2 && <label>Zona / server<input required maxLength={64} value={form.data.destination_server} onChange={event=>updateGame(form.data.destination_id,event.target.value)} placeholder="Masukkan zona / server"/></label>}</div>:<label>{target.label}<input required maxLength={target.type==='phone'?30:target.type==='pln'?20:255} type={target.type==='phone'?'tel':'text'} inputMode={['phone','pln'].includes(target.type)?'numeric':'text'} value={form.data.destination} placeholder={target.type==='phone'?'Nomor HP yang ingin diisi':target.type==='pln'?'Masukkan ID PLN / nomor meteran':'Masukkan tujuan transaksi'} onChange={event=>form.setData('destination',event.target.value)}/><small>{target.type==='phone'?'Boleh berbeda dari nomor WhatsApp penerima bukti.':target.type==='pln'?'Gunakan ID pelanggan PLN atau nomor meteran yang benar.':'Pastikan data tujuan sesuai produk.'}</small></label>}</section>}
 
-            <section className="sf-form-card ng-checkout-step"><h2><b>{premium?1:2}</b>Pilih produk / nominal</h2>{nominals ?? (product && <div className="ng-selected-product"><CheckCircle2 size={20}/><span><strong>{product.name}</strong><small>{product.code}</small></span><b>{money(product.price)}</b></div>)}</section>
+            <section className="sf-form-card ng-checkout-step"><h2><b>{premium?1:2}</b>Pilih produk / nominal</h2>{nominals ?? (product && <div className="ng-selected-product"><CheckCircle2 size={20}/><span><strong>{product.name}</strong><small>{product.code}</small></span><b>{money(product.price)}</b></div>)}{product?.postpaid_fees&&<p>Admin layanan {money(product.postpaid_fees.service_admin)} · Admin toko {money(product.postpaid_fees.store_admin)}</p>}</section>
             <section className="sf-form-card ng-checkout-step"><h2><b>{premium?2:3}</b>Pilih pembayaran</h2><div className="ng-payment-options"><label className={form.data.payment==='gateway'?'selected':''}><input type="radio" name="payment" disabled={!gateway} checked={form.data.payment==='gateway'} onChange={()=>form.setData('payment','gateway')}/><span><strong>{gateway==='midtrans'?'QRIS Midtrans':gateway==='custom'?'QRIS toko':gateway==='sandbox'?'Simulasi pembayaran':'QRIS belum tersedia'}</strong><small>{gateway==='sandbox'?'Tanpa uang nyata. Konfirmasi pembayaran uji di halaman pesanan.':gateway?'Invoice dan QR pembayaran ditampilkan setelah pemesanan.':'Toko belum menyiapkan metode QRIS. Hubungi CS untuk bantuan.'}</small></span></label>{customer && <label className={form.data.payment==='wallet'?'selected':''}><input type="radio" name="payment" checked={form.data.payment==='wallet'} onChange={()=>form.setData('payment','wallet')}/><span><strong>Saldo pelanggan</strong><small>{money(customer.balance)}</small></span></label>}</div><p>{gateway==='sandbox'?'Simulasi tanpa uang nyata dan tanpa biaya gateway.':gateway==='custom'?'Kode unik ditampilkan di invoice.':feeMarkup!=='0'?'Biaya Midtrans sesuai tarif toko: '+feeMarkup+'. Rincian tersedia pada invoice.':'Biaya gateway ditanggung toko.'}</p></section>
             <section className="sf-form-card ng-checkout-step"><h2><b>{premium?3:4}</b>Kontak penerima bukti</h2><div className="ng-contact-fields"><label>Nomor WhatsApp wajib<input required type="tel" readOnly={!!customer} value={form.data.phone} placeholder="08xxxxxxxxxx" onChange={event=>form.setData('phone',event.target.value)}/></label><label>Email (opsional)<input type="email" readOnly={!!customer} value={form.data.email} placeholder="nama@email.com" onChange={event=>form.setData('email',event.target.value)}/></label></div><p>{premium && 'Tujuan pesanan aplikasi premium otomatis memakai nomor WhatsApp di atas. '}Bukti dan pembaruan pesanan dikirim ke kontak ini. Simpan nomor pesanan untuk mengecek status tanpa login.</p></section>
         </div>
@@ -58,7 +75,7 @@ export default function CheckoutForm({product,customer,allowGuest,gateway,feeMar
             {product && <div className="form-stack voucher-checkout"><label>Kode voucher<div className="voucher-code-field"><input maxLength={40} value={voucherInput} placeholder="Masukkan kode promo" onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();if(!voucherBusy)void applyVoucher();}}} onChange={event=>{voucherRequest.current?.abort();setVoucherBusy(false);setVoucherInput(event.target.value.toUpperCase());setVoucher(null);setVoucherError('');form.setData('voucher_code','');}}/><button type="button" className="button secondary small" disabled={voucherBusy || !voucherInput.trim() || (product.kind==='postpaid'&&!inquiry)} onClick={applyVoucher}>{voucherBusy?'Memeriksa…':'Pakai'}</button></div></label>{voucherError&&<p className="form-error" role="alert">{voucherError}</p>}{voucher&&<><div className="feedback success" role="status">{voucher.code} · Hemat {money(voucher.discount)}</div><div className="sf-total"><span>Setelah diskon</span><strong>{money(voucher.total)}</strong></div></>}</div>}
             <FormErrors errors={form.errors}/>{guestPendingOrder && <div className="feedback error" role="status"><p>Masih ada pesanan {guestPendingOrder.number} yang menunggu pembayaran. Selesaikan atau batalkan sebelum membuat pesanan baru.</p><Link className="text-link" href={guestPendingOrder.url}>Buka pesanan sebelumnya</Link></div>}
             {blockers.length>0 && <p className={product?"feedback warning":"sf-checkout-hint"} role="status">{blockers[0]}</p>}
-            {product?.kind==='postpaid' && <><button type="button" className="button secondary" disabled={checking || !form.data.destination || !form.data.phone} onClick={checkBill}>{checking?'Memeriksa…':'Periksa tagihan'}</button>{inquiryError && <p className="feedback error" role="alert">{inquiryError}</p>}{inquiry && <p className="feedback success">{inquiry.customer_name} · {inquiry.period} · {money(inquiry.amount)}. Konfirmasi dalam 5 menit.</p>}</>}
+            {product?.kind==='postpaid' && <><button type="button" className="button secondary" aria-busy={checking || billPending} disabled={checking || billPending || !form.data.destination || !form.data.phone} onClick={checkBill}>{(checking || billPending)&&<LoaderCircle size={18} className="sf-bill-spinner" aria-hidden="true"/>}{checking?'Memeriksa tagihan…':billPending?'Menunggu hasil…':'Periksa tagihan'}</button>{billPending && <p className="feedback" role="status">{billMessage || 'Tagihan sedang diperiksa supplier. Hasil diperbarui otomatis.'}</p>}{inquiryError && <p className="feedback error" role="alert">{inquiryError}</p>}{inquiry && <div className="feedback success" role="status"><strong>{inquiry.customer_name}</strong>{inquiry.description&&<p>{inquiry.description}</p>}{inquiry.period&&<p>Periode: {inquiry.period}</p>}{inquiry.billing?<dl className="commerce-details"><dt>Tagihan pokok</dt><dd>{money(inquiry.billing.bill)}</dd><dt>Admin layanan</dt><dd>{money(inquiry.billing.service_admin)}</dd><dt>Admin toko</dt><dd>{money(inquiry.billing.store_admin)}</dd></dl>:typeof inquiry.bill==='number'&&typeof inquiry.admin==='number'&&<p>Tagihan {money(inquiry.bill)} · Admin {money(inquiry.admin)}</p>}<p>Total {money(inquiry.amount)}. Konfirmasi dalam 5 menit.</p></div>}</>}
             {!customer && !allowGuest?<p>Toko mewajibkan akun pelanggan. <Link className="ng-button" href="/account/login">Masuk / daftar</Link></p>:<button className="ng-button" disabled={form.processing || voucherBusy || !valid}>{form.processing?'Menyiapkan pesanan…':form.data.payment==='wallet'?'Beli dengan saldo':'Pesan sekarang'}</button>}
             <small><ShieldCheck size={15}/>Harga dan ketersediaan diperiksa kembali sebelum pesanan dibuat. Total beserta biaya ditampilkan pada invoice.</small><p>{customer?'Transaksi gagal yang telah dibayar dikembalikan ke saldo pelanggan sesuai komponen refund invoice.':'Transaksi guest yang gagal ditindaklanjuti toko melalui WhatsApp untuk pembelian ulang atau refund manual.'}</p>{!customer && <Link className="text-link" href="/account/login">Masuk untuk memakai saldo pelanggan</Link>}
         </aside>

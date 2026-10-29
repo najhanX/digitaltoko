@@ -5,7 +5,7 @@ export const rupiah=(value:number)=>new Intl.NumberFormat('id-ID',{style:'curren
 export const sourceLabels:Record<string,string>={otomax:'OtomaX',digiflazz:'Digiflazz',hanshop:'Hanshop',stock:'Stok sendiri'};
 export const kindLabels:Record<string,string>={ppob:'Prabayar / PPOB',premium:'Aplikasi premium',postpaid:'Tagihan pascabayar'};
 export type CatalogStore={id:string;name:string;status:string;plan?:string;sandbox?:boolean};
-export type MappingOption={id:string;name:string;sku:string;mode:string;cost:number;kind:string;source:string;allowed:boolean};
+export type MappingOption={id:string;name:string;sku:string;mode:string;cost:number;kind:string;source:string;allowed:boolean;connection_id?:string;billing?:{adjustment?:number;admin?:number;commission?:number}|null;postpaid?:{inquiry_id:string;admin:number}|null;inquiry_item?:{id:string;name:string;sku:string;cost:number}|null};
 export function FormErrors({errors}:{errors:Record<string,string|undefined>}) {
     const values=Object.values(errors).filter(Boolean);
     return values.length?<div className="feedback error" role="alert">{[...new Set(values)].map(message=><p key={message}>{message}</p>)}</div>:null;

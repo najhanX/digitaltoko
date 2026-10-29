@@ -100,8 +100,10 @@ class OtomaxUrlCatalogTest extends TestCase
             $this->assertNull($rows[0]['quantity']);
             $this->assertFalse($rows[1]['available']);
             $zero = $parser->parse($this->html([['000', 'Cek ID', '0', 'Open']]), OtomaxWebCatalog::defaults())[0];
-            $this->assertFalse($zero['available']);
-            $this->assertStringContainsString('nol/tidak valid', $zero['availability_reason']);
+            $this->assertTrue($zero['available']);
+            $this->assertSame('postpaid', $zero['kind']);
+            $this->assertSame(0, $zero['billing']['adjustment']);
+            $this->assertStringContainsString('pasangan', $zero['availability_reason']);
         }
     }
 
@@ -295,14 +297,15 @@ class OtomaxUrlCatalogTest extends TestCase
         $this->assertSame(1, OtomaxImport::where('status', 'queued')->count());
     }
 
-    public function test_optional_html_row_closures_and_zero_prices_are_handled_without_enabling_free_products(): void
+    public function test_optional_html_row_closures_recognize_zero_price_as_an_unconfigured_postpaid_candidate(): void
     {
         $html = '<table><tr><td colspan="4">AXIS<tr><td>Kode<td>Keterangan<td>Harga<td>Status<tr><td>001<td>Produk<td>0<td>Open</table>';
         $rows = app(OtomaxWebCatalog::class)->parse($html, OtomaxWebCatalog::defaults());
         $this->assertCount(1, $rows);
-        $this->assertFalse($rows[0]['available']);
+        $this->assertTrue($rows[0]['available']);
+        $this->assertSame('postpaid', $rows[0]['kind']);
         $this->assertSame(0, $rows[0]['cost']);
-        $this->assertStringContainsString('nol/tidak valid', $rows[0]['availability_reason']);
+        $this->assertStringContainsString('pasangan', $rows[0]['availability_reason']);
     }
 
     public function test_an_explicit_empty_table_requires_confirmation_before_disabling_the_last_product(): void
@@ -322,5 +325,33 @@ class OtomaxUrlCatalogTest extends TestCase
         $this->assertTrue(SupplierProduct::where('connection_id', $connection->id)->sole()->available);
         $this->activate($connection->fresh(), $preview, true);
         $this->assertFalse(SupplierProduct::where('connection_id', $connection->id)->sole()->available);
+    }
+
+    public function test_signed_postpaid_commission_is_persisted_and_changes_are_counted(): void
+    {
+        $connection = $this->connection();
+        $rows = [['CEKPLN30', 'Cek PLN', '0', 'Open'], ['BYRPLN30', 'Bayar PLN', '-500', 'Open']];
+        $html = $this->html($rows);
+        Http::fake(function () use (&$html) {
+            return Http::response($html);
+        });
+        $preview = $this->preview($connection);
+        $this->activate($connection, $preview);
+        $pay = SupplierProduct::where('connection_id', $connection->id)->where('sku', 'BYRPLN30')->firstOrFail();
+        $this->assertSame(0, $pay->cost);
+        $this->assertSame(-500, $pay->billing['adjustment']);
+        $this->assertSame('postpaid', $pay->kind);
+        $this->assertTrue($pay->available);
+        $parsed = app(OtomaxWebCatalog::class)->parse($this->html([['CEKPLN30', 'Cek PLN', '0', 'Open'], ['BYRPLN30', 'Bayar PLN', '-750', 'Open']]), OtomaxWebCatalog::defaults());
+        $this->assertSame(1, app(OtomaxCatalogSync::class)->summary($connection, $parsed)['price_changed']);
+        $check = SupplierProduct::where('connection_id', $connection->id)->where('sku', 'CEKPLN30')->firstOrFail();
+        $product = CatalogProduct::create(['store_id' => $connection->store_id, 'code' => 'PLN-COMMISSION', 'name' => 'PLN komisi', 'kind' => 'postpaid', 'service' => 'Pascabayar', 'category' => 'PLN', 'sale_price' => 2025, 'markup' => '5%', 'auto_update' => true, 'active' => true]);
+        ProductMapping::create(['store_id' => $connection->store_id, 'product_id' => $product->id, 'source' => 'otomax', 'source_key' => 'item:'.$pay->id, 'supplier_product_id' => $pay->id, 'active' => true, 'postpaid' => ['inquiry_id' => $check->id, 'admin' => 2000]]);
+        $this->travel(6)->minutes();
+        $html = $this->html([['CEKPLN30', 'Cek PLN', '0', 'Open'], ['BYRPLN30', 'Bayar PLN', '-400', 'Open']]);
+        $this->activate($connection->fresh(), $this->preview($connection->fresh()));
+        $this->assertSame(-400, $pay->fresh()->billing['adjustment']);
+        $this->assertSame(1620, $product->fresh()->sale_price);
+
     }
 }

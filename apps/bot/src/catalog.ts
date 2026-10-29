@@ -1,7 +1,7 @@
 import { inline, shopReply } from './replies.js';
 import type { MenuAction } from './menu.js';
 export type CatalogQuery={page:number;search:string};
-export type CatalogPage={store_name:string;items:{code:string;name:string;category:string;service:string;price:number;available:boolean;quantity:number|null;price_label:string}[];pagination:{current_page:number;last_page:number;total:number}};
+export type CatalogPage={store_name:string;items:{code:string;name:string;category:string;service:string;price:number;available:boolean;quantity:number|null;price_label:string;postpaid_fees?:{service_admin:number;store_admin:number}|null}[];pagination:{current_page:number;last_page:number;total:number}};
 export function productChoices(page:CatalogPage):{title:string;description:string;action:MenuAction}[] {
     return page.items.filter(item=>item.available).slice(0,10).map(item=>({title:inline(item.name),description:new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(item.price)+' · '+inline(item.code),action:{type:'select-product',code:item.code}}));
 }
@@ -34,6 +34,7 @@ export function catalogText(page:CatalogPage,query:CatalogQuery,context?:{servic
     page.items.forEach((item,index)=>{
         if(index>0)lines.push('');
         lines.push(`*${index+1}. ${inline(item.name)}*`,`${item.price_label==='Harga'?'':inline(item.price_label)+': '}${money(item.price)} · ${inline(item.code)}`,
+            ...(item.postpaid_fees?['Admin layanan '+money(item.postpaid_fees.service_admin)+' · Admin toko '+money(item.postpaid_fees.store_admin)]:[]),
             !item.available?'Tidak tersedia':item.quantity!==null?`${item.quantity} stok`:'Tersedia');
     });
     if(!page.items.length)lines.push('Produk belum ditemukan.');

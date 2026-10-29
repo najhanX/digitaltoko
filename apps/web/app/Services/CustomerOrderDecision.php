@@ -33,6 +33,7 @@ class CustomerOrderDecision
                 unset($snapshot['supplier_callback_hash'], $snapshot['manual_callback_hash']);
                 $snapshot['manual_decision'] = ['attempt_id' => $attempt->id, 'actor' => $actor, 'note' => $note, 'status' => $status, 'at' => now()->toIso8601String()];
                 $order->update(['snapshot' => $snapshot]);
+                $order->recordSupplierDescription($attempt, null);
                 $this->apply($order, $attempt, $status, $result, 'Keputusan manual toko: '.$note, $actor);
             }, 3);
         } finally {
@@ -45,14 +46,17 @@ class CustomerOrderDecision
     {
         $status = $data['status'] === 'Sukses' && $data['rc'] === '00' ? 'success' : ($data['status'] === 'Gagal' && CustomerFulfillment::isDefinitiveFailure($data['rc']) ? 'failed' : 'pending');
         $snapshot = $order->snapshot;
-        $hash = hash('sha256', json_encode([$status, $data['rc'], $data['sn'] ?? '', $data['price'] ?? null]));
+        $description = CustomerOrder::descriptionText($data['description'] ?? $data['keterangan'] ?? null);
+        $hash = hash('sha256', json_encode([$description, $status, $data['rc'], $data['sn'] ?? '', $data['price'] ?? null]));
         if (($snapshot['supplier_callback_hash'] ?? $snapshot['manual_callback_hash'] ?? null) === $hash) {
             return;
         }
         $result = mb_substr((string) ($data['sn'] ?? ($status === 'success' ? ($order->result ?: 'Pesanan berhasil.') : '')), 0, 20000);
-        if ($attempt->status === $status && ($attempt->result ?? '') === $result && $order->status === $status && ($order->result ?? '') === $result && ! ($status === 'success' && $order->refunded_at) && ! ($status === 'failed' && $order->customer_id && ! $order->refunded_at)) {
+        if (($order->supplierDescription() ?? '') === $description && $attempt->status === $status && ($attempt->result ?? '') === $result && $order->status === $status && ($order->result ?? '') === $result && ! ($status === 'success' && $order->refunded_at) && ! ($status === 'failed' && $order->customer_id && ! $order->refunded_at)) {
             return;
         }
+        $order->recordSupplierDescription($attempt, $description);
+        $snapshot = $order->snapshot;
         $snapshot['supplier_callback_hash'] = $hash;
         $snapshot['supplier_reconciled'] = true;
         $order->update(['snapshot' => $snapshot]);

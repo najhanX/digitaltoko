@@ -13,6 +13,7 @@ use App\Models\OrderAttempt;
 use App\Models\ProductMapping;
 use App\Models\Store;
 use App\Models\StorePaymentSetting;
+use App\Models\SupplierConnection;
 use App\Support\HanshopIdentity;
 use App\Support\PlatformHost;
 use Illuminate\Support\Facades\DB;
@@ -106,12 +107,17 @@ class CustomerCommerce
                 }
                 if ($product->kind === 'postpaid') {
                     $inquiry = CustomerInquiry::where('store_id', $store->id)->where('product_id', $product->id)->whereKey($input['inquiry_id'] ?? '')->lockForUpdate()->first();
-                    $this->ensure($inquiry && (bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox && $inquiry->phone === $phone && $inquiry->destination === $destination && $inquiry->expires_at->isFuture(), 'Periksa tagihan kembali sebelum membayar.');
+                    $this->ensure($inquiry && $inquiry->status === 'ready' && (bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox && $inquiry->phone === $phone && $inquiry->destination === $destination && $inquiry->expires_at->isFuture(), 'Periksa tagihan kembali sebelum membayar.');
                     $this->ensure(! CustomerOrder::where('inquiry_id', $inquiry->id)->exists(), 'Pemeriksaan tagihan sudah dipakai pesanan lain.');
+                    if ($inquiry->connection_id) {
+                        $quotedConnection = SupplierConnection::with('store')->where('store_id', $store->id)->where('enabled', true)->find($inquiry->connection_id);
+                        $this->ensure($quotedConnection && $inquiry->data['otomax']['credentials'] === $quotedConnection->credentials && $inquiry->data['otomax']['settings'] === $quotedConnection->settings, 'Koneksi supplier berubah. Periksa tagihan kembali.');
+                    }
                     $amount = $inquiry->amount;
                     $candidates = $inquiry->data['candidates'];
                     $snapshot['bill_customer'] = $inquiry->data['customer_name'];
                     $snapshot['bill_period'] = $inquiry->data['period'];
+                    $snapshot['bill_breakdown'] = array_intersect_key($inquiry->data, array_flip(['bill', 'amount', 'supplier_admin', 'commission', 'supplier_total', 'markup', 'store_admin', 'admin']));
                 }
 
             } else {
@@ -164,9 +170,9 @@ class CustomerCommerce
             foreach ($candidates as $index => $candidate) {
                 $mapping = ProductMapping::with('item.connection')->findOrFail($candidate['mapping_id']);
                 $connection = $mapping->item?->connection;
-                OrderAttempt::create(['order_id' => $order->id, 'reference' => $inquiry && $index === 0 ? $inquiry->reference : 'DT'.Str::ulid(), 'position' => $index + 1, 'source' => $candidate['source'], 'cost' => $candidate['cost'],
-                    'request_snapshot' => ['sku' => $mapping->item?->sku, 'mode' => $mapping->item?->mode, 'kind' => $product->kind, 'connection_id' => $connection?->id,
-                        'otomax' => $connection?->kind === 'otomax' ? app(OtomaxClient::class)->snapshot($connection) : null, 'testing' => $order->is_sandbox, 'credentials' => $connection?->kind === 'digiflazz' ? app(StoreEnvironment::class)->credentials($connection) : [], 'id_user' => $store->owner->hanshop_user_id]]);
+                OrderAttempt::create(['order_id' => $order->id, 'reference' => $inquiry && $index === 0 && $candidate['source'] === 'digiflazz' ? $inquiry->reference : 'DT'.Str::ulid(), 'position' => $index + 1, 'source' => $candidate['source'], 'cost' => $candidate['cost'],
+                    'request_snapshot' => ['sku' => $mapping->item?->sku, 'mode' => $mapping->item?->mode, 'inquiry_reference' => $inquiry?->reference, 'kind' => $product->kind, 'connection_id' => $connection?->id,
+                        'otomax' => $connection?->kind === 'otomax' ? ($inquiry?->data['otomax'] ?? app(OtomaxClient::class)->snapshot($connection)) : null, 'testing' => $order->is_sandbox, 'credentials' => $connection?->kind === 'digiflazz' ? app(StoreEnvironment::class)->credentials($connection) : [], 'id_user' => $store->owner->hanshop_user_id]]);
             }
             if ($gateway === 'wallet') {
                 app(CustomerWallet::class)->apply($customer, -$amount, 'order:'.$order->id.':debit', 'purchase', [], $order->is_sandbox);
@@ -266,6 +272,8 @@ class CustomerCommerce
     public function publicData(CustomerOrder $order): array
     {
         return [...$order->only(['id', 'number', 'is_sandbox', 'purpose', 'status', 'payment_status', 'destination', 'amount', 'fee', 'unique_code', 'total', 'credit_amount', 'refund_amount', 'gateway', 'message', 'created_at', 'expires_at', 'paid_at', 'refunded_at']),
+            'description' => $order->supplierDescription(),
+            'postpaid_breakdown' => ($order->snapshot['kind'] ?? '') === 'postpaid' ? app(PostpaidBilling::class)->publicBreakdown($order->snapshot['bill_breakdown'] ?? []) : null,
             'wa_revision' => CustomerNotice::where('order_id', $order->id)->latest()->orderByDesc('id')->value('id') ?? 'none',
             'can_simulate_payment' => app(CustomerPayments::class)->canSimulate($order), 'simulated_payment' => ($order->snapshot['payment_simulation']['method'] ?? null) === 'local',
             'midtrans_sandbox' => $order->gateway === 'midtrans' && (bool) ($order->snapshot['sandbox'] ?? true),

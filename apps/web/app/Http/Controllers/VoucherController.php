@@ -171,7 +171,7 @@ class VoucherController extends Controller
         $amount = $quote['price'];
         if ($product->kind === 'postpaid') {
             $inquiry = CustomerInquiry::where('store_id', $store->id)->where('product_id', $product->id)->whereKey($data['inquiry_id'] ?? '')->where('phone', HanshopIdentity::phone($data['phone'] ?? ''))->where('expires_at', '>', now())->firstOrFail();
-            abort_unless((bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox, 422);
+            abort_unless($inquiry->status === 'ready' && (bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox, 422);
             $amount = $inquiry->amount;
         }
 

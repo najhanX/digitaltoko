@@ -126,7 +126,7 @@ class StoreCatalogTest extends TestCase
         $this->assertSame(32444, $product->fresh()->sale_price);
         $quote = app(StoreCatalog::class)->present(app(StoreCatalog::class)->query($store, false)->findOrFail($product->id), $store, true);
         $this->assertSame(32444, $quote['price']);
-        $this->assertSame(['markup' => '10%', 'auto_update' => true, 'level' => 'service'], $quote['rule']);
+        $this->assertSame(['markup' => '10%', 'auto_update' => true, 'pricing_basis' => 'highest', 'level' => 'service'], $quote['rule']);
 
         $this->post($url, ['scope' => 'category', 'key' => 'Mobile Legends', 'markup' => '5000', 'auto_update' => null])->assertSessionHasNoErrors();
         $this->assertSame(34494, $product->fresh()->sale_price);
@@ -341,7 +341,7 @@ class StoreCatalogTest extends TestCase
         $product = $this->product($store, $digi, ['sale_price' => 9500, 'auto_update' => false]);
         ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'supplier_product_id' => $hanshop->id, 'source' => 'hanshop', 'source_key' => 'item:'.$hanshop->id]);
         $quote = $this->quote($store, $product);
-        $this->assertSame(9000, $quote['cost']);
+        $this->assertSame(10000, $quote['cost']);
         $this->assertTrue($quote['available']);
         $hanshop->update(['available' => false]);
         $quote = $this->quote($store, $product);
@@ -515,7 +515,7 @@ class StoreCatalogTest extends TestCase
         $this->assertEqualsCanonicalizing(['pasca', 'prepaid'], $connection->fresh()->catalog_modes);
         $item = SupplierProduct::where('mode', 'pasca')->firstOrFail();
         $product = $this->product($store, $item, ['sale_price' => 3000]);
-        $this->assertSame('Biaya admin', $this->quote($store, $product)['price_label']);
+        $this->assertSame('Total biaya admin', $this->quote($store, $product)['price_label']);
         $this->assertSame(2750, $this->quote($store, $product)['cost']);
     }
 
@@ -629,6 +629,113 @@ class StoreCatalogTest extends TestCase
             }
             $this->post($url, ['kind' => 'hanshop', 'enabled' => true])->assertSessionHasNoErrors();
             $this->assertSame(2, $attempts);
+        }
+    }
+
+    public function test_digiflazz_catalog_commission_change_reprices_store_fee_without_changing_service_admin(): void
+    {
+        $store = $this->shop();
+        $connection = $this->connection($store);
+        $commission = 500;
+        Http::fake(['api.digiflazz.com/*' => function () use (&$commission) {
+            return Http::response(['data' => [['buyer_sku_code' => 'PLN-FEE', 'product_name' => 'PLN', 'category' => 'Pascabayar', 'brand' => 'PLN', 'admin' => 2000, 'commission' => $commission, 'buyer_product_status' => true, 'seller_product_status' => true]]]);
+        }]);
+        app(SupplierCatalog::class)->sync($connection, 'pasca');
+        $item = SupplierProduct::where('connection_id', $connection->id)->where('sku', 'PLN-FEE')->firstOrFail();
+        $product = $this->product($store, $item, ['sale_price' => 2025, 'markup' => '5%', 'auto_update' => true]);
+        $this->assertSame(['service_admin' => 2000, 'store_admin' => -475], $this->quote($store, $product)['postpaid_fees']);
+        $commission = 400;
+        $this->travel(6)->minutes();
+        app(SupplierCatalog::class)->sync($connection->fresh(), 'pasca');
+        $this->assertSame(2000, $item->fresh()->cost);
+        $this->assertSame(400, $item->fresh()->billing['commission']);
+        $this->assertSame(1620, $product->fresh()->sale_price);
+        $this->assertSame(['service_admin' => 2000, 'store_admin' => -380], $this->quote($store, $product->fresh())['postpaid_fees']);
+    }
+
+    public function test_automatic_price_uses_highest_eligible_source_and_keeps_dispatch_candidates_cheapest_first(): void
+    {
+        $store = $this->shop();
+        $connection = $this->connection($store, 'hanshop');
+        $cheap = $this->item($connection, 10000);
+        $expensive = $this->item($connection, 15000);
+        $unavailable = $this->item($connection, 90000);
+        $unavailable->update(['available' => false]);
+        $empty = $this->item($connection, 80000);
+        $empty->update(['quantity' => 0]);
+        $product = $this->product($store, $cheap, ['markup' => '5% + 500', 'auto_update' => true]);
+        foreach ([$expensive, $unavailable, $empty] as $item) {
+            ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'supplier_product_id' => $item->id, 'source' => 'hanshop', 'source_key' => 'item:'.$item->id, 'active' => true]);
+        }
+        $quote = $this->quote($store, $product);
+        $this->assertSame(16250, $quote['price']);
+        $this->assertSame(15000, $quote['cost']);
+        $this->assertSame([10000, 15000], array_column($quote['candidates'], 'cost'));
+        $expensive->update(['available' => false]);
+        app(StoreCatalog::class)->reprice($store);
+        $this->assertSame(11000, $product->fresh()->sale_price);
+        $product->update(['auto_update' => false, 'sale_price' => 14500]);
+        $expensive->update(['available' => true]);
+        $this->assertSame(14500, $this->quote($store, $product)['price']);
+    }
+
+    public function test_category_and_service_rules_set_basis_for_all_products_and_ignore_legacy_product_basis(): void
+    {
+        $store = $this->shop();
+        $connection = $this->connection($store, 'hanshop');
+        $cheap = $this->item($connection, 10000);
+        $expensive = $this->item($connection, 15000);
+        $products = [];
+        foreach (['Telkomsel', 'XL'] as $category) {
+            $product = $this->product($store, $cheap, ['category' => $category, 'markup' => '10%', 'auto_update' => true, 'pricing_basis' => 'cheapest']);
+            ProductMapping::create(['store_id' => $store->id, 'product_id' => $product->id, 'supplier_product_id' => $expensive->id, 'source' => 'hanshop', 'source_key' => 'item:'.$expensive->id, 'active' => true]);
+            $products[] = $product;
+        }
+        $url = '/stores/'.$store->id.'/pricing';
+        $this->assertSame(16500, $this->quote($store, $products[0])['price']);
+        $this->actingAs($store->owner)->post($url, ['scope' => 'service', 'key' => 'Pulsa', 'markup' => null, 'auto_update' => null, 'pricing_basis' => 'cheapest'])->assertSessionHasNoErrors();
+        $service = PricingRule::where('store_id', $store->id)->sole();
+        foreach ($products as $product) {
+            $this->assertSame(11000, $product->fresh()->sale_price);
+            $this->assertSame('cheapest', $this->quote($store, $product)['rule']['pricing_basis']);
+            $this->assertSame([10000, 15000], array_column($this->quote($store, $product)['candidates'], 'cost'));
+        }
+        $this->post($url, ['scope' => 'category', 'key' => 'Telkomsel', 'markup' => null, 'auto_update' => null, 'pricing_basis' => 'highest'])->assertSessionHasNoErrors();
+        $category = PricingRule::where('store_id', $store->id)->where('scope', 'category')->sole();
+        $this->assertSame(16500, $products[0]->fresh()->sale_price);
+        $this->assertSame(11000, $products[1]->fresh()->sale_price);
+        $this->patch($url.'/'.$category->id, ['scope' => 'category', 'key' => 'Telkomsel', 'markup' => null, 'auto_update' => null, 'pricing_basis' => null])->assertSessionHasNoErrors();
+        $this->assertSame(11000, $products[0]->fresh()->sale_price);
+        $this->patch($url.'/'.$service->id, ['scope' => 'service', 'key' => 'Pulsa', 'markup' => null, 'auto_update' => null, 'pricing_basis' => 'invalid'])->assertSessionHasErrors('pricing_basis');
+        $this->delete($url.'/'.$service->id)->assertSessionHasNoErrors();
+        $this->assertSame(16500, $products[0]->fresh()->sale_price);
+        $products[1]->update(['auto_update' => false, 'sale_price' => 14000]);
+        $this->post($url, ['scope' => 'service', 'key' => 'Pulsa', 'markup' => null, 'auto_update' => null, 'pricing_basis' => 'cheapest'])->assertSessionHasNoErrors();
+        $this->assertSame(14000, $products[1]->fresh()->sale_price);
+        $this->patch('/stores/'.$store->id.'/products/'.$products[0]->id.'/price', ['sale_price' => 16500, 'markup' => '10%', 'auto_update' => true, 'pricing_basis' => 'highest'])->assertSessionHasErrors('pricing_basis');
+        $other = $this->shop();
+        $this->actingAs($other->owner)->patch($url.'/'.$category->id, [])->assertForbidden();
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Catalog staff', 'username' => 'basis-staff', 'email' => 'basis-staff@example.test', 'password' => 'test-password-123', 'permissions' => ['products.manage']]);
+        auth('web')->logout();
+        $this->actingAs($staff, 'staff')->post($url, ['pricing_basis' => 'cheapest'])->assertForbidden();
+        $staff->update(['permissions' => ['pricing.manage']]);
+        $this->actingAs($staff->fresh(), 'staff')->patch($url.'/'.$category->id, ['scope' => 'category', 'key' => 'Telkomsel', 'markup' => null, 'auto_update' => null, 'pricing_basis' => 'highest'])->assertSessionHasNoErrors();
+        $this->assertSame(16500, $products[0]->fresh()->sale_price);
+    }
+
+    public function test_product_creation_initializes_price_from_inherited_rule_basis(): void
+    {
+        $store = $this->shop();
+        $connection = $this->connection($store, 'hanshop');
+        $cheap = $this->item($connection, 10000);
+        $expensive = $this->item($connection, 15000);
+        foreach (['cheapest' => 11000, 'highest' => 16500] as $basis => $expected) {
+            PricingRule::updateOrCreate(['store_id' => $store->id, 'scope' => 'service', 'key' => 'pulsa'], ['pricing_basis' => $basis]);
+            app(ProductPricing::class)->forget();
+            $this->actingAs($store->owner)->post('/stores/'.$store->id.'/products', ['code' => strtoupper($basis), 'name' => 'Produk '.$basis, 'kind' => 'ppob', 'service' => 'Pulsa', 'category' => 'Telkomsel', 'active' => true, 'mapping_ids' => [$cheap->id, $expensive->id], 'use_stock' => false, 'markup' => '10%', 'auto_update' => false])->assertSessionHasNoErrors();
+            $product = CatalogProduct::where('store_id', $store->id)->where('code', strtoupper($basis))->firstOrFail();
+            $this->assertSame($expected, $product->sale_price);
+            $this->assertSame($basis, $this->quote($store, $product)['rule']['pricing_basis']);
         }
     }
 }

@@ -185,3 +185,56 @@ test('payment instructions show the actual expiry in WIB and the remaining time 
   assert.doesNotMatch(orderReply('Toko Dummy',updated,now),/Batas bayar:|Sisa saat|Invalid Date/);
  }
 });
+
+
+test('pending postpaid check offers a scoped check-result button and never offers payment early',async()=>{
+ let ready=false;
+ const inquiryId='01a13857-4287-710b-ae1d-2e5d4497eadf';
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product:{...product,kind:'postpaid',price:3000},destination:body.destination_id??'12345678',destination_profile:{columns:1,label:'ID pelanggan'}}:body.action==='inquiry'?{inquiry:{id:inquiryId,status:ready?'ready':'pending',amount:ready?104000:0,customer_name:'Dummy',period:'202610'}}:{order}}));
+ await h.run(message('#beli PLN 12345678'));
+ assert.match(h.sent.at(-1).text,/Tagihan sedang diperiksa/);
+ assert.equal(h.calls.filter(call=>call.body?.action==='buy').length,0);
+ const buttons=h.relays.at(-1).viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons;
+ const click=message('');click.key.id='CHECK-RESULT';click.message={buttonsResponseMessage:{selectedButtonId:JSON.parse(buttons[0].buttonParamsJson).id}};
+ ready=true;await h.run(click);
+ assert.match(h.sent.at(-1).text,/104.000/);
+ assert.equal(h.calls.filter(call=>call.body?.action==='buy').length,0);
+});
+
+
+test('failed postpaid inquiry shows safe API reason and never starts payment',async()=>{
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product:{...product,kind:'postpaid',price:3000}}:{inquiry:{id:product.id,status:'failed',amount:0,message:'Nomor tujuan salah atau tidak ditemukan.'}}}));
+ await h.run(message('#beli PLN 12345678'));
+ assert.match(h.sent.at(-1).text,/CEK TAGIHAN GAGAL/);
+ assert.match(h.sent.at(-1).text,/Nomor tujuan salah/);
+ assert.ok(!h.calls.some(call=>call.body?.action==='buy'));
+ assert.match(h.sent.at(-1).text,/Pembayaran belum dibuat/);
+});
+
+
+test('postpaid inquiry displays captured supplier description beyond predefined failure messages',async()=>{
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product:{...product,kind:'postpaid',price:3000}}:{inquiry:{id:product.id,status:'failed',amount:0,message:'Pemeriksaan tagihan gagal.',description:'TAGIHAN MASIH DALAM PENYESUAIAN'}}}));
+ await h.run(message('#beli PLN 12345678'));
+ assert.match(h.sent.at(-1).text,/TAGIHAN MASIH DALAM PENYESUAIAN/);
+ assert.ok(!h.calls.some(call=>call.body?.action==='buy'));
+});
+
+
+test('order status shows captured description separately from premium credentials',async()=>{
+ const {orderReply}=await import('../dist/commerce.js');
+ for(const status of ['pending','failed','success']){
+  const text=orderReply('Toko Dummy',{...order,status,description:'PROSES DARI PEMASOK',result:status==='success'?'ACCOUNT-SECRET':null});
+  assert.match(text,/Keterangan : PROSES DARI PEMASOK/);
+  assert.equal(text.includes('ACCOUNT-SECRET'),status==='success');
+ }
+});
+
+
+test('postpaid receipt separates service admin and store admin from principal and payment total',async()=>{
+ const {orderReply}=await import('../dist/commerce.js');
+ const text=orderReply('Toko Dummy',{...order,status:'success',amount:102100,total:102100,postpaid_breakdown:{bill:100000,service_admin:2000,store_admin:100}});
+ assert.match(text,/Tagihan pokok : Rp.?100.000/);
+ assert.match(text,/Admin layanan : Rp.?2.000/);
+ assert.match(text,/Admin toko : Rp.?100/);
+ assert.doesNotMatch(text,/Admin layanan : Rp.?2.100/);
+});

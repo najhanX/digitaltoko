@@ -7,7 +7,7 @@ use Illuminate\Validation\ValidationException;
 
 class OtomaxParser
 {
-    public const FIELDS = ['id_transaksi', 'kode_produk', 'tujuan', 'status', 'sn', 'refid', 'harga', 'saldo_awal', 'saldo_akhir', 'tanggal', 'jam', 'keterangan', 'saldo', 'amount'];
+    public const FIELDS = ['id_transaksi', 'kode_produk', 'tujuan', 'status', 'sn', 'refid', 'harga', 'saldo_awal', 'saldo_akhir', 'tanggal', 'jam', 'keterangan', 'saldo', 'amount', 'nama_pelanggan', 'tagihan', 'admin', 'total_tagihan', 'periode'];
 
     public static function defaults(): array
     {
@@ -23,7 +23,7 @@ class OtomaxParser
         if (strlen(json_encode($config)) > 100000) {
             throw ValidationException::withMessages(['config' => 'Kelompok jawaban terlalu besar.']);
         }
-        Validator::make($config, ['message_field' => 'required|string|max:50', 'ref_field' => 'required|string|max:50', 'status_field' => 'required|string|max:50', 'price_field' => 'required|string|max:50', 'text_status_map' => 'sometimes|array|max:30', 'text_status_map.*' => 'required|in:success,failed,pending', 'status_map' => 'present|array|max:20', 'status_map.*' => 'required|in:success,failed,pending', 'rules' => 'required|array|min:1|max:100', 'rules.*.name' => 'required|string|max:100', 'rules.*.event' => 'required|in:transaction,callback,status,balance,ticket', 'rules.*.outcome' => 'required|in:success,failed,pending', 'rules.*.active' => 'required|boolean', 'rules.*.template' => 'nullable|string|max:3000', 'rules.*.matcher' => 'sometimes|in:template,boundaries,regex', 'rules.*.keyword' => 'nullable|string|max:500', 'rules.*.regex' => 'nullable|string|max:3000', 'rules.*.case_sensitive' => 'sometimes|boolean', 'rules.*.priority' => 'sometimes|integer|min:0|max:9999', 'rules.*.captures' => 'sometimes|array|max:14', 'rules.*.captures.*.field' => 'required|in:'.implode(',', self::FIELDS), 'rules.*.captures.*.prefix' => 'present|nullable|string|max:500', 'rules.*.captures.*.suffix' => 'present|nullable|string|max:500', 'rules.*.captures.*.required' => 'required|boolean'])->validate();
+        Validator::make($config, ['message_field' => 'required|string|max:50', 'ref_field' => 'required|string|max:50', 'status_field' => 'required|string|max:50', 'price_field' => 'required|string|max:50', 'text_status_map' => 'sometimes|array|max:30', 'text_status_map.*' => 'required|in:success,failed,pending', 'status_map' => 'present|array|max:20', 'status_map.*' => 'required|in:success,failed,pending', 'rules' => 'required|array|min:1|max:100', 'rules.*.name' => 'required|string|max:100', 'rules.*.event' => 'required|in:transaction,callback,status,balance,ticket', 'rules.*.outcome' => 'required|in:success,failed,pending', 'rules.*.active' => 'required|boolean', 'rules.*.template' => 'nullable|string|max:3000', 'rules.*.matcher' => 'sometimes|in:template,boundaries,regex', 'rules.*.keyword' => 'nullable|string|max:500', 'rules.*.regex' => 'nullable|string|max:3000', 'rules.*.case_sensitive' => 'sometimes|boolean', 'rules.*.priority' => 'sometimes|integer|min:0|max:9999', 'rules.*.captures' => 'sometimes|array|max:19', 'rules.*.captures.*.field' => 'required|in:'.implode(',', self::FIELDS), 'rules.*.captures.*.prefix' => 'present|nullable|string|max:500', 'rules.*.captures.*.suffix' => 'present|nullable|string|max:500', 'rules.*.captures.*.required' => 'required|boolean'])->validate();
         foreach ($config['rules'] as $r) {
             $this->validateRule($r);
         }
@@ -35,6 +35,9 @@ class OtomaxParser
     {
         $capture = fn (string $field, string $prefix, string $suffix): array => compact('field', 'prefix', 'suffix') + ['required' => true];
 
+        $bill = ['name' => 'Cek tagihan berhasil (balasan awal)', 'event' => 'transaction', 'outcome' => 'success', 'active' => true, 'matcher' => 'regex', 'case_sensitive' => false, 'priority' => 15,
+            'regex' => '^#(?<id_transaksi>[0-9]+) (?<kode_produk>[^\\s.]+)\\.(?<tujuan>[^\\s]+) SUKSES\\. SN/Ref: (?<sn>.+ RC:00 INQUIRY)\\. Saldo .+ R#(?<refid>[A-Z0-9_-]*)$'];
+
         return [
             ['name' => 'Sukses OtomaX', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' SUKSES.', 'case_sensitive' => false, 'priority' => 0, 'captures' => [
                 $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' SUKSES.'), $capture('sn', 'SN/Ref: ', '. Saldo '), $capture('saldo_awal', 'Saldo ', ' - '), $capture('harga', ' - ', ' = '), $capture('saldo_akhir', ' = ', ' @'), $capture('tanggal', '@', ' '), $capture('jam', ' ', ' R#'), $capture('refid', ' R#', ''),
@@ -42,8 +45,18 @@ class OtomaxParser
             ['name' => 'Permintaan diterima', 'event' => 'transaction', 'outcome' => 'pending', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' akan diproses ', 'case_sensitive' => false, 'priority' => 10, 'captures' => [
                 $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' akan diproses'), $capture('saldo_awal', 'Saldo ', ' - '), $capture('harga', ' - ', ' = '), $capture('saldo_akhir', ' = ', ''),
             ]],
+            ['name' => 'Cek tagihan OtomaX (RefID dari query)', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' RC:00 INQUIRY.', 'case_sensitive' => false, 'priority' => 15, 'captures' => [
+                $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' SUKSES.'), $capture('sn', 'SN/Ref: ', '. Saldo '), $capture('harga', ' - ', ' = '),
+            ]],
             ['name' => 'Saldo akun', 'event' => 'balance', 'outcome' => 'pending', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => 'Informasi Akun Anda', 'case_sensitive' => false, 'priority' => 20, 'captures' => [$capture('saldo', 'Saldo : ', ' Bonus : ')]],
+            $bill, self::failedBillExample(), self::failedBillExample('callback'), self::failedBillExample('status'),
         ];
+    }
+
+    public static function failedBillExample(string $event = 'transaction'): array
+    {
+        return ['name' => 'Pascabayar gagal (Sal / alasan)', 'event' => $event, 'outcome' => 'failed', 'active' => true, 'matcher' => 'regex', 'case_sensitive' => false, 'priority' => 25,
+            'regex' => '^(?:[^\r\n]*? )?(?<kode_produk>[A-Z0-9_-]+)\.(?<tujuan>[0-9]+) GAGAL\. (?<keterangan>.+?)\. Sal(?:do)? (?<saldo>[0-9.]+) @(?<jam>[0-9]{2}:[0-9]{2}(?::[0-9]{2})?) R#(?<refid>[A-Z0-9_-]+)$'];
     }
 
     private function orderedRules(array $config): array
@@ -106,7 +119,7 @@ class OtomaxParser
         if ($field === 'jam') {
             return '[0-9]{2}:[0-9]{2}(?::[0-9]{2})?';
         }
-        if (in_array($field, ['harga', 'saldo', 'saldo_awal', 'saldo_akhir', 'amount'], true)) {
+        if (in_array($field, ['harga', 'saldo', 'saldo_awal', 'saldo_akhir', 'amount', 'tagihan', 'admin', 'total_tagihan'], true)) {
             return '[0-9]+(?:[.,][0-9]+)*';
         }
         if (in_array($field, ['id_transaksi', 'kode_produk', 'tujuan', 'refid'], true)) {
@@ -198,7 +211,7 @@ class OtomaxParser
                     throw ValidationException::withMessages(['template' => 'Placeholder tidak dikenal atau berulang: '.$key]);
                 }
                 $seen[] = $key;
-                $type = in_array($key, ['harga', 'saldo', 'saldo_awal', 'saldo_akhir', 'amount'], true) ? '[0-9.,]+' : (in_array($key, ['kode_produk', 'tujuan', 'refid', 'id_transaksi'], true) ? '[^\s]+?' : '.+?');
+                $type = in_array($key, ['harga', 'saldo', 'saldo_awal', 'saldo_akhir', 'amount', 'tagihan', 'admin', 'total_tagihan'], true) ? '[0-9.,]+' : (in_array($key, ['kode_produk', 'tujuan', 'refid', 'id_transaksi'], true) ? '[^\s]+?' : '.+?');
                 $regex .= '(?P<'.$key.'>'.$type.')';
             } else {
                 $regex .= preg_replace('/\s+/', '\\s+', preg_quote($part, '~'));
@@ -259,6 +272,14 @@ class OtomaxParser
             $fields = [...$values, ...$fields];
             $outcome = $rule['outcome'];
             $names[] = $rule['name'];
+        }
+        if (in_array($outcome, [null, 'failed'], true) && in_array($event, ['transaction', 'status', 'callback'], true)) {
+            $failure = $this->matchRule(self::failedBillExample($event), $message);
+            if ($failure['matched'] && ! $failure['error']) {
+                $fields += $failure['fields'];
+                $outcome = 'failed';
+                $names[] = 'Pascabayar gagal (Sal / alasan)';
+            }
         }
         if ($outcome === null && in_array($event, ['transaction', 'status', 'callback'], true)) {
             $duplicate = $this->matchRule([

@@ -400,3 +400,5 @@
 @media(prefers-reduced-motion:reduce) { .sf-navbar-search-group { animation: none; } }
 
 .sf-navbar-search-results { overflow-anchor: none; }
+
+.sf-bill-spinner{flex:none;animation:sf-bill-spin .9s linear infinite}@keyframes sf-bill-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.sf-bill-spinner{animation:none}}

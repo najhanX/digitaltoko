@@ -29,7 +29,7 @@ class OtomaxCatalogSync
         $missing = $available->keys()->diff($included)->count();
 
         return ['valid' => count($rows), 'new' => count(array_diff($included, $existing->keys()->all())),
-            'price_changed' => collect($rows)->filter(fn ($row) => isset($existing[$row['sku']]) && $existing[$row['sku']]->cost !== $row['cost'])->count(),
+            'price_changed' => collect($rows)->filter(fn ($row) => isset($existing[$row['sku']]) && ($existing[$row['sku']]->cost !== $row['cost'] || ($existing[$row['sku']]->billing['adjustment'] ?? null) !== ((is_string($row['billing'] ?? null) ? json_decode($row['billing'], true) : ($row['billing'] ?? []))['adjustment'] ?? null)))->count(),
             'unavailable' => collect($rows)->where('available', false)->count(), 'missing' => $missing,
             'needs_confirmation' => ($available->isNotEmpty() && count($rows) === 0) || ($available->count() >= 20 && $missing > $available->count() / 2)];
     }
@@ -156,14 +156,14 @@ class OtomaxCatalogSync
                 $values = [];
                 foreach ($snapshot['rows'] as $row) {
                     $old = $existing[$row['sku']] ?? null;
-                    $newerPrice = $old && ($row['cost'] <= 0 || ($old->price_observed_at && $old->price_observed_at->gte($observed)));
-                    $values[] = [...$row, 'id' => $old?->id ?? (string) Str::uuid7(), 'store_id' => $store->id, 'connection_id' => $connection->id,
+                    $newerPrice = empty($row['billing']) && $old && ($row['cost'] <= 0 || ($old->price_observed_at && $old->price_observed_at->gte($observed)));
+                    $values[] = [...$row, 'billing' => isset($row['billing']) ? json_encode($row['billing']) : null, 'id' => $old?->id ?? (string) Str::uuid7(), 'store_id' => $store->id, 'connection_id' => $connection->id,
                         'cost' => $newerPrice ? $old->cost : $row['cost'], 'price_observed_at' => $newerPrice ? $old->price_observed_at : $observed,
                         'observed_at' => $observed, 'created_at' => $old?->created_at ?? now(), 'updated_at' => now()];
                 }
-                $summary['price_changed'] = collect($values)->filter(fn ($row) => isset($existing[$row['sku']]) && $existing[$row['sku']]->cost !== $row['cost'])->count();
+                $summary['price_changed'] = collect($values)->filter(fn ($row) => isset($existing[$row['sku']]) && ($existing[$row['sku']]->cost !== $row['cost'] || ($existing[$row['sku']]->billing['adjustment'] ?? null) !== ((is_string($row['billing'] ?? null) ? json_decode($row['billing'], true) : ($row['billing'] ?? []))['adjustment'] ?? null)))->count();
                 foreach (array_chunk($values, 100) as $chunk) {
-                    SupplierProduct::upsert($chunk, ['connection_id', 'mode', 'sku'], ['name', 'service', 'category', 'cost', 'available', 'quantity', 'availability_reason', 'observed_at', 'price_observed_at', 'updated_at']);
+                    SupplierProduct::upsert($chunk, ['connection_id', 'mode', 'sku'], ['name', 'kind', 'billing', 'service', 'category', 'cost', 'available', 'quantity', 'availability_reason', 'observed_at', 'price_observed_at', 'updated_at']);
                 }
                 $included = array_fill_keys(array_column($snapshot['rows'], 'sku'), true);
                 foreach ($existing->chunk(150) as $chunk) {

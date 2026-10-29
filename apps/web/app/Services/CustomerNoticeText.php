@@ -8,9 +8,9 @@ class CustomerNoticeText
 {
     private const FOOTER = '_Powered by DigitalToko_';
 
-    private function line(?string $value): string
+    private function line(?string $value, int $limit = 180): string
     {
-        return mb_substr(trim(preg_replace('/[\x00-\x1f\x7f*_~`]+/u', ' ', $value ?? '')), 0, 180);
+        return mb_substr(trim(preg_replace('/[\x00-\x1f\x7f*_~`]+/u', ' ', $value ?? '')), 0, $limit);
     }
 
     private function money(int $value): string
@@ -39,6 +39,15 @@ class CustomerNoticeText
         array_push($lines, '', '*'.$this->line($topup ? 'Topup saldo' : ($order->snapshot['name'] ?? 'Produk digital')).'*', 'Pesanan: `'.$this->line($order->number).'`');
         if (! $topup && ($order->snapshot['kind'] ?? null) !== 'premium' && filled($order->destination)) {
             $lines[] = 'Tujuan: '.$this->line($order->destination);
+        }
+        if ($order->supplierDescription()) {
+            $lines[] = 'Keterangan: '.$this->line($order->supplierDescription(), 500);
+        }
+        $billing = ($order->snapshot['kind'] ?? '') === 'postpaid' ? app(PostpaidBilling::class)->publicBreakdown($order->snapshot['bill_breakdown'] ?? []) : null;
+        if ($billing) {
+            $lines[] = 'Tagihan pokok: '.$this->money($billing['bill']);
+            $lines[] = 'Admin layanan: '.$this->money($billing['service_admin']);
+            $lines[] = 'Admin toko: '.$this->money($billing['store_admin']);
         }
         $lines[] = 'Total pembayaran: *'.$this->money($order->total).'*';
         if ($topup && $status === 'success') {

@@ -10,7 +10,7 @@ const money=(v:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency
 const states:Record<string,string>={awaiting_payment:'Menunggu pembayaran',paid:'Lunas · antre diproses',processing:'Diproses',pending:'Pending pemasok',success:'Berhasil',failed:'Gagal',expired:'Kedaluwarsa',review:'Perlu pemeriksaan toko'};
 export function commerceInput(text:string,action:MenuAction|null):boolean{return action==='balance'||action==='status'||action==='topup'||typeof action==='object'&&(action?.type==='purchase'||action?.type==='order-status'||action?.type==='select-product'||action?.type==='product-input'||action?.type==='payment-method'||action?.type==='confirm-checkout')||/^#(?:beli|pesan|topup)(?:\s|$)/i.test(text);}
 function phone(message:WAMessage):string|null{return readCustomerMessage(message).scope.senderAliases?.find(jid=>/^62[1-9][0-9]{7,12}@s\.whatsapp\.net$/.test(jid))?.split('@')[0] ?? null;}
-type Order={expires_at?:string|null;wa_revision?:string;payment_status?:string;is_sandbox?:boolean;gateway?:string;id:string;number:string;status:string;product:string;destination:string;total:number;amount:number;fee:number;unique_code:number;url:string;result?:string|null;qr_image?:string|null;refunded_at?:string|null;refund_amount:number;voucher?:{code:string;discount:number}|null};
+type Order={expires_at?:string|null;wa_revision?:string;payment_status?:string;is_sandbox?:boolean;gateway?:string;id:string;number:string;description?:string|null;postpaid_breakdown?:{bill:number;service_admin:number;store_admin:number}|null;status:string;product:string;destination:string;total:number;amount:number;fee:number;unique_code:number;url:string;result?:string|null;qr_image?:string|null;refunded_at?:string|null;refund_amount:number;voucher?:{code:string;discount:number}|null};
 function paymentDeadline(o:Order,now:number):string[]{
  if(o.status!=='awaiting_payment'||o.payment_status==='paid'||!o.expires_at)return [];
  const expiry=new Date(o.expires_at),remaining=expiry.getTime()-now;
@@ -25,8 +25,9 @@ function paymentDeadline(o:Order,now:number):string[]{
 }
 export function orderReply(name:string,o:Order,now=Date.now()):string{return shopReply(name,({success:'✅',failed:'❌',expired:'⌛',awaiting_payment:'💳'}[o.status]??'⏳')+' PESANAN '+inline(o.number),[
  ...(o.is_sandbox?['*SANDBOX · PENGUJIAN*','Saldo dan hasil hanya untuk pengujian.','']:[]),
- '*Status* : '+(states[o.status]??'Sedang diperiksa'),'','*Rincian pesanan*','Produk : '+inline(o.product),'Tujuan : '+inline(o.destination),
+ '*Status* : '+(states[o.status]??'Sedang diperiksa'),...(o.description?['Keterangan : '+inline(o.description,500)]:[]),'','*Rincian pesanan*','Produk : '+inline(o.product),'Tujuan : '+inline(o.destination),
  ...(o.voucher?['*Voucher* : '+inline(o.voucher.code)+' · −'+money(o.voucher.discount)]:[]),
+ ...(o.postpaid_breakdown?['Tagihan pokok : '+money(o.postpaid_breakdown.bill),'Admin layanan : '+money(o.postpaid_breakdown.service_admin),'Admin toko : '+money(o.postpaid_breakdown.store_admin)]:[]),
  '','*Pembayaran*','Harga : '+money(o.amount),...(o.fee?['Biaya : '+money(o.fee)]:[]),...(o.unique_code?['Kode unik : '+money(o.unique_code)]:[]),'Total : *'+money(o.total)+'*',...paymentDeadline(o,now),
  ...(o.refunded_at?['*Refund saldo toko* : '+money(o.refund_amount)]:[]),
  ...(o.status==='success'&&o.result?['','*Hasil pesanan*',o.result]:[]),'',o.status==='success'?'Terima kasih sudah berbelanja! Simpan bukti pesanan ini.':o.status==='awaiting_payment'?'Selesaikan pembayaran sesuai nominal tagihan.':['paid','processing','pending'].includes(o.status)?'Pesanan sedang ditangani. Tidak perlu membuat pesanan baru.':o.status==='failed'?'Periksa rincian dan pengembalian pada bukti pesanan.':'Lihat informasi terbaru pada halaman pesanan.','', 'Cek manual : #status '+o.number,(o.gateway==='sandbox'?'Simulasikan pembayaran di halaman pesanan : ':o.status==='awaiting_payment'?'Bukti & pembayaran : ':'Bukti pesanan : ')+o.url]);}
@@ -104,7 +105,7 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
    const destinationInput=guided?.type==='product-input'?guided.input:null;
    const fields=destinationInput===null?null:destinationInput.split(';').map(value=>value.trim());
    if(fields&&(fields.length>2||!fields[0]||destinationInput!.length>255||fields.some(value=>/[\r\n]/.test(value))))throw Error('Invalid destination');
-   const quote=await call({action:'quote',code,...(fields?{destination_id:fields[0],destination_server:fields[1]??''}:{})}),product=quote.product as {id:string;name:string;price:number;available:boolean;kind:string};
+   const quote=await call({action:'quote',code,...(fields?{destination_id:fields[0],destination_server:fields[1]??''}:{})}),product=quote.product as {id:string;name:string;price:number;available:boolean;kind:string;postpaid_fees?:{service_admin:number;store_admin:number}|null};
    if(!product?.id || !Number.isSafeInteger(product.price))throw Error('Invalid product');
    if(confirm){if(!message.key.id)throw Error('No message reference');const data=await call({action:'buy',product_id:product.id,destination,payment:confirm[3].toLowerCase()==='saldo'?'wallet':'gateway',expected_price:Number(confirm[4]),inquiry_id:confirm[5]||undefined,voucher_code:voucherCode,idempotency_key:'bot:'+message.key.id});await sendOrder(data.order as Order);return;}
    if(!product.available){await sock.sendMessage(chat,{text:shopReply(name,'PRODUK BELUM DAPAT DIPESAN',[inline(product.name),product.kind==='postpaid'?'Produk tagihan memerlukan pemeriksaan nominal terlebih dahulu.':'Produk sedang tidak tersedia.','Pilih produk lain dari katalog toko.'])},{quoted:message});await sendControls(sock,message,chat,chat,tokens,[['services','Pilih produk lain'],['menu','Menu utama']],'Lanjutkan belanja');return;}
@@ -120,7 +121,7 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
     const profile=quote.destination_profile as {type:string;columns:number;label:string;server_label?:string;server_options?:string[]}|undefined;
     if(needsPrompt){
      tokens.waitForProduct(chat,chat,code,readCustomerMessage(message).scope);
-     await sock.sendMessage(chat,{text:shopReply(name,'🎯 ISI TUJUAN PESANAN',['*'+inline(product.name)+'*',(product.kind==='postpaid'?'Biaya admin':'Harga')+' : *'+money(product.price)+'*','',profile?.columns===2?'Balas dengan *ID ; ZONA/SERVER* dalam satu pesan.':'Balas pesan ini dengan *'+inline(profile?.label??'Tujuan / ID pelanggan')+'*.',...(profile?.columns===2?['Contoh: 12345678 ; 1234']:[]),...(profile?.server_options?.length?['Pilihan server : '+profile.server_options.map(inline).join(', ')]:[]),'','#batal untuk membatalkan.'])},{quoted:message});
+     await sock.sendMessage(chat,{text:shopReply(name,'🎯 ISI TUJUAN PESANAN',['*'+inline(product.name)+'*',(product.kind==='postpaid'?'Total biaya admin':'Harga')+' : *'+money(product.price)+'*',...(product.postpaid_fees?['Admin layanan : '+money(product.postpaid_fees.service_admin),'Admin toko : '+money(product.postpaid_fees.store_admin)]:[]),'',profile?.columns===2?'Balas dengan *ID ; ZONA/SERVER* dalam satu pesan.':'Balas pesan ini dengan *'+inline(profile?.label??'Tujuan / ID pelanggan')+'*.',...(profile?.columns===2?['Contoh: 12345678 ; 1234']:[]),...(profile?.server_options?.length?['Pilihan server : '+profile.server_options.map(inline).join(', ')]:[]),'','#batal untuk membatalkan.'])},{quoted:message});
      await sendControls(sock,message,chat,chat,tokens,[['services','Ganti produk'],['menu','Batal / menu']],'Balas tujuan untuk melanjutkan');return;
     }
     if(product.kind!=='premium'){
@@ -132,9 +133,17 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
    if(product.kind==='postpaid'){
     if(!message.key.id)throw Error('No message reference');
     const data=await call({action:'inquiry',product_id:product.id,destination,idempotency_key:'inquiry:'+message.key.id});
-    const inquiry=data.inquiry as {id:string;amount:number;customer_name:string;period:string};
+    const inquiry=data.inquiry as {id:string;amount:number;customer_name:string;period:string;description?:string;message?:string;billing?:{bill:number;service_admin:number;store_admin:number}|null;status?:string};
+    if(inquiry?.status==='pending'){
+     await sock.sendMessage(chat,{text:shopReply(name,'CEK TAGIHAN',[inquiry.description || inquiry.message || 'Tagihan sedang diperiksa supplier.','Tekan cek hasil untuk melihat pembaruan. Pembayaran belum dibuat.'])},{quoted:message});
+     await sendControls(sock,message,chat,chat,tokens,[[{type:'product-input',code,input:destination},'Cek hasil tagihan'],['menu','Menu utama']],'Periksa hasil tagihan');return;
+    }
+    if(inquiry?.status==='failed'){
+     await sock.sendMessage(chat,{text:shopReply(name,'CEK TAGIHAN GAGAL',[inline(inquiry.description || inquiry.message || 'Pemeriksaan tagihan ditolak supplier.'),'Periksa nomor pelanggan, lalu pilih produk untuk mencoba kembali.','Pembayaran belum dibuat.'])},{quoted:message});
+     await sendControls(sock,message,chat,chat,tokens,[['services','Pilih produk'],['menu','Menu utama']],'Kembali ke toko');return;
+    }
     if(!inquiry?.id||!Number.isSafeInteger(inquiry.amount))throw Error('Invalid inquiry');
-    price=inquiry.amount;inquiryId=inquiry.id;billInfo=['Nama : '+inline(inquiry.customer_name),'Periode : '+inline(inquiry.period),'Konfirmasi tagihan dalam 5 menit.'];
+    price=inquiry.amount;inquiryId=inquiry.id;billInfo=[...(inquiry.description?['Keterangan : '+inline(inquiry.description)]:[]),'Nama : '+inline(inquiry.customer_name),'Periode : '+inline(inquiry.period),...(inquiry.billing?['Tagihan pokok : '+money(inquiry.billing.bill),'Admin layanan : '+money(inquiry.billing.service_admin),'Admin toko : '+money(inquiry.billing.store_admin)]:[]),'Konfirmasi tagihan dalam 5 menit.'];
    }
    let voucher:{code:string;discount:number;total:number}|undefined;
    if(voucherCode){const promotion=await call({action:'quote',code,voucher_code:voucherCode,inquiry_id:inquiryId});voucher=promotion.voucher as typeof voucher;}

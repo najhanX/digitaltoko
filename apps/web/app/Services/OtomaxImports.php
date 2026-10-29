@@ -122,8 +122,12 @@ class OtomaxImports
             }
             $seen[$sku] = true;
             $costRaw = $row[$cols['cost']] ?? null;
-            $cost = $this->number($costRaw, $c);
-            if ($cost === null || $cost <= 0) {
+            $negative = str_starts_with(trim((string) $costRaw), '-');
+            $cost = $this->number($negative ? substr(trim((string) $costRaw), 1) : $costRaw, $c);
+            if ($cost !== null && $negative) {
+                $cost = -$cost;
+            }
+            if ($cost === null) {
                 $error ??= $costRaw === null || $costRaw === '' ? 'Harga kosong; bukan Rp0.' : 'Harga nol/tidak valid; produk perlu diperiksa.';
             }
             $hasStatusColumn = filled($cols['status'] ?? null);
@@ -151,7 +155,7 @@ class OtomaxImports
 
                 continue;
             }
-            $products[$sku] = ['sku' => $sku, 'name' => $name, 'kind' => 'ppob', 'mode' => 'prepaid', 'service' => $service, 'category' => $category, 'cost' => $cost, 'available' => ($hasStatusColumn ? in_array($key, $open, true) : (bool) ($c['default_available'] ?? false)) && ($quantity === null || $quantity > 0), 'quantity' => $quantity];
+            $products[$sku] = ['sku' => $sku, 'name' => $name, 'kind' => $cost <= 0 ? 'postpaid' : 'ppob', 'billing' => $cost <= 0 ? ['adjustment' => $cost] : null, 'mode' => 'prepaid', 'service' => $service, 'category' => $category, 'cost' => max(0, $cost), 'available' => ($hasStatusColumn ? in_array($key, $open, true) : (bool) ($c['default_available'] ?? false)) && ($quantity === null || $quantity > 0), 'quantity' => $quantity];
         }
         foreach (array_keys($duplicates) as $sku) {
             unset($products[$sku]);
@@ -287,9 +291,9 @@ class OtomaxImports
                     $rows = array_slice($all, $cursor, 150);
                     $values = [];
                     foreach ($rows as $row) {
-                        $values[] = [...$row, 'id' => (string) Str::uuid7(), 'store_id' => $store->id, 'connection_id' => $c->id, 'observed_at' => now(), 'created_at' => now(), 'updated_at' => now()];
+                        $values[] = [...$row, 'billing' => isset($row['billing']) ? json_encode($row['billing']) : null, 'id' => (string) Str::uuid7(), 'store_id' => $store->id, 'connection_id' => $c->id, 'observed_at' => now(), 'created_at' => now(), 'updated_at' => now()];
                     }
-                    SupplierProduct::upsert($values, ['connection_id', 'mode', 'sku'], ['name', 'kind', 'service', 'category', 'cost', 'available', 'quantity', 'observed_at', 'updated_at']);
+                    SupplierProduct::upsert($values, ['connection_id', 'mode', 'sku'], ['name', 'kind', 'billing', 'service', 'category', 'cost', 'available', 'quantity', 'observed_at', 'updated_at']);
                     $import->update(['processed' => $cursor + count($rows)]);
                 }, 3);
             }

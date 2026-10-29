@@ -82,7 +82,7 @@ class BotCommerceController extends Controller
                 $amount = $result['product']['price'];
                 if ($product->kind === 'postpaid') {
                     $inquiry = CustomerInquiry::where('store_id', $store->id)->where('product_id', $product->id)->where('phone', $phone)->whereKey($data['inquiry_id'] ?? '')->where('expires_at', '>', now())->firstOrFail();
-                    abort_unless((bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox, 422);
+                    abort_unless($inquiry->status === 'ready' && (bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox, 422);
                     $amount = $inquiry->amount;
                 }
                 $result['voucher'] = app(Vouchers::class)->quote($store, $data['voucher_code'], $amount, $product);

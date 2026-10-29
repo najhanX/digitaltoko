@@ -140,7 +140,7 @@ class SupplierCatalog
             app(StoreEnvironment::class)->credentials($connection);
 
             return $mode === 'pasca'
-                ? [['sku' => 'pln', 'name' => 'PLN Pascabayar · Pengujian', 'kind' => 'postpaid', 'service' => 'Pascabayar', 'category' => 'PLN', 'cost' => 2500, 'available' => true, 'quantity' => null]]
+                ? [['sku' => 'pln', 'name' => 'PLN Pascabayar · Pengujian', 'kind' => 'postpaid', 'service' => 'Pascabayar', 'category' => 'PLN', 'cost' => 2500, 'billing' => ['admin' => 2500, 'commission' => 500], 'available' => true, 'quantity' => null]]
                 : [['sku' => 'xld10', 'name' => 'XL 10.000 · Pengujian', 'kind' => 'ppob', 'service' => 'Pulsa', 'category' => 'XL', 'cost' => 10000, 'available' => true, 'quantity' => null]];
         }
         if ($connection->kind === 'digiflazz') {
@@ -155,7 +155,7 @@ class SupplierCatalog
                     'category' => 'required|string|max:100', 'brand' => 'required|string|max:100',
                     $mode === 'pasca' ? 'admin' : 'price' => 'required|integer|min:0|max:1000000000000',
                     'buyer_product_status' => 'required|boolean', 'seller_product_status' => 'required|boolean',
-                    ...($mode === 'pasca' ? [] : ['unlimited_stock' => 'required|boolean', 'stock' => 'required|integer|min:0|max:2147483647']),
+                    ...($mode === 'pasca' ? ['commission' => 'sometimes|integer|min:0|max:1000000000000'] : ['unlimited_stock' => 'required|boolean', 'stock' => 'required|integer|min:0|max:2147483647']),
                 ])->fails()) {
                     throw ValidationException::withMessages(['supplier' => 'Data produk Digiflazz tidak valid. Katalog sebelumnya dipertahankan.']);
                 }
@@ -164,7 +164,7 @@ class SupplierCatalog
                 return ['sku' => $item['buyer_sku_code'], 'name' => $item['product_name'], 'kind' => $mode === 'pasca' ? 'postpaid' : 'ppob',
                     'service' => $item['category'], 'category' => $item['brand'], 'cost' => (int) ($item[$mode === 'pasca' ? 'admin' : 'price']),
                     'available' => (bool) $item['buyer_product_status'] && (bool) $item['seller_product_status'] && ($quantity === null || $quantity > 0),
-                    'quantity' => $quantity];
+                    'quantity' => $quantity, 'billing' => $mode === 'pasca' ? ['admin' => (int) $item['admin'], 'commission' => (int) ($item['commission'] ?? 0)] : null];
             }, $data);
         }
         $items = [];
@@ -217,10 +217,10 @@ class SupplierCatalog
                 CatalogAccess::operational($locked->store);
                 abort_unless($locked->enabled && CatalogAccess::supports($locked->store, $locked->kind) && $this->account($locked) === $account, 409);
                 SupplierProduct::where('connection_id', $locked->id)->where('mode', $mode)->update(['available' => false]);
-                $values = array_map(fn ($item) => [...$item, 'id' => (string) Str::uuid7(), 'store_id' => $locked->store_id, 'connection_id' => $locked->id, 'mode' => $mode,
+                $values = array_map(fn ($item) => [...$item, 'billing' => isset($item['billing']) ? json_encode($item['billing']) : null, 'id' => (string) Str::uuid7(), 'store_id' => $locked->store_id, 'connection_id' => $locked->id, 'mode' => $mode,
                     'observed_at' => Carbon::parse($snapshot['observed_at'])->format('Y-m-d H:i:s'), 'created_at' => now(), 'updated_at' => now()], $rows);
                 foreach (array_chunk($values, 200) as $chunk) {
-                    SupplierProduct::upsert($chunk, ['connection_id', 'mode', 'sku'], ['name', 'kind', 'service', 'category', 'cost', 'available', 'quantity', 'observed_at', 'updated_at']);
+                    SupplierProduct::upsert($chunk, ['connection_id', 'mode', 'sku'], ['name', 'kind', 'billing', 'service', 'category', 'cost', 'available', 'quantity', 'observed_at', 'updated_at']);
                 }
                 $locked->update(['synced_at' => $snapshot['observed_at'], 'catalog_modes' => array_values(array_unique([...($locked->catalog_modes ?? []), $mode])), 'last_error' => null]);
             });

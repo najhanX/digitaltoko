@@ -1,4 +1,4 @@
-export const inline = (value:string) => value.replace(/[\r\n*_~`]/g, ' ').replace(/\s+/g, ' ').trim().slice(0,150);
+export const inline = (value:string,limit=150) => value.replace(/[\r\n*_~`]/g, ' ').replace(/\s+/g, ' ').trim().slice(0,limit);
 export function shopReply(storeName:string,title:string,lines:readonly string[]):string {
     const heading=inline(title).replace(/^[^\p{L}\p{N}]+/u,'');
     return [`*${(inline(storeName) || 'Toko Digital').toUpperCase()}*`,heading,'',...lines,'','_Powered by DigitalToko_'].join('\n');
