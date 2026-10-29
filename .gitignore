@@ -21,3 +21,6 @@
 *.p12
 *.pfx
 Thumbs.db
+
+# Repositori penelitian skripsi dikelola secara terpisah.
+/penelitian-skripsi/
