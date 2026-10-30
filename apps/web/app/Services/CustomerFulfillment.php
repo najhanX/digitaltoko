@@ -456,7 +456,7 @@ class CustomerFulfillment
                 return ['status' => 'failed', 'price_changed' => true, 'message' => 'Modal tagihan melebihi harga pesanan.'];
             }
             try {
-                $values = app(PostpaidBilling::class)->amounts((int) $inquiry['price'], (int) ($inquiry['selling_price'] ?? 0), (int) ($inquiry['admin'] ?? 0), 0, (string) ($inquiry['customer_name'] ?? ''), (string) ($inquiry['periode'] ?? ''));
+                $values = app(PostpaidBilling::class)->amounts((int) $inquiry['price'], (int) ($inquiry['selling_price'] ?? 0), (int) ($inquiry['admin'] ?? 0), 0, (string) ($inquiry['customer_name'] ?? ''), app(PostpaidBilling::class)->digiflazzPeriod($inquiry));
                 if (! app(PostpaidFailover::class)->matches($order, $values)) {
                     return ['status' => 'failed', 'message' => 'Rincian tagihan berubah; pembayaran sumber ini tidak dikirim.'];
                 }

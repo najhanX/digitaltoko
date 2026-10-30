@@ -1052,3 +1052,13 @@ Verifikasi antarproses lokal: prabayar gateway simulasi sukses; PLN maksimum Rp1
 Suite terkait:237 tes,236 lulus/2197 assertions,1 skip existing (OTOMAX_SAMPLE_XLSX opsional).31 tes Node lulus. Tes gabungan Excel awal melewati memory_limit128MB; pengulangan dengan batas512MB khusus proses PHPUnit lulus, tanpa mengubah php.ini/server utama. PHPUnit menetapkan APP_URL localhost agar .env IP LAN tidak mengubah base host tes. Dua fixture Digiflazz sandbox lama dilengkapi selling_price/admin wajib sesuai kontrak inquiry sekarang; validasi tidak dilonggarkan. Pint dijalankan dan router/CLI PHP diperiksa sintaksnya.
 
 Launcher setup membuat backup SQLite lab sebelum migrasi yang sudah ada; tidak menambah migrasi aplikasi, tidak mengubah database MySQL pengguna, kredensial utama, API Hanshop/bot Hanshop, dependensi aplikasi atau PM2 global. `npm run lab:setup` lalu `npm run lab` dijalankan dari simulator; tautan toko/staff tersedia pada panel4100. Profil PM2 terpisah tersedia tetapi belum dijalankan dalam verifikasi ini. Pelaksana penelitian massal, sampling/analisis statistik serta validasi produksi tetap di luar bukti ini.
+
+## 30 Oktober 2026 — validasi hybrid pascabayar
+
+Checkpoint prabayar tersimpan lebih dahulu: aplikasi d6683b5, simulator e5a59ae, penelitian 9a59a2e. Dua order pending lama selesai melalui pemeriksaan resmi dengan RefID sama dan callback asli, tanpa pembuatan order/debit baru.
+
+Tahap pascabayar menambah fixture lab PLN/PDAM untuk Digiflazz Development nyata dan simulator OtomaX A/B/C. Guard mempertahankan isolasi SQLite/local, tujuan/SKU resmi, testing=true dan development signature; konteks scoped hanya mengizinkan inquiry, bukan pembayaran tanpa attempt. Periode Digiflazz kini dibaca dari desc.detail bila top-level kosong, baik saat quote maupun inquiry ulang sebelum pembayaran.
+
+18 skenario langsung lulus, dengan 16 order dan 2 inquiry gagal tanpa order: sukses Digiflazz, failover A/B/C, refund sekali, callback asli PLN/PDAM, rincian tidak cocok tanpa pembayaran, batas modal invoice, dua periode Digiflazz, reverse failover OtomaX→Digiflazz, dan checkout guest lewat browser. Nol order lab berjalan pada pemeriksaan akhir. Harga pelanggan tetap terkunci; signed adjustment OtomaX dipertahankan. P09 minimum menolak modal C Rp11.200 terhadap invoice Rp11.000 dan refund Rp11.000 sekali.
+
+Regresi sembilan file: 242 tes Laravel lulus, 1 skip opsional Excel, 2.225 assertion; 35 tes Node lulus. Bukti JUnit/JSON/Excel/screenshot disimpan terpisah dalam repositori penelitian outputs/uji-pascabayar-20261030/. Tidak ada migrasi atau dependensi baru. Pembayaran/saldo pembeli sandbox, tanpa dana produksi. Failover dua periode, deployment VPS, dan eksperimen statistik masih di luar bukti ini.

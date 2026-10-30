@@ -17,6 +17,7 @@ use App\Services\CustomerPayments;
 use App\Services\OtomaxCatalogSync;
 use App\Services\OtomaxWebCatalog;
 use App\Services\StoreCatalog;
+use App\Services\SupplierLabPostpaid;
 use App\Services\SupplierSimulator;
 use Database\Seeders\SupplierLabSeeder;
 use Illuminate\Console\Attributes\Description;
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-#[Signature('supplier-lab {action=info : info, sync, digiflazz, exercise, resume, retry, export} {--store=minimum} {--preset=normal} {--kind=prepaid} {--payment=wallet} {--order=} {--destination=} {--fallback=} {--no-reset}')]
+#[Signature('supplier-lab {action=info : info, sync, digiflazz, postpaid, exercise, resume, retry, export} {--store=minimum} {--preset=normal} {--kind=prepaid} {--payment=wallet} {--order=} {--destination=} {--fallback=} {--no-reset} {--mismatch=} {--otomax-first}')]
 #[Description('Operasikan database/toko Supplier Lab terisolasi tanpa supplier atau pembayaran produksi')]
 class SupplierLab extends Command
 {
@@ -39,6 +40,17 @@ class SupplierLab extends Command
         $action = $this->argument('action');
         if ($action === 'digiflazz') {
             $this->attachDigiflazz();
+
+            return self::SUCCESS;
+        }
+        if ($action === 'postpaid') {
+            if (CustomerOrder::whereIn('status', ['awaiting_payment', 'paid', 'processing', 'pending', 'review'])->exists()) {
+                throw new \RuntimeException('Selesaikan pesanan lab sebelum menyiapkan pascabayar.');
+            }
+            Http::timeout(5)->post(config('suppliers.simulator.control').'/api/hybrid-postpaid', ['profile' => 'digiflazz-development'])->throw();
+            $this->sync();
+            app(SupplierLabPostpaid::class)->attach();
+            $this->info('Produk hybrid PLN dan PDAM siap.');
 
             return self::SUCCESS;
         }
@@ -68,9 +80,14 @@ class SupplierLab extends Command
         }
         if ($action === 'export') {
             $path = storage_path('app/private/supplier-lab-orders.json');
-            $rows = CustomerOrder::with('attempts')->get()->map(fn ($order) => ['number' => $order->number, 'store_id' => $order->store_id, 'status' => $order->status, 'payment_status' => $order->payment_status, 'amount' => $order->amount,
-                'attempts' => $order->attempts->map(fn ($a) => [...$a->only(['position', 'source', 'reference', 'status', 'cost', 'message']), 'supplier_response' => $a->request_snapshot['supplier_response'] ?? null])]);
+            $names = SupplierConnection::pluck('name', 'id');
+            $rows = CustomerOrder::with('attempts')->get()->map(fn ($order) => [...$order->only(['number', 'store_id', 'inquiry_id', 'destination', 'status', 'payment_status', 'amount', 'created_at']),
+                'billing' => $order->snapshot['bill_breakdown'] ?? null,
+                'attempts' => $order->attempts->map(fn ($a) => [...$a->only(['position', 'source', 'reference', 'status', 'cost', 'message']), 'supplier_name' => $names[$a->request_snapshot['connection_id'] ?? ''] ?? $a->source, 'last_checked_at' => $a->last_checked_at?->toIso8601String(), 'supplier_response' => $a->request_snapshot['supplier_response'] ?? null])]);
             file_put_contents($path, json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+            $inquiries = CustomerInquiry::get()->map(fn ($inquiry) => [...$inquiry->only(['id', 'store_id', 'product_id', 'reference', 'destination', 'status', 'amount', 'cost', 'created_at']),
+                'billing' => array_intersect_key($inquiry->data, array_flip(['bill', 'supplier_admin', 'store_admin', 'commission', 'markup', 'customer_name', 'period', 'cost', 'amount', 'adjustment', 'description', 'supplier_message']))]);
+            file_put_contents(storage_path('app/private/supplier-lab-inquiries.json'), json_encode($inquiries, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
             $this->info($path);
 
             return self::SUCCESS;
@@ -83,14 +100,28 @@ class SupplierLab extends Command
         $storeName = $this->option('store');
         $kind = $this->option('kind');
         $payment = $this->option('payment');
-        if (! in_array($storeName, ['minimum', 'maximum'], true) || ! in_array($kind, ['prepaid', 'hybrid', 'pln', 'pdam'], true) || ! in_array($payment, ['wallet', 'gateway'], true)) {
+        $hybrid = in_array($kind, ['hybrid', 'hybrid-pln', 'hybrid-pdam'], true);
+        $hybridPostpaid = in_array($kind, ['hybrid-pln', 'hybrid-pdam'], true);
+        $sku = $kind === 'hybrid-pdam' ? 'pdam' : ($kind === 'hybrid-pln' ? 'pln' : 'xld10');
+        $destination = $this->option('destination') ?: ($sku === 'pdam' ? '1013226' : '530000000001');
+        if (! in_array($storeName, ['minimum', 'maximum'], true) || ! in_array($kind, ['prepaid', 'hybrid', 'hybrid-pln', 'hybrid-pdam', 'pln', 'pdam'], true) || ! in_array($payment, ['wallet', 'gateway'], true)) {
             $this->error('Pilihan store/kind/payment tidak valid.');
 
             return self::INVALID;
         }
         $noReset = (bool) $this->option('no-reset');
-        if ($noReset && ($kind !== 'hybrid' || $this->option('fallback') || $this->option('preset') !== 'normal')) {
+        if ($noReset && (! $hybrid || $this->option('fallback') || $this->option('mismatch') || $this->option('otomax-first') || $this->option('preset') !== 'normal')) {
             $this->error('--no-reset hanya untuk hybrid dengan konfigurasi supplier saat ini; jangan gabungkan dengan --fallback/preset lain.');
+
+            return self::INVALID;
+        }
+        if ($this->option('mismatch') && (! $hybridPostpaid || ! in_array($this->option('mismatch'), ['a', 'b', 'c'], true))) {
+            $this->error('--mismatch hanya untuk hybrid pascabayar dengan supplier a/b/c.');
+
+            return self::INVALID;
+        }
+        if ($this->option('otomax-first') && ! $hybridPostpaid) {
+            $this->error('--otomax-first hanya untuk hybrid pascabayar.');
 
             return self::INVALID;
         }
@@ -99,12 +130,12 @@ class SupplierLab extends Command
 
             return self::FAILURE;
         }
-        if ($kind === 'hybrid' && (! config('suppliers.simulator.digiflazz_development') || ! in_array($this->option('destination'), ['087800001230', '087800001232', '087800001233', '087800001234'], true))) {
+        if ($hybrid && (! config('suppliers.simulator.digiflazz_development') || ! in_array($destination, app(SupplierSimulator::class)->developmentDestinations($sku), true))) {
             $this->error('Aktifkan Digiflazz development lab dan pilih --destination dari empat nomor testcase resmi.');
 
             return self::INVALID;
         }
-        if ($this->option('fallback') && ($kind !== 'hybrid' || ! in_array($this->option('fallback'), ['a', 'b', 'c', 'none'], true))) {
+        if ($this->option('fallback') && (! $hybrid || ! in_array($this->option('fallback'), ['a', 'b', 'c', 'none'], true))) {
             $this->error('--fallback hanya untuk hybrid: a, b, c atau none.');
 
             return self::INVALID;
@@ -123,27 +154,52 @@ class SupplierLab extends Command
                 return self::FAILURE;
             }
         }
-        if ($kind === 'hybrid' && ! $noReset) {
-            Http::timeout(5)->patch(config('suppliers.simulator.control').'/api/suppliers/a/products/XLD10', ['cost' => 10100, 'catalogCost' => 10100])->throw();
+        if ($hybrid && ! $noReset) {
+            if ($kind === 'hybrid') {
+                Http::timeout(5)->patch(config('suppliers.simulator.control').'/api/suppliers/a/products/XLD10', ['cost' => 10100, 'catalogCost' => 10100])->throw();
+            }
+            if ($hybridPostpaid) {
+                Http::timeout(5)->post(config('suppliers.simulator.control').'/api/hybrid-postpaid', ['profile' => 'digiflazz-development'])->throw();
+                if ($this->option('otomax-first')) {
+                    $code = $sku === 'pln' ? 'BYRHPLN25' : 'BYRHPDAM25';
+                    foreach (['a' => -1500, 'b' => -1300] as $slot => $adjustment) {
+                        Http::timeout(5)->patch(config('suppliers.simulator.control').'/api/suppliers/'.$slot.'/products/'.$code, ['cost' => $adjustment, 'catalogCost' => $adjustment])->throw();
+                    }
+                }
+            }
             if ($this->option('fallback')) {
                 foreach (['a', 'b', 'c'] as $slot) {
                     Http::timeout(5)->patch(config('suppliers.simulator.control').'/api/suppliers/'.$slot, ['behavior' => $slot === $this->option('fallback') ? 'success' : 'failed'])->throw();
                 }
             }
+            if ($this->option('mismatch')) {
+                Http::timeout(5)->patch(config('suppliers.simulator.control').'/api/suppliers/'.$this->option('mismatch'), ['postpaidMismatch' => 'bill'])->throw();
+            }
         }
         if (! $noReset) {
             $this->sync();
+            if ($hybridPostpaid) {
+                app(SupplierLabPostpaid::class)->attach();
+            }
         }
         $store = Store::where('slug', 'lab-'.$storeName)->firstOrFail();
         $customer = Customer::where('store_id', $store->id)->where('email', 'buyer@supplier-lab.example.test')->firstOrFail();
-        $product = CatalogProduct::where('store_id', $store->id)->where('code', 'LAB-'.(['prepaid' => 'XLD10', 'hybrid' => 'HYBRID-XLD10', 'pln' => 'BYRPLN20', 'pdam' => 'BYRPDAM1'][$kind]))->firstOrFail();
-        if ($kind === 'hybrid') {
+        $product = CatalogProduct::where('store_id', $store->id)->where('code', 'LAB-'.(['prepaid' => 'XLD10', 'hybrid' => 'HYBRID-XLD10', 'hybrid-pln' => 'HYBRID-PLN', 'hybrid-pdam' => 'HYBRID-PDAM', 'pln' => 'BYRPLN20', 'pdam' => 'BYRPDAM1'][$kind]))->firstOrFail();
+        if ($hybrid) {
             SupplierProduct::where('store_id', $store->id)->where('connection_id', SupplierConnection::where('store_id', $store->id)->where('kind', 'digiflazz')->value('id'))->update(['observed_at' => now()]);
             SupplierConnection::where('store_id', $store->id)->where('kind', 'digiflazz')->update(['synced_at' => now()]);
             app(StoreCatalog::class)->reprice($store);
         }
-        $destination = $kind === 'hybrid' ? $this->option('destination') : ['prepaid' => '081200000001', 'pln' => '530000000001', 'pdam' => '60038680'][$kind];
+        $destination = $hybrid ? $destination : ['prepaid' => '081200000001', 'pln' => '530000000001', 'pdam' => '60038680'][$kind];
         $inquiry = in_array($kind, ['prepaid', 'hybrid'], true) ? null : app(CustomerInquiryService::class)->quote($store, $product->id, $destination, $customer->phone, $run.'-check');
+        if ($inquiry) {
+            $this->table(['Inquiry', 'Status', 'Tagihan', 'Admin layanan', 'Admin toko', 'Modal', 'Harga'], [[$inquiry->id, $inquiry->status, $inquiry->data['bill'] ?? null, $inquiry->data['supplier_admin'] ?? null, $inquiry->data['store_admin'] ?? null, $inquiry->cost, $inquiry->amount]]);
+            if ($inquiry->status !== 'ready') {
+                $this->info('Tidak ada pesanan pembayaran dibuat: '.app(CustomerInquiryService::class)->present($inquiry)['message']);
+
+                return self::SUCCESS;
+            }
+        }
         $order = app(CustomerCommerce::class)->begin($store, ['purpose' => 'product', 'product_id' => $product->id, 'payment' => $payment, 'destination' => $destination, 'phone' => $customer->phone, 'idempotency_key' => $run, 'inquiry_id' => $inquiry?->id], $customer);
         if ($payment === 'gateway') {
             app(CustomerPayments::class)->start($order);

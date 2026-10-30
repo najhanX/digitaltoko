@@ -61,8 +61,8 @@ class CustomerInquiryService
                 }
                 $credentials = app(StoreEnvironment::class)->credentials($mapping->item->connection);
                 try {
-                    $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)->post('https://api.digiflazz.com/v1/transaction', [
-                        'testing' => $store->sandbox, 'commands' => 'inq-pasca', 'username' => $credentials['username'], 'buyer_sku_code' => $mapping->item->sku, 'customer_no' => $destination, 'ref_id' => $reference, 'sign' => md5($credentials['username'].$credentials['api_key'].$reference)]);
+                    $response = app(SupplierSimulator::class)->inquiryRequest($store, $mapping->item->connection, $reference, $destination, $mapping->item->sku, fn () => Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)->post('https://api.digiflazz.com/v1/transaction', [
+                        'testing' => $store->sandbox, 'commands' => 'inq-pasca', 'username' => $credentials['username'], 'buyer_sku_code' => $mapping->item->sku, 'customer_no' => $destination, 'ref_id' => $reference, 'sign' => md5($credentials['username'].$credentials['api_key'].$reference)]));
                     $data = $response->json('data');
                 } catch (\Throwable) {
                     continue;
@@ -74,7 +74,7 @@ class CustomerInquiryService
                 $engine->ensure(is_int($cost) && $cost > 0 && $cost <= 100000000, 'Nominal tagihan pemasok tidak valid.');
                 $engine->ensure(is_int($data['selling_price'] ?? null) && (! isset($data['admin']) || is_int($data['admin'])), 'Rincian harga jual/admin tagihan pemasok tidak valid.');
                 $values = app(PostpaidBilling::class)->amounts($cost, (int) ($data['selling_price'] ?? 0), (int) ($data['admin'] ?? $candidate['cost']),
-                    $quote['rule']['auto_update'] ? app(PostpaidBilling::class)->storeFee(max(0, (int) $data['selling_price'] - $cost), $quote['rule']['markup']) : max(0, $quote['price'] - $candidate['cost'] - ($candidate['commission'] ?? 0)), (string) ($data['customer_name'] ?? ''), (string) ($data['periode'] ?? ''));
+                    $quote['rule']['auto_update'] ? app(PostpaidBilling::class)->storeFee(max(0, (int) $data['selling_price'] - $cost), $quote['rule']['markup']) : max(0, $quote['price'] - $candidate['cost'] - ($candidate['commission'] ?? 0)), (string) ($data['customer_name'] ?? ''), app(PostpaidBilling::class)->digiflazzPeriod($data));
                 $values = app(PostpaidBilling::class)->priceFromSources($values, $quote['candidates'], $candidate['mapping_id'], $quote['rule']['markup'], $quote['rule']['auto_update'] ? null : $quote['price'], $quote['rule']['pricing_basis']);
                 $amount = $values['amount'];
                 $candidate['cost'] = $cost;

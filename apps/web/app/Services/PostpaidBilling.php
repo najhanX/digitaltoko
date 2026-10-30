@@ -8,6 +8,21 @@ use Illuminate\Validation\ValidationException;
 
 class PostpaidBilling
 {
+    public function digiflazzPeriod(array $data): string
+    {
+        if (is_scalar($data['periode'] ?? null) && trim((string) $data['periode']) !== '') {
+            return mb_substr(trim((string) $data['periode']), 0, 100);
+        }
+        $periods = [];
+        foreach (is_array($data['desc']['detail'] ?? null) ? $data['desc']['detail'] : [] as $detail) {
+            if (is_array($detail) && is_scalar($detail['periode'] ?? null) && trim((string) $detail['periode']) !== '') {
+                $periods[] = trim((string) $detail['periode']);
+            }
+        }
+
+        return mb_substr(implode(',', array_unique($periods)), 0, 100);
+    }
+
     public static function adjustment(mixed $value): ?int
     {
         $text = preg_replace('/\s+/u', '', (string) $value);

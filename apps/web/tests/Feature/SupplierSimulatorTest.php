@@ -18,9 +18,11 @@ use App\Services\CustomerFulfillment;
 use App\Services\OtomaxClient;
 use App\Services\OtomaxParser;
 use App\Services\OtomaxWebCatalog;
+use App\Services\PostpaidBilling;
 use App\Services\StoreCatalog;
 use App\Services\SupplierSimulator;
 use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -323,5 +325,37 @@ class SupplierSimulatorTest extends TestCase
             ->expectsOutput('--no-reset hanya untuk hybrid dengan konfigurasi supplier saat ini; jangan gabungkan dengan --fallback/preset lain.')
             ->assertExitCode(2);
         Http::assertNothingSent();
+    }
+
+    public function test_postpaid_inquiry_egress_is_scoped_and_cannot_authorize_payment_or_escape_scope(): void
+    {
+        $f = $this->hybridFixture();
+        config(['suppliers.simulator.digiflazz_development' => true]);
+        $guard = app(SupplierSimulator::class);
+        $payload = ['commands' => 'inq-pasca', 'testing' => true, 'username' => 'LAB-DEV', 'buyer_sku_code' => 'pln', 'customer_no' => '530000000001', 'ref_id' => 'DT-SCOPED-INQ', 'sign' => md5('LAB-DEVONLY-DEV'.'DT-SCOPED-INQ')];
+        $request = new Request('POST', 'https://api.digiflazz.com/v1/transaction', [], json_encode($payload));
+        $run = function () use ($guard, $request, $payload) {
+            $this->assertSame($request, $guard->guardRequest($request));
+            try {
+                $guard->guardRequest(new Request('POST', 'https://api.digiflazz.com/v1/transaction', [], json_encode([...$payload, 'commands' => 'pay-pasca'])));
+                $this->fail('Inquiry scope authorized payment');
+            } catch (\RuntimeException) {
+                $this->assertTrue(true);
+            }
+
+            return new \Illuminate\Http\Client\Response(new Response(200, [], '{"data":{"rc":"00"}}'));
+        };
+        $guard->inquiryRequest($f['store'], $f['digiflazz'], 'DT-SCOPED-INQ', '530000000001', 'pln', $run);
+        $this->expectException(\RuntimeException::class);
+        $guard->guardRequest($request);
+    }
+
+    public function test_official_nested_postpaid_periods_are_preserved_for_fallback_matching(): void
+    {
+        $billing = app(PostpaidBilling::class);
+        $this->assertSame('201901', $billing->digiflazzPeriod(['desc' => ['detail' => [['periode' => '201901']]]]));
+        $this->assertSame('201901,201902', $billing->digiflazzPeriod(['desc' => ['detail' => [['periode' => '201901'], ['periode' => '201902']]]]));
+        $this->assertSame('202610', $billing->digiflazzPeriod(['periode' => '202610', 'desc' => ['detail' => [['periode' => '201901']]]]));
+        $this->assertSame('', $billing->digiflazzPeriod(['desc' => ['detail' => [null, ['periode' => []]]]]));
     }
 }

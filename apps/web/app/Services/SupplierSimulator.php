@@ -13,6 +13,41 @@ use Psr\Http\Message\RequestInterface;
 
 class SupplierSimulator
 {
+    private ?array $inquiryContext = null;
+
+    public function inquiryRequest(Store $store, SupplierConnection $connection, string $reference, string $destination, string $sku, callable $send): mixed
+    {
+        if (! $this->store($store) || ! config('suppliers.simulator.digiflazz_development')) {
+            return $send();
+        }
+        if ($connection->store_id !== $store->id || $connection->kind !== 'digiflazz' || ! $connection->enabled) {
+            throw new \RuntimeException('Koneksi inquiry lab tidak sesuai toko.');
+        }
+        $previous = $this->inquiryContext;
+        $this->inquiryContext = ['store_id' => $store->id, 'connection_id' => $connection->id, 'reference' => $reference, 'destination' => $destination, 'sku' => $sku];
+        try {
+            $response = $send();
+            $body = $response->json('data');
+            if (! app()->environment('testing')) {
+                file_put_contents(storage_path('app/private/supplier-lab-inquiry-http.ndjson'), json_encode(['at' => now()->toIso8601String(), 'store_id' => $store->id, 'reference' => $reference, 'http' => $response->status(), 'data' => is_array($body) ? array_intersect_key($body, array_flip(['ref_id', 'buyer_sku_code', 'customer_no', 'status', 'rc', 'price', 'selling_price', 'admin', 'customer_name', 'periode', 'desc', 'message'])) : null], JSON_THROW_ON_ERROR)."\n", FILE_APPEND | LOCK_EX);
+            }
+
+            return $response;
+        } finally {
+            $this->inquiryContext = $previous;
+        }
+    }
+
+    public function developmentDestinations(string $sku): array
+    {
+        return match ($sku) {
+            'xld10' => ['087800001230', '087800001232', '087800001233', '087800001234'],
+            'pln' => ['530000000001', '530000000002', '530000000003', '530000000006', '630000000001', '630000000002', '630000000006'],
+            'pdam' => ['1013226', '1013227', '1013230', '2013226', '2013230'],
+            default => [],
+        };
+    }
+
     public function enabled(): bool
     {
         return (bool) config('suppliers.simulator.enabled') && app()->environment('local', 'testing');
@@ -115,18 +150,25 @@ class SupplierSimulator
             return false;
         }
         $data = json_decode((string) $request->getBody(), true);
-        if (! is_array($data) || ($data['testing'] ?? null) !== true || ($data['buyer_sku_code'] ?? '') !== 'xld10'
-            || ! in_array($data['customer_no'] ?? '', ['087800001230', '087800001232', '087800001233', '087800001234'], true)
-            || isset($data['commands']) || ! is_string($data['ref_id'] ?? null) || ! is_string($data['sign'] ?? null)
+        $sku = $data['buyer_sku_code'] ?? '';
+        if (! is_array($data) || ($data['testing'] ?? null) !== true || ! is_string($sku)
+            || ! in_array($data['customer_no'] ?? '', $this->developmentDestinations($sku), true)
+            || ($sku === 'xld10' ? isset($data['commands']) : ! in_array($data['commands'] ?? '', ['inq-pasca', 'pay-pasca', 'status-pasca'], true))
+            || ! is_string($data['ref_id'] ?? null) || ! is_string($data['sign'] ?? null)
             || (isset($data['cb_url']) && $data['cb_url'] !== $this->developmentCallbackUrl())) {
             return false;
         }
-        $attempt = OrderAttempt::with('order.store')->where('source', 'digiflazz')->where('reference', $data['ref_id'])->first();
-        if (! $attempt || ! $attempt->order->is_sandbox || ! $this->store($attempt->order->store)
-            || $attempt->order->destination !== $data['customer_no'] || ($attempt->request_snapshot['sku'] ?? '') !== 'xld10') {
-            return false;
+        $context = $this->inquiryContext;
+        if (($data['commands'] ?? '') === 'inq-pasca' && $context && $context['reference'] === $data['ref_id'] && $context['destination'] === $data['customer_no'] && $context['sku'] === $sku) {
+            $connection = SupplierConnection::where('store_id', $context['store_id'])->where('kind', 'digiflazz')->where('enabled', true)->find($context['connection_id']);
+        } else {
+            $attempt = OrderAttempt::with('order.store')->where('source', 'digiflazz')->where('reference', $data['ref_id'])->first();
+            if (! $attempt || ! $attempt->order->is_sandbox || ! $this->store($attempt->order->store)
+                || $attempt->order->destination !== $data['customer_no'] || ($attempt->request_snapshot['sku'] ?? '') !== $sku) {
+                return false;
+            }
+            $connection = SupplierConnection::where('store_id', $attempt->order->store_id)->where('kind', 'digiflazz')->where('enabled', true)->find($attempt->request_snapshot['connection_id'] ?? null);
         }
-        $connection = SupplierConnection::where('store_id', $attempt->order->store_id)->where('kind', 'digiflazz')->where('enabled', true)->find($attempt->request_snapshot['connection_id'] ?? null);
         $credentials = $connection?->credentials ?? [];
         $key = $credentials['development_key'] ?? '';
 
