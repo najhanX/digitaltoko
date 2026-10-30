@@ -263,7 +263,7 @@ class StoreSandboxTest extends TestCase
             $this->assertSame(md5('buyer'.'secret-dev'.$request['ref_id']), $request['sign']);
             $commands[] = $request['commands'];
 
-            return Http::response(['data' => ['ref_id' => $request['ref_id'], 'customer_no' => $request['customer_no'], 'buyer_sku_code' => $request['buyer_sku_code'], 'status' => 'Sukses', 'rc' => '00', 'price' => 10000, 'customer_name' => 'Simulasi', 'sn' => 'TEST-PLN']]);
+            return Http::response(['data' => ['ref_id' => $request['ref_id'], 'customer_no' => $request['customer_no'], 'buyer_sku_code' => $request['buyer_sku_code'], 'status' => 'Sukses', 'rc' => '00', 'price' => 10000, 'selling_price' => 11000, 'admin' => 2000, 'customer_name' => 'Simulasi', 'sn' => 'TEST-PLN']]);
         }]);
         $inquiry = app(CustomerInquiryService::class)->quote($shop, $product->id, '530000000001', $customer->phone, (string) Str::uuid());
         $this->assertTrue($inquiry->data['sandbox']);
@@ -560,7 +560,7 @@ class StoreSandboxTest extends TestCase
             $this->assertSame('inq-pasca', $request['commands']);
             $this->assertTrue($request['testing']);
 
-            return Http::response(['data' => ['ref_id' => $request['ref_id'], 'customer_no' => $request['customer_no'], 'buyer_sku_code' => $request['buyer_sku_code'], 'status' => $calls === 1 ? 'Sukses' : 'Gagal', 'rc' => $calls === 1 ? '00' : '45', 'price' => 10000]], $calls === 1 ? 200 : 400);
+            return Http::response(['data' => ['ref_id' => $request['ref_id'], 'customer_no' => $request['customer_no'], 'buyer_sku_code' => $request['buyer_sku_code'], 'status' => $calls === 1 ? 'Sukses' : 'Gagal', 'rc' => $calls === 1 ? '00' : '45', 'price' => 10000, 'selling_price' => 11000, 'admin' => 2000]], $calls === 1 ? 200 : 400);
         }]);
         $inquiry = app(CustomerInquiryService::class)->quote($shop, $product->id, '530000000001', $customer->phone, (string) Str::uuid());
         $order = $this->order($shop, $product, $customer, ['payment' => 'wallet', 'destination' => '530000000001', 'inquiry_id' => $inquiry->id]);

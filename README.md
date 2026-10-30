@@ -13,7 +13,7 @@ DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk di
 | `apps/storefront` | Catatan lokasi; halaman publik dijalankan oleh `apps/web`, bukan deployment kedua |
 | `assets` | Logo/branding dan bukti tampilan lokal |
 | `deploy` | Contoh Nginx dan PM2; harus disesuaikan dengan server tujuan |
-| `supplier-simulator` | Proyek Express.js terpisah (diabaikan Git utama): tiga supplier OtomaX sintetis dan panel kontrol, lihat README di foldernya. Belum tersambung ke toko aplikasi. |
+| `supplier-simulator` | Git terpisah, diabaikan Git utama: tiga supplier OtomaX sintetis, panel 4100, dan dua toko uji terisolasi pada port 8012. Jalankan `npm run lab:setup` lalu `npm run lab` dari foldernya; lihat README simulator. |
 | `../API Hanshop` | Backend Hanshop: identitas/saldo owner, sumber produk, bridge dan pembayaran sewa |
 | `../bot_wa_v2` | Bot toko Hanshop sendiri, terpisah dari worker tenant |
 | `android-listener` | Proyek eksternal HansDev Forwarder di direktori HansDev/projects: notifikasi pembayaran HP ke server |

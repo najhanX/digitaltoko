@@ -98,7 +98,7 @@ class SupplierWallets
     /** Only call after the transaction reference/product/destination have been authenticated. */
     public function transaction(CustomerOrder $order, OrderAttempt $attempt, array $fields, string $source): void
     {
-        if ($order->is_sandbox) {
+        if ($order->is_sandbox && ! app(SupplierSimulator::class)->order($order, $attempt)) {
             return;
         }
         try {

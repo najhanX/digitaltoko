@@ -21,6 +21,9 @@ class OtomaxClient
     public function endpoint(array $settings): array
     {
         $url = rtrim((string) ($settings['base_url'] ?? ''), '/');
+        if ($target = app(SupplierSimulator::class)->target($url)) {
+            return $target;
+        }
         $p = parse_url($url);
         if (! $p || ! in_array($p['scheme'] ?? '', ['http', 'https'], true) || empty($p['host']) || isset($p['user']) || isset($p['pass']) || isset($p['query']) || isset($p['fragment']) || ($p['path'] ?? '') !== '') {
             throw ValidationException::withMessages(['base_url' => 'Gunakan http(s)://IP-atau-domain:port tanpa path atau kredensial.']);
@@ -50,7 +53,8 @@ class OtomaxClient
 
     public function send(SupplierConnection $c, string $event, array $data = [], ?array $snapshot = null): array
     {
-        if ($c->store->sandbox) {
+        $simulator = app(SupplierSimulator::class)->connection($c, $snapshot);
+        if ($c->store->sandbox && ! $simulator) {
             return ['status' => $event === 'transaction' ? 'success' : 'pending', 'fields' => ['saldo' => '1000000', 'harga' => (string) ($data['cost'] ?? 0), 'sn' => 'SIMULASI OTOMAX', 'refid' => $data['refID'] ?? ''], 'matched' => ['Simulasi lokal'], 'error' => null, 'text' => $event === 'ticket' ? 'SIMULASI · tiket deposit, tidak perlu transfer.' : 'SIMULASI OTOMAX'];
         }
         $settings = $snapshot['settings'] ?? $c->settings;
@@ -67,6 +71,9 @@ class OtomaxClient
         $params = ['memberID' => $credentials['member_id'], 'sign' => self::sign($credentials['member_id'], $credentials['pin'], $credentials['password'], $operation, $data)];
         if (in_array($event, ['transaction', 'status'], true)) {
             $params += [...array_intersect_key($data, array_flip(['product', 'dest', 'refID'])), 'qty' => 1];
+            if ($simulator) {
+                $params['cb_url'] = rtrim(config('app.url'), '/').'/api/commerce/otomax/'.$c->id.'/'.$credentials['callback_token'];
+            }
             if ($event === 'status') {
                 $params['cek'] = 1;
             }
@@ -78,7 +85,7 @@ class OtomaxClient
             }
         }
         try {
-            $r = Http::withoutRedirecting()->connectTimeout(5)->timeout(20)->withOptions(['curl' => [CURLOPT_RESOLVE => [$target['host'].':'.$target['port'].':'.$target['ip']]]])->get($target['url'].$path, $params);
+            $r = Http::withoutRedirecting()->connectTimeout(5)->timeout(20)->withOptions([...($simulator ? ['proxy' => ''] : []), 'curl' => [CURLOPT_RESOLVE => [$target['host'].':'.$target['port'].':'.$target['ip']]]])->get($target['url'].$path, $params);
             if (! $r->successful() || strlen($r->body()) > 20000) {
                 throw new \RuntimeException;
             }

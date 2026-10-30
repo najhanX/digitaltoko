@@ -36,7 +36,7 @@ class OtomaxCatalogSync
 
     public function preview(SupplierConnection $connection, array $config, string $actor): OtomaxImport
     {
-        abort_if($connection->store->sandbox, 422, 'Nonaktifkan mode pengujian untuk menguji URL supplier nyata. Mode pengujian tidak mengakses supplier.');
+        abort_if($connection->store->sandbox && ! app(SupplierSimulator::class)->connection($connection), 422, 'Nonaktifkan mode pengujian untuk menguji URL supplier nyata. Mode pengujian tidak mengakses supplier.');
         $binding = $this->metadata($connection);
         $snapshot = app(OtomaxWebCatalog::class)->fetch($config);
         $record = $this->record($connection, 'draft', [...$binding, 'config' => $config, 'actor' => $actor, 'observed_at' => $snapshot['observed_at']]);
@@ -71,7 +71,7 @@ class OtomaxCatalogSync
             $this->guard($store);
             $locked = SupplierConnection::with('store')->whereKey($connection->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->enabled && $locked->catalog_config, 422, 'Uji dan simpan URL daftar harga terlebih dahulu.');
-            abort_if($store->sandbox, 422, 'Sinkronisasi URL supplier tidak dijalankan dalam mode pengujian.');
+            abort_if($store->sandbox && ! app(SupplierSimulator::class)->connection($locked), 422, 'Sinkronisasi URL supplier tidak dijalankan dalam mode pengujian.');
             if (in_array($locked->catalog_status, ['queued', 'processing'], true)) {
                 return null;
             }
@@ -122,7 +122,7 @@ class OtomaxCatalogSync
 
     private function assertCurrent(SupplierConnection $connection, array $payload): void
     {
-        abort_unless($connection->kind === 'otomax' && $connection->enabled && ! $connection->store->sandbox && ($payload['sandbox'] ?? true) === false
+        abort_unless($connection->kind === 'otomax' && $connection->enabled && (! $connection->store->sandbox || app(SupplierSimulator::class)->connection($connection)) && ($payload['sandbox'] ?? null) === $connection->store->sandbox
             && $connection->catalog_revision === ($payload['revision'] ?? -1) && hash_equals($this->fingerprint($connection), $payload['binding'] ?? '')
             && $connection->synced_at?->toISOString() === ($payload['catalog_synced_at'] ?? null), 409, 'Koneksi, mode atau katalog berubah. Uji URL kembali.');
     }

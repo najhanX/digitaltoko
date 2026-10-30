@@ -18,6 +18,9 @@ class OtomaxWebCatalog
 
     public function target(string $url): array
     {
+        if (str_ends_with($url, '/harga.js.php') && ($target = app(SupplierSimulator::class)->target($url))) {
+            return $target;
+        }
         $parts = parse_url($url);
         if (! $parts || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host']) || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment']) || strlen($url) > 2000) {
             $this->reject('Gunakan URL HTTPS lengkap dari daftar ALL produk supplier, tanpa username/password URL atau fragmen.');
@@ -57,7 +60,7 @@ class OtomaxWebCatalog
                 try {
                     $started = now()->startOfSecond()->toIso8601String();
                     $response = Http::withoutRedirecting()->accept('text/html')->connectTimeout(5)->timeout(30)
-                        ->withOptions(['proxy' => '', 'curl' => [CURLOPT_RESOLVE => [$target['host'].':443:'.(str_contains($target['ip'], ':') ? '['.$target['ip'].']' : $target['ip'])]],
+                        ->withOptions(['proxy' => '', 'curl' => [CURLOPT_RESOLVE => [$target['host'].':'.($target['port'] ?? 443).':'.(str_contains($target['ip'], ':') ? '['.$target['ip'].']' : $target['ip'])]],
                             'progress' => static function ($total, $downloaded): void {
                                 if ($total > 10485760 || $downloaded > 10485760) {
                                     throw new \RuntimeException('Catalog size limit');

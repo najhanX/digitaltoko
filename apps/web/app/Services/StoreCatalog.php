@@ -50,7 +50,8 @@ class StoreCatalog
                         continue;
                     }
                     $sourceCost = $product->kind === 'postpaid' && $mapping->source === 'otomax' ? $mapping->postpaid['admin'] : $item->cost;
-                    $candidates[] = ['mapping_id' => $mapping->id, 'source' => $mapping->source, 'cost' => $sourceCost, ...($product->kind === 'postpaid' ? ['commission' => app(PostpaidBilling::class)->sourceAdjustment($mapping->source, $item->billing)] : []), 'quantity' => $item->quantity];
+                    $billing = $item->billing ?? ($mapping->source === 'otomax' ? ['adjustment' => $item->cost] : null);
+                    $candidates[] = ['mapping_id' => $mapping->id, 'source' => $mapping->source, 'cost' => $sourceCost, ...($product->kind === 'postpaid' ? ['commission' => app(PostpaidBilling::class)->sourceAdjustment($mapping->source, $billing)] : []), 'quantity' => $item->quantity];
                 }
             }
         }
@@ -92,7 +93,7 @@ class StoreCatalog
 
     public function reprice(Store $store, ?string $supplierProductId = null): void
     {
-        if ($store->sandbox) {
+        if ($store->sandbox && ! app(SupplierSimulator::class)->store($store)) {
             return;
         }
         $this->pricing->forget();

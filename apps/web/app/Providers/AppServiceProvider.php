@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Jobs\SendCustomerNotice;
 use App\Models\CustomerNotice;
 use App\Models\Store;
+use App\Services\SupplierSimulator;
 use App\Services\SystemHealth;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -29,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('suppliers.simulator.enabled')) {
+            app(SupplierSimulator::class)->secureRuntime();
+        }
         Queue::looping(fn (Looping $event) => app(SystemHealth::class)->workerLoop($event));
         CustomerNotice::created(function (CustomerNotice $notice) {
             $id = $notice->id;

@@ -96,7 +96,7 @@ class CustomerFulfillment
                 StoreRetention::guard(Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail());
                 $order = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $attempt = OrderAttempt::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
-                if ($order->payment_status !== 'paid' || ! $attempt->last_checked_at || empty($attempt->request_snapshot['otomax_sent']) || $order->is_sandbox) {
+                if ($order->payment_status !== 'paid' || ! $attempt->last_checked_at || empty($attempt->request_snapshot['otomax_sent']) || ($order->is_sandbox && ! app(SupplierSimulator::class)->order($order, $attempt))) {
                     return;
                 }
                 $fields = $parsed['fields'];
@@ -136,6 +136,9 @@ class CustomerFulfillment
             }, 3);
         } finally {
             $lock->release();
+        }
+        if (($parsed['status'] ?? '') === 'failed' && app(SupplierSimulator::class)->order($order, $attempt)) {
+            $this->run($order->fresh());
         }
     }
 
@@ -513,14 +516,14 @@ class CustomerFulfillment
     private function updateOtomaxPrice(CustomerOrder $order, OrderAttempt $attempt, array $parsed): void
     {
         $cost = OtomaxParser::amount($parsed['fields']['harga'] ?? null);
-        if (($attempt->request_snapshot['kind'] ?? '') === 'postpaid' || $order->is_sandbox || ! empty($parsed['error']) || $cost === null || $cost <= 0 || $cost > 1000000000000) {
+        if (($attempt->request_snapshot['kind'] ?? '') === 'postpaid' || ($order->is_sandbox && ! app(SupplierSimulator::class)->order($order, $attempt)) || ! empty($parsed['error']) || $cost === null || $cost <= 0 || $cost > 1000000000000) {
             return;
         }
         $snapshot = $attempt->request_snapshot;
-        DB::transaction(function () use ($order, $snapshot, $cost) {
+        DB::transaction(function () use ($order, $attempt, $snapshot, $cost) {
             $store = Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
             StoreRetention::guard($store);
-            if ($store->sandbox) {
+            if ($store->sandbox && ! app(SupplierSimulator::class)->order($order, $attempt)) {
                 return;
             }
             $connection = SupplierConnection::where('store_id', $store->id)->where('kind', 'otomax')->where('enabled', true)->whereKey($snapshot['connection_id'] ?? null)->lockForUpdate()->first();

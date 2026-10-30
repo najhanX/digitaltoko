@@ -24,7 +24,7 @@ class OtomaxInquiries
                 'otomax' => $snapshot, 'inquiry_sku' => $check->sku, 'payment_sku' => $mapping->item->sku,
                 'fallback_candidates' => $pricing['fallback_candidates'] ?? [], 'pricing' => $pricing, 'pricing_fingerprint' => $pricing['fingerprint'] ?? null, 'adjustment' => (int) ($mapping->item->billing['adjustment'] ?? $mapping->item->cost), 'markup' => $markup]]);
         try {
-            if ($store->sandbox) {
+            if ($store->sandbox && ! app(SupplierSimulator::class)->connection($connection)) {
                 $parsed = ['status' => 'success', 'error' => null, 'fields' => ['refid' => $inquiry->reference, 'kode_produk' => $check->sku, 'tujuan' => $inquiry->destination,
                     'nama_pelanggan' => 'Pelanggan pengujian', 'tagihan' => '100000', 'admin' => (string) $settings['admin'], 'total_tagihan' => (string) (100000 + $settings['admin']), 'periode' => now()->format('Ym'), 'harga' => '0'], 'text' => 'SIMULASI CEK TAGIHAN'];
             } else {
