@@ -99,10 +99,53 @@ class SupplierSimulator
         $this->assertIsolated();
         $uri = $request->getUri();
         $origin = $uri->getScheme().'://'.$uri->getHost().':'.($uri->getPort() ?? ($uri->getScheme() === 'https' ? 443 : 80));
+        if ($origin === 'https://api.digiflazz.com:443' && $uri->getPath() === '/v1/transaction' && $this->developmentRequest($request)) {
+            return $request;
+        }
         if (! in_array($origin, [...array_values(config('suppliers.simulator.origins')), 'http://127.0.0.1:4100'], true)) {
             throw new \RuntimeException('Supplier Lab memblokir koneksi HTTP di luar simulator lokal.');
         }
 
         return $request;
+    }
+
+    private function developmentRequest(RequestInterface $request): bool
+    {
+        if (! config('suppliers.simulator.digiflazz_development') || $request->getMethod() !== 'POST' || $request->getUri()->getQuery() !== '') {
+            return false;
+        }
+        $data = json_decode((string) $request->getBody(), true);
+        if (! is_array($data) || ($data['testing'] ?? null) !== true || ($data['buyer_sku_code'] ?? '') !== 'xld10'
+            || ! in_array($data['customer_no'] ?? '', ['087800001230', '087800001232', '087800001233', '087800001234'], true)
+            || isset($data['commands']) || ! is_string($data['ref_id'] ?? null) || ! is_string($data['sign'] ?? null)
+            || (isset($data['cb_url']) && $data['cb_url'] !== $this->developmentCallbackUrl())) {
+            return false;
+        }
+        $attempt = OrderAttempt::with('order.store')->where('source', 'digiflazz')->where('reference', $data['ref_id'])->first();
+        if (! $attempt || ! $attempt->order->is_sandbox || ! $this->store($attempt->order->store)
+            || $attempt->order->destination !== $data['customer_no'] || ($attempt->request_snapshot['sku'] ?? '') !== 'xld10') {
+            return false;
+        }
+        $connection = SupplierConnection::where('store_id', $attempt->order->store_id)->where('kind', 'digiflazz')->where('enabled', true)->find($attempt->request_snapshot['connection_id'] ?? null);
+        $credentials = $connection?->credentials ?? [];
+        $key = $credentials['development_key'] ?? '';
+
+        return $key !== '' && ($data['username'] ?? '') === ($credentials['username'] ?? null)
+            && hash_equals(md5($credentials['username'].$key.$data['ref_id']), $data['sign']);
+    }
+
+    public function developmentCallbackUrl(): ?string
+    {
+        $url = config('suppliers.simulator.digiflazz_callback_url');
+        if (! filled($url)) {
+            return null;
+        }
+        $p = parse_url($url);
+        if (! is_array($p) || ($p['scheme'] ?? '') !== 'https' || empty($p['host']) || ($p['port'] ?? 443) !== 443
+            || ($p['path'] ?? '') !== '/api/commerce/digiflazz' || isset($p['user']) || isset($p['pass']) || isset($p['query']) || isset($p['fragment'])) {
+            throw new \RuntimeException('URL callback lab harus HTTPS dan path /api/commerce/digiflazz tanpa query atau kredensial.');
+        }
+
+        return $url;
     }
 }

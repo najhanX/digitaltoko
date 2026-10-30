@@ -248,4 +248,80 @@ class SupplierSimulatorTest extends TestCase
         $this->assertSame(189500, $f['customer']->fresh()->sandbox_balance);
         Http::assertSentCount(2);
     }
+
+    private function hybridFixture(): array
+    {
+        $f = $this->fixture();
+        $f['item']->update(['cost' => 10100]);
+        $d = SupplierConnection::create(['store_id' => $f['store']->id, 'kind' => 'digiflazz', 'slot' => 'lab-digiflazz', 'enabled' => true, 'synced_at' => now(),
+            'credentials' => ['username' => 'LAB-DEV', 'development_key' => 'ONLY-DEV', 'webhook_secret' => str_repeat('d', 32)]]);
+        $item = SupplierProduct::create(['store_id' => $f['store']->id, 'connection_id' => $d->id, 'sku' => 'xld10', 'name' => 'XL dev', 'kind' => 'ppob', 'mode' => 'prepaid', 'service' => 'Pulsa', 'category' => 'XL', 'cost' => 10000, 'available' => true, 'observed_at' => now()]);
+        ProductMapping::create(['store_id' => $f['store']->id, 'product_id' => $f['product']->id, 'source' => 'digiflazz', 'source_key' => 'item:'.$item->id, 'supplier_product_id' => $item->id, 'active' => true]);
+        $order = app(CustomerCommerce::class)->begin($f['store'], ['purpose' => 'product', 'product_id' => $f['product']->id, 'payment' => 'wallet', 'phone' => $f['customer']->phone, 'destination' => '087800001234', 'idempotency_key' => 'hybrid-test-reference'], $f['customer']);
+
+        return [...$f, 'digiflazz' => $d, 'order' => $order];
+    }
+
+    public function test_hybrid_egress_requires_opt_in_signed_development_request_and_exact_order_fixture(): void
+    {
+        $f = $this->hybridFixture();
+        $attempt = $f['order']->attempts()->where('source', 'digiflazz')->firstOrFail();
+        $data = ['username' => 'LAB-DEV', 'testing' => true, 'buyer_sku_code' => 'xld10', 'customer_no' => '087800001234', 'ref_id' => $attempt->reference, 'sign' => md5('LAB-DEVONLY-DEV'.$attempt->reference)];
+        config(['suppliers.simulator.digiflazz_development' => true, 'suppliers.simulator.digiflazz_callback_url' => 'https://lab.example.test/api/commerce/digiflazz']);
+        $data['cb_url'] = 'https://lab.example.test/api/commerce/digiflazz';
+        $guard = app(SupplierSimulator::class);
+        $request = new Request('POST', 'https://api.digiflazz.com/v1/transaction', [], json_encode($data));
+        $this->assertSame($request, $guard->guardRequest($request));
+        foreach ([['testing' => false], ['buyer_sku_code' => 'other'], ['customer_no' => '08123456789'], ['sign' => 'production'], ['commands' => 'pay-pasca'], ['ref_id' => 'foreign'], ['cb_url' => 'https://other.example.test']] as $patch) {
+            try {
+                $guard->guardRequest(new Request('POST', 'https://api.digiflazz.com/v1/transaction', [], json_encode([...$data, ...$patch])));
+                $this->fail('Unsafe hybrid request accepted');
+            } catch (\RuntimeException $error) {
+                $this->assertStringContainsString('memblokir', $error->getMessage());
+            }
+        }
+        config(['suppliers.simulator.digiflazz_development' => false]);
+        $this->expectException(\RuntimeException::class);
+        $guard->guardRequest($request);
+    }
+
+    public function test_digiflazz_pending_does_not_failover_until_signed_failed_callback_releases_lab_lock(): void
+    {
+        $f = $this->hybridFixture();
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'digiflazz.com')) {
+                return Http::response(['data' => ['ref_id' => $request['ref_id'], 'buyer_sku_code' => 'xld10', 'customer_no' => $request['customer_no'], 'status' => 'Pending', 'rc' => '03', 'price' => 10000]]);
+            }
+            parse_str(parse_url($request->url(), PHP_URL_QUERY), $p);
+
+            return Http::response(['status' => '20', 'price' => 10100, 'refid' => $p['refID'], 'message' => '#2 XLD10.087800001234 SUKSES. SN/Ref: SIM2. Saldo 1.000.000 - 10.100 = 989.900 @30/10 10:00:00 R#'.$p['refID']]);
+        });
+        app(CustomerFulfillment::class)->run($f['order']);
+        $this->assertSame('pending', $f['order']->fresh()->status);
+        Http::assertSentCount(1);
+        $attempt = $f['order']->attempts()->where('source', 'digiflazz')->firstOrFail();
+        $payload = ['data' => ['ref_id' => $attempt->reference, 'buyer_sku_code' => 'xld10', 'customer_no' => '087800001234', 'status' => 'Gagal', 'rc' => '02', 'price' => 10000]];
+        $body = json_encode($payload);
+        $this->call('POST', 'http://localhost/api/commerce/digiflazz', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_HUB_SIGNATURE' => 'sha1='.hash_hmac('sha1', $body, str_repeat('d', 32))], $body)->assertOk();
+        $this->assertSame('success', $f['order']->fresh()->status);
+        $this->assertSame(10500, $f['order']->fresh()->amount);
+        Http::assertSentCount(2);
+    }
+
+    public function test_hybrid_cli_requires_installed_product_before_resetting_supplier_state(): void
+    {
+        config(['suppliers.simulator.digiflazz_development' => true]);
+        $this->artisan('supplier-lab', ['action' => 'exercise', '--store' => 'maximum', '--kind' => 'hybrid', '--destination' => '087800001232'])
+            ->expectsOutput('Jalankan supplier-lab digiflazz dahulu.')
+            ->assertExitCode(2);
+        Http::assertNothingSent();
+    }
+
+    public function test_hybrid_no_reset_rejects_changing_shared_supplier_configuration(): void
+    {
+        $this->artisan('supplier-lab', ['action' => 'exercise', '--store' => 'maximum', '--kind' => 'hybrid', '--destination' => '087800001232', '--no-reset' => true, '--fallback' => 'a'])
+            ->expectsOutput('--no-reset hanya untuk hybrid dengan konfigurasi supplier saat ini; jangan gabungkan dengan --fallback/preset lain.')
+            ->assertExitCode(2);
+        Http::assertNothingSent();
+    }
 }

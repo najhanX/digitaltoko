@@ -3,6 +3,8 @@
 return [
     'simulator' => [
         'enabled' => (bool) env('SUPPLIER_SIMULATOR_ENABLED', false),
+        'digiflazz_development' => (bool) env('SUPPLIER_SIMULATOR_DIGIFLAZZ_DEVELOPMENT', false),
+        'digiflazz_callback_url' => env('SUPPLIER_SIMULATOR_DIGIFLAZZ_CALLBACK_URL'),
         'origins' => ['a' => 'http://127.0.0.1:4101', 'b' => 'http://127.0.0.1:4102', 'c' => 'http://127.0.0.1:4103'],
         'control' => 'http://127.0.0.1:4100',
         'slugs' => ['lab-minimum', 'lab-maximum'],

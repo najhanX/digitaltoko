@@ -85,6 +85,9 @@ class CustomerFulfillment
         } finally {
             $lock->release();
         }
+        if ($data['status'] === 'Gagal' && self::isDefinitiveFailure($data['rc']) && app(SupplierSimulator::class)->store($order->store)) {
+            $this->run($order->fresh());
+        }
     }
 
     public function otomaxCallback(CustomerOrder $order, OrderAttempt $attempt, array $parsed): void
@@ -423,6 +426,9 @@ class CustomerFulfillment
         $username = $credentials['username'];
         $key = $credentials['api_key'];
         $payload = ['testing' => $order->is_sandbox, 'username' => $username, 'buyer_sku_code' => $data['sku'], 'customer_no' => $order->destination, 'ref_id' => $attempt->reference, 'sign' => md5($username.$key.$attempt->reference)];
+        if (app(SupplierSimulator::class)->store($order->store) && ($callbackUrl = app(SupplierSimulator::class)->developmentCallbackUrl())) {
+            $payload['cb_url'] = $callbackUrl;
+        }
         $postpaid = ($data['kind'] ?? '') === 'postpaid';
         if ($postpaid && ! ($data['pay_started'] ?? false)) {
             if (! $order->created_at->timezone('Asia/Jakarta')->isSameDay(now()->timezone('Asia/Jakarta'))) {
@@ -468,6 +474,9 @@ class CustomerFulfillment
         }
         $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(5)->timeout(20)->post('https://api.digiflazz.com/v1/transaction', $payload);
         $body = $response->json('data');
+        if (app(SupplierSimulator::class)->store($order->store)) {
+            $attempt->recordSupplierResponse(json_encode(['http_status' => $response->status(), 'data' => is_array($body) ? array_intersect_key($body, array_flip(['ref_id', 'buyer_sku_code', 'customer_no', 'status', 'rc', 'price', 'message', 'sn'])) : null], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        }
         $terminalFailure = is_array($body) && ($body['status'] ?? '') === 'Gagal' && in_array((string) ($body['rc'] ?? ''), self::DIGIFLAZZ_FAILURES, true);
         if (! $response->successful() && ! ($response->status() === 400 && $terminalFailure)) {
             return ['status' => 'pending', 'uncertain' => true, 'message' => 'Respons Digiflazz belum dapat dipastikan (HTTP '.$response->status().').'];
