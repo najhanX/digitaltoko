@@ -24,3 +24,6 @@ Thumbs.db
 
 # Repositori penelitian skripsi dikelola secara terpisah.
 /penelitian-skripsi/
+
+# Supplier sintetis dikelola dalam repositori Git terpisah.
+/supplier-simulator/
