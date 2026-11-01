@@ -3445,7 +3445,7 @@
           "image": "/guides/steps/listener-bundle.svg",
           "width": 1280,
           "height": 720,
-          "caption": "ILUSTRASI: ekstrak ZIP utama lalu satu platform-tools sesuai OS.",
+          "caption": "ILUSTRASI: ekstrak ZIP utama, lalu ZIP OS; script sejajar dengan folder platform-tools.",
           "illustration": true,
           "markers": [
             {
@@ -3463,7 +3463,7 @@
               "h": 13
             },
             {
-              "label": "Buka folder platform-tools",
+              "label": "Buka hasil ekstrak ZIP OS",
               "x": 82,
               "y": 46,
               "w": 26,
@@ -3565,21 +3565,21 @@
         }
       },
       {
-        "title": "Temukan script aktivasi sesuai komputer",
+        "title": "Buka folder hasil ekstrak ZIP OS",
         "paragraphs": [
-          "Windows: klik dua kali aktifkan-listener.cmd di luar folder platform-tools. macOS: buka aktifkan-listener.command; jika tidak bisa dibuka langsung, gunakan perintah Terminal di langkah aktivasi. Linux: jalankan script melalui Terminal dengan perintah di langkah aktivasi.",
-          "Anda tidak perlu mengubah path di script. Script mencari ADB di subfolder platform-tools di sebelahnya, bukan folder kerja terminal atau drive C. Ini bukan pemasangan perintah global; bila dipanggil dari folder lain, gunakan path lengkap script tersebut.",
-          "Jika ingin memeriksa ADB secara manual, buka terminal di folder platform-tools dan gunakan perintah versi berikut. Pada macOS/Linux, bila ADB belum executable, script aktivasi akan memberikan izin eksekusi untuk file ADB. Pembatasan keamanan OS atau driver perangkat tetap perlu diselesaikan pada komputer."
+          "Buka hasil ekstrak ZIP OS. Di tingkat yang sama harus terlihat script aktifkan-listener dan folder platform-tools. Jangan masuk ke platform-tools untuk menjalankan script. Pertahankan susunan ini meskipun folder dipindahkan ke drive atau lokasi lain.",
+          "Windows: klik dua kali aktifkan-listener.cmd. Untuk memakai perintah pada panduan ini, buka CMD dari kolom alamat File Explorer dengan mengetik cmd lalu Enter, atau pilih Buka di Terminal untuk PowerShell. macOS/Linux: buka Terminal, ketik cd diikuti spasi, seret folder hasil ekstrak ZIP OS ke Terminal, lalu Enter.",
+          "Semua perintah di bawah dijalankan dari folder hasil ekstrak ZIP OS yang berisi script dan subfolder platform-tools. Pilih terminal sesuai komputer pada bagian Sebelum mulai. Pemeriksaan versi berikut bersifat opsional; script aktivasi juga memeriksa ADB. Pada macOS/Linux, jika pemeriksaan versi ditolak karena izin eksekusi, jalankan script aktivasi pada langkah berikutnya agar izin eksekusi ADB disiapkan."
         ],
         "visual": {
           "image": "/guides/steps/listener-bundle.svg",
           "width": 1280,
           "height": 720,
-          "caption": "ILUSTRASI: terminal harus berada di folder yang berisi executable adb.",
+          "caption": "ILUSTRASI: buka terminal di folder yang memuat script dan folder platform-tools.",
           "illustration": true,
           "markers": [
             {
-              "label": "Buka terminal di platform-tools",
+              "label": "Terminal di hasil ekstrak ZIP OS",
               "x": 82,
               "y": 46,
               "w": 26,
@@ -3591,22 +3591,22 @@
           {
             "platform": "windows-cmd",
             "label": "Windows · CMD",
-            "code": "adb.exe version"
+            "code": "platform-tools\\adb.exe version"
           },
           {
             "platform": "windows-powershell",
             "label": "Windows · PowerShell",
-            "code": ".\\adb.exe version"
+            "code": ".\\platform-tools\\adb.exe version"
           },
           {
             "platform": "macos",
             "label": "macOS · Terminal",
-            "code": "./adb version"
+            "code": "./platform-tools/adb version"
           },
           {
             "platform": "linux",
             "label": "Linux · Terminal",
-            "code": "./adb version"
+            "code": "./platform-tools/adb version"
           }
         ]
       },
@@ -3615,7 +3615,7 @@
         "paragraphs": [
           "Jalankan perintah di bawah, lalu lihat layar HP. Jika muncul permintaan Izinkan debugging USB, pilih Izinkan. Jalankan perintah yang sama sekali lagi setelah menyetujuinya.",
           "Hasil yang siap dipakai adalah satu baris seperti SERIAL_CONTOH device. Jika tertulis unauthorized, izin komputer belum disetujui. Jika daftar kosong, periksa kabel data, port USB, kunci layar dan driver USB resmi pabrikan pada Windows. Jika offline, sambungkan ulang kabel dan periksa izin di HP.",
-          "Sambungkan satu HP saja untuk langkah ini. Jika ada beberapa perangkat/emulator, lepas perangkat lain atau gunakan opsi -s SERIAL_HP pada setiap perintah ADB, dengan SERIAL_HP diganti serial yang tampil."
+          "Sambungkan satu HP saja. Jika ada beberapa perangkat/emulator, lepas perangkat lain sebelum menjalankan script aktivasi."
         ],
         "visual": {
           "image": "/guides/steps/listener-authorize.svg",
@@ -3651,22 +3651,22 @@
           {
             "platform": "windows-cmd",
             "label": "Windows · CMD",
-            "code": "adb.exe devices"
+            "code": "platform-tools\\adb.exe devices"
           },
           {
             "platform": "windows-powershell",
             "label": "Windows · PowerShell",
-            "code": ".\\adb.exe devices"
+            "code": ".\\platform-tools\\adb.exe devices"
           },
           {
             "platform": "macos",
             "label": "macOS · Terminal",
-            "code": "./adb devices"
+            "code": "./platform-tools/adb devices"
           },
           {
             "platform": "linux",
             "label": "Linux · Terminal",
-            "code": "./adb devices"
+            "code": "./platform-tools/adb devices"
           }
         ]
       },
@@ -3677,7 +3677,7 @@
           "Pastikan APK terpasang, USB debugging aktif, dan hanya satu HP tersambung. Windows: klik dua kali aktifkan-listener.cmd. macOS: buka aktifkan-listener.command atau jalankan lewat Terminal. Linux: gunakan perintah Terminal di bawah. Script memeriksa perangkat dan APK, memberi izin listener, memverifikasi izin, lalu membuka aplikasi.",
           "Jika status unauthorized, tekan Allow/Izinkan pada HP, kemudian tekan Enter di terminal untuk memeriksa ulang. Script tidak dapat menyetujui izin RSA atau menyalakan USB debugging dari komputer. Bila ada beberapa HP/emulator, sisakan satu perangkat.",
           "Tulisan BERHASIL berarti izin listener sudah terverifikasi. Tetap periksa status terhubung dan pengiriman pada aplikasi sesuai langkah berikutnya. Script tidak mengubah endpoint, token, pilihan sumber, atau pengiriman yang dijeda.",
-          "Alternatif manual bila diperlukan: jalankan adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener dari CMD di folder platform-tools; PowerShell memakai .\\adb.exe dan macOS/Linux memakai ./adb."
+          "Alternatif manual bila script tidak dapat digunakan: dari folder hasil ekstrak ZIP OS, jalankan platform-tools\\adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener pada CMD. PowerShell memakai .\\platform-tools\\adb.exe dan macOS/Linux memakai ./platform-tools/adb. Nama komponen di akhir perintah tetap sama."
         ],
         "visual": {
           "image": "/guides/steps/listener-grant.svg",
@@ -3752,22 +3752,22 @@
           {
             "platform": "windows-cmd",
             "label": "Windows · CMD",
-            "code": "adb.exe shell settings get secure enabled_notification_listeners"
+            "code": "platform-tools\\adb.exe shell settings get secure enabled_notification_listeners"
           },
           {
             "platform": "windows-powershell",
             "label": "Windows · PowerShell",
-            "code": ".\\adb.exe shell settings get secure enabled_notification_listeners"
+            "code": ".\\platform-tools\\adb.exe shell settings get secure enabled_notification_listeners"
           },
           {
             "platform": "macos",
             "label": "macOS · Terminal",
-            "code": "./adb shell settings get secure enabled_notification_listeners"
+            "code": "./platform-tools/adb shell settings get secure enabled_notification_listeners"
           },
           {
             "platform": "linux",
             "label": "Linux · Terminal",
-            "code": "./adb shell settings get secure enabled_notification_listeners"
+            "code": "./platform-tools/adb shell settings get secure enabled_notification_listeners"
           }
         ]
       },
@@ -3859,7 +3859,7 @@
       },
       {
         "question": "Ada lebih dari satu perangkat",
-        "answer": "Putuskan perangkat lain atau tentukan serial dengan -s SERIAL_HP, misalnya adb.exe -s SERIAL_HP shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener. Ganti SERIAL_HP dengan serial pada adb devices."
+        "answer": "Script menolak memilih HP secara acak. Putuskan perangkat/emulator lain, lalu jalankan kembali script dari folder hasil ekstrak ZIP OS."
       },
       {
         "question": "Izin sudah ada tetapi listener belum terhubung",
@@ -3867,7 +3867,7 @@
       },
       {
         "question": "macOS menolak membuka adb atau perintah tidak tersedia",
-        "answer": "Pastikan memakai paket macOS dan berada di folder platform-tools. Jika executable belum tersedia, gunakan platform-tools terbaru dari Android Developers. Jangan menonaktifkan proteksi komputer secara menyeluruh. Validasi panduan ini tidak menjalankan paket pada macOS/Linux."
+        "answer": "Pastikan memakai ZIP macOS dan mengekstraknya seluruhnya. Buka Terminal pada hasil ekstrak ZIP OS, sejajar folder platform-tools, lalu jalankan sh ./aktifkan-listener.command. Jika biner ADB tetap ditolak, periksa pengaturan keamanan macOS dan asal SDK Android resmi. Jangan menonaktifkan proteksi komputer secara menyeluruh."
       }
     ],
     "related": [

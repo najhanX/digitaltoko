@@ -40,3 +40,7 @@ Panduan pembayaran-custom memakai screenshot baru form unggah gambar, popup APK/
 ### Panduan aktivasi listener USB — 1 November 2026
 
 Topik baru aktifkan-listener memiliki12langkah dan4SVG berlabel ILUSTRASI, dengan panah per langkah. Bukan screenshot perangkat aktual. Komponen TutorialCommand menyediakan blok kode dan tombol salin; pemilih terminal menghindari empat blok OS tampil bersamaan. Download guide dikirim server hanya bila bundle tersedia. Pembayaran-custom menautkan panduan baru; popup Hans Forward mengarahkan ke sana. Semua perintah berbentuk teks statis dan tidak dieksekusi dari browser. ZIP rilis kini menambahkan launcher portable pada masing-masing ZIP platform-tools; APK dan seluruh berkas SDK asli dipertahankan. Script berada di akar ZIP OS, sejajar folder platform-tools, dan mencari ADB di subfolder itu tanpa drive/path tetap.
+
+
+### Penyesuaian lokasi terminal dan script
+Panduan aktifkan-listener sekarang memakai satu working directory sepanjang tutorial: hasil ekstrak ZIP OS, yang memuat script dan folder platform-tools sejajar. Perintah versi, daftar perangkat, dan pemeriksaan izin menunjuk subfolder platform-tools secara eksplisit; launcher dipanggil dari folder hasil ekstrak. Ilustrasi susunan file, panah, alternatif manual, dan troubleshooting macOS/perangkat ganda disesuaikan agar tidak mengarahkan pengguna masuk ke platform-tools untuk menjalankan script.

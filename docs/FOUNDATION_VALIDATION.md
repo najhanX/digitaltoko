@@ -1122,3 +1122,8 @@ Validasi:2tes Python lulus, mencakup24skenario launcher (8kondisi x3OS), ADB hil
 ## 1 November 2026 — posisi launcher diperbaiki sesuai permintaan
 
 Script kini berada di akar masing-masing ZIP OS, di luar dan sejajar folder platform-tools. CMD mencari %~dp0platform-tools/adb.exe; POSIX mencari direktori-script/platform-tools/adb. Packager menghapus launcher versi sebelumnya di dalam platform-tools bila ada. Panduan dan ilustrasi diperbarui. Dua tes launcher/packager lulus dengan struktur baru, termasuk24skenario ADB tiruan dan folder/cwd berbeda. Bukan pengujian HP nyata. Paket dibangun ulang; SHA2565335e75823625053a1745902dcc3abfcda7f50ce96f3da5bd66841907fcdebf2.
+
+
+## 1 November 2026 — tutorial konsisten dengan script di luar platform-tools
+
+Seluruh langkah, label panah, ilustrasi susunan hasil ekstrak, alternatif manual dan troubleshooting diperiksa ulang. Semua blok perintah kini memakai working directory hasil ekstrak ZIP OS yang sama, dengan prefix platform-tools untuk ADB; pengguna tidak berpindah masuk/keluar folder antar langkah. Jalur launcher per OS tetap benar. Validasi:35tes frontend,4tes Tutorial/5371assertion serta build TypeScript/Vite lulus. Tanpa perubahan bundle, perangkat, dependensi atau database.
