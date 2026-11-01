@@ -8,6 +8,7 @@ use App\Services\CommerceModules;
 use App\Services\CustomerCommerce;
 use App\Services\CustomQris;
 use App\Services\ProductPricing;
+use App\Services\QrisNotificationParser;
 use App\Support\CatalogAccess;
 use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,8 @@ class CommerceSettingsController extends Controller
         return Inertia::render('Owner/Payments', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'settings' => [...$setting->toArray(), 'application_package' => $setting->credentials['application_package'] ?? 'id.dana', 'application_name' => $setting->credentials['application_name'] ?? ''],
             'forwarderDownload' => is_file(config('services.forwarder.bundle_path')) ? route('forwarder.download') : null,
             'configured' => ['midtrans' => filled($setting->credentials['server_key'] ?? null), 'custom' => filled($setting->credentials['qris_payload'] ?? null)],
+            'qrisParser' => $setting->credentials['notification_parser'] ?? app(QrisNotificationParser::class)->defaults(), 'hasQrisParser' => isset($setting->credentials['notification_parser']),
+            'canParser' => CatalogAccess::has($request, $role, 'payments.parsers'),
             'canConfirmPayment' => CatalogAccess::has($request, $role, 'payments.confirm'), 'canConnect' => $role === 'owner', 'canPolicy' => CatalogAccess::has($request, $role, 'payments.policy'), 'canCheckout' => CatalogAccess::has($request, $role, 'checkout.manage'),
             'modulePrice' => app(CommerceModules::class)->price(), 'invoices' => $page->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($page),
             'callbackUrl' => url('/api/commerce/midtrans/'.$store->id), 'forwardUrl' => url('/api/commerce/forward/'.$store->id)]);
@@ -43,14 +46,27 @@ class CommerceSettingsController extends Controller
 
     public function save(Request $request, Store $store): RedirectResponse
     {
-        $data = $request->validate(['action' => 'required|in:connection,policy,checkout']);
+        $data = $request->validate(['action' => 'required|in:connection,policy,checkout,parser']);
         $action = $data['action'];
         if ($action === 'connection') {
             $this->owner($request, $store);
         } else {
-            CatalogAccess::authorize($request, $store, $action === 'policy' ? 'payments.policy' : 'checkout.manage');
+            CatalogAccess::authorize($request, $store, match ($action) {
+                'policy' => 'payments.policy', 'parser' => 'payments.parsers', default => 'checkout.manage',
+            });
         }
         $setting = app(CustomerCommerce::class)->settings($store);
+        if ($action === 'parser') {
+            abort_unless($setting->custom_licensed_at, 403, 'Modul QRIS custom belum aktif.');
+            $input = $request->validate(['parser' => 'required|array']);
+            $parser = app(QrisNotificationParser::class)->validate($input['parser']);
+            DB::transaction(function () use ($store, $parser) {
+                $locked = app(CustomerCommerce::class)->settings($store)->newQuery()->where('store_id', $store->id)->lockForUpdate()->firstOrFail();
+                $locked->update(['credentials' => [...($locked->credentials ?? []), 'notification_parser' => $parser]]);
+            });
+
+            return back()->with('success', 'Penangkap QRIS tersimpan. Berlaku juga untuk invoice berjalan dengan sumber aplikasi yang sama.');
+        }
         if ($action === 'connection') {
             $data = $request->validate(['gateway' => 'required|in:midtrans,custom', 'sandbox' => 'required|boolean', 'server_key' => 'nullable|string|max:250', 'qris_payload' => 'nullable|string|max:4096', 'application_package' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+$/'], 'application_name' => 'nullable|string|max:100']);
             $credentials = $setting->credentials ?? [];
@@ -108,6 +124,16 @@ class CommerceSettingsController extends Controller
         abort_unless($setting->custom_licensed_at && filled($setting->credentials['forward_token'] ?? null), 404);
 
         return response()->json(['token' => $setting->credentials['forward_token']])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function testParser(Request $request, Store $store, QrisNotificationParser $parser): JsonResponse
+    {
+        CatalogAccess::authorize($request, $store, 'payments.parsers');
+        abort_unless(app(CustomerCommerce::class)->settings($store)->custom_licensed_at, 403);
+        $data = $request->validate(['parser' => 'required|array', 'title' => 'nullable|string|max:500', 'text' => 'required|string|max:4000']);
+        $config = $parser->validate($data['parser']);
+
+        return response()->json($parser->parse($config, $data))->header('Cache-Control', 'private, no-store');
     }
 
     public function module(Request $request, Store $store, ?ModulePurchase $invoice = null): RedirectResponse

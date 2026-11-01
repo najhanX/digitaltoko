@@ -117,6 +117,7 @@ Route::middleware('platform.host')->group(function () {
     Route::post('/stores/{store}/closure', [StoreClosureController::class, 'save']);
     Route::get('/stores/{store}/payments', [CommerceSettingsController::class, 'show']);
     Route::post('/stores/{store}/payments', [CommerceSettingsController::class, 'save']);
+    Route::post('/stores/{store}/payments/parser-test', [CommerceSettingsController::class, 'testParser'])->middleware('throttle:30,1');
     Route::post('/stores/{store}/payments/forwarder', [CommerceSettingsController::class, 'forwarder'])->middleware('throttle:6,1,commerce-stores-store-payments-forwarder');
     Route::post('/stores/{store}/payments/module', [CommerceSettingsController::class, 'module'])->middleware('throttle:6,1,commerce-stores-store-payments-module');
     Route::post('/stores/{store}/payments/module/{invoice}', [CommerceSettingsController::class, 'module'])->middleware('throttle:6,1,commerce-stores-store-payments-module-invoice');

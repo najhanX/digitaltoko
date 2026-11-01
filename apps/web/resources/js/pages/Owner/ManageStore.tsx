@@ -19,7 +19,7 @@ const permissionGroups = [
     {label:'Ringkasan & produk',keys:['dashboard.view','products.view','products.manage','pricing.manage']},
     {label:'Stok premium',keys:['stock.view','stock.manage','stock.credentials']},
     {label:'Pesanan & pelanggan',keys:['orders.view','orders.manage','orders.resend','guests.resolve','customers.view','customers.contacts','customers.manage']},
-    {label:'Pembayaran & saldo',keys:['vouchers.view','vouchers.manage','payments.view','payments.policy','wallet.view','wallet.settlement','suppliers.balance']},
+    {label:'Pembayaran & saldo',keys:['vouchers.view','vouchers.manage','payments.view','payments.parsers','payments.policy','wallet.view','wallet.settlement','suppliers.balance']},
     {label:'Toko & langganan',keys:['web.manage','articles.view','articles.manage','checkout.manage','bot.view','bot.manage','notifications.view','notifications.manage','subscription.view','subscription.renew']},
 ];
 export default function ManageStore({role = 'owner',store,staff,permissionLabels,design,designRevision,designProducts,domainSettings}:{role?:'owner'|'staff';store:Store;staff:Staff[];permissionLabels:Record<string,string>;design:ShopDesign;designRevision:number;designProducts:DesignProduct[];domainSettings?:DomainSettings}) {

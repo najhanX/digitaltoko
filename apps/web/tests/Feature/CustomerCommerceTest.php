@@ -25,6 +25,7 @@ use App\Services\CustomerInquiryService;
 use App\Services\CustomerPayments;
 use App\Services\CustomQris;
 use App\Services\GuestCheckout;
+use App\Services\QrisNotificationParser;
 use App\Services\StoreCatalog;
 use App\Support\HanshopIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,6 +48,51 @@ class CustomerCommerceTest extends TestCase
     private function confirmation(CustomerOrder $order, array $extra = []): array
     {
         return [...['action' => 'confirm_payment', 'received_amount' => $order->total, 'paid_at' => now()->toIso8601String(), 'reference' => 'BANK-TEST-001', 'note' => 'Sudah diperiksa pada mutasi merchant', 'confirmed' => true], ...$extra];
+    }
+
+    public function test_qris_parser_can_be_saved_and_tested_by_authorized_staff_without_changing_payments(): void
+    {
+        $store = $this->store();
+        $this->gateway($store, 'custom');
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($this->product($store), ['payment' => 'gateway']), null);
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Kasir', 'email' => 'parser-staff@example.test', 'username' => 'parser-staff', 'password' => 'password-test', 'active' => true, 'permissions' => ['payments.view']]);
+        $config = app(QrisNotificationParser::class)->defaults();
+        $url = '/stores/'.$store->id.'/payments';
+        $data = ['parser' => $config, 'text' => 'Rp292 diterima DANA Bisnis.'];
+        $this->actingAs($staff, 'staff')->postJson($url.'/parser-test', $data)->assertForbidden();
+        $staff->update(['permissions' => ['payments.parsers']]);
+        $this->actingAs($staff->fresh(), 'staff')->get($url)->assertOk()->assertInertia(fn (Page $page) => $page->where('canParser', true)->where('canConnect', false)->missing('settings.credentials'));
+        $this->post($url, ['action' => 'parser', 'parser' => $config])->assertSessionHasNoErrors();
+        $credentials = app(CustomerCommerce::class)->settings($store)->fresh()->credentials;
+        $this->assertSame($config, $credentials['notification_parser']);
+        $this->assertSame(str_repeat('f', 40), $credentials['forward_token']);
+        $this->postJson($url.'/parser-test', $data)->assertOk()->assertJsonPath('matched', true)->assertJsonPath('amount', 292);
+        $this->postJson('/stores/'.$this->store()->id.'/payments/parser-test', $data)->assertForbidden();
+        $this->post($url, ['action' => 'parser', 'parser' => [...$config, 'rules' => []]])->assertSessionHasErrors('rules');
+        $this->postJson($url, ['action' => 'parser', 'parser' => 'wrong-type'])->assertUnprocessable();
+        $this->assertSame('unpaid', $order->fresh()->payment_status);
+        $this->assertDatabaseCount('commerce_receipts', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_saved_qris_parser_updates_pending_invoice_matching_but_does_not_fall_back_on_unknown_messages(): void
+    {
+        $store = $this->store();
+        $this->gateway($store, 'custom');
+        $order = app(CustomerCommerce::class)->begin($store, $this->input($this->product($store), ['payment' => 'gateway']), null);
+        $config = [...app(QrisNotificationParser::class)->defaults(), 'rules' => [
+            ['name' => 'Bank custom', 'active' => true, 'template' => 'Dana masuk Rp[nominal], ref [referensi]. Saldo Rp[abaikan].'],
+        ]];
+        $this->actingAs($store->owner)->post('/stores/'.$store->id.'/payments', ['action' => 'parser', 'parser' => $config])->assertSessionHasNoErrors();
+        $body = ['event_id' => 'bank-event-1', 'application_package' => 'id.dana', 'text' => 'Rp'.number_format($order->total, 0, ',', '.').' pembayaran diterima.', 'occurred_at' => now()->toIso8601String()];
+        $url = '/api/commerce/forward/'.$store->id;
+        $this->withToken(str_repeat('f', 40))->postJson($url, $body)->assertUnprocessable();
+        $body['text'] = 'Dana masuk Rp'.number_format($order->total, 0, ',', '.').', ref BANK-REF1. Saldo Rp500.000.';
+        $this->postJson($url, $body)->assertOk();
+        $this->postJson($url, [...$body, 'event_id' => 'bank-event-duplicate'])->assertOk();
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertDatabaseCount('commerce_receipts', 1);
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
     }
 
     public function test_dana_business_preset_without_title_matches_payment_once_and_rejects_promos(): void

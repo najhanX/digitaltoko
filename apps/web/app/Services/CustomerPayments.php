@@ -326,18 +326,29 @@ class CustomerPayments
             : filled($credentials['application_name'] ?? '') && mb_strtolower(trim($data['app_name'] ?? '')) === mb_strtolower(trim($credentials['application_name']));
         abort_unless($sourceMatches, 422, 'Aplikasi sumber notifikasi tidak cocok dengan pengaturan toko.');
         $text = ($data['title'] ?? '').' '.($data['text'] ?? '');
-        $incoming = preg_match('/(?:pembayaran|uang|saldo|transfer).*(?:diterima|masuk)|(?:terima|menerima).*(?:pembayaran|uang|transfer)/iu', $text) === 1;
-        $danaBusinessReceipt = ($data['application_package'] ?? '') === 'id.dana'
-            && preg_match('/\ARp\s*[0-9][0-9.]*(?:,[0-9]{2})?\s+diterima\s+DANA\s+Bisnis\.?\s*\z/iu', trim($data['text'] ?? '')) === 1;
-        app(CustomerCommerce::class)->ensure(($incoming || $danaBusinessReceipt) && ! preg_match('/(?:gagal|dibatalkan|keluar|berhasil dikirim)/iu', $text), 'Notifikasi bukan pembayaran masuk.');
-        preg_match_all('/Rp\s*([0-9][0-9.]*(?:,[0-9]{2})?)/iu', $text, $matches);
-        $amounts = array_unique(array_map(fn ($s) => (int) str_replace('.', '', explode(',', $s)[0]), $matches[1]));
-        app(CustomerCommerce::class)->ensure(count($amounts) === 1 && reset($amounts) > 0, 'Nominal notifikasi tidak jelas.');
-        $amount = (int) reset($amounts);
+        $current = $setting->credentials ?? [];
+        $sameSource = ($current['application_package'] ?? 'id.dana') === ($credentials['application_package'] ?? 'id.dana')
+            && mb_strtolower(trim($current['application_name'] ?? '')) === mb_strtolower(trim($credentials['application_name'] ?? ''));
+        $parserConfig = ($sameSource ? $current['notification_parser'] ?? null : null) ?? ($credentials['notification_parser'] ?? null);
+        if ($parserConfig !== null) {
+            $parsed = app(QrisNotificationParser::class)->parse($parserConfig, $data);
+            app(CustomerCommerce::class)->ensure($parsed['matched'], $parsed['reason']);
+            $amount = $parsed['amount'];
+        } else {
+            $incoming = preg_match('/(?:pembayaran|uang|saldo|transfer).*(?:diterima|masuk)|(?:terima|menerima).*(?:pembayaran|uang|transfer)/iu', $text) === 1;
+            $danaBusinessReceipt = ($data['application_package'] ?? '') === 'id.dana'
+                && preg_match('/\ARp\s*[0-9][0-9.]*(?:,[0-9]{2})?\s+diterima\s+DANA\s+Bisnis\.?\s*\z/iu', trim($data['text'] ?? '')) === 1;
+            app(CustomerCommerce::class)->ensure(($incoming || $danaBusinessReceipt) && ! preg_match('/(?:gagal|dibatalkan|keluar|berhasil dikirim)/iu', $text), 'Notifikasi bukan pembayaran masuk.');
+            preg_match_all('/Rp\s*([0-9][0-9.]*(?:,[0-9]{2})?)/iu', $text, $matches);
+            $amounts = array_unique(array_map(fn ($s) => (int) str_replace('.', '', explode(',', $s)[0]), $matches[1]));
+            app(CustomerCommerce::class)->ensure(count($amounts) === 1 && reset($amounts) > 0, 'Nominal notifikasi tidak jelas.');
+            $amount = (int) reset($amounts);
+        }
         $at = Carbon::parse($data['occurred_at'])->utc();
         app(CustomerCommerce::class)->ensure($at->lte(now()->addSeconds(30)) && $at->gte(now()->subDay()), 'Waktu notifikasi di luar batas pemeriksaan.');
         $merchant = hash('sha256', app(CustomQris::class)->identity($credentials['qris_payload']));
-        $event = 'custom:'.hash('sha256', $merchant.':'.$data['event_id']);
+        $receiptId = filled($parsed['fields']['referensi'] ?? null) ? 'reference:'.mb_strtolower(trim($parsed['fields']['referensi'])) : $data['event_id'];
+        $event = 'custom:'.hash('sha256', $merchant.':'.$receiptId);
         if (CommerceReceipt::where('event', $event)->exists()) {
             return;
         }
