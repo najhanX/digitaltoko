@@ -89,9 +89,9 @@ class TutorialTest extends TestCase
         config(['services.forwarder.bundle_path' => __DIR__.'/missing-installer.zip']);
         $this->get('http://localhost/panduan/aktifkan-listener')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('guide.download', null)->has('guide.steps', 12)
-            ->where('guide.steps.6.commands.0.code', 'adb.exe devices')
-            ->where('guide.steps.6.commands.1.code', '.\\adb.exe devices')
-            ->where('guide.steps.6.commands.2.code', './adb devices')
+            ->where('guide.steps.6.commands.0.code', 'platform-tools\\adb.exe devices')
+            ->where('guide.steps.6.commands.1.code', '.\\platform-tools\\adb.exe devices')
+            ->where('guide.steps.6.commands.2.code', './platform-tools/adb devices')
             ->where('guide.steps.7.commands.0.code', 'aktifkan-listener.cmd'));
         $path = tempnam(sys_get_temp_dir(), 'forwarder-guide-');
         file_put_contents($path, 'ZIP-FIXTURE');
