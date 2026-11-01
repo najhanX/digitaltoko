@@ -27,3 +27,6 @@ Thumbs.db
 
 # Supplier sintetis dikelola dalam repositori Git terpisah.
 /supplier-simulator/
+
+# Python packaging/test bytecode.
+/deploy/__pycache__/

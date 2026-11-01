@@ -3439,7 +3439,7 @@
         "title": "Download dan ekstrak paket di komputer",
         "paragraphs": [
           "Klik Download paket HansDev Forwarder (ZIP) di atas. Ekstrak ZIP utama; jangan menjalankan aplikasi dari dalam arsip. Isinya HansDev-Forwarder.apk dan tiga ZIP platform-tools untuk Windows, macOS dan Linux.",
-          "Pilih SATU ZIP sesuai OS komputer Anda, lalu ekstrak lagi. Di dalamnya ada folder platform-tools yang berisi adb.exe pada Windows atau adb pada macOS/Linux. Tidak perlu memasang Android Studio. Kabel USB harus mendukung data, bukan hanya mengisi daya."
+          "Pilih SATU ZIP sesuai OS komputer Anda, lalu ekstrak lagi. Folder platform-tools berisi ADB dan script aktivasi: aktifkan-listener.cmd (Windows), aktifkan-listener.command (macOS), atau aktifkan-listener.sh (Linux). Folder boleh berada di drive/lokasi mana saja; jangan memindahkan script terpisah dari ADB. Tidak perlu memasang Android Studio."
         ],
         "visual": {
           "image": "/guides/steps/listener-bundle.svg",
@@ -3565,11 +3565,11 @@
         }
       },
       {
-        "title": "Buka terminal di folder platform-tools",
+        "title": "Temukan script aktivasi sesuai komputer",
         "paragraphs": [
-          "Pada Windows, buka folder yang benar-benar berisi adb.exe. Untuk CMD: klik kolom alamat File Explorer, ketik cmd, lalu Enter. Untuk PowerShell: pilih Buka di Terminal / Open in Terminal pada folder tersebut.",
-          "Pada macOS/Linux, buka Terminal, ketik cd diikuti spasi, seret folder platform-tools dari pengelola berkas ke Terminal, lalu Enter. Pilih jenis terminal pada bagian Sebelum mulai di atas; semua contoh perintah akan menyesuaikan.",
-          "Jalankan perintah versi di bawah. Jika adb tidak ditemukan, periksa apakah terminal sudah berada di folder yang benar. Pada macOS/Linux, jika muncul Permission denied, jalankan chmod +x ./adb dari folder tersebut lalu ulangi perintah versi."
+          "Windows: klik dua kali aktifkan-listener.cmd di folder platform-tools. macOS: buka aktifkan-listener.command; jika tidak bisa dibuka langsung, gunakan perintah Terminal di langkah aktivasi. Linux: jalankan script melalui Terminal dengan perintah di langkah aktivasi.",
+          "Anda tidak perlu mengubah path di script. Script mencari ADB dari foldernya sendiri, bukan folder kerja terminal atau drive C. Ini bukan pemasangan perintah global; bila dipanggil dari folder lain, gunakan path lengkap script tersebut.",
+          "Jika ingin memeriksa ADB secara manual, buka terminal di folder platform-tools dan gunakan perintah versi berikut. Pada macOS/Linux, bila ADB belum executable, script aktivasi akan memberikan izin eksekusi untuk file ADB. Pembatasan keamanan OS atau driver perangkat tetap perlu diselesaikan pada komputer."
         ],
         "visual": {
           "image": "/guides/steps/listener-bundle.svg",
@@ -3671,20 +3671,22 @@
         ]
       },
       {
-        "title": "Aktifkan akses listener HansDev",
+        "title": "Jalankan script aktivasi listener",
         "paragraphs": [
-          "Pastikan APK sudah terpasang dan ADB menampilkan device. Jalankan perintah lengkap berikut satu kali. Perintah ini memberi akses pembaca notifikasi kepada komponen HansDev Forwarder yang terpasang; tidak melakukan transaksi pembayaran.",
-          "Jika tidak ada teks keluaran, itu belum membuktikan listener sudah terhubung. Lanjutkan pemeriksaan pada langkah berikutnya. Jika komponen tidak ditemukan, pastikan aplikasi yang dipasang adalah HansDev Forwarder dengan package id.hansdev.forwarder, bukan aplikasi lama dengan package berbeda."
+          "Pastikan APK terpasang, USB debugging aktif, dan hanya satu HP tersambung. Windows: klik dua kali aktifkan-listener.cmd. macOS: buka aktifkan-listener.command atau jalankan lewat Terminal. Linux: gunakan perintah Terminal di bawah. Script memeriksa perangkat dan APK, memberi izin listener, memverifikasi izin, lalu membuka aplikasi.",
+          "Jika status unauthorized, tekan Allow/Izinkan pada HP, kemudian tekan Enter di terminal untuk memeriksa ulang. Script tidak dapat menyetujui izin RSA atau menyalakan USB debugging dari komputer. Bila ada beberapa HP/emulator, sisakan satu perangkat.",
+          "Tulisan BERHASIL berarti izin listener sudah terverifikasi. Tetap periksa status terhubung dan pengiriman pada aplikasi sesuai langkah berikutnya. Script tidak mengubah endpoint, token, pilihan sumber, atau pengiriman yang dijeda.",
+          "Alternatif manual bila diperlukan: jalankan adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener dari CMD di folder platform-tools; PowerShell memakai .\\adb.exe dan macOS/Linux memakai ./adb."
         ],
         "visual": {
           "image": "/guides/steps/listener-grant.svg",
           "width": 1280,
           "height": 720,
-          "caption": "ILUSTRASI: jalankan perintah aktivasi untuk komponen HansDev Forwarder.",
+          "caption": "ILUSTRASI: jalankan script aktivasi, lalu periksa izin dan status pada aplikasi.",
           "illustration": true,
           "markers": [
             {
-              "label": "Salin perintah pada kotak",
+              "label": "Jalankan script aktivasi",
               "x": 18,
               "y": 46,
               "w": 26,
@@ -3696,22 +3698,22 @@
           {
             "platform": "windows-cmd",
             "label": "Windows · CMD",
-            "code": "adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+            "code": "aktifkan-listener.cmd"
           },
           {
             "platform": "windows-powershell",
             "label": "Windows · PowerShell",
-            "code": ".\\adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+            "code": ".\\aktifkan-listener.cmd"
           },
           {
             "platform": "macos",
             "label": "macOS · Terminal",
-            "code": "./adb shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+            "code": "sh ./aktifkan-listener.command"
           },
           {
             "platform": "linux",
             "label": "Linux · Terminal",
-            "code": "./adb shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+            "code": "sh ./aktifkan-listener.sh"
           }
         ]
       },

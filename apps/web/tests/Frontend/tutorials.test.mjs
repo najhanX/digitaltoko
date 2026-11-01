@@ -12,7 +12,7 @@ test('listener guide covers development mode, RSA authorization and commands for
     const steps=guide.steps.filter(step=>step.commands);
     assert.equal(steps.length,4);
     for(const step of steps) assert.deepEqual(step.commands.map(command=>command.platform),['windows-cmd','windows-powershell','macos','linux']);
-    assert.ok(steps[2].commands.every(command=>command.code.endsWith('shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener')));
+    assert.deepEqual(steps[2].commands.map(command=>command.code), ['aktifkan-listener.cmd', '.\\aktifkan-listener.cmd', 'sh ./aktifkan-listener.command', 'sh ./aktifkan-listener.sh']);
     assert.ok(guides.find(item=>item.slug==='pembayaran-custom').related.includes('aktifkan-listener'));
 });
 

@@ -92,7 +92,7 @@ class TutorialTest extends TestCase
             ->where('guide.steps.6.commands.0.code', 'adb.exe devices')
             ->where('guide.steps.6.commands.1.code', '.\\adb.exe devices')
             ->where('guide.steps.6.commands.2.code', './adb devices')
-            ->where('guide.steps.7.commands.0.code', 'adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener'));
+            ->where('guide.steps.7.commands.0.code', 'aktifkan-listener.cmd'));
         $path = tempnam(sys_get_temp_dir(), 'forwarder-guide-');
         file_put_contents($path, 'ZIP-FIXTURE');
         try {

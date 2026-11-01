@@ -468,7 +468,7 @@ Owner mengunggah gambar PNG/JPG/WebP maksimal5MB pada koneksi QRIS. Browser memb
 
 Unduhan `/downloads/hansdev-forwarder` kini berupa **ZIP lengkap**, menggantikan unduhan APK terpisah. Tetapkan `HANSDEV_FORWARDER_BUNDLE_PATH` atau salin paket ke default `storage/app/releases/HansDev-Forwarder.zip`. File biner diabaikan Git dan wajib disalin saat deploy; env kosong memakai default. Env APK_PATH dari revisi sebelumnya tidak digunakan untuk unduhan ini. Panel dan panduan hanya menampilkan tombol ketika ZIP tersedia; endpoint404 jika file belum tersedia.
 
-Paket pengguna disalin tanpa perubahan dari `C:/Users/62878/Music/Hansdev Forwarder.zip` (41.474.142bytes; SHA256 `7d90711be2b677ecb6cbdd4e225d9b47986749b9bb298a33618c130a1bf8f01f`). Isi: HansDev-Forwarder.apk dan ZIP platform-tools Windows/macOS/Linux, masing-masing metadata37.0.1. APK SHA256 `dfaa7de5bd3b4915779fe996647dc03f2779217e0e831ada10e4176f93e62d6a`, sama dengan release1.0.3 ARM64 sebelumnya. Arsip utama lulus pemeriksaan CRC. Tidak ada skrip aktivasi dalam paket; panduan menyediakan perintah OS yang dapat disalin. Biner ADB tidak dijalankan, tidak ada izin HP yang diubah atau APK yang dipasang pada tahap dokumentasi ini. Jangan ikut menyebarkan keystore/key.properties.
+Arsip dasar paket pengguna berasal dari `C:/Users/62878/Music/Hansdev Forwarder.zip` (41.474.142bytes; SHA256 `7d90711be2b677ecb6cbdd4e225d9b47986749b9bb298a33618c130a1bf8f01f`). Isi: HansDev-Forwarder.apk dan ZIP platform-tools Windows/macOS/Linux, masing-masing metadata37.0.1. APK SHA256 `dfaa7de5bd3b4915779fe996647dc03f2779217e0e831ada10e4176f93e62d6a`, sama dengan release1.0.3 ARM64 sebelumnya. Arsip utama lulus pemeriksaan CRC. Rilis terbaru menambahkan script aktivasi portable di setiap ZIP platform-tools: aktifkan-listener.cmd (Windows), aktifkan-listener.command (macOS), aktifkan-listener.sh (Linux). Seluruh berkas SDK dan APK asli tetap identik. Panduan menyediakan launcher dan alternatif perintah manual. Biner ADB tidak dijalankan, tidak ada izin HP yang diubah atau APK yang dipasang pada tahap dokumentasi ini. Jangan ikut menyebarkan keystore/key.properties.
 
 Package notifikasi kini dapat diisi bebas dengan format Android yang valid, atau memakai nama aplikasi persis (pencocokan mengabaikan kapital/spasi tepi). Package lebih tepat karena nama bisa sama. Pengiriman Android mode POST JSON bawaan telah menyertakan application_package dan app_name; gunakan APK existing. Mengganti sumber/QRIS memperbarui token; invoice lama tetap memakai snapshot kredensial lama. Token hanya dibuka owner melalui POST privat dan disamarkan pada modal; tombol Salin token tersedia. Format teks tetap divalidasi sebagai pembayaran masuk dengan satu nominal Rupiah yang jelas, bukan setiap notifikasi aplikasi dianggap uang masuk.
 
@@ -482,3 +482,18 @@ Panduan tenant: `/panduan/pembayaran-custom`; pengaturan aplikasi sumber harus s
 `/panduan/aktifkan-listener` berisi12langkah: ekstraksi ZIP bertingkat, APK, mode pengembang, USB debugging, RSA Allow, terminal per OS, adb devices, allow_listener, verifikasi izin/status, konfigurasi aplikasi, baterai dan uji/cabut kabel. Pilihan CMD/PowerShell/macOS/Linux mengubah blok perintah; tombol Salin perintah disediakan. Metode ini didasarkan pada perintah aktivasi source Android existing dan referensi resmi Android/AOSP, bukan klaim uji HP/OEM/macOS/Linux nyata. Masalah driver/udev/kebijakan perangkat tetap ditangani sesuai perangkat.
 
 Unduhan ZIP memakai URL kanonis `/downloads/hansdev-forwarder.zip` (alamat lama tetap kompatibel). Tombol panel/panduan mengarah ke URL baru agar tidak memakai cache respons APK lama. Respons unduhan memakai private/no-store/no-cache/must-revalidate.
+
+
+### Launcher listener portable (1 November 2026)
+
+Ekstrak paket utama, lalu ZIP platform-tools sesuai OS. Windows: klik dua kali `aktifkan-listener.cmd`; macOS: buka `aktifkan-listener.command` atau jalankan `sh ./aktifkan-listener.command`; Linux: jalankan `sh ./aktifkan-listener.sh`. Lokasi folder bebas, termasuk drive selain C. Script tetap harus satu folder dengan ADB dan pustaka SDK; bukan perintah global PATH. Persetujuan USB/RSA pada HP tetap wajib, APK harus terpasang. Script menolak perangkat ganda, memverifikasi izin, lalu membuka aplikasi; status listener terhubung dan pengiriman tetap diperiksa di HP. Tidak mengubah token/endpoint atau memaksa pengiriman yang dijeda.
+
+Bangun ulang paket menggunakan Python standar (tanpa dependensi):
+
+```text
+python deploy/package-forwarder.py --source "PATH/arsip-asli.zip" --output "apps/web/storage/app/releases/HansDev-Forwarder.zip"
+```
+
+Source dan output wajib berbeda. Arsip asli dipertahankan, pembaruan output dilakukan atomik. File APK/SDK/NOTICE asli dipertahankan; hanya satu launcher ditambahkan per ZIP OS. macOS/Linux memiliki mode executable 0755 dan LF, CMD menggunakan CRLF. Rilis lokal SHA256: `da469c6d6abaaafe8713fff3bee10e7fc8d4e1471ed32c3e9aea0676365b541c`. Artefak rilis tetap ignored Git; saat deploy, bangun/salin ZIP ke path konfigurasi bundle. URL unduhan tetap `/downloads/hansdev-forwarder.zip`.
+
+Uji launcher: `python -m unittest discover -s deploy -p test_forwarder_launchers.py -v`. Windows dijalankan melalui CMD dengan executable ADB tiruan; macOS/Linux diuji melalui shell POSIX Git Bash di Windows dengan ADB tiruan. Tidak ada perintah yang dikirim ke HP, dan ini bukan bukti uji perangkat/macOS/Linux fisik. Driver, udev, Gatekeeper, dan pembatasan OEM tetap mengikuti sistem pengguna.
