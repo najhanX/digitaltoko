@@ -43,7 +43,8 @@ use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
-Route::get('/downloads/hansdev-forwarder', [CommerceSettingsController::class, 'download'])->middleware('throttle:20,1')->name('forwarder.download');
+Route::get('/downloads/hansdev-forwarder.zip', [CommerceSettingsController::class, 'download'])->middleware('throttle:20,1')->name('forwarder.download');
+Route::get('/downloads/hansdev-forwarder', [CommerceSettingsController::class, 'download'])->middleware('throttle:20,1');
 Route::post('/game-identity', GameIdentityController::class)->middleware('throttle:20,1,storefront-game-identity');
 Route::get('/search', [StorefrontPageController::class, 'search'])->middleware('throttle:60,1,storefront-search')->name('storefront.search');
 Route::get('/kategori/{category}', [StorefrontPageController::class, 'category'])->name('storefront.category');

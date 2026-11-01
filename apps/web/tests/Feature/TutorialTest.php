@@ -98,7 +98,7 @@ class TutorialTest extends TestCase
         try {
             config(['services.forwarder.bundle_path' => $path]);
             $this->get('http://localhost/panduan/aktifkan-listener')->assertInertia(fn (Assert $page) => $page
-                ->where('guide.download.url', 'http://localhost/downloads/hansdev-forwarder'));
+                ->where('guide.download.url', 'http://localhost/downloads/hansdev-forwarder.zip'));
         } finally {
             unlink($path);
         }

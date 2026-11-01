@@ -480,3 +480,5 @@ Panduan tenant: `/panduan/pembayaran-custom`; pengaturan aplikasi sumber harus s
 ### Panduan listener USB — 1 November 2026
 
 `/panduan/aktifkan-listener` berisi12langkah: ekstraksi ZIP bertingkat, APK, mode pengembang, USB debugging, RSA Allow, terminal per OS, adb devices, allow_listener, verifikasi izin/status, konfigurasi aplikasi, baterai dan uji/cabut kabel. Pilihan CMD/PowerShell/macOS/Linux mengubah blok perintah; tombol Salin perintah disediakan. Metode ini didasarkan pada perintah aktivasi source Android existing dan referensi resmi Android/AOSP, bukan klaim uji HP/OEM/macOS/Linux nyata. Masalah driver/udev/kebijakan perangkat tetap ditangani sesuai perangkat.
+
+Unduhan ZIP memakai URL kanonis `/downloads/hansdev-forwarder.zip` (alamat lama tetap kompatibel). Tombol panel/panduan mengarah ke URL baru agar tidak memakai cache respons APK lama. Respons unduhan memakai private/no-store/no-cache/must-revalidate.

@@ -141,9 +141,13 @@ class CustomerCommerceTest extends TestCase
         file_put_contents($path, 'PK-SYNTHETIC-ZIP-FOR-RESPONSE-TEST');
         try {
             config(['services.forwarder.bundle_path' => $path]);
-            $this->get('/downloads/hansdev-forwarder')->assertOk()
-                ->assertDownload('HansDev-Forwarder.zip')
-                ->assertHeader('Content-Type', 'application/zip');
+            foreach (['/downloads/hansdev-forwarder.zip', '/downloads/hansdev-forwarder'] as $url) {
+                $response = $this->get($url)->assertOk()
+                    ->assertDownload('HansDev-Forwarder.zip')
+                    ->assertHeader('Content-Type', 'application/zip')
+                    ->assertHeader('Pragma', 'no-cache');
+                $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+            }
         } finally {
             unlink($path);
         }
