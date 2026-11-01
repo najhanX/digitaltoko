@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'forwarder' => [
+        'apk_path' => env('HANSDEV_FORWARDER_APK_PATH') ?: storage_path('app/releases/HansDev-Forwarder.apk'),
+    ],
 
     'game_identity' => [
         'url' => env('GAME_IDENTITY_URL', 'https://api.isan.eu.org/nickname'),

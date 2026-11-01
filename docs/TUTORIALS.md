@@ -5,7 +5,7 @@ Diterapkan 23 Oktober 2026. Halaman `/panduan` berada di host platform, dapat di
 ## Konten dan gambar
 
 - `apps/web/resources/js/tutorialCatalog.json`: 21 panduan statis. Perubahan konten tidak memerlukan database/migrasi. Slug stabil digunakan tautan menu.
-- `apps/web/public/guides/steps/`: 65 screenshot JPEG dari database SQLite simulasi terpisah dan 2 ilustrasi SVG berlabel untuk whitelist Digiflazz serta Notification URL Midtrans. Sebanyak 93 langkah dalam 21 panduan masing-masing mempunyai gambar, 1–3 penanda panah dan keterangan spesifik. Gambar overview lama tetap disimpan sebagai aset kompatibilitas. Tidak ada key, PIN, password, token supplier nyata atau data pelanggan produksi. Nominal/status/IP pada gambar adalah contoh, bukan konfigurasi rekomendasi.
+- `apps/web/public/guides/steps/`: 68 screenshot JPEG dari database SQLite simulasi terpisah dan 3 ilustrasi SVG berlabel untuk whitelist Digiflazz serta Notification URL Midtrans. Sebanyak 96 langkah dalam 21 panduan masing-masing mempunyai gambar, 1–3 penanda panah dan keterangan spesifik. Gambar overview lama tetap disimpan sebagai aset kompatibilitas. Tidak ada key, PIN, password, token supplier nyata atau data pelanggan produksi. Nominal/status/IP pada gambar adalah contoh, bukan konfigurasi rekomendasi.
 - Screenshot mempunyai caption data simulasi. Jangan menyalin localhost/store ID dari ilustrasi menjadi callback; panduan meminta URL asli dari panel toko sendiri.
 - `TutorialController` mengirim metadata ringkas pada index dan satu panduan lengkap pada detail. Index tidak memuat semua isi/gambar; detail hanya mengunduh gambar yang digunakan.
 - Materi meliputi persiapan/KTP, Digiflazz, Hanshop, OtomaX, Midtrans, QRIS custom/forwarder, sandbox, katalog/harga, stok, WhatsApp, notifikasi/email, pelanggan, transaksi, tampilan, staff, artikel, voucher, langganan, penutupan serta admin.
@@ -32,3 +32,7 @@ Panduan owner/staff ditujukan untuk pengguna layanan yang sudah di-host DigitalT
 ## Penyajian langkah visual
 
 Gambar di-load secara lazy dengan dimensi eksplisit. Tombol Perbesar petunjuk membuka modal; gambar minimal 1000 piksel pada mode ini dapat digeser agar penanda tetap terbaca pada layar kecil. Keterangan bernomor di bawah screenshot menyediakan petunjuk yang sama tanpa bergantung pada warna/panah. Tidak ada pengambilan screenshot otomatis dari akun tenant atau panggilan ke supplier ketika membuka panduan.
+
+### Revisi QRIS HansDev — 1 November 2026
+
+Panduan pembayaran-custom memakai screenshot baru form unggah gambar, popup APK/koneksi (token disamarkan), dan modal konfirmasi manual dari database UI terisolasi. Alur Sumber/Koneksi/Izin Android menggunakan SVG berlabel ILUSTRASI yang mengikuti menu source Flutter, bukan diklaim screenshot HP. Panduan mencakup instalasi/update APK ARM64, izin pemasangan, akses notifikasi, autostart/baterai, kesesuaian package/nama, listener/riwayat dan penanganan manual. Gambar QR pada fixture sintetis, bukan QR merchant produksi; URL lokal/ID pada screenshot bukan konfigurasi yang disalin tenant.

@@ -2073,12 +2073,12 @@
     "slug": "pembayaran-custom",
     "title": "QRIS custom dan Hans Forward",
     "category": "Pembayaran",
-    "summary": "Hubungkan QRIS toko dan penerusan notifikasi mutasi.",
+    "summary": "Unggah gambar QRIS, pasang HansDev Forwarder dan tangani konfirmasi manual.",
     "image": "/guides/payments.png",
     "imageAlt": "Contoh QRIS custom dan Hans Forward pada data simulasi",
     "prerequisites": [
-      "QRIS valid milik toko dan lisensi modul custom.",
-      "Android forwarder dengan akses notifikasi."
+      "Gambar QRIS asli milik toko (PNG/JPG/WebP, maksimal 5 MB) dan lisensi modul custom.",
+      "HP Android ARM64 penerima pembayaran, internet, serta akses notifikasi aplikasi merchant."
     ],
     "steps": [
       {
@@ -2110,60 +2110,137 @@
         }
       },
       {
-        "title": "Simpan konfigurasi",
+        "title": "Unggah gambar QRIS toko",
         "paragraphs": [
-          "Owner memilih Atur gateway → QRIS custom. Isi payload QRIS valid dan pilih aplikasi notifikasi yang didukung. Gateway ini mengganti gateway aktif sebelumnya. Payload QRIS bukan URL gambar."
+          "Buka Pembayaran pelanggan → Atur gateway → QRIS custom. Pilih gambar QRIS yang diunduh dari aplikasi merchant; tidak perlu scan atau menyalin kode. Tunggu sampai muncul QRIS terbaca, lalu simpan. Gambar dibaca lokal di browser; server memvalidasi kode dan checksum QRIS.",
+          "Atur sumber notifikasi berdasarkan package aplikasi (disarankan) atau nama aplikasi. Package dan nama dapat dilihat pada menu Sumber di HansDev Forwarder. Tidak dibatasi DANA/ShopeePay/Shopee. Mengganti QRIS atau sumber membuat token baru: perbarui token di HP."
         ],
         "visual": {
-          "image": "/guides/steps/custom-connection.jpg",
+          "image": "/guides/steps/custom-image-upload.jpg",
+          "width": 1280,
           "height": 720,
+          "caption": "Data simulasi: unggah gambar QRIS asli, tentukan aplikasi sumber dan simpan koneksi.",
           "markers": [
             {
-              "h": 18.1640625,
-              "label": "Tempel teks payload QRIS merchant",
-              "w": 44.84375,
-              "x": 50.0,
-              "y": 48.00021701388889
+              "label": "Unggah gambar QRIS merchant",
+              "x": 50,
+              "y": 37,
+              "w": 44,
+              "h": 9
             },
             {
-              "h": 6.319444444444445,
-              "label": "Pilih aplikasi penerima mutasi",
-              "w": 44.84375,
-              "x": 50.0,
-              "y": 66.630859375
+              "label": "Isi package aplikasi merchant",
+              "x": 50,
+              "y": 78,
+              "w": 44,
+              "h": 8
             },
             {
-              "h": 5.555555555555555,
-              "label": "Simpan gateway aktif toko",
-              "w": 10.108642578125,
-              "x": 67.3675537109375,
-              "y": 86.15125868055556
+              "label": "Simpan koneksi toko",
+              "x": 67,
+              "y": 92,
+              "w": 11,
+              "h": 6
             }
-          ],
-          "width": 1280,
-          "caption": "Pilih QRIS custom, tempel payload merchant, pilih aplikasi mutasi, lalu simpan."
+          ]
         }
       },
       {
-        "title": "Hubungkan Hans Forward",
+        "title": "Download dan pasang aplikasi",
         "paragraphs": [
-          "Ambil URL/token Hans Forward dari panel toko. Masukkan pada aplikasi sesuai URL/autentikasi yang diberikan. Izinkan akses notifikasi, notifikasi aplikasi, autostart dan baterai tanpa pembatasan sesuai perangkat.",
-          "Pastikan listener terhubung dan riwayat kirim berhasil. Token bersifat rahasia; jangan memakai konfigurasi pembayaran sewa pusat untuk mutasi toko."
+          "Pada Pembayaran pelanggan, klik Hans Forward → Download APK Android · ARM64. APK disediakan DigitalToko; pasang pada HP yang menerima notifikasi pembayaran. Jika APK belum tersedia, hubungi administrator.",
+          "Buka file APK dari Unduhan. Jika Android meminta izin, buka pengaturan pemasangan aplikasi untuk browser/pengelola berkas yang dipakai, izinkan pemasangan dari sumber ini lalu kembali dan Pasang. Jika sudah mempunyai HansDev Forwarder dengan package yang sama, pilih update; jangan uninstall agar konfigurasi dan antrean tetap tersimpan.",
+          "Buka aplikasi setelah pemasangan. Versi unduhan saat ini 1.0.3 untuk Android ARM64, minimum Android 8. Jangan membagikan token atau memakai endpoint pembayaran sewa platform."
         ],
         "visual": {
-          "image": "/guides/steps/custom-forwarder.jpg",
-          "height": 716,
+          "image": "/guides/steps/custom-forwarder-setup.jpg",
+          "width": 1280,
+          "height": 720,
+          "caption": "Data simulasi: tombol unduhan APK, panduan instalasi dan token yang disamarkan.",
           "markers": [
             {
-              "h": 5.58659217877095,
-              "label": "Ambil konfigurasi forwarder toko",
-              "w": 9.289013364779874,
-              "x": 91.1888266509434,
-              "y": 50.277147346368714
+              "label": "Download APK Android",
+              "x": 51,
+              "y": 19,
+              "w": 19,
+              "h": 6
+            },
+            {
+              "label": "Salin endpoint dan token toko",
+              "x": 50,
+              "y": 74,
+              "w": 44,
+              "h": 30
+            }
+          ]
+        }
+      },
+      {
+        "title": "Pilih aplikasi dan sambungkan toko",
+        "paragraphs": [
+          "Di aplikasi HansDev Forwarder buka Sumber. Cari dan pilih aplikasi merchant yang menerima uang; aplikasi lain dapat dipilih dari daftar terpasang atau package manual. Samakan dengan package/nama yang disimpan pada gateway DigitalToko.",
+          "Buka Koneksi → Endpoint sendiri · POST JSON. Salin Endpoint dan Bearer token dari popup Hans Forward di panel toko. Gunakan token saja tanpa awalan Bearer pada kolom token. Pertahankan JSON bawaan yang menyertakan event_id, application_package, app_name, title, text dan occurred_at; simpan koneksi."
+        ],
+        "visual": {
+          "image": "/guides/steps/forwarder-android-setup.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: pilih sumber notifikasi dan isi koneksi POST JSON khusus toko.",
+          "markers": [
+            {
+              "label": "Pilih aplikasi penerima uang",
+              "x": 18,
+              "y": 43,
+              "w": 25,
+              "h": 9
+            },
+            {
+              "label": "Isi endpoint dan token toko",
+              "x": 50,
+              "y": 53,
+              "w": 25,
+              "h": 17
             }
           ],
-          "width": 1272,
-          "caption": "Buka Hans Forward untuk mengambil konfigurasi khusus toko, lalu pasang pada aplikasi Android."
+          "illustration": true
+        }
+      },
+      {
+        "title": "Aktifkan izin dan pastikan listener terhubung",
+        "paragraphs": [
+          "Aktifkan pengiriman di Koneksi. Buka pengaturan akses notifikasi melalui aplikasi, pilih HansDev Forwarder dan izinkan. Izinkan pula notifikasi aplikasi agar pemantau dapat berjalan.",
+          "Jika tersedia, aktifkan autostart/mulai otomatis dan pilih baterai tanpa pembatasan. Nama/letak menu berbeda menurut merek HP; pada Xiaomi dapat berada pada Izin → Mulai otomatis atau pengelolaan baterai aplikasi. Jangan mematikan akses notifikasi ketika menguji pemulihan listener.",
+          "Kembali ke aplikasi, pastikan listener terhubung. Lihat Riwayat → Penerimaan dan Riwayat kiriman ketika notifikasi merchant masuk. Respons HTTP 2xx berarti server menerima permintaan; tetap periksa status invoice di DigitalToko."
+        ],
+        "visual": {
+          "image": "/guides/steps/forwarder-android-setup.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: aktifkan pengiriman, akses notifikasi dan pengaturan baterai.",
+          "markers": [
+            {
+              "label": "Aktifkan pengiriman",
+              "x": 82,
+              "y": 38,
+              "w": 25,
+              "h": 9
+            },
+            {
+              "label": "Izinkan akses notifikasi",
+              "x": 82,
+              "y": 48,
+              "w": 25,
+              "h": 9
+            },
+            {
+              "label": "Atur pemantau dan baterai",
+              "x": 82,
+              "y": 62,
+              "w": 25,
+              "h": 17
+            }
+          ],
+          "illustration": true
         }
       },
       {
@@ -2187,6 +2264,44 @@
           "width": 1272,
           "caption": "Atur kebijakan kode unik sebelum menguji mutasi, invoice, dan pesanan."
         }
+      },
+      {
+        "title": "Konfirmasi manual jika notifikasi tidak masuk",
+        "paragraphs": [
+          "Periksa mutasi pada aplikasi merchant untuk memastikan uang benar-benar masuk. Buka Transaksi pelanggan → rincian pesanan → Konfirmasi pembayaran QRIS. Owner dapat mengonfirmasi; staff memerlukan izin Konfirmasi penerimaan pembayaran QRIS manual.",
+          "Isi nominal persis termasuk kode unik, waktu pembayaran, referensi transaksi pada mutasi dan catatan. Centang pernyataan pemeriksaan, lalu Konfirmasi pembayaran. Referensi mutasi yang sama tidak boleh dipakai untuk invoice lain.",
+          "Invoice aktif masuk alur pemrosesan normal, bukan dipaksa sukses produknya. Invoice kedaluwarsa masuk Perlu pemeriksaan. Invoice dibatalkan tidak dapat dikonfirmasi lewat tombol ini. Callback yang datang sesudah konfirmasi tidak membuat pembayaran atau topup kedua.",
+          "Sumber aplikasi bebas diatur, tetapi format notifikasi tetap harus dikenali sebagai pembayaran masuk dengan satu nominal Rupiah yang jelas. Jika format belum dikenali, gunakan pemeriksaan manual dan hubungi admin untuk penyesuaian parser."
+        ],
+        "visual": {
+          "image": "/guides/steps/custom-manual-confirm.jpg",
+          "width": 1280,
+          "height": 720,
+          "caption": "Data simulasi: pemeriksaan nominal, referensi mutasi dan persetujuan owner/staff.",
+          "markers": [
+            {
+              "label": "Isi nominal dan waktu pembayaran",
+              "x": 50,
+              "y": 39,
+              "w": 44,
+              "h": 22
+            },
+            {
+              "label": "Isi referensi mutasi serta catatan",
+              "x": 50,
+              "y": 64,
+              "w": 44,
+              "h": 25
+            },
+            {
+              "label": "Konfirmasi setelah memeriksa mutasi",
+              "x": 50,
+              "y": 85,
+              "w": 44,
+              "h": 13
+            }
+          ]
+        }
       }
     ],
     "troubleshooting": [
@@ -2197,6 +2312,10 @@
       {
         "question": "Mutasi masuk tetapi tidak lunas",
         "answer": "Cocokkan nominal penuh, waktu, aplikasi sumber dan invoice berlaku. Screenshot transfer bukan verifikasi server."
+      },
+      {
+        "question": "Notifikasi dari aplikasi lain ditolak",
+        "answer": "Package/nama harus cocok dengan gateway dan dipilih di Sumber HansDev Forwarder. Parser tetap memerlukan pesan pembayaran masuk dan satu nominal Rupiah yang jelas. Jika bentuk pesan berbeda, periksa mutasi lalu gunakan konfirmasi manual; jangan menganggap setiap notifikasi sebagai pembayaran."
       }
     ],
     "related": [
@@ -2212,7 +2331,8 @@
       "forwarder",
       "dana",
       "shopeepay"
-    ]
+    ],
+    "reviewed": "1 November 2026"
   },
   {
     "slug": "pengujian",

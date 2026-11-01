@@ -155,7 +155,7 @@ class PanelNotifications
                 '/stores/'.$recipient->store_id.'/subscription' => in_array('subscription.view', $permissions, true),
                 '/stores/'.$recipient->store_id.'/products', '/stores/'.$recipient->store_id.'/catalog-structure', '/stores/'.$recipient->store_id.'/sources' => count(array_intersect(['products.view', 'products.manage', 'pricing.manage'], $permissions)) > 0,
                 '/stores/'.$recipient->store_id.'/stock' => count(array_intersect(['stock.view', 'stock.manage', 'stock.credentials'], $permissions)) > 0,
-                '/stores/'.$recipient->store_id.'/orders' => count(array_intersect(['orders.view', 'orders.resend', 'guests.resolve'], $permissions)) > 0,
+                '/stores/'.$recipient->store_id.'/orders' => count(array_intersect(['orders.view', 'orders.manage', 'orders.resend', 'guests.resolve', 'payments.confirm'], $permissions)) > 0,
                 '/stores/'.$recipient->store_id.'/payments' => count(array_intersect(['payments.view', 'payments.policy', 'checkout.manage'], $permissions)) > 0,
                 '/stores/'.$recipient->store_id.'/bot' => in_array('bot.view', $permissions, true) || in_array('bot.manage', $permissions, true),
                 default => false,

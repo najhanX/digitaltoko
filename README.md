@@ -71,3 +71,5 @@ Halaman publik `/paket` menyediakan pilihan platform/durasi dari harga aktif adm
 Domain pribadi toko dapat diatur owner melalui Tampilan & pengaturan. Panduan teknis DNS/HTTPS dan contoh VPS ada di [docs/CUSTOM_DOMAINS.md](docs/CUSTOM_DOMAINS.md).
 
 Penanganan sewa awal gagal disiapkan tersedia di Langganan & aktivasi dan Detail toko admin: alasan, periksa ulang, laporan/refund, approval admin dan refund idempoten ke saldo Hanshop. Paket yang sudah aktif tidak termasuk; deployment memerlukan migrasi web/API sesuai DEPLOYMENT.md.
+
+Pembaruan1November2026: failover beberapa periode pascabayar memiliki regresi Digiflazz/OtomaX dua arah, normalisasi daftar bulan dan penolakan mismatch. QRIS HansDev menerima gambar langsung, aplikasi sumber package/nama bebas, tautan APK/panduan instalasi, dan konfirmasi penerimaan manual berizin dengan audit/idempotensi. Tanpa migrasi schema. APK release harus disalin ketika deploy (DEPLOYMENT.md); uji perubahan ini terisolasi, bukan pembayaran atau instalasi HP produksi.

@@ -60,6 +60,8 @@ class CustomerPanelController extends Controller
 
         return Inertia::render('Owner/OrderDetail', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'order' => $orderData,
             'attempts' => $attemptData,
+            'canConfirmPayment' => fn () => CatalogAccess::has($request, $role, 'payments.confirm') && app(CustomerPayments::class)->canConfirmCustom($order),
+            'paymentConfirmation' => fn () => $order->snapshot['payment_confirmation'] ?? null,
             'canRetrySupplier' => fn () => CatalogAccess::has($request, $role, 'orders.manage') && app(CustomerFulfillment::class)->canRetrySupplier($order),
             'canCancel' => fn () => $role === 'owner' && ! $orderData()['cancelled'] && $order->payment_status === 'unpaid' && in_array($order->status, ['awaiting_payment', 'expired'], true),
             'canReview' => fn () => $role === 'owner' && $order->status === 'review' && $order->payment_status === 'paid' && ! $order->attempts()->whereNotNull('last_checked_at')->exists(), 'canResolve' => fn () => CatalogAccess::has($request, $role, 'guests.resolve'), 'canResend' => fn () => CatalogAccess::has($request, $role, 'orders.resend'),
@@ -70,10 +72,16 @@ class CustomerPanelController extends Controller
 
     public function action(Request $request, Store $store, CustomerOrder $order): RedirectResponse
     {
-        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review,cancel,manual,retry_supplier', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'status' => 'required_if:action,manual|in:success,failed', 'result' => 'nullable|string|max:20000', 'note' => 'required_if:action,resolve,review,manual|nullable|string|min:8|max:500']);
-        $permission = ['retry_supplier' => 'orders.manage', 'manual' => 'orders.manage', 'resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view', 'cancel' => 'orders.view'][$data['action']];
+        $data = $request->validate(['action' => 'required|in:resolve,resend,refresh,review,cancel,manual,retry_supplier,confirm_payment', 'method' => 'required_if:action,resolve|in:manual_refund,reordered', 'status' => 'required_if:action,manual|in:success,failed', 'result' => 'nullable|string|max:20000', 'note' => 'required_if:action,resolve,review,manual,confirm_payment|nullable|string|min:8|max:500']);
+        $permission = ['confirm_payment' => 'payments.confirm', 'retry_supplier' => 'orders.manage', 'manual' => 'orders.manage', 'resolve' => 'guests.resolve', 'resend' => 'orders.resend', 'refresh' => 'orders.view', 'review' => 'orders.view', 'cancel' => 'orders.view'][$data['action']];
         $role = CatalogAccess::authorize($request, $store, $permission);
         abort_unless($order->store_id === $store->id, 404);
+        if ($data['action'] === 'confirm_payment') {
+            $confirmation = $request->validate(['received_amount' => 'required|integer|min:1|max:100000000', 'paid_at' => 'required|date', 'reference' => 'required|string|min:4|max:120', 'confirmed' => 'required|accepted']);
+            app(CustomerPayments::class)->confirmCustom($order, [...$confirmation, 'note' => $data['note']], $role.':'.$request->user($role === 'staff' ? 'staff' : 'web')->id);
+
+            return back()->with('success', 'Penerimaan pembayaran dicatat. Pesanan diproses melalui alur normal; pembayaran terlambat masuk pemeriksaan.');
+        }
         if ($data['action'] === 'retry_supplier') {
             app(CustomerFulfillment::class)->retrySupplier($order);
 

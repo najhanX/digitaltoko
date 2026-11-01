@@ -13,7 +13,7 @@ class StaffPermissions
             'orders.manage' => 'Kirim ulang pemasok & putuskan sukses/gagal manual', 'orders.resend' => 'Kirim ulang hasil ke penerima asli', 'guests.resolve' => 'Tindak lanjut pesanan guest',
             'customers.view' => 'Lihat pelanggan', 'customers.contacts' => 'Lihat kontak pelanggan',
             'customers.manage' => 'Kelola profil pelanggan', 'payments.view' => 'Lihat pembayaran',
-            'payments.policy' => 'Atur fee dan kebijakan kode unik', 'wallet.view' => 'Lihat ledger saldo pelanggan',
+            'payments.policy' => 'Atur fee dan kebijakan kode unik', 'payments.confirm' => 'Konfirmasi penerimaan pembayaran QRIS manual', 'wallet.view' => 'Lihat ledger saldo pelanggan',
             'wallet.settlement' => 'Catat pencairan saat toko berhenti', 'web.manage' => 'Kelola template & branding',
             'articles.view' => 'Lihat artikel toko', 'articles.manage' => 'Tulis, terbitkan & hapus artikel',
             'checkout.manage' => 'Atur guest / wajib login', 'bot.view' => 'Lihat koneksi WhatsApp',

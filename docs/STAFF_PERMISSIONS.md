@@ -57,3 +57,7 @@ Login staff menghapus sesi web owner/admin di browser itu, dan sebaliknya. Passw
 ## Saldo pemasok (26 Oktober 2026)
 
 suppliers.balance membuka pemantauan saldo, pemeriksaan manual dan snapshot pemasok toko. suppliers.deposit mengizinkan permintaan/rincian deposit Digiflazz/OtomaX melalui modul baru bila staff juga mempunyai suppliers.balance. Saldo/deposit Hanshop hanya owner karena akun dan saldonya dipakai bersama beberapa toko. Tidak memberi staff credential pemasok atau akses saldo pelanggan melalui izin ini.
+
+### Konfirmasi pembayaran QRIS — 1 November 2026
+
+`payments.confirm` adalah izin terpisah untuk mencatat uang masuk pada invoice QRIS HansDev berlisensi. Izin ini menyertakan akses baca transaksi melalui resolver existing dan menampilkan menu transaksi, tetapi tidak memberikan izin memutuskan hasil pemasok, mengubah gateway/token, membuka stok rahasia atau membatalkan pesanan. Owner mempunyai akses bawaan. Staff existing tidak otomatis memperoleh izin baru; owner mengaktifkannya pada Staff & hak akses. Referensi, nominal, waktu, catatan dan identitas aktor dicatat.

@@ -320,7 +320,11 @@ class CustomerPayments
         $setting = app(CustomerCommerce::class)->settings($store);
         $credentials = $context ?? $setting->credentials ?? [];
         app(CustomerCommerce::class)->ensure($setting->custom_licensed_at !== null, 'Lisensi QRIS custom tidak aktif.');
-        abort_unless(($data['application_package'] ?? '') === ($credentials['application_package'] ?? 'id.dana'), 422);
+        $package = $credentials['application_package'] ?? 'id.dana';
+        $sourceMatches = filled($package)
+            ? ($data['application_package'] ?? '') === $package
+            : filled($credentials['application_name'] ?? '') && mb_strtolower(trim($data['app_name'] ?? '')) === mb_strtolower(trim($credentials['application_name']));
+        abort_unless($sourceMatches, 422, 'Aplikasi sumber notifikasi tidak cocok dengan pengaturan toko.');
         $text = ($data['title'] ?? '').' '.($data['text'] ?? '');
         app(CustomerCommerce::class)->ensure(preg_match('/(?:pembayaran|uang|saldo|transfer).*(?:diterima|masuk)|(?:terima|menerima).*(?:pembayaran|uang|transfer)/iu', $text) === 1 && ! preg_match('/(?:gagal|dibatalkan|keluar|berhasil dikirim)/iu', $text), 'Notifikasi bukan pembayaran masuk.');
         preg_match_all('/Rp\s*([0-9][0-9.]*(?:,[0-9]{2})?)/iu', $text, $matches);
@@ -337,5 +341,35 @@ class CustomerPayments
         $orders = CustomerOrder::where('store_id', $store->id)->where('gateway', 'custom')->where('merchant_key', $merchant)->where('total', $amount)->where('created_at', '<=', $at)->where('expires_at', '>=', $at)->get();
         app(CustomerCommerce::class)->ensure($orders->count() === 1, 'Tidak ada satu invoice yang cocok. Periksa nominal dan waktu pembayaran.');
         app(CustomerCommerce::class)->paid($orders->first(), $event, $amount, $at);
+    }
+
+    public function canConfirmCustom(CustomerOrder $order): bool
+    {
+        return $order->gateway === 'custom' && $order->payment_status === 'unpaid'
+            && in_array($order->status, ['awaiting_payment', 'expired'], true)
+            && ! ($order->snapshot['cancelled_by_customer'] ?? false)
+            && empty($order->snapshot['cancelled_by_owner']);
+    }
+
+    public function confirmCustom(CustomerOrder $order, array $data, string $actor): void
+    {
+        DB::transaction(function () use ($order, $data, $actor) {
+            $store = Store::whereKey($order->store_id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard($store);
+            $locked = CustomerOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $commerce = app(CustomerCommerce::class);
+            $commerce->ensure($locked->gateway === 'custom' && $commerce->settings($store)->custom_licensed_at !== null, 'Konfirmasi manual hanya untuk invoice modul QRIS toko berlisensi.');
+            if ($locked->payment_status === 'paid') {
+                return;
+            }
+            $commerce->ensure($this->canConfirmCustom($locked), 'Invoice tidak lagi dapat dikonfirmasi. Muat ulang rincian pesanan.');
+            $at = Carbon::parse($data['paid_at'])->utc();
+            $commerce->ensure($at->gte($locked->created_at) && $at->lte(now()), 'Waktu pembayaran harus setelah pesanan dibuat dan tidak boleh di masa depan.');
+            $commerce->ensure((int) $data['received_amount'] === $locked->total, 'Nominal diterima harus sama dengan total invoice termasuk kode unik.');
+            $reference = trim($data['reference']);
+            $event = 'custom-manual:'.hash('sha256', $locked->merchant_key.':'.mb_strtolower($reference));
+            $locked->update(['snapshot' => [...$locked->snapshot, 'payment_confirmation' => ['actor' => $actor, 'reference' => $reference, 'amount' => (int) $data['received_amount'], 'note' => $data['note'], 'paid_at' => $at->toIso8601String(), 'at' => now()->toIso8601String()]]]);
+            $commerce->paid($locked, $event, (int) $data['received_amount'], $at);
+        }, 3);
     }
 }

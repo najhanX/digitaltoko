@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CommerceSettingsController extends Controller
 {
@@ -32,9 +33,10 @@ class CommerceSettingsController extends Controller
         $list = new ListQuery($request, ['status' => ['pending', 'paid', 'expired', 'review']], 5);
         $page = $list->paginate($list->apply(ModulePurchase::where('store_id', $store->id), ['id'], ['status' => 'status'])->latest()->orderByDesc('id'));
 
-        return Inertia::render('Owner/Payments', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'settings' => [...$setting->toArray(), 'application_package' => $setting->credentials['application_package'] ?? 'id.dana'],
+        return Inertia::render('Owner/Payments', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'settings' => [...$setting->toArray(), 'application_package' => $setting->credentials['application_package'] ?? 'id.dana', 'application_name' => $setting->credentials['application_name'] ?? ''],
+            'forwarderDownload' => is_file(config('services.forwarder.apk_path')) ? url('/downloads/hansdev-forwarder') : null,
             'configured' => ['midtrans' => filled($setting->credentials['server_key'] ?? null), 'custom' => filled($setting->credentials['qris_payload'] ?? null)],
-            'canConnect' => $role === 'owner', 'canPolicy' => CatalogAccess::has($request, $role, 'payments.policy'), 'canCheckout' => CatalogAccess::has($request, $role, 'checkout.manage'),
+            'canConfirmPayment' => CatalogAccess::has($request, $role, 'payments.confirm'), 'canConnect' => $role === 'owner', 'canPolicy' => CatalogAccess::has($request, $role, 'payments.policy'), 'canCheckout' => CatalogAccess::has($request, $role, 'checkout.manage'),
             'modulePrice' => app(CommerceModules::class)->price(), 'invoices' => $page->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($page),
             'callbackUrl' => url('/api/commerce/midtrans/'.$store->id), 'forwardUrl' => url('/api/commerce/forward/'.$store->id)]);
     }
@@ -50,7 +52,7 @@ class CommerceSettingsController extends Controller
         }
         $setting = app(CustomerCommerce::class)->settings($store);
         if ($action === 'connection') {
-            $data = $request->validate(['gateway' => 'required|in:midtrans,custom', 'sandbox' => 'required|boolean', 'server_key' => 'nullable|string|max:250', 'qris_payload' => 'nullable|string|max:4096', 'application_package' => 'required_if:gateway,custom|nullable|in:id.dana,com.shopeepay.id,com.shopee.id']);
+            $data = $request->validate(['gateway' => 'required|in:midtrans,custom', 'sandbox' => 'required|boolean', 'server_key' => 'nullable|string|max:250', 'qris_payload' => 'nullable|string|max:4096', 'application_package' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+$/'], 'application_name' => 'nullable|string|max:100']);
             $credentials = $setting->credentials ?? [];
             if (filled($data['server_key'] ?? null)) {
                 $credentials['server_key'] = $data['server_key'];
@@ -64,10 +66,12 @@ class CommerceSettingsController extends Controller
             }
             if ($data['gateway'] === 'custom') {
                 app(CustomerCommerce::class)->ensure($setting->custom_licensed_at !== null && filled($credentials['qris_payload'] ?? null), 'Beli modul QRIS custom dan lengkapi payload QRIS toko terlebih dahulu.');
-                if (($credentials['application_package'] ?? 'id.dana') !== $data['application_package']) {
+                app(CustomerCommerce::class)->ensure(filled($data['application_package'] ?? null) || filled($data['application_name'] ?? null), 'Isi package atau nama aplikasi penerima pembayaran.');
+                if (($credentials['application_package'] ?? 'id.dana') !== ($data['application_package'] ?? '') || ($credentials['application_name'] ?? '') !== ($data['application_name'] ?? '')) {
                     $credentials['forward_token'] = Str::random(64);
                 }
-                $credentials['application_package'] = $data['application_package'];
+                $credentials['application_package'] = $data['application_package'] ?? '';
+                $credentials['application_name'] = trim($data['application_name'] ?? '');
                 $credentials['forward_token'] ??= Str::random(64);
             } else {
                 app(CustomerCommerce::class)->ensure(filled($credentials['server_key'] ?? null), 'Server key Midtrans wajib diisi.');
@@ -82,6 +86,14 @@ class CommerceSettingsController extends Controller
         }
 
         return back()->with('success', 'Pengaturan pembayaran tersimpan. Invoice lama tetap memakai pengaturan saat dibuat.');
+    }
+
+    public function download(): BinaryFileResponse
+    {
+        $path = config('services.forwarder.apk_path');
+        abort_unless(is_string($path) && is_file($path), 404, 'APK belum tersedia. Hubungi administrator DigitalToko.');
+
+        return response()->download($path, 'HansDev-Forwarder.apk', ['Content-Type' => 'application/vnd.android.package-archive', 'X-Content-Type-Options' => 'nosniff']);
     }
 
     public function forwarder(Request $request, Store $store): JsonResponse

@@ -44,6 +44,128 @@ class CustomerCommerceTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function confirmation(CustomerOrder $order, array $extra = []): array
+    {
+        return [...['action' => 'confirm_payment', 'received_amount' => $order->total, 'paid_at' => now()->toIso8601String(), 'reference' => 'BANK-TEST-001', 'note' => 'Sudah diperiksa pada mutasi merchant', 'confirmed' => true], ...$extra];
+    }
+
+    public function test_custom_manual_payment_is_audited_and_callback_replay_does_not_dispatch_twice(): void
+    {
+        $s = $this->store();
+        $this->gateway($s, 'custom');
+        $order = app(CustomerCommerce::class)->begin($s, $this->input($this->product($s), ['payment' => 'gateway']), null);
+        $url = '/stores/'.$s->id.'/orders/'.$order->id;
+        $data = $this->confirmation($order);
+        $this->actingAs($s->owner)->post($url, $data)->assertSessionHasNoErrors();
+        $this->post($url, $data)->assertSessionHasNoErrors();
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertSame('owner:'.$s->owner_id, $order->fresh()->snapshot['payment_confirmation']['actor']);
+        $this->assertDatabaseCount('commerce_receipts', 1);
+        $this->withToken(str_repeat('f', 40))->postJson('/api/commerce/forward/'.$s->id, ['event_id' => 'late-notification', 'application_package' => 'id.dana', 'text' => 'Rp'.number_format($order->total, 0, ',', '.').' pembayaran diterima', 'occurred_at' => now()->toIso8601String()])->assertOk();
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+        $this->get($url)->assertInertia(fn (Page $page) => $page->where('canConfirmPayment', false)->where('paymentConfirmation.reference', 'BANK-TEST-001'));
+        $this->assertArrayNotHasKey('payment_confirmation', app(CustomerCommerce::class)->publicData($order->fresh()));
+    }
+
+    public function test_custom_manual_payment_requires_distinct_permission_and_store_ownership(): void
+    {
+        $s = $this->store();
+        $this->gateway($s, 'custom');
+        $order = app(CustomerCommerce::class)->begin($s, $this->input($this->product($s), ['payment' => 'gateway']), null);
+        $staff = StoreStaff::create(['store_id' => $s->id, 'name' => 'Kasir', 'email' => 'cashier@example.test', 'username' => 'cashier', 'password' => 'password-test', 'active' => true, 'permissions' => ['orders.manage']]);
+        $url = '/stores/'.$s->id.'/orders/'.$order->id;
+        $this->actingAs($staff, 'staff')->post($url, $this->confirmation($order))->assertForbidden();
+        $staff->update(['permissions' => ['payments.confirm']]);
+        $this->actingAs($staff->fresh(), 'staff')->get($url)->assertOk();
+        $other = $this->store();
+        $this->post('/stores/'.$other->id.'/orders/'.$order->id, $this->confirmation($order))->assertForbidden();
+        $this->post($url, $this->confirmation($order))->assertSessionHasNoErrors();
+        $this->assertSame('staff:'.$staff->id, $order->fresh()->snapshot['payment_confirmation']['actor']);
+    }
+
+    public function test_manual_payment_rejects_midtrans_wrong_amount_future_time_and_missing_acknowledgement(): void
+    {
+        $s = $this->store();
+        $this->gateway($s, 'custom');
+        $order = app(CustomerCommerce::class)->begin($s, $this->input($this->product($s), ['payment' => 'gateway']), null);
+        $url = '/stores/'.$s->id.'/orders/'.$order->id;
+        $this->actingAs($s->owner)->post($url, $this->confirmation($order, ['received_amount' => $order->total - 1]))->assertSessionHasErrors();
+        $this->post($url, $this->confirmation($order, ['paid_at' => now()->addHour()->toIso8601String()]))->assertSessionHasErrors();
+        $this->post($url, $this->confirmation($order, ['confirmed' => false]))->assertSessionHasErrors('confirmed');
+        $order->update(['gateway' => 'midtrans']);
+        $this->post($url, $this->confirmation($order))->assertSessionHasErrors();
+        $this->assertSame('unpaid', $order->fresh()->payment_status);
+        $this->assertDatabaseCount('commerce_receipts', 0);
+    }
+
+    public function test_reused_manual_receipt_is_rejected_and_expired_payment_enters_review(): void
+    {
+        $s = $this->store();
+        $this->gateway($s, 'custom');
+        $p = $this->product($s, 2);
+        $first = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null);
+        $second = app(CustomerCommerce::class)->begin($s, $this->input($p, ['payment' => 'gateway']), null);
+        $this->actingAs($s->owner)->post('/stores/'.$s->id.'/orders/'.$first->id, $this->confirmation($first))->assertSessionHasNoErrors();
+        $this->post('/stores/'.$s->id.'/orders/'.$second->id, $this->confirmation($second))->assertSessionHasErrors();
+        $this->assertSame('unpaid', $second->fresh()->payment_status);
+        $this->assertArrayNotHasKey('payment_confirmation', $second->fresh()->snapshot);
+        $second->update(['status' => 'expired']);
+        $this->post('/stores/'.$s->id.'/orders/'.$second->id, $this->confirmation($second, ['reference' => 'BANK-TEST-002']))->assertSessionHasNoErrors();
+        $this->assertSame('review', $second->fresh()->status);
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+    }
+
+    public function test_custom_connection_accepts_other_package_or_app_name_and_rejects_wrong_source(): void
+    {
+        $s = $this->store();
+        $this->gateway($s, 'custom');
+        $url = '/stores/'.$s->id.'/payments';
+        $data = ['action' => 'connection', 'gateway' => 'custom', 'sandbox' => false, 'application_package' => 'com.bank.merchant'];
+        $this->actingAs($s->owner)->post($url, $data)->assertSessionHasNoErrors();
+        $setting = app(CustomerCommerce::class)->settings($s)->fresh();
+        $this->assertSame('com.bank.merchant', $setting->credentials['application_package']);
+        $this->post($url, [...$data, 'application_package' => '', 'application_name' => 'Merchant Bank'])->assertSessionHasNoErrors();
+        $setting->refresh();
+        $order = app(CustomerCommerce::class)->begin($s, $this->input($this->product($s), ['payment' => 'gateway']), null);
+        $body = ['event_id' => 'custom-app-name', 'application_package' => 'com.bank.merchant', 'app_name' => 'Other App', 'text' => 'Rp'.number_format($order->total, 0, ',', '.').' pembayaran diterima', 'occurred_at' => now()->toIso8601String()];
+        $this->withToken($setting->credentials['forward_token'])->postJson('/api/commerce/forward/'.$s->id, $body)->assertUnprocessable();
+        $this->postJson('/api/commerce/forward/'.$s->id, [...$body, 'app_name' => 'merchant bank'])->assertOk();
+        $this->assertSame('paid', $order->fresh()->payment_status);
+    }
+
+    public function test_forwarder_download_returns_apk_and_missing_release_is_not_exposed(): void
+    {
+        config(['services.forwarder.apk_path' => __DIR__.'/missing-forwarder.apk']);
+        $this->get('/downloads/hansdev-forwarder')->assertNotFound();
+        $path = tempnam(sys_get_temp_dir(), 'forwarder-test-');
+        file_put_contents($path, 'PK-SYNTHETIC-APK-NOT-INSTALLABLE');
+        try {
+            config(['services.forwarder.apk_path' => $path]);
+            $this->get('/downloads/hansdev-forwarder')->assertOk()
+                ->assertDownload('HansDev-Forwarder.apk')
+                ->assertHeader('Content-Type', 'application/vnd.android.package-archive');
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_manual_qris_topup_credits_once_and_cancelled_invoice_cannot_be_confirmed(): void
+    {
+        $s = $this->store();
+        $this->gateway($s, 'custom');
+        $customer = $this->customer($s);
+        $order = app(CustomerCommerce::class)->begin($s, ['purpose' => 'topup', 'amount' => 50000, 'phone' => $customer->phone, 'payment' => 'gateway', 'idempotency_key' => (string) Str::uuid()], $customer);
+        $url = '/stores/'.$s->id.'/orders/'.$order->id;
+        $this->actingAs($s->owner)->post($url, $this->confirmation($order))->assertSessionHasNoErrors();
+        $this->post($url, $this->confirmation($order))->assertSessionHasNoErrors();
+        $this->assertSame(100000 + $order->credit_amount, $customer->fresh()->balance);
+        $this->assertSame(1, CustomerLedger::where('reason', 'topup')->count());
+        $other = app(CustomerCommerce::class)->begin($s, $this->input($this->product($s), ['payment' => 'gateway']), null);
+        app(CustomerPayments::class)->cancel($other);
+        $this->post('/stores/'.$s->id.'/orders/'.$other->id, $this->confirmation($other, ['reference' => 'BANK-CANCELLED']))->assertSessionHasErrors();
+        $this->assertSame('unpaid', $other->fresh()->payment_status);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

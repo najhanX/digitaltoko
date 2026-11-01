@@ -47,7 +47,7 @@ class StaffLoginController extends Controller
         }
 
         if ($target === '/staff/'.$store->id.'/access') {
-            if (count(array_intersect(['orders.view', 'orders.resend', 'guests.resolve'], $permissions))) {
+            if (count(array_intersect(['orders.view', 'orders.manage', 'orders.resend', 'guests.resolve', 'payments.confirm'], $permissions))) {
                 $target = '/stores/'.$store->id.'/orders';
             } elseif (count(array_intersect(['customers.view', 'customers.contacts', 'wallet.view', 'wallet.settlement'], $permissions))) {
                 $target = '/stores/'.$store->id.'/customers';

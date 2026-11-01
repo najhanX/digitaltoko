@@ -37,7 +37,7 @@ class CommerceWebhookController extends Controller
             }
         }
         abort_unless($matched, 401);
-        $data = $request->validate(['event_id' => 'required|string|max:200', 'application_package' => 'required|string|max:100', 'title' => 'nullable|string|max:500', 'text' => 'required|string|max:4000', 'occurred_at' => 'required|date']);
+        $data = $request->validate(['event_id' => 'required|string|max:200', 'application_package' => 'required|string|max:100', 'app_name' => 'nullable|string|max:100', 'title' => 'nullable|string|max:500', 'text' => 'required|string|max:4000', 'occurred_at' => 'required|date']);
         $payments->custom($store, $data, $matched);
 
         return response()->json(['status' => 'SUCCESS', 'message' => 'Notifikasi pembayaran diperiksa.']);
