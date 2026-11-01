@@ -49,6 +49,27 @@ class CustomerCommerceTest extends TestCase
         return [...['action' => 'confirm_payment', 'received_amount' => $order->total, 'paid_at' => now()->toIso8601String(), 'reference' => 'BANK-TEST-001', 'note' => 'Sudah diperiksa pada mutasi merchant', 'confirmed' => true], ...$extra];
     }
 
+    public function test_dana_business_preset_without_title_matches_payment_once_and_rejects_promos(): void
+    {
+        $s = $this->store();
+        $this->gateway($s, 'custom');
+        $order = app(CustomerCommerce::class)->begin($s, $this->input($this->product($s), ['payment' => 'gateway']), null);
+        $body = ['event_id' => 'dana-business-receipt', 'application_package' => 'id.dana', 'text' => 'Rp'.number_format($order->total, 0, ',', '.').' diterima DANA Bisnis.', 'occurred_at' => now()->toIso8601String()];
+        $url = '/api/commerce/forward/'.$s->id;
+        $this->withToken(str_repeat('f', 40));
+        foreach (['Promo terbesar di DANA 11.11, hadiah miliaran!', 'Rp292 berhasil dikirim.', 'Rp292 diterima DANA Bisnis. Promo hadiah!', 'Rp292 diterima DANA Bisnis. Gagal.'] as $index => $text) {
+            $this->postJson($url, [...$body, 'event_id' => 'rejected-'.$index, 'text' => $text])->assertUnprocessable();
+        }
+        $this->assertSame('unpaid', $order->fresh()->payment_status);
+        $this->postJson($url, [...$body, 'text' => 'Rp1 diterima DANA Bisnis.'])->assertUnprocessable();
+        $this->postJson($url, [...$body, 'application_package' => 'com.other.app'])->assertUnprocessable();
+        $this->postJson($url, $body)->assertOk();
+        $this->postJson($url, $body)->assertOk();
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertDatabaseCount('commerce_receipts', 1);
+        Queue::assertPushed(ProcessCustomerOrder::class, 1);
+    }
+
     public function test_custom_manual_payment_is_audited_and_callback_replay_does_not_dispatch_twice(): void
     {
         $s = $this->store();

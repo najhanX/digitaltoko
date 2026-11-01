@@ -1127,3 +1127,10 @@ Script kini berada di akar masing-masing ZIP OS, di luar dan sejajar folder plat
 ## 1 November 2026 — tutorial konsisten dengan script di luar platform-tools
 
 Seluruh langkah, label panah, ilustrasi susunan hasil ekstrak, alternatif manual dan troubleshooting diperiksa ulang. Semua blok perintah kini memakai working directory hasil ekstrak ZIP OS yang sama, dengan prefix platform-tools untuk ADB; pengguna tidak berpindah masuk/keluar folder antar langkah. Jalur launcher per OS tetap benar. Validasi:35tes frontend,4tes Tutorial/5371assertion serta build TypeScript/Vite lulus. Tanpa perubahan bundle, perangkat, dependensi atau database.
+
+
+## 1 November 2026 — format notifikasi DANA Bisnis pada preset QRIS
+
+Inspeksi read-only ngrok lokal membuktikan POST sampai ke aplikasi dengan body teks Rp292 diterima DANA Bisnis., tanpa title. Token/sumber lolos; respons422 berisi Notifikasi bukan pembayaran masuk. Tiga notifikasi lain merupakan promo DANA yang memang harus ditolak. GET405 sesuai route POST-only. Parser CustomerPayments kini menerima bentuk DANA Bisnis tersebut secara ketat hanya dari package id.dana; pemeriksaan sumber, nominal tunggal, waktu, merchant, invoice dan idempotensi tetap dipertahankan. Tidak melonggarkan promo atau notifikasi keluar.
+
+61tes CustomerCommerce terfilter custom lulus/622assertion; regresi DANA Bisnis lulus1tes/12assertion, mencakup body tanpa title, promo/keluar, nominal tidak cocok, sumber salah, invoice lunas dan duplikat dispatch sekali. Pint lulus. Tidak replay notifikasi nyata, mengubah status pembayaran pengguna, memasang APK atau mengganti endpoint/token; uji pembayaran memakai database tes dan queue fake. Pengguna perlu menguji pengiriman berikutnya; notifikasi lama yang kedaluwarsa tidak otomatis dicocokkan. Tanpa migrasi atau dependency baru.

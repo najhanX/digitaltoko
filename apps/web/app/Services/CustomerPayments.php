@@ -326,7 +326,10 @@ class CustomerPayments
             : filled($credentials['application_name'] ?? '') && mb_strtolower(trim($data['app_name'] ?? '')) === mb_strtolower(trim($credentials['application_name']));
         abort_unless($sourceMatches, 422, 'Aplikasi sumber notifikasi tidak cocok dengan pengaturan toko.');
         $text = ($data['title'] ?? '').' '.($data['text'] ?? '');
-        app(CustomerCommerce::class)->ensure(preg_match('/(?:pembayaran|uang|saldo|transfer).*(?:diterima|masuk)|(?:terima|menerima).*(?:pembayaran|uang|transfer)/iu', $text) === 1 && ! preg_match('/(?:gagal|dibatalkan|keluar|berhasil dikirim)/iu', $text), 'Notifikasi bukan pembayaran masuk.');
+        $incoming = preg_match('/(?:pembayaran|uang|saldo|transfer).*(?:diterima|masuk)|(?:terima|menerima).*(?:pembayaran|uang|transfer)/iu', $text) === 1;
+        $danaBusinessReceipt = ($data['application_package'] ?? '') === 'id.dana'
+            && preg_match('/\ARp\s*[0-9][0-9.]*(?:,[0-9]{2})?\s+diterima\s+DANA\s+Bisnis\.?\s*\z/iu', trim($data['text'] ?? '')) === 1;
+        app(CustomerCommerce::class)->ensure(($incoming || $danaBusinessReceipt) && ! preg_match('/(?:gagal|dibatalkan|keluar|berhasil dikirim)/iu', $text), 'Notifikasi bukan pembayaran masuk.');
         preg_match_all('/Rp\s*([0-9][0-9.]*(?:,[0-9]{2})?)/iu', $text, $matches);
         $amounts = array_unique(array_map(fn ($s) => (int) str_replace('.', '', explode(',', $s)[0]), $matches[1]));
         app(CustomerCommerce::class)->ensure(count($amounts) === 1 && reset($amounts) > 0, 'Nominal notifikasi tidak jelas.');
