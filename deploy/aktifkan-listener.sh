@@ -1,9 +1,9 @@
 #!/bin/sh
-# Bundled beside adb. No global installation or fixed drive is required.
+# Bundled beside platform-tools. No global installation or fixed drive is required.
 NO_PAUSE=0
 [ "${1:-}" = '--no-pause' ] && NO_PAUSE=1
 SCRIPT_DIR=$(CDPATH= cd -P "$(dirname "$0")" && pwd) || exit 1
-ADB="$SCRIPT_DIR/adb"
+ADB="$SCRIPT_DIR/platform-tools/adb"
 STATE_FILE=''
 cleanup() { [ -z "$STATE_FILE" ] || rm -f "$STATE_FILE"; }
 trap cleanup 0
@@ -19,7 +19,7 @@ finish() {
 }
 fail() { printf '\nGAGAL: %s\n' "$1"; finish 1; }
 printf 'HansDev Forwarder - Aktivasi listener\nADB: %s\n' "$ADB"
-[ -f "$ADB" ] || fail 'Letakkan script satu folder dengan adb dan ekstrak seluruh paket.'
+[ -f "$ADB" ] || fail 'Ekstrak seluruh paket. Folder platform-tools harus berada di samping script ini.'
 [ -x "$ADB" ] || chmod u+x "$ADB" || fail 'ADB tidak dapat dijalankan. Periksa izin file.'
 STATE_FILE=$(mktemp "${TMPDIR:-/tmp}/hansdev-listener.XXXXXX") || fail 'Tidak dapat membuat file sementara.'
 printf 'Hubungkan satu HP, aktifkan USB debugging dan buka kunci layarnya.\n'

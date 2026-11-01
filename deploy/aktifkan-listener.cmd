@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title Aktifkan HansDev Forwarder
-set "ADB=%~dp0adb.exe"
+set "ADB=%~dp0platform-tools\adb.exe"
 set "NO_PAUSE=0"
 if "%~1"=="--no-pause" set "NO_PAUSE=1"
 set "RESULT=1"
@@ -62,7 +62,7 @@ echo Periksa status Listener terhubung. Jika pengiriman dijeda, aktifkan di apli
 set "RESULT=0"
 goto finish
 :missing_adb
-echo GAGAL: letakkan script ini satu folder dengan adb.exe, lalu ekstrak seluruh paket.
+echo GAGAL: ekstrak seluruh paket. Folder platform-tools harus berada di samping script ini.
 goto finish
 :missing_app
 echo GAGAL: HansDev Forwarder belum terpasang pada HP tersebut. Pasang APK dahulu.

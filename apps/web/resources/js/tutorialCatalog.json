@@ -3439,7 +3439,7 @@
         "title": "Download dan ekstrak paket di komputer",
         "paragraphs": [
           "Klik Download paket HansDev Forwarder (ZIP) di atas. Ekstrak ZIP utama; jangan menjalankan aplikasi dari dalam arsip. Isinya HansDev-Forwarder.apk dan tiga ZIP platform-tools untuk Windows, macOS dan Linux.",
-          "Pilih SATU ZIP sesuai OS komputer Anda, lalu ekstrak lagi. Folder platform-tools berisi ADB dan script aktivasi: aktifkan-listener.cmd (Windows), aktifkan-listener.command (macOS), atau aktifkan-listener.sh (Linux). Folder boleh berada di drive/lokasi mana saja; jangan memindahkan script terpisah dari ADB. Tidak perlu memasang Android Studio."
+          "Pilih SATU ZIP sesuai OS komputer Anda, lalu ekstrak lagi. Hasil ekstrak berisi folder platform-tools dan script aktivasi di sebelahnya: aktifkan-listener.cmd (Windows), aktifkan-listener.command (macOS), atau aktifkan-listener.sh (Linux). Folder boleh berada di drive/lokasi mana saja; pertahankan folder platform-tools di sebelah script. Tidak perlu memasang Android Studio."
         ],
         "visual": {
           "image": "/guides/steps/listener-bundle.svg",
@@ -3567,8 +3567,8 @@
       {
         "title": "Temukan script aktivasi sesuai komputer",
         "paragraphs": [
-          "Windows: klik dua kali aktifkan-listener.cmd di folder platform-tools. macOS: buka aktifkan-listener.command; jika tidak bisa dibuka langsung, gunakan perintah Terminal di langkah aktivasi. Linux: jalankan script melalui Terminal dengan perintah di langkah aktivasi.",
-          "Anda tidak perlu mengubah path di script. Script mencari ADB dari foldernya sendiri, bukan folder kerja terminal atau drive C. Ini bukan pemasangan perintah global; bila dipanggil dari folder lain, gunakan path lengkap script tersebut.",
+          "Windows: klik dua kali aktifkan-listener.cmd di luar folder platform-tools. macOS: buka aktifkan-listener.command; jika tidak bisa dibuka langsung, gunakan perintah Terminal di langkah aktivasi. Linux: jalankan script melalui Terminal dengan perintah di langkah aktivasi.",
+          "Anda tidak perlu mengubah path di script. Script mencari ADB di subfolder platform-tools di sebelahnya, bukan folder kerja terminal atau drive C. Ini bukan pemasangan perintah global; bila dipanggil dari folder lain, gunakan path lengkap script tersebut.",
           "Jika ingin memeriksa ADB secara manual, buka terminal di folder platform-tools dan gunakan perintah versi berikut. Pada macOS/Linux, bila ADB belum executable, script aktivasi akan memberikan izin eksekusi untuk file ADB. Pembatasan keamanan OS atau driver perangkat tetap perlu diselesaikan pada komputer."
         ],
         "visual": {
@@ -3673,6 +3673,7 @@
       {
         "title": "Jalankan script aktivasi listener",
         "paragraphs": [
+          "Jalankan script dari hasil ekstrak ZIP OS, sejajar dengan folder platform-tools. Untuk perintah di bawah, buka terminal pada folder hasil ekstrak tersebut, bukan di dalam platform-tools.",
           "Pastikan APK terpasang, USB debugging aktif, dan hanya satu HP tersambung. Windows: klik dua kali aktifkan-listener.cmd. macOS: buka aktifkan-listener.command atau jalankan lewat Terminal. Linux: gunakan perintah Terminal di bawah. Script memeriksa perangkat dan APK, memberi izin listener, memverifikasi izin, lalu membuka aplikasi.",
           "Jika status unauthorized, tekan Allow/Izinkan pada HP, kemudian tekan Enter di terminal untuk memeriksa ulang. Script tidak dapat menyetujui izin RSA atau menyalakan USB debugging dari komputer. Bila ada beberapa HP/emulator, sisakan satu perangkat.",
           "Tulisan BERHASIL berarti izin listener sudah terverifikasi. Tetap periksa status terhubung dan pengiriman pada aplikasi sesuai langkah berikutnya. Script tidak mengubah endpoint, token, pilihan sumber, atau pengiriman yang dijeda.",

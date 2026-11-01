@@ -66,11 +66,12 @@ class LauncherTests(unittest.TestCase):
         cls.bash = Path('C:/Program Files/Git/bin/bash.exe') if os.name == 'nt' else Path('/bin/sh')
         cls.windows = cls.root / 'Windows tools !'
         cls.windows.mkdir()
+        (cls.windows / "platform-tools").mkdir()
         if os.name == 'nt':
             source = cls.root / 'FakeAdb.cs'
             source.write_text(MOCK_CS, encoding='utf-8')
             compiler = 'C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-            subprocess.run([compiler, '/nologo', '/out:' + str(cls.windows / 'adb.exe'), str(source)], check=True, capture_output=True)
+            subprocess.run([compiler, '/nologo', '/out:' + str(cls.windows / 'platform-tools' / 'adb.exe'), str(source)], check=True, capture_output=True)
             shutil.copyfile(HERE / 'aktifkan-listener.cmd', cls.windows / 'aktifkan-listener.cmd')
 
     @classmethod
@@ -83,12 +84,13 @@ class LauncherTests(unittest.TestCase):
                 continue
             folder = self.windows if platform == 'windows' else self.root / (platform + ' tools !')
             folder.mkdir(exist_ok=True)
+            (folder / "platform-tools").mkdir(exist_ok=True)
             name, script = packager.LAUNCHERS[platform]
             launcher = folder / name
             launcher.write_bytes((HERE / script).read_bytes())
             if platform != 'windows':
-                (folder / 'adb').write_text(MOCK_SH, encoding='utf-8', newline='\n')
-                (folder / 'adb').chmod(0o755)
+                (folder / 'platform-tools' / 'adb').write_text(MOCK_SH, encoding='utf-8', newline='\n')
+                (folder / 'platform-tools' / 'adb').chmod(0o755)
             for mode in ['success', 'none', 'unauthorized', 'offline', 'multiple', 'missing-app', 'denied', 'unverified']:
                 with self.subTest(platform=platform, mode=mode):
                     log = self.root / 'calls.txt'
@@ -107,7 +109,7 @@ class LauncherTests(unittest.TestCase):
                     self.assertTrue(all(line.startswith('-s PHONE ') for line in calls[1:]))
                     if mode in ['none', 'unauthorized', 'offline', 'multiple', 'missing-app']:
                         self.assertFalse(any('allow_listener' in line for line in calls))
-            adb = folder / ('adb.exe' if platform == 'windows' else 'adb')
+            adb = folder / 'platform-tools' / ('adb.exe' if platform == 'windows' else 'adb')
             backup = adb.with_suffix('.saved')
             adb.rename(backup)
             try:
@@ -136,7 +138,8 @@ class LauncherTests(unittest.TestCase):
                 with zipfile.ZipFile(io.BytesIO(bundle.read(f'platform-tools-latest-{platform}.zip'))) as sdk:
                     self.assertEqual(sdk.read('platform-tools/NOTICE.txt'), b'original-license')
                     self.assertEqual(sdk.read('platform-tools/' + ('adb.exe' if platform == 'windows' else 'adb')), b'original-adb')
-                    info = sdk.getinfo('platform-tools/' + name)
+                    self.assertNotIn('platform-tools/' + name, sdk.namelist())
+                    info = sdk.getinfo(name)
                     self.assertEqual((info.external_attr >> 16) & 0o777, 0o644 if platform == 'windows' else 0o755)
                     data = sdk.read(info)
                     self.assertEqual(b'\r\n' in data, platform == 'windows')

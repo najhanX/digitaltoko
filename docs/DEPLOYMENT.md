@@ -486,7 +486,7 @@ Unduhan ZIP memakai URL kanonis `/downloads/hansdev-forwarder.zip` (alamat lama 
 
 ### Launcher listener portable (1 November 2026)
 
-Ekstrak paket utama, lalu ZIP platform-tools sesuai OS. Windows: klik dua kali `aktifkan-listener.cmd`; macOS: buka `aktifkan-listener.command` atau jalankan `sh ./aktifkan-listener.command`; Linux: jalankan `sh ./aktifkan-listener.sh`. Lokasi folder bebas, termasuk drive selain C. Script tetap harus satu folder dengan ADB dan pustaka SDK; bukan perintah global PATH. Persetujuan USB/RSA pada HP tetap wajib, APK harus terpasang. Script menolak perangkat ganda, memverifikasi izin, lalu membuka aplikasi; status listener terhubung dan pengiriman tetap diperiksa di HP. Tidak mengubah token/endpoint atau memaksa pengiriman yang dijeda.
+Ekstrak paket utama, lalu ZIP platform-tools sesuai OS. Windows: klik dua kali `aktifkan-listener.cmd`; macOS: buka `aktifkan-listener.command` atau jalankan `sh ./aktifkan-listener.command`; Linux: jalankan `sh ./aktifkan-listener.sh`. Lokasi folder bebas, termasuk drive selain C. Script berada di luar folder platform-tools, sejajar dengannya; pertahankan keduanya bersama; bukan perintah global PATH. Persetujuan USB/RSA pada HP tetap wajib, APK harus terpasang. Script menolak perangkat ganda, memverifikasi izin, lalu membuka aplikasi; status listener terhubung dan pengiriman tetap diperiksa di HP. Tidak mengubah token/endpoint atau memaksa pengiriman yang dijeda.
 
 Bangun ulang paket menggunakan Python standar (tanpa dependensi):
 
@@ -494,6 +494,6 @@ Bangun ulang paket menggunakan Python standar (tanpa dependensi):
 python deploy/package-forwarder.py --source "PATH/arsip-asli.zip" --output "apps/web/storage/app/releases/HansDev-Forwarder.zip"
 ```
 
-Source dan output wajib berbeda. Arsip asli dipertahankan, pembaruan output dilakukan atomik. File APK/SDK/NOTICE asli dipertahankan; hanya satu launcher ditambahkan per ZIP OS. macOS/Linux memiliki mode executable 0755 dan LF, CMD menggunakan CRLF. Rilis lokal SHA256: `da469c6d6abaaafe8713fff3bee10e7fc8d4e1471ed32c3e9aea0676365b541c`. Artefak rilis tetap ignored Git; saat deploy, bangun/salin ZIP ke path konfigurasi bundle. URL unduhan tetap `/downloads/hansdev-forwarder.zip`.
+Source dan output wajib berbeda. Arsip asli dipertahankan, pembaruan output dilakukan atomik. File APK/SDK/NOTICE asli dipertahankan; hanya satu launcher ditambahkan per ZIP OS. macOS/Linux memiliki mode executable 0755 dan LF, CMD menggunakan CRLF. Rilis lokal SHA256: `5335e75823625053a1745902dcc3abfcda7f50ce96f3da5bd66841907fcdebf2`. Artefak rilis tetap ignored Git; saat deploy, bangun/salin ZIP ke path konfigurasi bundle. URL unduhan tetap `/downloads/hansdev-forwarder.zip`.
 
 Uji launcher: `python -m unittest discover -s deploy -p test_forwarder_launchers.py -v`. Windows dijalankan melalui CMD dengan executable ADB tiruan; macOS/Linux diuji melalui shell POSIX Git Bash di Windows dengan ADB tiruan. Tidak ada perintah yang dikirim ke HP, dan ini bukan bukti uji perangkat/macOS/Linux fisik. Driver, udev, Gatekeeper, dan pembatasan OEM tetap mengikuti sistem pengguna.

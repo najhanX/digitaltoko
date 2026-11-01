@@ -41,9 +41,9 @@ def package(source, output):
                         adb = 'adb.exe' if platform == 'windows' else 'adb'
                         if f'platform-tools/{adb}' not in sdk.namelist() or sdk.testzip():
                             raise ValueError(f'Missing ADB or corrupt SDK: {platform}')
-                        target = f'platform-tools/{name}'
+                        target = name
                         for member in sdk.infolist():
-                            if member.filename != target:
+                            if member.filename not in (target, f'platform-tools/{name}'):
                                 updated.writestr(copy.copy(member), sdk.read(member))
                         content = (scripts / script).read_text(encoding='utf-8').replace('\r\n', '\n')
                         if platform == 'windows':
