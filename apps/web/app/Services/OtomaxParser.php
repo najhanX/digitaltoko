@@ -9,13 +9,29 @@ class OtomaxParser
 {
     public const FIELDS = ['id_transaksi', 'kode_produk', 'tujuan', 'status', 'sn', 'refid', 'harga', 'saldo_awal', 'saldo_akhir', 'tanggal', 'jam', 'keterangan', 'saldo', 'amount', 'nama_pelanggan', 'tagihan', 'admin', 'total_tagihan', 'periode'];
 
+    private function status(array $config, string $value): ?string
+    {
+        $map = self::defaults()['text_status_map'];
+        foreach ($config['text_status_map'] ?? [] as $word => $status) {
+            $map[mb_strtoupper(trim(preg_replace('/\s+/u', ' ', (string) $word)))] = $status;
+        }
+
+        return $map[mb_strtoupper(trim(preg_replace('/\s+/u', ' ', $value)))] ?? null;
+    }
+
     public static function defaults(): array
     {
-        return ['text_status_map' => ['SUKSES' => 'success', 'BERHASIL' => 'success', 'GAGAL' => 'failed', 'PENDING' => 'pending', 'PROSES' => 'pending'], 'message_field' => 'message', 'ref_field' => 'refid', 'status_field' => 'status', 'price_field' => 'price', 'status_map' => ['20' => 'success', '40' => 'failed', '1' => 'pending'], 'rules' => [
-            ['name' => 'Sukses OtomaX', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'template' => '#[id_transaksi] [kode_produk].[tujuan] SUKSES. SN/Ref: [sn]. Saldo [saldo_awal] - [harga] = [saldo_akhir] @[tanggal] [jam] R#[refid]'],
-            ['name' => 'Permintaan diterima', 'event' => 'transaction', 'outcome' => 'pending', 'active' => true, 'template' => '#[id_transaksi] [kode_produk].[tujuan] akan diproses @[jam]. Saldo [saldo_awal] - [harga] = [saldo_akhir]'],
-            ['name' => 'Saldo akun', 'event' => 'balance', 'outcome' => 'pending', 'active' => true, 'template' => 'Informasi Akun Anda Nama : [keterangan] ID Agen : [id_transaksi] Saldo : [saldo] Bonus : [amount] Debet : [harga]'],
-        ]];
+        $rules = [
+            ['name' => 'Status transaksi OtomaX', 'event' => 'callback', 'active' => true, 'template' => '#[id_transaksi] [kode_produk].[tujuan] [status]. SN/Ref: [sn]. Saldo [saldo_awal] - [harga] = [saldo_akhir] @[tanggal] [jam] R#[refid]'],
+            ['name' => 'Permintaan diterima', 'event' => 'transaction', 'active' => true, 'template' => '#[id_transaksi] [kode_produk].[tujuan] akan diproses @[jam]. Saldo [saldo_awal] - [harga] = [saldo_akhir]'],
+            ['name' => 'Saldo akun', 'event' => 'balance', 'active' => true, 'template' => 'Informasi Akun Anda Nama : [keterangan] ID Agen : [id_transaksi] Saldo : [saldo] Bonus : [amount] Debet : [harga]'],
+        ];
+        $rules[] = [...$rules[0], 'name' => 'Status awal transaksi OtomaX', 'event' => 'transaction'];
+        foreach (['transaction', 'callback', 'status'] as $event) {
+            $rules[] = self::failedBillExample($event);
+        }
+
+        return ['text_status_map' => ['SUKSES' => 'success', 'BERHASIL' => 'success', 'GAGAL' => 'failed', 'PENDING' => 'pending', 'PROSES' => 'pending', 'AKAN DIPROSES' => 'pending', 'MENUNGGU JAWABAN' => 'pending'], 'message_field' => 'message', 'ref_field' => 'refid', 'status_field' => 'status', 'price_field' => 'price', 'status_map' => ['20' => 'success', '40' => 'failed', '1' => 'pending'], 'rules' => $rules];
     }
 
     public function validate(array $config): array
@@ -23,10 +39,15 @@ class OtomaxParser
         if (strlen(json_encode($config)) > 100000) {
             throw ValidationException::withMessages(['config' => 'Kelompok jawaban terlalu besar.']);
         }
-        Validator::make($config, ['message_field' => 'required|string|max:50', 'ref_field' => 'required|string|max:50', 'status_field' => 'required|string|max:50', 'price_field' => 'required|string|max:50', 'text_status_map' => 'sometimes|array|max:30', 'text_status_map.*' => 'required|in:success,failed,pending', 'status_map' => 'present|array|max:20', 'status_map.*' => 'required|in:success,failed,pending', 'rules' => 'required|array|min:1|max:100', 'rules.*.name' => 'required|string|max:100', 'rules.*.event' => 'required|in:transaction,callback,status,balance,ticket', 'rules.*.outcome' => 'required|in:success,failed,pending', 'rules.*.active' => 'required|boolean', 'rules.*.template' => 'nullable|string|max:3000', 'rules.*.matcher' => 'sometimes|in:template,boundaries,regex', 'rules.*.keyword' => 'nullable|string|max:500', 'rules.*.regex' => 'nullable|string|max:3000', 'rules.*.case_sensitive' => 'sometimes|boolean', 'rules.*.priority' => 'sometimes|integer|min:0|max:9999', 'rules.*.captures' => 'sometimes|array|max:19', 'rules.*.captures.*.field' => 'required|in:'.implode(',', self::FIELDS), 'rules.*.captures.*.prefix' => 'present|nullable|string|max:500', 'rules.*.captures.*.suffix' => 'present|nullable|string|max:500', 'rules.*.captures.*.required' => 'required|boolean'])->validate();
+        Validator::make($config, ['message_field' => 'required|string|max:50', 'ref_field' => 'required|string|max:50', 'status_field' => 'required|string|max:50', 'price_field' => 'required|string|max:50', 'text_status_map' => 'sometimes|array|max:30', 'text_status_map.*' => 'required|in:success,failed,pending', 'status_map' => 'present|array|max:20', 'status_map.*' => 'required|in:success,failed,pending', 'rules' => 'required|array|min:1|max:100', 'rules.*.name' => 'required|string|max:100', 'rules.*.event' => 'required|in:transaction,callback,status,balance,ticket', 'rules.*.outcome' => 'sometimes|in:success,failed,pending', 'rules.*.active' => 'required|boolean', 'rules.*.template' => 'nullable|string|max:3000', 'rules.*.matcher' => 'sometimes|in:template,boundaries,regex', 'rules.*.keyword' => 'nullable|string|max:500', 'rules.*.regex' => 'nullable|string|max:3000', 'rules.*.case_sensitive' => 'sometimes|boolean', 'rules.*.priority' => 'sometimes|integer|min:0|max:9999', 'rules.*.captures' => 'sometimes|array|max:19', 'rules.*.captures.*.field' => 'required|in:'.implode(',', self::FIELDS), 'rules.*.captures.*.prefix' => 'present|nullable|string|max:500', 'rules.*.captures.*.suffix' => 'present|nullable|string|max:500', 'rules.*.captures.*.required' => 'required|boolean'])->validate();
         foreach ($config['rules'] as $r) {
             $this->validateRule($r);
         }
+
+        foreach ($config['rules'] as &$rule) {
+            unset($rule['outcome']);
+        }
+        unset($rule);
 
         return $config;
     }
@@ -35,28 +56,35 @@ class OtomaxParser
     {
         $capture = fn (string $field, string $prefix, string $suffix): array => compact('field', 'prefix', 'suffix') + ['required' => true];
 
-        $bill = ['name' => 'Cek tagihan berhasil (balasan awal)', 'event' => 'transaction', 'outcome' => 'success', 'active' => true, 'matcher' => 'regex', 'case_sensitive' => false, 'priority' => 15,
-            'regex' => '^#(?<id_transaksi>[0-9]+) (?<kode_produk>[^\\s.]+)\\.(?<tujuan>[^\\s]+) SUKSES\\. SN/Ref: (?<sn>.+ RC:00 INQUIRY)\\. Saldo .+ R#(?<refid>[A-Z0-9_-]*)$'];
+        $bill = ['name' => 'Cek tagihan berhasil (balasan awal)', 'event' => 'transaction', 'active' => true, 'matcher' => 'regex', 'case_sensitive' => false, 'priority' => 15,
+            'regex' => '^#(?<id_transaksi>[0-9]+) (?<kode_produk>[^\\s.]+)\\.(?<tujuan>[^\\s]+) (?<status>SUKSES)\\. SN/Ref: (?<sn>.+ RC:00 INQUIRY)\\. Saldo .+ R#(?<refid>[A-Z0-9_-]*)$'];
 
         return [
-            ['name' => 'Sukses OtomaX', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' SUKSES.', 'case_sensitive' => false, 'priority' => 0, 'captures' => [
+            ['name' => 'Sukses OtomaX', 'event' => 'callback', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' SUKSES.', 'case_sensitive' => false, 'priority' => 0, 'captures' => [
                 $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' SUKSES.'), $capture('sn', 'SN/Ref: ', '. Saldo '), $capture('saldo_awal', 'Saldo ', ' - '), $capture('harga', ' - ', ' = '), $capture('saldo_akhir', ' = ', ' @'), $capture('tanggal', '@', ' '), $capture('jam', ' ', ' R#'), $capture('refid', ' R#', ''),
             ]],
-            ['name' => 'Permintaan diterima', 'event' => 'transaction', 'outcome' => 'pending', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' akan diproses ', 'case_sensitive' => false, 'priority' => 10, 'captures' => [
+            ['name' => 'Permintaan diterima', 'event' => 'transaction', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' akan diproses ', 'case_sensitive' => false, 'priority' => 10, 'captures' => [
                 $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' akan diproses'), $capture('saldo_awal', 'Saldo ', ' - '), $capture('harga', ' - ', ' = '), $capture('saldo_akhir', ' = ', ''),
             ]],
-            ['name' => 'Cek tagihan OtomaX (RefID dari query)', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' RC:00 INQUIRY.', 'case_sensitive' => false, 'priority' => 15, 'captures' => [
-                $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' SUKSES.'), $capture('sn', 'SN/Ref: ', '. Saldo '), $capture('harga', ' - ', ' = '),
+            ['name' => 'Cek tagihan OtomaX (RefID dari query)', 'event' => 'callback', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => ' RC:00 INQUIRY.', 'case_sensitive' => false, 'priority' => 15, 'captures' => [
+                $capture('id_transaksi', '#', ' '), $capture('kode_produk', ' ', '.'), $capture('tujuan', '.', ' SUKSES.'), $capture('sn', 'SN/Ref: ', '. Saldo '), $capture('harga', ' - ', ' = '), $capture('status', ' ', '. SN/Ref: '),
             ]],
-            ['name' => 'Saldo akun', 'event' => 'balance', 'outcome' => 'pending', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => 'Informasi Akun Anda', 'case_sensitive' => false, 'priority' => 20, 'captures' => [$capture('saldo', 'Saldo : ', ' Bonus : ')]],
+            ['name' => 'Saldo akun', 'event' => 'balance', 'active' => true, 'matcher' => 'boundaries', 'template' => '', 'keyword' => 'Informasi Akun Anda', 'case_sensitive' => false, 'priority' => 20, 'captures' => [$capture('saldo', 'Saldo : ', ' Bonus : ')]],
+            self::duplicateExample(),
             $bill, self::failedBillExample(), self::failedBillExample('callback'), self::failedBillExample('status'),
         ];
     }
 
     public static function failedBillExample(string $event = 'transaction'): array
     {
-        return ['name' => 'Pascabayar gagal (Sal / alasan)', 'event' => $event, 'outcome' => 'failed', 'active' => true, 'matcher' => 'regex', 'case_sensitive' => false, 'priority' => 25,
-            'regex' => '^(?:[^\r\n]*? )?(?<kode_produk>[A-Z0-9_-]+)\.(?<tujuan>[0-9]+) GAGAL\. (?<keterangan>.+?)\. Sal(?:do)? (?<saldo>[0-9.]+) @(?<jam>[0-9]{2}:[0-9]{2}(?::[0-9]{2})?) R#(?<refid>[A-Z0-9_-]+)$'];
+        return ['name' => 'Pascabayar gagal (Sal / alasan)', 'event' => $event, 'active' => true, 'matcher' => 'regex', 'case_sensitive' => false, 'priority' => 25,
+            'regex' => '^(?:[^\r\n]*? )?(?<kode_produk>[A-Z0-9_-]+)\.(?<tujuan>[0-9]+) (?<status>GAGAL)\. (?<keterangan>.+?)\. Sal(?:do)? (?<saldo>[0-9.]+) @(?<jam>[0-9]{2}:[0-9]{2}(?::[0-9]{2})?) R#(?<refid>[A-Z0-9_-]+)$'];
+    }
+
+    public static function duplicateExample(string $event = 'transaction'): array
+    {
+        return ['name' => 'Sudah pernah (status dari pesan)', 'event' => $event, 'active' => true, 'matcher' => 'template', 'case_sensitive' => false, 'priority' => 30,
+            'template' => '[kode_produk].[tujuan] sdh pernah jam [jam] Hrg [harga], status [status]. SN/Ref: [sn]. Trx [abaikan]. Saldo [saldo] #[id_transaksi] R#[refid]'];
     }
 
     private function orderedRules(array $config): array
@@ -116,6 +144,12 @@ class OtomaxParser
 
     private function captureType(string $field, bool $hasSuffix): string
     {
+        if ($field === 'status') {
+            return '[\p{L}][\p{L} _-]*?';
+        }
+        if ($field === 'sn') {
+            return $hasSuffix ? '.*?' : '.*';
+        }
         if ($field === 'jam') {
             return '[0-9]{2}:[0-9]{2}(?::[0-9]{2})?';
         }
@@ -152,7 +186,7 @@ class OtomaxParser
         } elseif ($mode === 'regex') {
             $patterns[] = ['expression' => $this->rawPattern($rule['regex'], $rule), 'required' => true, 'field' => 'RegEx'];
         } else {
-            $patterns[] = ['expression' => $this->pattern($rule['template']), 'required' => true, 'field' => 'Template'];
+            $patterns[] = ['expression' => $this->pattern($rule['template'], $rule['case_sensitive'] ?? false), 'required' => true, 'field' => 'Template'];
         }
         foreach ($patterns as $pattern) {
             $matched = @preg_match($pattern['expression'], $message, $matches, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL);
@@ -179,6 +213,15 @@ class OtomaxParser
             }
         }
 
+        if (! $missing && ! isset($fields['status']) && in_array($mode, ['template', 'boundaries'], true)) {
+            $literal = $mode === 'template' ? preg_replace('/\[[a-z_]+\]/', '', $rule['template']) : ($rule['keyword'] ?? '');
+            preg_match_all('/\b(akan diproses|menunggu jawaban|sukses|berhasil|gagal|pending|proses)\b/iu', $literal, $statuses);
+            if (count($statuses[1]) === 1 && preg_match('/\b'.preg_quote($statuses[1][0], '/').'\b/iu', $message, $token, PREG_OFFSET_CAPTURE) === 1) {
+                $fields['status'] = $token[0][0];
+                $spans[] = ['field' => 'status', 'value' => $token[0][0], 'start' => mb_strlen(substr($message, 0, $token[0][1])), 'length' => mb_strlen($token[0][0])];
+            }
+        }
+
         return ['matched' => ! $missing && count($patterns) > 0 && ($mode === 'template' || count($fields) > 0), 'fields' => $fields, 'captures' => $spans, 'error' => null, 'reason' => $missing ? 'Belum tertangkap: '.implode(', ', $missing).'.' : (count($fields) ? 'Data berhasil ditangkap.' : 'Tidak ada field yang tertangkap.'), 'expression' => implode("\n", array_column($patterns, 'expression'))];
     }
 
@@ -189,17 +232,13 @@ class OtomaxParser
         foreach ($this->orderedRules($config) as $rule) {
             $eligible = ($rule['active'] ?? false) && $rule['event'] === $event;
             $match = $eligible ? $this->matchRule($rule, $message) : ['matched' => false, 'fields' => [], 'captures' => [], 'error' => null, 'reason' => ! ($rule['active'] ?? false) ? 'Penangkap nonaktif.' : 'Jenis jawaban berbeda.', 'expression' => ''];
-            if ($match['matched'] && isset($match['fields']['status']) && ($config['text_status_map'][mb_strtoupper($match['fields']['status'])] ?? null) !== $rule['outcome']) {
-                $match['reason'] = 'Status teks tidak sesuai hasil penangkap ini.';
-                $match['matched'] = false;
-            }
-            $checks[] = ['index' => $rule['_index'], 'name' => $rule['name'], 'outcome' => $rule['outcome'], 'event' => $rule['event'], 'priority' => $rule['priority'] ?? $rule['_index'], 'eligible' => $eligible, ...$match];
+            $checks[] = ['index' => $rule['_index'], 'name' => $rule['name'], 'outcome' => $this->status($config, $match['fields']['status'] ?? '') ?? 'pending', 'event' => $rule['event'], 'priority' => $rule['priority'] ?? $rule['_index'], 'eligible' => $eligible, ...$match];
         }
 
         return [...$this->parse($config, $event, $input), 'checks' => $checks, 'message' => $message];
     }
 
-    public function pattern(string $template): string
+    public function pattern(string $template, bool $caseSensitive = false): string
     {
         $parts = preg_split('/(\[[a-z_]+\])/', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
         $seen = [];
@@ -207,11 +246,21 @@ class OtomaxParser
         foreach ($parts as $part) {
             if (preg_match('/^\[([a-z_]+)\]$/', $part, $m)) {
                 $key = $m[1];
+                if ($key === 'abaikan') {
+                    $regex .= '.*?';
+
+                    continue;
+                }
                 if (! in_array($key, self::FIELDS, true) || in_array($key, $seen, true)) {
                     throw ValidationException::withMessages(['template' => 'Placeholder tidak dikenal atau berulang: '.$key]);
                 }
                 $seen[] = $key;
-                $type = in_array($key, ['harga', 'saldo', 'saldo_awal', 'saldo_akhir', 'amount', 'tagihan', 'admin', 'total_tagihan'], true) ? '[0-9.,]+' : (in_array($key, ['kode_produk', 'tujuan', 'refid', 'id_transaksi'], true) ? '[^\s]+?' : '.+?');
+                $type = in_array($key, ['harga', 'saldo', 'saldo_awal', 'saldo_akhir', 'amount', 'tagihan', 'admin', 'total_tagihan'], true) ? '[0-9.,]+' : (in_array($key, ['kode_produk', 'tujuan', 'refid', 'id_transaksi'], true) ? '[^\s]+?' : ($key === 'sn' ? '.*?' : '.+?'));
+                if ($key === 'status') {
+                    $type = '[\p{L}][\p{L} _-]*?';
+                } elseif ($key === 'refid') {
+                    $type = '[^\s]*?';
+                }
                 $regex .= '(?P<'.$key.'>'.$type.')';
             } else {
                 $regex .= preg_replace('/\s+/', '\\s+', preg_quote($part, '~'));
@@ -221,7 +270,7 @@ class OtomaxParser
             throw ValidationException::withMessages(['template' => 'Pisahkan placeholder dengan teks atau spasi.']);
         }
 
-        return '~(*LIMIT_MATCH=100000)(*LIMIT_DEPTH=1000)^\s*'.$regex.'\s*$~su';
+        return '~(*LIMIT_MATCH=100000)(*LIMIT_DEPTH=1000)^\s*'.$regex.'\s*$~su'.($caseSensitive ? '' : 'i');
     }
 
     public static function amount(mixed $value): ?int
@@ -242,6 +291,7 @@ class OtomaxParser
         $fields = [];
         $outcome = null;
         $names = [];
+        $statusError = null;
         $message = is_array($input) ? (string) ($input[$config['message_field'] ?? 'message'] ?? '') : $input;
         if (strlen($message) > 20000) {
             return ['status' => 'pending', 'fields' => [], 'matched' => [], 'error' => 'Respons melebihi batas ukuran.'];
@@ -258,42 +308,17 @@ class OtomaxParser
                 continue;
             }
             $values = $capture['fields'];
-            if (isset($values['status'])) {
-                $mappedText = $config['text_status_map'][mb_strtoupper(trim($values['status']))] ?? null;
-                if (! $mappedText) {
-                    return ['status' => 'pending', 'fields' => $values, 'matched' => [$rule['name']], 'error' => 'Status teks belum dipetakan.'];
-                } if ($mappedText !== $rule['outcome']) {
-                    continue;
-                }
-            }
-            if ($outcome !== null && ($outcome !== $rule['outcome'] || array_diff_assoc(array_intersect_key($fields, $values), $values))) {
+            $mappedText = $this->status($config, $values['status'] ?? '');
+            $result = $mappedText ?? 'pending';
+            if ($outcome !== null && ($outcome !== $result || array_diff_assoc(array_intersect_key($fields, $values), $values))) {
                 return ['status' => 'pending', 'fields' => [], 'matched' => [...$names, $rule['name']], 'error' => 'Beberapa pola menghasilkan data berbeda.'];
             }
             $fields = [...$values, ...$fields];
-            $outcome = $rule['outcome'];
+            $outcome = $result;
+            if (in_array($event, ['transaction', 'callback', 'status'], true) && $mappedText === null) {
+                $statusError = isset($values['status']) ? 'Status teks belum dipetakan.' : 'Status belum tertangkap. Tambahkan [status] atau data tangkapan status pada penangkap.';
+            }
             $names[] = $rule['name'];
-        }
-        if (in_array($outcome, [null, 'failed'], true) && in_array($event, ['transaction', 'status', 'callback'], true)) {
-            $failure = $this->matchRule(self::failedBillExample($event), $message);
-            if ($failure['matched'] && ! $failure['error']) {
-                $fields += $failure['fields'];
-                $outcome = 'failed';
-                $names[] = 'Pascabayar gagal (Sal / alasan)';
-            }
-        }
-        if ($outcome === null && in_array($event, ['transaction', 'status', 'callback'], true)) {
-            $duplicate = $this->matchRule([
-                'matcher' => 'template', 'case_sensitive' => false,
-                'template' => '[kode_produk].[tujuan] sdh pernah jam [jam] Hrg [harga], status [status]. SN/Ref: [sn]. Trx [keterangan]. Saldo [saldo] #[id_transaksi] R#[refid]',
-            ], $message);
-            if ($duplicate['matched'] && ! $duplicate['error']) {
-                $mapped = $config['text_status_map'][mb_strtoupper(trim($duplicate['fields']['status']))] ?? null;
-                if ($mapped !== null) {
-                    $fields = $duplicate['fields'];
-                    $outcome = $mapped;
-                    $names[] = 'Jawaban standar sdh pernah OtomaX';
-                }
-            }
         }
         if (is_array($input)) {
             foreach (['refid' => 'ref_field', 'harga' => 'price_field'] as $key => $setting) {
@@ -308,12 +333,11 @@ class OtomaxParser
             }
             $raw = $input[$config['status_field'] ?? 'status'] ?? null;
             $mapped = is_scalar($raw) ? ($config['status_map'][(string) $raw] ?? null) : null;
-            if ($outcome !== null && $mapped !== null && $outcome !== $mapped) {
+            if ($statusError === null && $outcome !== null && $mapped !== null && $outcome !== $mapped) {
                 return ['status' => 'pending', 'fields' => [], 'matched' => $names, 'error' => 'Status query dan template bertentangan.'];
             }
-            $outcome ??= $mapped;
         }
 
-        return ['status' => $outcome ?? 'pending', 'fields' => $fields, 'matched' => $names, 'error' => $outcome === null ? 'Belum ada pola/status yang cocok.' : null];
+        return ['status' => $outcome ?? 'pending', 'fields' => $fields, 'matched' => $names, 'error' => $outcome === null ? 'Belum ada penangkap aktif yang cocok. Status query tidak digunakan tanpa penangkap.' : $statusError];
     }
 }

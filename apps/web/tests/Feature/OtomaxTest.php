@@ -6,6 +6,7 @@ use App\Jobs\ImportOtomaxProducts;
 use App\Jobs\ProcessCustomerOrder;
 use App\Models\CatalogProduct;
 use App\Models\Customer;
+use App\Models\CustomerLedger;
 use App\Models\CustomerNotice;
 use App\Models\CustomerOrder;
 use App\Models\OtomaxEvent;
@@ -45,6 +46,63 @@ use Tests\TestCase;
 class OtomaxTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_unconfigured_duplicate_reply_and_query_status_never_complete_a_transaction(): void
+    {
+        $parser = app(OtomaxParser::class);
+        $message = 'CEKDANA.08123456789 sdh pernah jam 22:29 Hrg 5, status Sukses. SN/Ref: DNID TEST. Trx ke-2/hr: CEKDANA.2.08123456789.pin. Saldo 936 #266178978 R#DTTEST123';
+        $config = OtomaxParser::defaults();
+        foreach (['transaction', 'callback', 'status'] as $event) {
+            $result = $parser->inspect($config, $event, ['status' => '20', 'refid' => 'DTTEST123', 'message' => $message]);
+            $this->assertSame('pending', $result['status']);
+            $this->assertSame([], $result['matched']);
+            $this->assertNotNull($result['error']);
+            $this->assertSame([], array_filter($result['checks'], fn ($check) => $check['matched']));
+        }
+        $connection = $this->connection();
+        $order = $this->order($connection);
+        Http::fake(fn ($request) => Http::response(['status' => '40', 'refid' => $request['refID'], 'message' => 'Jawaban belum terdaftar']));
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame(85000, $order->customer->fresh()->balance);
+        $this->assertSame(0, CustomerLedger::where('reason', 'refund')->count());
+    }
+
+    public function test_one_duplicate_template_reads_both_statuses_and_repeated_ignored_text_with_empty_failed_sn(): void
+    {
+        $parser = app(OtomaxParser::class);
+        $rule = OtomaxParser::duplicateExample();
+        $rule['template'] = 'Info [abaikan] | '.$rule['template'].' | [abaikan]';
+        $config = $parser->validate([...OtomaxParser::defaults(), 'rules' => [$rule]]);
+        foreach (['Sukses' => 'success', 'Gagal' => 'failed'] as $status => $expected) {
+            $sn = $expected === 'success' ? 'DNID TEST' : '';
+            $message = 'Info bebas | CEKDANA.08123456789 sdh pernah jam 22:29 Hrg 5, status '.$status.'. SN/Ref: '.$sn.'. Trx ke-2/hr: CEKDANA.2.08123456789.pin. Saldo 936 #266178978 R#DTTEST123 | akhir berubah';
+            $result = $parser->inspect($config, 'transaction', $message);
+            $this->assertSame($expected, $result['status']);
+            $this->assertNull($result['error']);
+            $this->assertTrue($result['checks'][0]['matched']);
+            $this->assertSame('DTTEST123', $result['fields']['refid']);
+            $this->assertSame('266178978', $result['fields']['id_transaksi']);
+            $this->assertArrayNotHasKey('abaikan', $result['fields']);
+            $this->assertFalse(collect($result['checks'][0]['captures'])->contains('field', 'abaikan'));
+        }
+    }
+
+    public function test_old_outcome_setting_cannot_override_captured_status_and_a_statusless_regex_stays_pending(): void
+    {
+        $parser = app(OtomaxParser::class);
+        $rule = [...OtomaxParser::duplicateExample(), 'outcome' => 'success'];
+        $config = [...OtomaxParser::defaults(), 'rules' => [$rule]];
+        $message = 'CEKDANA.08123456789 sdh pernah jam 22:29 Hrg 5, status Gagal. SN/Ref: . Trx ke-2/hr: DATA. Saldo 936 #266178978 R#DTTEST123';
+        $this->assertSame('failed', $parser->parse($config, 'transaction', $message)['status']);
+        $this->assertArrayNotHasKey('outcome', $parser->validate($config)['rules'][0]);
+        $this->assertSame('pending', $parser->parse($config, 'transaction', ['status' => '20', 'message' => $message])['status']);
+        $this->assertNotNull($parser->parse($config, 'transaction', str_replace('Gagal.', 'Unknown.', $message))['error']);
+        $config['rules'] = [['name' => 'Tanpa status', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'regex', 'regex' => 'SN:(?<sn>.+)']];
+        $result = $parser->parse($config, 'callback', ['status' => '20', 'message' => 'SN:TEST']);
+        $this->assertSame('pending', $result['status']);
+        $this->assertStringContainsString('Status belum tertangkap', $result['error']);
+    }
 
     public function test_signature_vectors_preserve_case_and_use_binary_sha1_base64url(): void
     {
@@ -120,7 +178,14 @@ class OtomaxTest extends TestCase
     private function connection(?Store $store = null): SupplierConnection
     {
         $store ??= $this->shop();
-        $profile = OtomaxProfile::create(['store_id' => $store->id, 'type' => 'response', 'name' => 'Format A', 'config' => OtomaxParser::defaults()]);
+        $config = OtomaxParser::defaults();
+        foreach (['transaction', 'callback', 'status'] as $event) {
+            $config['rules'][] = OtomaxParser::duplicateExample($event);
+            foreach (['pasti', 'terkonfirmasi'] as $ending) {
+                $config['rules'][] = ['name' => 'Status '.$ending, 'event' => $event, 'active' => true, 'template' => '[status] '.$ending];
+            }
+        }
+        $profile = OtomaxProfile::create(['store_id' => $store->id, 'type' => 'response', 'name' => 'Format A', 'config' => $config]);
 
         return SupplierConnection::create(['store_id' => $store->id, 'kind' => 'otomax', 'slot' => Str::uuid(), 'name' => 'Supplier uji', 'response_profile_id' => $profile->id, 'enabled' => true, 'credentials' => ['member_id' => 'DEMO', 'pin' => '1111', 'password' => 'test-only', 'callback_token' => str_repeat('a', 48)], 'settings' => ['base_url' => 'http://8.8.8.8:6969', 'callback_ips' => ['8.8.8.8'], 'transaction_path' => '/trx', 'balance_path' => '/balance', 'ticket_path' => '/ticket', 'status_path' => '', 'catalog_hours' => 24, 'ticket_cmd' => false, 'price_limit_ack' => true]]);
     }
@@ -224,7 +289,8 @@ class OtomaxTest extends TestCase
         $this->assertSame('001/hasil', $r['fields']['sn']);
         $this->assertSame('12345', $r['fields']['id_transaksi']);
         $c['rules'][] = [...$c['rules'][0], 'outcome' => 'failed', 'name' => 'Konflik'];
-        $this->assertNotNull($p->parse($c, 'callback', $this->message('REF1'))['error']);
+        $this->assertNull($p->parse($c, 'callback', $this->message('REF1'))['error']);
+        $this->assertSame('success', $p->parse($c, 'callback', $this->message('REF1'))['status']);
         $this->assertNotNull($p->parse(OtomaxParser::defaults(), 'callback', ['refid' => 'LAIN', 'status' => '20', 'price' => '10000', 'message' => $this->message('REF1')])['error']);
     }
 
@@ -568,13 +634,15 @@ class OtomaxTest extends TestCase
     {
         $message = 'CEKGOJEK.08123456789 sdh pernah jam 16:52 Hrg 5, status Sukses. SN/Ref: 628123456789. Trx ke-2/hr: CEKGOJEK.2.08123456789.pin. Saldo 1.011 #264447712 R#TR12342';
         $parser = app(OtomaxParser::class);
-        $result = $parser->parse(OtomaxParser::defaults(), 'transaction', ['status' => '20', 'message' => $message]);
+        $config = OtomaxParser::defaults();
+        $config['rules'][] = OtomaxParser::duplicateExample();
+        $result = $parser->parse($config, 'transaction', ['status' => '20', 'message' => $message]);
         $this->assertNull($result['error']);
         $this->assertSame('success', $result['status']);
         $this->assertSame('5', $result['fields']['harga']);
         $this->assertSame('628123456789', $result['fields']['sn']);
         $this->assertSame('TR12342', $result['fields']['refid']);
-        $conflict = $parser->parse(OtomaxParser::defaults(), 'transaction', ['status' => '40', 'message' => $message]);
+        $conflict = $parser->parse($config, 'transaction', ['status' => '40', 'message' => $message]);
         $this->assertNotNull($conflict['error']);
         $this->assertSame('pending', $conflict['status']);
     }
@@ -689,7 +757,7 @@ class OtomaxTest extends TestCase
         $this->actingAs($connection->store->owner)->get($panelUrl)->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('attempts.0.supplier_response.message', $message)
-                ->where('attempts.0.supplier_response.parser_error', 'Belum ada pola/status yang cocok.')
+                ->where('attempts.0.supplier_response.parser_error', 'Belum ada penangkap aktif yang cocok. Status query tidak digunakan tanpa penangkap.')
                 ->missing('attempts.0.request_snapshot'));
         $other = $this->shop();
         $this->actingAs($other->owner)->get($panelUrl)->assertForbidden();
@@ -850,14 +918,14 @@ class OtomaxTest extends TestCase
     public function test_named_regex_and_unicode_capture_positions_are_reported_without_losing_digits(): void
     {
         $parser = app(OtomaxParser::class);
-        $rule = ['name' => 'RegEx sukses', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'regex', 'regex' => 'SN: (?<sn>.+?) END ref=(?<refid>\S+)', 'case_sensitive' => false];
+        $rule = ['name' => 'RegEx sukses', 'event' => 'callback', 'outcome' => 'success', 'active' => true, 'matcher' => 'regex', 'regex' => '(?<status>SUKSES) SN: (?<sn>.+?) END ref=(?<refid>\S+)', 'case_sensitive' => false];
         $config = [...OtomaxParser::defaults(), 'rules' => [$rule]];
         $parser->validate($config);
-        $text = 'Pembayaran 😀 SN: 001/hasil END ref=REF1';
+        $text = 'Pembayaran 😀 SUKSES SN: 001/hasil END ref=REF1';
         $result = $parser->inspect($config, 'callback', $text);
         $this->assertSame('001/hasil', $result['fields']['sn']);
         $this->assertSame('success', $result['status']);
-        $span = $result['checks'][0]['captures'][0];
+        $span = collect($result['checks'][0]['captures'])->firstWhere('field', 'sn');
         $this->assertSame('001/hasil', mb_substr($text, $span['start'], $span['length']));
     }
 
@@ -910,7 +978,9 @@ class OtomaxTest extends TestCase
     public function test_priority_does_not_allow_conflicting_catchers_to_confirm_financial_status(): void
     {
         $rule = OtomaxParser::examples()[0];
-        $second = [...$rule, 'name' => 'Konflik', 'outcome' => 'failed', 'priority' => 1];
+        $second = [...$rule, 'name' => 'Konflik', 'priority' => 1];
+        $second['captures'][0]['prefix'] = 'R#';
+        $second['captures'][0]['suffix'] = '';
         $config = [...OtomaxParser::defaults(), 'rules' => [$second, $rule]];
         $result = app(OtomaxParser::class)->inspect($config, 'callback', $this->message('REF1'));
         $this->assertSame('Sukses OtomaX', $result['checks'][0]['name']);
@@ -1013,7 +1083,7 @@ class OtomaxTest extends TestCase
         SupplierProduct::create(['store_id' => $connection->store_id, 'connection_id' => $next->id, 'sku' => 'TEST2', 'mode' => 'prepaid', 'name' => 'Sumber cadangan', 'kind' => 'ppob', 'service' => 'Pulsa', 'category' => 'Umum', 'cost' => 10000, 'available' => true, 'observed_at' => now()]);
         $first = $order->attempts()->firstOrFail();
         $second = $order->attempts()->create(['reference' => 'DTFALLBACK', 'position' => 2, 'source' => 'otomax', 'cost' => 10000, 'status' => 'ready', 'request_snapshot' => [...$first->request_snapshot, 'sku' => 'TEST2', 'connection_id' => $next->id, 'otomax' => app(OtomaxClient::class)->snapshot($next)]]);
-        Http::fake(fn ($request) => Http::response($request['product'] === 'TEST' ? ['status' => '40', 'price' => 10000, 'refid' => $request['refID'], 'message' => 'GAGAL '.$request['refID'].' KET:SUMBER PERTAMA GANGGUAN'] : ['status' => '20', 'price' => 10000, 'refid' => $request['refID']]));
+        Http::fake(fn ($request) => Http::response($request['product'] === 'TEST' ? ['status' => '40', 'price' => 10000, 'refid' => $request['refID'], 'message' => 'GAGAL '.$request['refID'].' KET:SUMBER PERTAMA GANGGUAN'] : ['status' => '20', 'price' => 10000, 'refid' => $request['refID'], 'message' => str_replace('TEST.', $request['product'].'.', $this->message($request['refID']))]));
         app(CustomerFulfillment::class)->run($order);
         $this->assertSame('success', $order->fresh()->status);
         $this->assertNull($order->fresh()->supplierDescription());

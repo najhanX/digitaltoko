@@ -1072,7 +1072,8 @@
         "title": "Siapkan kelompok jawaban",
         "paragraphs": [
           "Buka Produk & harga → Supplier OtomaX → Kelompok jawaban. Buat kelompok dengan nama jelas dan tambahkan penangkap untuk balasan awal, sukses, gagal pasti, pending, saldo serta tiket deposit.",
-          "Satu event dapat mempunyai beberapa format. Bedakan nomor transaksi supplier, kode produk, tujuan, SN, harga, saldo dan refID. Pilih penangkap pada dropdown sebelum mengedit aturannya."
+          "Satu event dapat mempunyai beberapa format. Bedakan nomor transaksi supplier, kode produk, tujuan, SN, harga, saldo dan refID. Pilih penangkap pada dropdown sebelum mengedit aturannya.",
+          "Status transaksi dibaca dari [status], bukan pilihan hasil manual. Contoh satu pola bisa membaca Sukses atau Gagal. Pakai [abaikan] untuk teks yang tidak perlu disimpan; placeholder ini boleh diulang. SN kosong pada jawaban gagal tetap dapat dibaca."
         ],
         "visual": {
           "image": "/guides/steps/otomax-group.jpg",
@@ -1101,7 +1102,8 @@
         "title": "Uji penangkap",
         "paragraphs": [
           "Gunakan menu Penguji jawaban yang terpisah. Tempel balasan supplier utuh, pilih kelompok dan jenis respons. Pastikan status serta field tertangkap dengan benar.",
-          "Nomor setelah # dapat merupakan ID supplier; nilai setelah R# merupakan refID. Format tiap supplier bisa berbeda. Jika saldo diikuti newline, akhiran satu spasi belum tentu cocok. Jangan memaksakan semua balasan menjadi sukses."
+          "Nomor setelah # dapat merupakan ID supplier; nilai setelah R# merupakan refID. Format tiap supplier bisa berbeda. Jika saldo diikuti newline, akhiran satu spasi belum tentu cocok. Jangan memaksakan semua balasan menjadi sukses.",
+          "Jika tidak ada penangkap aktif yang cocok, transaksi tetap pending walaupun query callback berisi status=20 atau 40. Kode query hanya memeriksa kesesuaian status yang sudah tertangkap. Pilih jenis balasan yang sesuai; laporan callback dan balasan awal diperiksa terpisah."
         ],
         "visual": {
           "image": "/guides/steps/otomax-tester.jpg",
@@ -2084,7 +2086,8 @@
       {
         "title": "Aktifkan modul",
         "paragraphs": [
-          "Pada Pembayaran pelanggan beli modul QRIS custom jika belum berlisensi. Lisensi melekat pada toko, dibeli sekali dan digunakan selama sewa aktif; tidak bisa dipindah/direfund."
+          "Pada Pembayaran pelanggan beli modul QRIS custom jika belum berlisensi. Lisensi melekat pada toko, dibeli sekali dan digunakan selama sewa aktif; tidak bisa dipindah/direfund.",
+          "Sesuaikan pesan aplikasi melalui Penangkap QRIS → Atur format. Ganti nominal dengan [nominal], lalu gunakan Uji contoh sebelum menyimpan. Uji penangkap juga tersedia sebagai tombol terpisah; uji tidak mengubah pembayaran atau saldo."
         ],
         "visual": {
           "image": "/guides/steps/custom-module.jpg",

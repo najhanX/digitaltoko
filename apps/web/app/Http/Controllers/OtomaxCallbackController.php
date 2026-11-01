@@ -37,6 +37,11 @@ class OtomaxCallbackController extends Controller
         if (! $attempt) {
             $inquiry = CustomerInquiry::where('store_id', $connection->store_id)->where('connection_id', $connection->id)->whereIn('reference', $references)->first();
             if (! $inquiry) {
+                if ($current['error']) {
+                    OtomaxEvent::create(['store_id' => $connection->store_id, 'connection_id' => $connection->id, 'operation' => 'callback', 'status' => 'unmatched', 'reference' => isset($current['fields']['refid']) && strlen($current['fields']['refid']) <= 100 ? $current['fields']['refid'] : null,
+                        'data' => ['message' => (string) ($input[app(OtomaxClient::class)->profile($connection)['message_field'] ?? 'message'] ?? ''), 'parsed' => $current]]);
+                }
+
                 return response()->json(['status' => 'IGNORED']);
             }
             $snapshot = $inquiry->data;

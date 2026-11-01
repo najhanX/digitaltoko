@@ -108,7 +108,7 @@ class PostpaidCommerceTest extends TestCase
                 return Http::response(['status' => $this->paymentStatus === 'failed' ? '40' : '1', 'price' => 103000 + $this->otomaxAdjustment, 'refid' => $ref, 'message' => $sku.'.'.$dest.' '.($this->paymentStatus === 'failed' ? 'GAGAL' : 'PENDING').'. R#'.$ref]);
             }
 
-            return Http::response(['status' => '20', 'price' => $this->bill + $this->admin + $this->otomaxAdjustment, 'refid' => $ref, 'message' => '#2 '.$sku.'.'.$dest.' SUKSES. SN/Ref: NAMA:PELANGGAN/TAG:'.$this->bill.'/ADMIN:'.$this->admin.'/TTAG:'.($this->bill + $this->admin).'. Saldo 200.000 - 102.500 = 97.500 @29/10 12:00:00 R#'.$ref]);
+            return Http::response(['status' => '20', 'price' => $this->bill + $this->admin + $this->otomaxAdjustment, 'refid' => $ref, 'message' => '#2 '.$sku.'.'.$dest.' SUKSES. SN/Ref: NAMA:PELANGGAN/TAG:'.$this->bill.'/ADMIN:'.$this->admin.'/TTAG:'.($this->bill + $this->admin).'. Saldo 200.000 - '.number_format($this->bill + $this->admin + $this->otomaxAdjustment, 0, ',', '.').' = '.number_format(200000 - ($this->bill + $this->admin + $this->otomaxAdjustment), 0, ',', '.').' @29/10 12:00:00 R#'.$ref]);
         });
     }
 
@@ -116,7 +116,11 @@ class PostpaidCommerceTest extends TestCase
     {
         $owner = User::factory()->create(['role' => 'owner', 'verification_status' => 'approved', 'hanshop_user_id' => 'HD'.fake()->unique()->numerify('########')]);
         $store = Store::create(['owner_id' => $owner->id, 'name' => 'Toko Pasca', 'slug' => 'pasca-'.Str::lower(Str::random(8)), 'category' => 'full', 'plan' => 'galaxy', 'status' => 'active', 'expires_at' => now()->addMonth()]);
-        $profile = OtomaxProfile::create(['store_id' => $store->id, 'type' => 'response', 'name' => 'Pasca', 'config' => OtomaxParser::defaults()]);
+        $config = OtomaxParser::defaults();
+        foreach (['transaction', 'callback', 'status'] as $event) {
+            $config['rules'][] = ['name' => 'Status bayar ringkas', 'event' => $event, 'active' => true, 'template' => '[kode_produk].[tujuan] [status]. R#[refid]'];
+        }
+        $profile = OtomaxProfile::create(['store_id' => $store->id, 'type' => 'response', 'name' => 'Pasca', 'config' => $config]);
         $connection = SupplierConnection::create(['store_id' => $store->id, 'kind' => 'otomax', 'slot' => (string) Str::uuid(), 'name' => 'Supplier Pasca', 'enabled' => true, 'synced_at' => now(), 'response_profile_id' => $profile->id,
             'credentials' => ['member_id' => 'DEMO', 'pin' => '1234', 'password' => 'TEST', 'callback_token' => str_repeat('p', 48)],
             'settings' => ['base_url' => 'http://8.8.8.8:6969', 'transaction_path' => '/trx', 'balance_path' => '/balance', 'status_path' => '', 'callback_ips' => ['127.0.0.1'], 'catalog_hours' => 24]]);

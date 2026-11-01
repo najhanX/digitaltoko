@@ -26,7 +26,7 @@ test('adding an example creates an independent catcher and retains its event for
     example.name='Pending format kedua';
     assert.equal(pending.name,'Permintaan diterima');
     assert.equal(example.event,'transaction');
-    assert.equal(example.outcome,'pending');
+    assert.equal(example.outcome,undefined);
     assert.equal(newResponseRule().template,'');
     assert.equal(responseRuleSelection([],0),null);
 });
@@ -47,7 +47,7 @@ test('highlighting preserves Unicode, escapes through React text, and rejects ov
 
 test('deposit starter is complete, pending and independent for each new catcher',()=>{
     const rule=newResponseRule(depositResponseExample());
-    assert.equal(rule.event,'ticket');assert.equal(rule.outcome,'pending');
+    assert.equal(rule.event,'ticket');assert.equal(rule.outcome,undefined);
     assert.equal(incompleteResponseRule(rule),false);
     assert.deepEqual(rule.captures,[{field:'amount',prefix:'Silakan Transfer Rp. ',suffix:' (HARUS SAMA)',required:true}]);
     rule.captures[0].prefix='Changed';

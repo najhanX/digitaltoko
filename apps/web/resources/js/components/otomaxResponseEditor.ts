@@ -1,5 +1,5 @@
 export type ResponseCapture={field:string;prefix:string|null;suffix:string|null;required:boolean};
-export type ResponseRule = {name:string;event:string;outcome:string;active:boolean;template?:string;matcher?:'template'|'boundaries'|'regex';keyword?:string;regex?:string;captures?:ResponseCapture[];case_sensitive?:boolean;priority?:number};
+export type ResponseRule = {name:string;event:string;outcome?:string;active:boolean;template?:string;matcher?:'template'|'boundaries'|'regex';keyword?:string;regex?:string;captures?:ResponseCapture[];case_sensitive?:boolean;priority?:number};
 export type ResponseConfig={text_status_map?:Record<string,string>;message_field:string;ref_field:string;status_field:string;price_field:string;status_map:Record<string,string>;rules:ResponseRule[]};
 export const responseFields:Record<string,string>={id_transaksi:'ID transaksi supplier',kode_produk:'Kode produk',tujuan:'Tujuan',status:'Status teks',sn:'SN / referensi hasil',refid:'RefID pesanan',harga:'Harga beli',saldo_awal:'Saldo awal',saldo_akhir:'Saldo akhir',saldo:'Saldo',tanggal:'Tanggal',jam:'Jam',keterangan:'Keterangan',amount:'Nominal',nama_pelanggan:'Nama pelanggan tagihan',tagihan:'Tagihan pokok',admin:'Admin tagihan',total_tagihan:'Total tagihan termasuk admin',periode:'Periode tagihan'};
 export const responseEvents:Record<string,string> = {
@@ -26,7 +26,8 @@ export function restoreResponseRule(rules:ResponseRule[], saved:string|null): nu
 }
 
 export function newResponseRule(preset?:ResponseRule): ResponseRule {
-    return preset?{...preset,captures:preset.captures?.map(capture=>({...capture}))}:{name:'Penangkap baru',event:'transaction',outcome:'pending',active:true,template:'',matcher:'boundaries',keyword:'',captures:[],case_sensitive:false,priority:0};
+    const rule:ResponseRule=preset?{...preset,captures:preset.captures?.map(capture=>({...capture}))}:{name:'Penangkap baru',event:'transaction',active:true,template:'',matcher:'boundaries',keyword:'',captures:[],case_sensitive:false,priority:0};
+    delete rule.outcome;return rule;
 }
 
 export function incompleteResponseRule(rule:ResponseRule): boolean {
@@ -47,5 +48,5 @@ export function responseSegments(text:string,captures:CaptureSpan[]):{text:strin
 }
 
 export function depositResponseExample(): ResponseRule {
-    return {name:'Instruksi tiket deposit',event:'ticket',outcome:'pending',active:true,matcher:'boundaries',keyword:'Silakan Transfer Rp.',case_sensitive:false,priority:0,captures:[{field:'amount',prefix:'Silakan Transfer Rp. ',suffix:' (HARUS SAMA)',required:true}]};
+    return {name:'Instruksi tiket deposit',event:'ticket',active:true,matcher:'boundaries',keyword:'Silakan Transfer Rp.',case_sensitive:false,priority:0,captures:[{field:'amount',prefix:'Silakan Transfer Rp. ',suffix:' (HARUS SAMA)',required:true}]};
 }

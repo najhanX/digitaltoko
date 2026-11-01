@@ -46,6 +46,8 @@ class SupplierSimulatorTest extends TestCase
         $owner = User::factory()->create();
         $store = Store::create(['owner_id' => $owner->id, 'slug' => 'lab-minimum', 'name' => 'Lab', 'sandbox' => true, 'category' => 'web', 'plan' => 'galaxy', 'status' => 'active', 'expires_at' => now()->addMonth()]);
         $profileConfig = OtomaxParser::defaults();
+        $profileConfig['rules'][] = ['name' => 'Gagal ringkas simulator', 'event' => 'callback', 'active' => true, 'template' => 'GAGAL'];
+        $profileConfig['rules'][] = ['name' => 'Gagal awal simulator', 'event' => 'transaction', 'active' => true, 'template' => 'GAGAL'];
         $profileConfig['rules'][] = [...$profileConfig['rules'][0], 'event' => 'transaction'];
         $profile = OtomaxProfile::create(['store_id' => $store->id, 'type' => 'response', 'name' => 'Lab', 'config' => $profileConfig]);
         $connection = SupplierConnection::create(['store_id' => $store->id, 'kind' => 'otomax', 'slot' => 'lab-a', 'name' => 'Simulator A', 'enabled' => true, 'synced_at' => now(), 'response_profile_id' => $profile->id,
