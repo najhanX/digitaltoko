@@ -2148,7 +2148,7 @@
       {
         "title": "Download dan pasang aplikasi",
         "paragraphs": [
-          "Pada Pembayaran pelanggan, klik Hans Forward → Download APK Android · ARM64. APK disediakan DigitalToko; pasang pada HP yang menerima notifikasi pembayaran. Jika APK belum tersedia, hubungi administrator.",
+          "Pada Pembayaran pelanggan klik Hans Forward → Download paket instalasi ZIP. Ekstrak ZIP; di dalamnya ada HansDev-Forwarder.apk dan platform-tools Windows/macOS/Linux. Pasang APK pada HP penerima pembayaran.",
           "Buka file APK dari Unduhan. Jika Android meminta izin, buka pengaturan pemasangan aplikasi untuk browser/pengelola berkas yang dipakai, izinkan pemasangan dari sumber ini lalu kembali dan Pasang. Jika sudah mempunyai HansDev Forwarder dengan package yang sama, pilih update; jangan uninstall agar konfigurasi dan antrean tetap tersimpan.",
           "Buka aplikasi setelah pemasangan. Versi unduhan saat ini 1.0.3 untuk Android ARM64, minimum Android 8. Jangan membagikan token atau memakai endpoint pembayaran sewa platform."
         ],
@@ -2156,13 +2156,13 @@
           "image": "/guides/steps/custom-forwarder-setup.jpg",
           "width": 1280,
           "height": 720,
-          "caption": "Data simulasi: tombol unduhan APK, panduan instalasi dan token yang disamarkan.",
+          "caption": "Data simulasi: unduh ZIP lengkap dan buka panduan aktivasi listener; token disamarkan.",
           "markers": [
             {
-              "label": "Download APK Android",
-              "x": 51,
+              "label": "Download ZIP lengkap",
+              "x": 48,
               "y": 19,
-              "w": 19,
+              "w": 17,
               "h": 6
             },
             {
@@ -2210,7 +2210,8 @@
         "paragraphs": [
           "Aktifkan pengiriman di Koneksi. Buka pengaturan akses notifikasi melalui aplikasi, pilih HansDev Forwarder dan izinkan. Izinkan pula notifikasi aplikasi agar pemantau dapat berjalan.",
           "Jika tersedia, aktifkan autostart/mulai otomatis dan pilih baterai tanpa pembatasan. Nama/letak menu berbeda menurut merek HP; pada Xiaomi dapat berada pada Izin → Mulai otomatis atau pengelolaan baterai aplikasi. Jangan mematikan akses notifikasi ketika menguji pemulihan listener.",
-          "Kembali ke aplikasi, pastikan listener terhubung. Lihat Riwayat → Penerimaan dan Riwayat kiriman ketika notifikasi merchant masuk. Respons HTTP 2xx berarti server menerima permintaan; tetap periksa status invoice di DigitalToko."
+          "Kembali ke aplikasi, pastikan listener terhubung. Lihat Riwayat → Penerimaan dan Riwayat kiriman ketika notifikasi merchant masuk. Respons HTTP 2xx berarti server menerima permintaan; tetap periksa status invoice di DigitalToko.",
+          "Jika perlu aktivasi lewat komputer, ikuti panduan Aktifkan listener Android lewat USB pada bagian Lanjutkan membaca; panduan itu memuat mode pengembang, USB debugging dan perintah untuk tiap OS."
         ],
         "visual": {
           "image": "/guides/steps/forwarder-android-setup.svg",
@@ -2319,6 +2320,7 @@
       }
     ],
     "related": [
+      "aktifkan-listener",
       "midtrans",
       "pengujian",
       "transaksi"
@@ -3417,6 +3419,492 @@
       "ssl",
       "cloudflare",
       "www"
+    ]
+  },
+  {
+    "slug": "aktifkan-listener",
+    "title": "Aktifkan listener Android lewat USB",
+    "category": "Pembayaran",
+    "summary": "Paket Windows/macOS/Linux, mode pengembang, USB debugging, izin komputer dan aktivasi listener HansDev.",
+    "reviewed": "1 November 2026",
+    "image": "/guides/payments.png",
+    "imageAlt": "Panduan pengaktifan listener HansDev Forwarder",
+    "prerequisites": [
+      "Komputer pribadi Windows/macOS/Linux, kabel USB data dan HP Android ARM64 (Android 8+).",
+      "Hak membuka kunci HP dan mengizinkan debugging; internet untuk aplikasi forwarder.",
+      "Paket ZIP HansDev Forwarder dari DigitalToko. Pilih OS komputer pada pilihan terminal di bawah."
+    ],
+    "steps": [
+      {
+        "title": "Download dan ekstrak paket di komputer",
+        "paragraphs": [
+          "Klik Download paket HansDev Forwarder (ZIP) di atas. Ekstrak ZIP utama; jangan menjalankan aplikasi dari dalam arsip. Isinya HansDev-Forwarder.apk dan tiga ZIP platform-tools untuk Windows, macOS dan Linux.",
+          "Pilih SATU ZIP sesuai OS komputer Anda, lalu ekstrak lagi. Di dalamnya ada folder platform-tools yang berisi adb.exe pada Windows atau adb pada macOS/Linux. Tidak perlu memasang Android Studio. Kabel USB harus mendukung data, bukan hanya mengisi daya."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-bundle.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: ekstrak ZIP utama lalu satu platform-tools sesuai OS.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Ekstrak ZIP utama",
+              "x": 18,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            },
+            {
+              "label": "Pilih OS komputer",
+              "x": 50,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            },
+            {
+              "label": "Buka folder platform-tools",
+              "x": 82,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        }
+      },
+      {
+        "title": "Pasang HansDev Forwarder pada HP",
+        "paragraphs": [
+          "Salin HansDev-Forwarder.apk dari hasil ekstrak ke HP, lalu buka melalui pengelola berkas. Saat diminta, izinkan pemasangan aplikasi dari pengelola berkas tersebut dan tekan Pasang. Paket yang disediakan berisi APK ARM64 untuk Android 8 atau lebih baru.",
+          "Jika sudah terpasang dengan package yang sama, pilih update tanpa uninstall agar pengaturan dan antrean tetap tersimpan. Setelah selesai, buka HansDev Forwarder sekali. Izinkan notifikasi aplikasi jika diminta."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-bundle.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: APK berada pada hasil ekstrak paket utama.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Temukan APK pada paket utama",
+              "x": 18,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        }
+      },
+      {
+        "title": "Aktifkan mode pengembang pada HP",
+        "paragraphs": [
+          "Buka Pengaturan → Tentang ponsel. Cari Nomor bentukan / Build number; pada sebagian Samsung ada di Informasi perangkat lunak. Ketuk bagian tersebut 7 kali. Jika HP meminta PIN/pola kunci layar, isi di HP sampai muncul pemberitahuan bahwa mode pengembang aktif.",
+          "Pada Xiaomi/Redmi, bagian yang diketuk dapat bernama Versi MIUI atau Versi OS. Nama menu berbeda antarperangkat; gunakan pencarian Pengaturan bila perlu."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-developer.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: aktifkan opsi pengembang dari informasi perangkat.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Ketuk versi/bentukan 7 kali",
+              "x": 18,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        }
+      },
+      {
+        "title": "Aktifkan USB debugging",
+        "paragraphs": [
+          "Kembali ke Pengaturan dan cari Opsi pengembang / Developer options. Menu ini biasanya di Sistem atau Setelan tambahan. Buka, lalu aktifkan Debugging USB / USB debugging.",
+          "Jika muncul konfirmasi Izinkan USB debugging, baca lalu pilih OK/Izinkan untuk melanjutkan. Pada tahap ini Anda baru mengaktifkan fitur debugging; komputer belum tentu sudah diberi izin."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-developer.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: nyalakan USB debugging pada opsi pengembang.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Aktifkan USB debugging",
+              "x": 50,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        }
+      },
+      {
+        "title": "Hubungkan HP ke komputer",
+        "paragraphs": [
+          "Hubungkan HP menggunakan kabel USB data. Buka kunci layar dan biarkan HP menyala. Jika ada pilihan mode USB, pilih Transfer file / MTP agar koneksi data dapat dideteksi.",
+          "Bila muncul Allow USB debugging? / Izinkan debugging USB? dengan sidik jari RSA, pilih Allow/Izinkan pada HP. Selalu izinkan dari komputer ini hanya perlu dicentang jika itu komputer pribadi yang Anda percaya. Prompt ini juga dapat baru muncul setelah perintah adb devices pada langkah berikutnya."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-authorize.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: setujui permintaan komputer pada layar HP.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Izinkan koneksi komputer di HP",
+              "x": 50,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        }
+      },
+      {
+        "title": "Buka terminal di folder platform-tools",
+        "paragraphs": [
+          "Pada Windows, buka folder yang benar-benar berisi adb.exe. Untuk CMD: klik kolom alamat File Explorer, ketik cmd, lalu Enter. Untuk PowerShell: pilih Buka di Terminal / Open in Terminal pada folder tersebut.",
+          "Pada macOS/Linux, buka Terminal, ketik cd diikuti spasi, seret folder platform-tools dari pengelola berkas ke Terminal, lalu Enter. Pilih jenis terminal pada bagian Sebelum mulai di atas; semua contoh perintah akan menyesuaikan.",
+          "Jalankan perintah versi di bawah. Jika adb tidak ditemukan, periksa apakah terminal sudah berada di folder yang benar. Pada macOS/Linux, jika muncul Permission denied, jalankan chmod +x ./adb dari folder tersebut lalu ulangi perintah versi."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-bundle.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: terminal harus berada di folder yang berisi executable adb.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Buka terminal di platform-tools",
+              "x": 82,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        },
+        "commands": [
+          {
+            "platform": "windows-cmd",
+            "label": "Windows · CMD",
+            "code": "adb.exe version"
+          },
+          {
+            "platform": "windows-powershell",
+            "label": "Windows · PowerShell",
+            "code": ".\\adb.exe version"
+          },
+          {
+            "platform": "macos",
+            "label": "macOS · Terminal",
+            "code": "./adb version"
+          },
+          {
+            "platform": "linux",
+            "label": "Linux · Terminal",
+            "code": "./adb version"
+          }
+        ]
+      },
+      {
+        "title": "Periksa koneksi dan izinkan permintaan RSA",
+        "paragraphs": [
+          "Jalankan perintah di bawah, lalu lihat layar HP. Jika muncul permintaan Izinkan debugging USB, pilih Izinkan. Jalankan perintah yang sama sekali lagi setelah menyetujuinya.",
+          "Hasil yang siap dipakai adalah satu baris seperti SERIAL_CONTOH device. Jika tertulis unauthorized, izin komputer belum disetujui. Jika daftar kosong, periksa kabel data, port USB, kunci layar dan driver USB resmi pabrikan pada Windows. Jika offline, sambungkan ulang kabel dan periksa izin di HP.",
+          "Sambungkan satu HP saja untuk langkah ini. Jika ada beberapa perangkat/emulator, lepas perangkat lain atau gunakan opsi -s SERIAL_HP pada setiap perintah ADB, dengan SERIAL_HP diganti serial yang tampil."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-authorize.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: lanjutkan hanya setelah ADB menampilkan status device.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Jalankan adb devices",
+              "x": 18,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            },
+            {
+              "label": "Setujui RSA di HP",
+              "x": 50,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            },
+            {
+              "label": "Pastikan status device",
+              "x": 82,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        },
+        "commands": [
+          {
+            "platform": "windows-cmd",
+            "label": "Windows · CMD",
+            "code": "adb.exe devices"
+          },
+          {
+            "platform": "windows-powershell",
+            "label": "Windows · PowerShell",
+            "code": ".\\adb.exe devices"
+          },
+          {
+            "platform": "macos",
+            "label": "macOS · Terminal",
+            "code": "./adb devices"
+          },
+          {
+            "platform": "linux",
+            "label": "Linux · Terminal",
+            "code": "./adb devices"
+          }
+        ]
+      },
+      {
+        "title": "Aktifkan akses listener HansDev",
+        "paragraphs": [
+          "Pastikan APK sudah terpasang dan ADB menampilkan device. Jalankan perintah lengkap berikut satu kali. Perintah ini memberi akses pembaca notifikasi kepada komponen HansDev Forwarder yang terpasang; tidak melakukan transaksi pembayaran.",
+          "Jika tidak ada teks keluaran, itu belum membuktikan listener sudah terhubung. Lanjutkan pemeriksaan pada langkah berikutnya. Jika komponen tidak ditemukan, pastikan aplikasi yang dipasang adalah HansDev Forwarder dengan package id.hansdev.forwarder, bukan aplikasi lama dengan package berbeda."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-grant.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: jalankan perintah aktivasi untuk komponen HansDev Forwarder.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Salin perintah pada kotak",
+              "x": 18,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        },
+        "commands": [
+          {
+            "platform": "windows-cmd",
+            "label": "Windows · CMD",
+            "code": "adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+          },
+          {
+            "platform": "windows-powershell",
+            "label": "Windows · PowerShell",
+            "code": ".\\adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+          },
+          {
+            "platform": "macos",
+            "label": "macOS · Terminal",
+            "code": "./adb shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+          },
+          {
+            "platform": "linux",
+            "label": "Linux · Terminal",
+            "code": "./adb shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener"
+          }
+        ]
+      },
+      {
+        "title": "Periksa izin dan status terhubung",
+        "paragraphs": [
+          "Jalankan pemeriksaan izin di bawah. Hasilnya harus memuat id.hansdev.forwarder dan ForwardListener; bentuk nama lengkap komponen dapat berbeda dari singkatan perintah sebelumnya. Daftar izin ini membuktikan akses diberikan, bukan bahwa layanan sudah terhubung. Jika hasil null/kosong atau komponen tidak ada, izin belum terdaftar; periksa APK, otorisasi perangkat, dan ulangi langkah aktivasi.",
+          "Buka HansDev Forwarder pada HP → Koneksi → Aktifkan pengiriman. Izinkan notifikasi pemantau jika diminta, lalu periksa Ringkasan sampai status listener terhubung. Jika Android meminta akses notifikasi lagi, pilih HansDev Forwarder dan izinkan.",
+          "Jika izin pengaturan dibatasi pada Android 13+, buka Info aplikasi HansDev Forwarder → menu tiga titik → Izinkan setelan terbatas jika tersedia, lalu ulangi pemberian akses notifikasi. Hanya izinkan aplikasi yang Anda percayai. Pada HP yang dikelola organisasi, minta administrator membantu bila izin ditolak kebijakan."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-grant.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: pisahkan pemeriksaan izin dari status listener terhubung.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Aktifkan pengiriman",
+              "x": 50,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            },
+            {
+              "label": "Periksa status terhubung",
+              "x": 82,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        },
+        "commands": [
+          {
+            "platform": "windows-cmd",
+            "label": "Windows · CMD",
+            "code": "adb.exe shell settings get secure enabled_notification_listeners"
+          },
+          {
+            "platform": "windows-powershell",
+            "label": "Windows · PowerShell",
+            "code": ".\\adb.exe shell settings get secure enabled_notification_listeners"
+          },
+          {
+            "platform": "macos",
+            "label": "macOS · Terminal",
+            "code": "./adb shell settings get secure enabled_notification_listeners"
+          },
+          {
+            "platform": "linux",
+            "label": "Linux · Terminal",
+            "code": "./adb shell settings get secure enabled_notification_listeners"
+          }
+        ]
+      },
+      {
+        "title": "Atur sumber notifikasi dan koneksi toko",
+        "paragraphs": [
+          "Pada menu Sumber, pilih aplikasi merchant penerima uang dari daftar aplikasi terpasang, atau isi package manual. Samakan package/nama dengan pengaturan gateway QRIS pada panel DigitalToko.",
+          "Buka Koneksi → Endpoint sendiri · POST JSON. Salin endpoint dan Bearer token dari Pembayaran pelanggan → Hans Forward pada panel toko. Isi token tanpa awalan Bearer pada kolom token. Simpan; pertahankan format JSON bawaan. Jangan memakai endpoint dari gambar ilustrasi atau toko lain."
+        ],
+        "visual": {
+          "image": "/guides/steps/forwarder-android-setup.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: pilih sumber dan simpan koneksi khusus toko.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Pilih aplikasi merchant",
+              "x": 18,
+              "y": 43,
+              "w": 26,
+              "h": 13
+            },
+            {
+              "label": "Isi endpoint dan token toko",
+              "x": 50,
+              "y": 53,
+              "w": 26,
+              "h": 17
+            }
+          ]
+        }
+      },
+      {
+        "title": "Atur agar aplikasi tetap berjalan",
+        "paragraphs": [
+          "Pada pengaturan aplikasi HansDev Forwarder, izinkan notifikasi, pilih baterai tanpa pembatasan dan aktifkan Mulai otomatis/Autostart jika tersedia. Posisi menu berbeda menurut merek dan versi Android.",
+          "Jangan force-stop aplikasi. Setelah restart HP, periksa apakah listener kembali terhubung. Bila perlu buka aplikasi untuk memulihkannya. Kabel komputer tidak diperlukan untuk penerusan notifikasi setelah listener aktif; HP tetap memerlukan koneksi internet."
+        ],
+        "visual": {
+          "image": "/guides/steps/forwarder-android-setup.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: izin pemantau dan pengelolaan baterai pada HP.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Atur notifikasi dan baterai",
+              "x": 82,
+              "y": 62,
+              "w": 26,
+              "h": 17
+            }
+          ]
+        }
+      },
+      {
+        "title": "Uji dan akhiri koneksi komputer",
+        "paragraphs": [
+          "Lihat Riwayat → Penerimaan saat notifikasi merchant muncul dan periksa Riwayat kiriman. Pastikan endpoint menerima pengiriman dan invoice yang sesuai berubah status. Uji endpoint tersimpan hanya menguji pengiriman; pesan uji tidak otomatis dianggap pembayaran.",
+          "Setelah penyiapan selesai, cabut kabel. USB debugging boleh dimatikan kembali; izin listener berbeda dari izin debugging. Periksa listener tetap terhubung. Bila tidak ada notifikasi merchant atau formatnya belum cocok, periksa mutasi dan gunakan konfirmasi manual sesuai panduan QRIS."
+        ],
+        "visual": {
+          "image": "/guides/steps/listener-grant.svg",
+          "width": 1280,
+          "height": 720,
+          "caption": "ILUSTRASI: pastikan hasil di aplikasi dan invoice, bukan hanya keluaran terminal.",
+          "illustration": true,
+          "markers": [
+            {
+              "label": "Periksa listener dan riwayat",
+              "x": 82,
+              "y": 46,
+              "w": 26,
+              "h": 13
+            }
+          ]
+        }
+      }
+    ],
+    "troubleshooting": [
+      {
+        "question": "ADB menampilkan unauthorized",
+        "answer": "Buka kunci HP dan setujui prompt RSA/Izinkan debugging USB. Jalankan adb devices lagi. Jika prompt belum muncul, sambungkan ulang kabel dan pastikan USB debugging aktif."
+      },
+      {
+        "question": "ADB kosong, offline atau no permissions",
+        "answer": "Coba kabel data/port lain dan mode transfer file. Windows dapat memerlukan driver USB resmi pabrikan. Linux dapat memerlukan aturan udev/grup pengguna sesuai distribusi; ikuti dokumentasi perangkat Android resmi. Jangan menganggap adb devices berhasil jika status belum device."
+      },
+      {
+        "question": "Ada lebih dari satu perangkat",
+        "answer": "Putuskan perangkat lain atau tentukan serial dengan -s SERIAL_HP, misalnya adb.exe -s SERIAL_HP shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener. Ganti SERIAL_HP dengan serial pada adb devices."
+      },
+      {
+        "question": "Izin sudah ada tetapi listener belum terhubung",
+        "answer": "Buka aplikasi, aktifkan pengiriman, izinkan notifikasi pemantau serta atur autostart/baterai. Jika tetap putus, periksa riwayat penerimaan dan hubungi admin dengan model HP/versi Android. Tidak semua pembatasan OEM dapat diselesaikan hanya dengan ADB."
+      },
+      {
+        "question": "macOS menolak membuka adb atau perintah tidak tersedia",
+        "answer": "Pastikan memakai paket macOS dan berada di folder platform-tools. Jika executable belum tersedia, gunakan platform-tools terbaru dari Android Developers. Jangan menonaktifkan proteksi komputer secara menyeluruh. Validasi panduan ini tidak menjalankan paket pada macOS/Linux."
+      }
+    ],
+    "related": [
+      "pembayaran-custom",
+      "notifikasi",
+      "transaksi"
+    ],
+    "sources": [
+      {
+        "label": "Android Developers: opsi pengembang dan USB debugging",
+        "url": "https://developer.android.com/studio/debug/dev-options"
+      },
+      {
+        "label": "Android Developers: ADB dan otorisasi perangkat",
+        "url": "https://developer.android.com/tools/adb"
+      },
+      {
+        "label": "Android: menjalankan pada perangkat dan driver/udev",
+        "url": "https://developer.android.com/studio/run/device"
+      },
+      {
+        "label": "Android Help: setelan terbatas",
+        "url": "https://support.google.com/android/answer/12623953"
+      },
+      {
+        "label": "AOSP: perintah notification allow_listener",
+        "url": "https://android.googlesource.com/platform/frameworks/base/+/android16-qpr2-release/services/core/java/com/android/server/notification/NotificationShellCmd.java"
+      }
+    ],
+    "keywords": [
+      "listener",
+      "usb",
+      "debugging",
+      "adb",
+      "mode pengembang",
+      "windows",
+      "macos",
+      "linux",
+      "unauthorized",
+      "hansdev"
     ]
   }
 ]

@@ -4,8 +4,8 @@ Diterapkan 23 Oktober 2026. Halaman `/panduan` berada di host platform, dapat di
 
 ## Konten dan gambar
 
-- `apps/web/resources/js/tutorialCatalog.json`: 21 panduan statis. Perubahan konten tidak memerlukan database/migrasi. Slug stabil digunakan tautan menu.
-- `apps/web/public/guides/steps/`: 68 screenshot JPEG dari database SQLite simulasi terpisah dan 3 ilustrasi SVG berlabel untuk whitelist Digiflazz serta Notification URL Midtrans. Sebanyak 96 langkah dalam 21 panduan masing-masing mempunyai gambar, 1–3 penanda panah dan keterangan spesifik. Gambar overview lama tetap disimpan sebagai aset kompatibilitas. Tidak ada key, PIN, password, token supplier nyata atau data pelanggan produksi. Nominal/status/IP pada gambar adalah contoh, bukan konfigurasi rekomendasi.
+- `apps/web/resources/js/tutorialCatalog.json`: 22 panduan statis. Perubahan konten tidak memerlukan database/migrasi. Slug stabil digunakan tautan menu.
+- `apps/web/public/guides/steps/`: 68 screenshot JPEG dari database SQLite simulasi terpisah dan 7 ilustrasi SVG berlabel untuk whitelist Digiflazz serta Notification URL Midtrans. Sebanyak 108 langkah dalam 22 panduan masing-masing mempunyai gambar, 1–3 penanda panah dan keterangan spesifik. Gambar overview lama tetap disimpan sebagai aset kompatibilitas. Tidak ada key, PIN, password, token supplier nyata atau data pelanggan produksi. Nominal/status/IP pada gambar adalah contoh, bukan konfigurasi rekomendasi.
 - Screenshot mempunyai caption data simulasi. Jangan menyalin localhost/store ID dari ilustrasi menjadi callback; panduan meminta URL asli dari panel toko sendiri.
 - `TutorialController` mengirim metadata ringkas pada index dan satu panduan lengkap pada detail. Index tidak memuat semua isi/gambar; detail hanya mengunduh gambar yang digunakan.
 - Materi meliputi persiapan/KTP, Digiflazz, Hanshop, OtomaX, Midtrans, QRIS custom/forwarder, sandbox, katalog/harga, stok, WhatsApp, notifikasi/email, pelanggan, transaksi, tampilan, staff, artikel, voucher, langganan, penutupan serta admin.
@@ -36,3 +36,7 @@ Gambar di-load secara lazy dengan dimensi eksplisit. Tombol Perbesar petunjuk me
 ### Revisi QRIS HansDev — 1 November 2026
 
 Panduan pembayaran-custom memakai screenshot baru form unggah gambar, popup APK/koneksi (token disamarkan), dan modal konfirmasi manual dari database UI terisolasi. Alur Sumber/Koneksi/Izin Android menggunakan SVG berlabel ILUSTRASI yang mengikuti menu source Flutter, bukan diklaim screenshot HP. Panduan mencakup instalasi/update APK ARM64, izin pemasangan, akses notifikasi, autostart/baterai, kesesuaian package/nama, listener/riwayat dan penanganan manual. Gambar QR pada fixture sintetis, bukan QR merchant produksi; URL lokal/ID pada screenshot bukan konfigurasi yang disalin tenant.
+
+### Panduan aktivasi listener USB — 1 November 2026
+
+Topik baru aktifkan-listener memiliki12langkah dan4SVG berlabel ILUSTRASI, dengan panah per langkah. Bukan screenshot perangkat aktual. Komponen TutorialCommand menyediakan blok kode dan tombol salin; pemilih terminal menghindari empat blok OS tampil bersamaan. Download guide dikirim server hanya bila bundle tersedia. Pembayaran-custom menautkan panduan baru; popup Hans Forward mengarahkan ke sana. Semua perintah berbentuk teks statis dan tidak dieksekusi dari browser. ZIP disajikan apa adanya, tidak ditambah script/perintah.

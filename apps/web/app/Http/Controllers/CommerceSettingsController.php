@@ -34,7 +34,7 @@ class CommerceSettingsController extends Controller
         $page = $list->paginate($list->apply(ModulePurchase::where('store_id', $store->id), ['id'], ['status' => 'status'])->latest()->orderByDesc('id'));
 
         return Inertia::render('Owner/Payments', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'settings' => [...$setting->toArray(), 'application_package' => $setting->credentials['application_package'] ?? 'id.dana', 'application_name' => $setting->credentials['application_name'] ?? ''],
-            'forwarderDownload' => is_file(config('services.forwarder.apk_path')) ? url('/downloads/hansdev-forwarder') : null,
+            'forwarderDownload' => is_file(config('services.forwarder.bundle_path')) ? url('/downloads/hansdev-forwarder') : null,
             'configured' => ['midtrans' => filled($setting->credentials['server_key'] ?? null), 'custom' => filled($setting->credentials['qris_payload'] ?? null)],
             'canConfirmPayment' => CatalogAccess::has($request, $role, 'payments.confirm'), 'canConnect' => $role === 'owner', 'canPolicy' => CatalogAccess::has($request, $role, 'payments.policy'), 'canCheckout' => CatalogAccess::has($request, $role, 'checkout.manage'),
             'modulePrice' => app(CommerceModules::class)->price(), 'invoices' => $page->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($page),
@@ -90,10 +90,10 @@ class CommerceSettingsController extends Controller
 
     public function download(): BinaryFileResponse
     {
-        $path = config('services.forwarder.apk_path');
-        abort_unless(is_string($path) && is_file($path), 404, 'APK belum tersedia. Hubungi administrator DigitalToko.');
+        $path = config('services.forwarder.bundle_path');
+        abort_unless(is_string($path) && is_file($path), 404, 'Paket instalasi belum tersedia. Hubungi administrator DigitalToko.');
 
-        return response()->download($path, 'HansDev-Forwarder.apk', ['Content-Type' => 'application/vnd.android.package-archive', 'X-Content-Type-Options' => 'nosniff']);
+        return response()->download($path, 'HansDev-Forwarder.zip', ['Content-Type' => 'application/zip', 'X-Content-Type-Options' => 'nosniff']);
     }
 
     public function forwarder(Request $request, Store $store): JsonResponse

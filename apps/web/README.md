@@ -100,6 +100,8 @@ Untuk mengubah warna: Desain web → Logo & warna → Ubah. Filter Semua/Terang/
 
 ## QRIS HansDev — pembaruan 1 November 2026
 
-Pembayaran pelanggan → Atur gateway menerima gambar QRIS langsung (PNG/JPG/WebP≤5MB), dibaca lokal oleh browser; pengguna tidak perlu mendapatkan payload sendiri. Menu Hans Forward menyediakan unduhan APK ARM64 dan panduan instalasi. APK harus disalin ke storage/app/releases/HansDev-Forwarder.apk saat deploy atau ditentukan dengan HANSDEV_FORWARDER_APK_PATH; tidak termasuk Git. Detail versi/hash dan penempatan file ada pada DEPLOYMENT.md.
+Pembayaran pelanggan → Atur gateway menerima gambar QRIS langsung (PNG/JPG/WebP≤5MB), dibaca lokal oleh browser; pengguna tidak perlu mendapatkan payload sendiri. Menu Hans Forward menyediakan ZIP lengkap (APK ARM64 + platform-tools Windows/macOS/Linux) dan panduan aktivasi listener USB. Salin ZIP ke storage/app/releases/HansDev-Forwarder.zip saat deploy atau tentukan HANSDEV_FORWARDER_BUNDLE_PATH; tidak termasuk Git. Detail versi/hash dan penempatan file ada pada DEPLOYMENT.md.
 
 Aplikasi penerima boleh memakai package Android lain atau nama aplikasi; pilih sumber yang sama pada Android. Format pesan pembayaran tetap diperiksa. Tombol Periksa pembayaran manual mengarah ke transaksi belum dibayar; di rincian transaksi tersedia Konfirmasi pembayaran QRIS bagi owner/staff berizin payments.confirm. Nominal/waktu/referensi/catatan dicatat dengan idempotensi; invoice expired masuk review, bukan otomatis dikirim ke pemasok. Tanpa migrasi schema atau perubahan APK native. Tutorial `/panduan/pembayaran-custom` mencakup seluruh alur.
+
+Panduan `/panduan/aktifkan-listener` menjelaskan mode pengembang, USB debugging, persetujuan RSA di HP, perintah ADB sesuai terminal dan perbedaan akses notifikasi dengan listener terhubung. Tidak menjalankan aktivasi pada perangkat pengguna secara otomatis.

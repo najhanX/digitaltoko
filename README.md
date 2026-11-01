@@ -64,7 +64,7 @@ URL daftar harga diatur per koneksi melalui **Supplier OtomaX → Daftar harga U
 
 - [Integrasi OtomaX dan progres](docs/OTOMAX_PROGRESS.md), [rancangan serta batas sinkronisasi URL](docs/OTOMAX_INTEGRATION_PLAN.md)
 
-Pusat panduan publik tersedia di `/panduan` dengan 20 tutorial bergambar. Tombol Panduan pada header menu panel membuka topik terkait di tab baru. Lihat [pemeliharaan panduan](docs/TUTORIALS.md).
+Pusat panduan publik tersedia di `/panduan` dengan 22 tutorial bergambar. Tombol Panduan pada header menu panel membuka topik terkait di tab baru. Lihat [pemeliharaan panduan](docs/TUTORIALS.md).
 
 Halaman publik `/paket` menyediakan pilihan platform/durasi dari harga aktif admin, simulasi biaya sewa dan pengecekan subdomain tanpa membuat toko. Total final (voucher/kode unik bila ada) tetap ditentukan melalui invoice setelah owner memenuhi verifikasi.
 
@@ -73,3 +73,5 @@ Domain pribadi toko dapat diatur owner melalui Tampilan & pengaturan. Panduan te
 Penanganan sewa awal gagal disiapkan tersedia di Langganan & aktivasi dan Detail toko admin: alasan, periksa ulang, laporan/refund, approval admin dan refund idempoten ke saldo Hanshop. Paket yang sudah aktif tidak termasuk; deployment memerlukan migrasi web/API sesuai DEPLOYMENT.md.
 
 Pembaruan1November2026: failover beberapa periode pascabayar memiliki regresi Digiflazz/OtomaX dua arah, normalisasi daftar bulan dan penolakan mismatch. QRIS HansDev menerima gambar langsung, aplikasi sumber package/nama bebas, tautan APK/panduan instalasi, dan konfirmasi penerimaan manual berizin dengan audit/idempotensi. Tanpa migrasi schema. APK release harus disalin ketika deploy (DEPLOYMENT.md); uji perubahan ini terisolasi, bukan pembayaran atau instalasi HP produksi.
+
+Panduan `/panduan/aktifkan-listener` menyediakan aktivasi listener USB langkah demi langkah (mode pengembang, USB debugging, RSA dan ADB tiap OS). Unduhan HansDev kini ZIP lengkap dari owner platform. Salin ke `storage/app/releases/HansDev-Forwarder.zip` atau atur `HANSDEV_FORWARDER_BUNDLE_PATH` ketika deploy; biner tidak termasuk Git.

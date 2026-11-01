@@ -133,17 +133,17 @@ class CustomerCommerceTest extends TestCase
         $this->assertSame('paid', $order->fresh()->payment_status);
     }
 
-    public function test_forwarder_download_returns_apk_and_missing_release_is_not_exposed(): void
+    public function test_forwarder_download_returns_bundle_and_missing_release_is_not_exposed(): void
     {
-        config(['services.forwarder.apk_path' => __DIR__.'/missing-forwarder.apk']);
+        config(['services.forwarder.bundle_path' => __DIR__.'/missing-forwarder.zip']);
         $this->get('/downloads/hansdev-forwarder')->assertNotFound();
         $path = tempnam(sys_get_temp_dir(), 'forwarder-test-');
-        file_put_contents($path, 'PK-SYNTHETIC-APK-NOT-INSTALLABLE');
+        file_put_contents($path, 'PK-SYNTHETIC-ZIP-FOR-RESPONSE-TEST');
         try {
-            config(['services.forwarder.apk_path' => $path]);
+            config(['services.forwarder.bundle_path' => $path]);
             $this->get('/downloads/hansdev-forwarder')->assertOk()
-                ->assertDownload('HansDev-Forwarder.apk')
-                ->assertHeader('Content-Type', 'application/vnd.android.package-archive');
+                ->assertDownload('HansDev-Forwarder.zip')
+                ->assertHeader('Content-Type', 'application/zip');
         } finally {
             unlink($path);
         }

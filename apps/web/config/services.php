@@ -2,7 +2,7 @@
 
 return [
     'forwarder' => [
-        'apk_path' => env('HANSDEV_FORWARDER_APK_PATH') ?: storage_path('app/releases/HansDev-Forwarder.apk'),
+        'bundle_path' => env('HANSDEV_FORWARDER_BUNDLE_PATH') ?: storage_path('app/releases/HansDev-Forwarder.zip'),
     ],
 
     'game_identity' => [

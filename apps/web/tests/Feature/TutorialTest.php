@@ -22,7 +22,7 @@ class TutorialTest extends TestCase
     public function test_library_is_public_and_index_only_exposes_summary_data(): void
     {
         $this->get('http://localhost/panduan')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Platform/Tutorials')->has('guides', 21)->where('guide', null)
+            ->component('Platform/Tutorials')->has('guides', 22)->where('guide', null)
             ->where('guides.0.slug', 'mulai')->missing('guides.0.steps')->missing('guides.0.image'));
         Http::assertNothingSent();
     }
@@ -82,5 +82,25 @@ class TutorialTest extends TestCase
     {
         $this->get('http://localhost/panduan/tidak-ada')->assertNotFound();
         $this->get('http://unknown.localhost/panduan')->assertNotFound();
+    }
+
+    public function test_listener_guide_has_os_specific_commands_and_only_links_an_available_bundle(): void
+    {
+        config(['services.forwarder.bundle_path' => __DIR__.'/missing-installer.zip']);
+        $this->get('http://localhost/panduan/aktifkan-listener')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('guide.download', null)->has('guide.steps', 12)
+            ->where('guide.steps.6.commands.0.code', 'adb.exe devices')
+            ->where('guide.steps.6.commands.1.code', '.\\adb.exe devices')
+            ->where('guide.steps.6.commands.2.code', './adb devices')
+            ->where('guide.steps.7.commands.0.code', 'adb.exe shell cmd notification allow_listener id.hansdev.forwarder/.ForwardListener'));
+        $path = tempnam(sys_get_temp_dir(), 'forwarder-guide-');
+        file_put_contents($path, 'ZIP-FIXTURE');
+        try {
+            config(['services.forwarder.bundle_path' => $path]);
+            $this->get('http://localhost/panduan/aktifkan-listener')->assertInertia(fn (Assert $page) => $page
+                ->where('guide.download.url', 'http://localhost/downloads/hansdev-forwarder'));
+        } finally {
+            unlink($path);
+        }
     }
 }
