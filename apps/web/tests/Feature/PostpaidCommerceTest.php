@@ -49,6 +49,14 @@ class PostpaidCommerceTest extends TestCase
 
     private string $digiPeriod = '202610';
 
+    private array $digiDetails = [];
+
+    private string $otomaxPeriod = '';
+
+    private int $bill = 100000;
+
+    private int $admin = 3000;
+
     private array $failedSkus = [];
 
     private int $digiCommission = 500;
@@ -71,7 +79,7 @@ class PostpaidCommerceTest extends TestCase
                 $pending = $payment && $this->digiPaymentStatus === 'pending';
 
                 return Http::response(['data' => ['status' => $failed ? 'Gagal' : ($pending ? 'Pending' : 'Sukses'), 'rc' => $failed ? '44' : ($pending ? '03' : '00'), 'ref_id' => $request['ref_id'], 'customer_no' => $request['customer_no'], 'buyer_sku_code' => $request['buyer_sku_code'],
-                    'price' => 103000 - $this->digiCommission, 'selling_price' => 103000, 'admin' => 3000, 'customer_name' => $this->digiName, 'periode' => $this->digiPeriod, 'sn' => 'DG-SUCCESS']]);
+                    'price' => $this->bill + $this->admin - $this->digiCommission, 'selling_price' => $this->bill + $this->admin, 'admin' => $this->admin, 'customer_name' => $this->digiName, 'periode' => $this->digiPeriod, 'desc' => ['detail' => $this->digiDetails], 'sn' => 'DG-SUCCESS']]);
             }
             parse_str(parse_url($request->url(), PHP_URL_QUERY) ?? '', $query);
             $this->requests[] = $query;
@@ -88,7 +96,7 @@ class PostpaidCommerceTest extends TestCase
                 if ($this->responseMode === 'pending') {
                     return Http::response('#1 '.$sku.'.'.$dest.' akan diproses @12:00. Saldo 200.000 - 0 = 200.000');
                 }
-                $sn = $this->responseMode === 'malformed' ? 'TIDAK ADA TAGIHAN' : 'NAMA:PELANGGAN/ALAMAT:TEST/TAG:100000/ADM::3000/TTAG:103000 RC:00 INQUIRY';
+                $sn = $this->responseMode === 'malformed' ? 'TIDAK ADA TAGIHAN' : 'NAMA:PELANGGAN/ALAMAT:TEST/TAG:'.$this->bill.'/ADM::'.$this->admin.'/TTAG:'.($this->bill + $this->admin).($this->otomaxPeriod === '' ? '' : '/PTAG:'.$this->otomaxPeriod).' RC:00 INQUIRY';
 
                 return Http::response(['status' => '20', 'price' => 0, 'refid' => $ref, 'message' => '#1 '.$sku.'.'.$dest.' SUKSES. SN/Ref: '.$sn.'. Saldo 200.000 - 0 = 200.000 @29/10 12:00:00 R#'.$ref]);
             }
@@ -100,7 +108,7 @@ class PostpaidCommerceTest extends TestCase
                 return Http::response(['status' => $this->paymentStatus === 'failed' ? '40' : '1', 'price' => 103000 + $this->otomaxAdjustment, 'refid' => $ref, 'message' => $sku.'.'.$dest.' '.($this->paymentStatus === 'failed' ? 'GAGAL' : 'PENDING').'. R#'.$ref]);
             }
 
-            return Http::response(['status' => '20', 'price' => 103000 + $this->otomaxAdjustment, 'refid' => $ref, 'message' => '#2 '.$sku.'.'.$dest.' SUKSES. SN/Ref: NAMA:PELANGGAN/TAG:100000/ADMIN:3000/TTAG:103000. Saldo 200.000 - 102.500 = 97.500 @29/10 12:00:00 R#'.$ref]);
+            return Http::response(['status' => '20', 'price' => $this->bill + $this->admin + $this->otomaxAdjustment, 'refid' => $ref, 'message' => '#2 '.$sku.'.'.$dest.' SUKSES. SN/Ref: NAMA:PELANGGAN/TAG:'.$this->bill.'/ADMIN:'.$this->admin.'/TTAG:'.($this->bill + $this->admin).'. Saldo 200.000 - 102.500 = 97.500 @29/10 12:00:00 R#'.$ref]);
         });
     }
 
@@ -832,5 +840,107 @@ class PostpaidCommerceTest extends TestCase
         foreach (['bill' => 100001, 'supplier_admin' => 3500, 'customer_name' => 'OTHER', 'period' => '202610'] as $key => $value) {
             $this->assertFalse($service->matches($order, [...$values, $key => $value]));
         }
+    }
+
+    public function test_multiple_periods_match_as_complete_month_sets_without_accepting_partial_or_duplicate_bills(): void
+    {
+        $order = new CustomerOrder(['snapshot' => ['bill_breakdown' => ['bill' => 20000, 'supplier_admin' => 5000], 'bill_customer' => 'PELANGGAN', 'bill_period' => '201901,201902']]);
+        $values = ['bill' => 20000, 'supplier_admin' => 5000, 'customer_name' => 'pelanggan', 'period' => 'FEBRUARI 2019; JANUARI 2019'];
+        $service = app(PostpaidFailover::class);
+        foreach (['FEBRUARI 2019; JANUARI 2019', '02/2019 | 01/2019', "2019-02\n2019-01", '201901,201902'] as $period) {
+            $this->assertTrue($service->matches($order, [...$values, 'period' => $period]), $period);
+        }
+        foreach (['201901', '201901,201903', '201901,201902,201903', '201901,201901', '201901,201902,201902', '201913,201901', '201901,,201902', 'JANUARI-FEBRUARI 2019', ''] as $period) {
+            $this->assertFalse($service->matches($order, [...$values, 'period' => $period]), $period);
+        }
+    }
+
+    private function multiPeriodFixture(): array
+    {
+        $f = $this->fixture();
+        $this->addDigiflazzFallback($f);
+        $this->bill = 20000;
+        $this->admin = 5000;
+        $this->otomaxPeriod = '02/2019,01/2019';
+        $this->digiDetails = [['periode' => '201901'], ['periode' => '201902']];
+        $f['product']->update(['sale_price' => 6000]);
+        $f['mapping']->update(['postpaid' => ['inquiry_id' => $f['check']->id, 'admin' => 5000]]);
+        SupplierProduct::where('store_id', $f['store']->id)->where('mode', 'pasca')->update(['cost' => 5000, 'billing' => ['admin' => 5000, 'commission' => 100]]);
+
+        return $f;
+    }
+
+    public function test_multiple_period_otomax_failure_can_pay_digiflazz_once_with_locked_price(): void
+    {
+        $f = $this->multiPeriodFixture();
+        $this->paymentStatus = 'failed';
+        $inquiry = $this->quote($f);
+        $this->assertSame('02/2019,01/2019', $inquiry->data['period']);
+        $order = $this->order($f, $inquiry);
+        $this->assertSame(26000, $order->amount);
+        app(CustomerFulfillment::class)->run($order);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(['failed', 'success'], $order->attempts()->orderBy('position')->pluck('status')->all());
+        $this->assertSame(174000, $f['customer']->fresh()->balance);
+        $this->assertSame(26000, $order->fresh()->amount);
+        Http::assertSentCount(5);
+        Http::assertSent(fn ($request) => ($request['commands'] ?? null) === 'pay-pasca');
+    }
+
+    public function test_multiple_period_digiflazz_failure_can_pay_otomax_without_truncating_slash_months(): void
+    {
+        $f = $this->multiPeriodFixture();
+        $f['pay']->update(['cost' => 500, 'billing' => ['adjustment' => 500]]);
+        $this->otomaxAdjustment = 500;
+        $this->digiPaymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        $this->assertSame('201901,201902', $order->snapshot['bill_period']);
+        app(CustomerFulfillment::class)->run($order);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(['failed', 'success'], $order->attempts()->orderBy('position')->pluck('status')->all());
+        $this->assertSame(174000, $f['customer']->fresh()->balance);
+        $this->assertSame(['CEKPLN30', 'BYRPLN30'], array_column($this->requests, 'product'));
+    }
+
+    public function test_multiple_period_missing_month_blocks_fallback_payment_and_refunds_once(): void
+    {
+        $f = $this->multiPeriodFixture();
+        $this->digiDetails = [['periode' => '201901']];
+        $this->paymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        app(CustomerFulfillment::class)->run($order);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame(200000, $f['customer']->fresh()->balance);
+        $this->assertSame(1, CustomerLedger::where('reason', 'refund')->count());
+        Http::assertNotSent(fn ($request) => ($request['commands'] ?? null) === 'pay-pasca');
+    }
+
+    public function test_multiple_period_pending_fallback_waits_for_callback_and_duplicate_does_not_pay_twice(): void
+    {
+        $f = $this->multiPeriodFixture();
+        $f['pay']->update(['cost' => 500, 'billing' => ['adjustment' => 500]]);
+        $this->otomaxAdjustment = 500;
+        $this->digiPaymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        $this->responseMode = 'pending';
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame(['CEKPLN30'], array_column($this->requests, 'product'));
+        $attempt = $order->attempts()->where('position', 2)->sole();
+        $check = CustomerInquiry::findOrFail($attempt->request_snapshot['fallback_inquiry_id']);
+        $response = ['status' => 'success', 'error' => null, 'fields' => ['refid' => $check->reference, 'kode_produk' => 'CEKPLN30', 'tujuan' => '12345678', 'nama_pelanggan' => 'PELANGGAN', 'tagihan' => '20000', 'admin' => '5000', 'total_tagihan' => '25000', 'periode' => 'FEBRUARI 2019; JANUARI 2019'], 'text' => 'MULTI-PERIOD TEST'];
+        app(OtomaxInquiries::class)->apply($check, $response);
+        $this->travel(61)->seconds();
+        app(CustomerFulfillment::class)->run($order->fresh());
+        app(OtomaxInquiries::class)->apply($check->fresh(), $response);
+        app(CustomerFulfillment::class)->run($order->fresh());
+        $this->assertSame('success', $order->fresh()->status);
+        $this->assertSame(['CEKPLN30', 'BYRPLN30'], array_column($this->requests, 'product'));
+        $this->assertSame(174000, $f['customer']->fresh()->balance);
+        $this->assertSame(26000, $order->fresh()->amount);
+        $this->assertSame(0, CustomerLedger::where('reason', 'refund')->count());
     }
 }

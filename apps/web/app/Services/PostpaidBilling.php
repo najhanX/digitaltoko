@@ -122,7 +122,8 @@ class PostpaidBilling
         $sn = (string) ($fields['sn'] ?? '');
         $aliases = ['total_tagihan' => 'TTAG', 'tagihan' => 'TAG', 'admin' => '(?:ADM|ADMIN)', 'nama_pelanggan' => 'NAMA', 'periode' => '(?:PERIODE|PTAG)'];
         foreach ($aliases as $field => $key) {
-            if (! isset($fields[$field]) && preg_match('~(?:^|/)'.$key.':+([^/]+)~iu', $sn, $match)) {
+            $capture = $field === 'periode' ? '(.+?)(?=/[A-Z_][A-Z0-9_]*:+|\s+RC:|$)' : '([^/]+)';
+            if (! isset($fields[$field]) && preg_match('~(?:^|/)'.$key.':+'.$capture.'~iu', $sn, $match)) {
                 $value = trim($match[1]);
                 $fields[$field] = in_array($field, ['total_tagihan', 'tagihan', 'admin'], true) ? preg_split('/\s+/', $value)[0] : $value;
             }

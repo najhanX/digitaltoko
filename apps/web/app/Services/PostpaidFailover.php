@@ -15,14 +15,34 @@ class PostpaidFailover
     {
         $expected = $order->snapshot['bill_breakdown'] ?? [];
         $normalize = static fn ($value) => mb_strtoupper(preg_replace('/\s+/u', '', (string) $value));
+        $period = $this->period($order->snapshot['bill_period'] ?? '');
 
         return isset($expected['bill'], $expected['supplier_admin'])
             && $expected['bill'] === $values['bill'] && $expected['supplier_admin'] === $values['supplier_admin']
             && $normalize($order->snapshot['bill_customer'] ?? '') === $normalize($values['customer_name'])
-            && $this->period($order->snapshot['bill_period'] ?? '') === $this->period($values['period']);
+            && $period !== null && $period === $this->period($values['period']);
     }
 
-    private function period(string $value): string
+    private function period(string $value): ?string
+    {
+        if (trim($value) === '') {
+            return '';
+        }
+        $parts = preg_split('/[,;|]|\r?\n/u', trim($value));
+        $periods = [];
+        foreach ($parts as $part) {
+            $month = $this->month($part);
+            if ($month === null || in_array($month, $periods, true)) {
+                return null;
+            }
+            $periods[] = $month;
+        }
+        sort($periods, SORT_STRING);
+
+        return implode(',', $periods);
+    }
+
+    private function month(string $value): ?string
     {
         $text = mb_strtoupper(preg_replace('/[\s\/-]+/u', '', $value));
         $months = ['JANUARI' => '01', 'JANUARY' => '01', 'FEBRUARI' => '02', 'FEBRUARY' => '02', 'MARET' => '03', 'MARCH' => '03', 'APRIL' => '04', 'MEI' => '05', 'MAY' => '05', 'JUNI' => '06', 'JUNE' => '06', 'JULI' => '07', 'JULY' => '07', 'AGUSTUS' => '08', 'AUGUST' => '08', 'SEPTEMBER' => '09', 'OKTOBER' => '10', 'OCTOBER' => '10', 'NOVEMBER' => '11', 'DESEMBER' => '12', 'DECEMBER' => '12'];
@@ -35,7 +55,7 @@ class PostpaidFailover
             return $match[2].$match[1];
         }
 
-        return $text;
+        return preg_match('/^[0-9]{4}(0[1-9]|1[0-2])$/', $text) ? $text : null;
     }
 
     public function prepare(CustomerOrder $order, OrderAttempt $attempt): ?array

@@ -1072,3 +1072,9 @@ Regresi sembilan file: 242 tes Laravel lulus, 1 skip opsional Excel, 2.225 asser
 - Bukti: repositori penelitian `outputs/uji-pascabayar-20261030/`, termasuk Excel lima sheet, JSON/JUnit, log tersanitasi, screenshot, collector read-only dan manifest SHA-256. Catatan lengkap berada di CATATAN-PEKERJAAN.md penelitian dan PROGRESS.md simulator.
 - Pekerjaan berikutnya yang belum dikerjakan: failover tagihan dua periode, protokol eksperimen berulang beserta seed/sampel, analisis statistik minimum-maksimum, deployment VPS/domain dan validasi operasional produksi. Hasil fungsional tidak dianggap hasil akhir skripsi atau estimasi keberhasilan produksi.
 - Arsip lokal `DigitalToko.zip` yang sudah ada tidak dimasukkan ke Git. Tidak ada perubahan database, kredensial, konfigurasi layanan atau dependency pada checkpoint ini.
+
+## 1 November 2026 — failover tagihan beberapa periode
+
+Pemeriksaan periode kini membandingkan himpunan bulan lengkap, menyetarakan YYYYMM, YYYY-MM, MM/YYYY dan nama bulan Indonesia/Inggris pada daftar koma/titik koma/pipa/baris. Urutan berbeda diterima; bulan hilang/tambahan/duplikat/tidak valid ditolak. Format rentang ambigu tidak ditebak. Parser OtomaX mempertahankan garis miring dalam periode dan berhenti pada field SN berikutnya. Snapshot harga pesanan tetap; aturan modal, nama, pokok dan admin tidak dilonggarkan.
+
+60 tes Laravel PostpaidCommerce/SupplierSimulator lulus (366 assertion), termasuk failover dua periode dua arah Digiflazz/OtomaX, mismatch/refund sekali dan pending inquiry/callback duplikat tanpa pembayaran kedua. HTTP pemasok difake dan SQLite in-memory; bukan transaksi Digiflazz Development nyata pada tahap ini. 35 tes Node simulator lulus; jumlah bulan JBLN/JMLBLN pada fixture dua periode diperbaiki menjadi2. Tidak ada migrasi/dependency atau perubahan data utama.
