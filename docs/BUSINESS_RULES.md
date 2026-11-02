@@ -1,6 +1,6 @@
 # Aturan bisnis DigitalToko
 
-Status: kebijakan pengguna, disinkronkan dengan source lokal pada **23 Oktober 2026**. Kebijakan retensi/purge, refund gagal provisioning, dan otomatisasi domain tidak otomatis berarti fitur sudah tersedia. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
+Status: kebijakan pengguna, disinkronkan dengan source lokal pada **2 November 2026**. Retensi/purge dan refund sewa awal setelah approval admin sudah memiliki implementasi; aktivasi purge otomatis dan kesiapan provider/DNS/TLS nyata tetap harus diverifikasi terpisah. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
 
 ## Identitas dan akun Hanshop
 
@@ -211,3 +211,10 @@ Penutupan final owner adalah permohonan penghapusan: layanan dihentikan, status 
 Gambar QRIS dibaca lokal di browser dan payload Indonesia/CRC diverifikasi server. Pemilik dapat menentukan package aplikasi lain atau nama aplikasi; token serta snapshot invoice tetap mengisolasi mutasi masing-masing toko. Sumber bebas bukan berarti semua format notifikasi otomatis dikenali.
 
 Konfirmasi manual penerimaan uang hanya untuk modul QRIS berlisensi, oleh owner atau staff berizin payments.confirm. Nominal persis termasuk kode unik, waktu, referensi dan catatan wajib; tidak untuk invoice dibatalkan, Midtrans atau wallet. Referensi mutasi tidak boleh dikreditkan ke dua invoice pada merchant yang sama. Invoice aktif lunas mengikuti antrean pemenuhan/topup existing; expired masuk review. Tindakan ini berbeda dari keputusan sukses/gagal produk. Klik berulang/callback susulan tidak menggandakan pemenuhan atau kredit. Audit privat disimpan pada snapshot. Tidak memberikan staff akses koneksi/token gateway secara otomatis.
+
+
+## Pengaturan harga dan pemisahan menu — 2 November 2026
+
+Dasar harga otomatis dipilih pada aturan kategori/layanan: kandidat termurah (`cheapest`) atau termahal (`highest`, default). Kategori mengalahkan layanan; tidak perlu mengatur dasar pada setiap produk. Markup dan auto-update tetap diwariskan secara terpisah menurut prioritasnya. Dasar harga jual tidak membalik urutan pemrosesan: parsing eligible termurah tetap dicoba lebih dahulu dan hasil pending/ambigu tidak dianggap gagal aman untuk berpindah. Memilih dasar termahal bukan jaminan semua supplier akan dicoba setelah perubahan harga atau hasil ambigu.
+
+Koneksi supplier menyatukan API Hanshop, Digiflazz, OtomaX dan pemantauan saldo/deposit; Sumber produk hanya katalog dan impor. Tidak ada perubahan hak credential karena pemindahan menu. Penangkap QRIS tidak memberi hak melunasi manual; `payments.parsers` dan `payments.confirm` terpisah. Uji format tidak menciptakan uang masuk atau menyelesaikan invoice.

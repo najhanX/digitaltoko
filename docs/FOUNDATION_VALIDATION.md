@@ -1,6 +1,6 @@
 # Validasi fondasi 13 Oktober 2026
 
-> Riwayat pengujian bertanggal, bukan inventaris fitur saat ini. Untuk kondisi source per 21 Oktober 2026 gunakan ARCHITECTURE.md, BUSINESS_RULES.md dan README aplikasi. Pernyataan lama seperti fitur belum tersedia, trial, renderer artikel berwarna manual, atau pengiriman customer lewat bot pusat dapat sudah digantikan revisi berikutnya. Jumlah tes di sini adalah hasil saat catatan dibuat, bukan rerun pada pembaruan dokumentasi.
+> Riwayat pengujian bertanggal, bukan inventaris fitur saat ini. Untuk kondisi source per 2 November 2026 gunakan ARCHITECTURE.md, BUSINESS_RULES.md dan README aplikasi. Pernyataan lama seperti fitur belum tersedia, trial, renderer artikel berwarna manual, atau pengiriman customer lewat bot pusat dapat sudah digantikan revisi berikutnya. Jumlah tes di sini adalah hasil saat catatan dibuat, bukan rerun pada pembaruan dokumentasi.
 
 
 Implementasi lokal di workspace Hansbot; tidak ada deploy VPS, perubahan DNS, transaksi live, atau koneksi WhatsApp pelanggan.
@@ -1152,3 +1152,58 @@ Perubahan OtomaX dan bukti rinci dicatat di OTOMAX_PROGRESS.md. Parser tidak lag
 131tesLaravel terkait lulus,1skipopsionalXLSX,1245assertion;6teseditorNode/35frontend lulus,TypeScript/Vite danPint lulus. Sebelumnya67tesQRIS/CustomerCommerce lulus674assertion. 35tesNodeSimulator lulus setelah namedgroupstatus dipakai. Pengujian ke pemasok/payment memakai HTTPfake/SQLite; inspeksi data BogorTopup bersifat read-only. Tidak ada migrasi/dependency baru atau perubahan APIHanshop/Android/penelitian. DigitalToko.zip tetap di luar commit.
 
 Pemeriksaan akhir: panduan OtomaX/QRIS disesuaikan,4tesTutorial/5371assertion lulus dan buildulang lulus. Sinyal queue:restart dikirim agar worker memuat parserbaru secara graceful. Server fixture8010 dihentikan setelah QA; layananutama PM2 tidak dihentikan.
+
+
+## Pemisahan koneksi supplier dan sumber produk — 2 November 2026
+- Sidebar owner/staff memiliki grup Koneksi supplier: API Hanshop, Digiflazz, Supplier OtomaX, serta Saldo & deposit pemasok. Sumber produk tetap pada Produk & harga.
+- GET `/stores/{store}/supplier-connections/{digiflazz|hanshop}` menampilkan akun, koneksi, sync, nonaktifkan, dan webhook Digiflazz melalui modal. Payload tidak memuat credentials; halaman terisolasi menurut store/owner dan dapat dibaca staff berizin katalog. Mengubah kredensial/secret tetap khusus owner. Route OtomaX dan endpoint mutasi existing dipertahankan.
+- Sumber produk fokus pada tabel/filter/pagination dan impor. Memilih sumber pada filter membuka impor semua/per layanan/per kategori bagi Digiflazz, Hanshop, maupun OtomaX. Impor massal checkbox tetap tersedia. Sinkronisasi katalog juga bisa dibuka dari sumber terpilih tanpa memuat form akun.
+- Onboarding, pemantauan saldo, tautan panduan dan screenshot Digiflazz/Hanshop disesuaikan. Tidak ada dependency atau migrasi baru; koneksi dan parsing existing tidak diubah.
+- Validasi: 82 tes Laravel, 2 tes frontend tutorial, build web, serta periksa browser desktop/mobile. Tes mencakup pemisahan props, filter jenis koneksi, isolasi antarowner/staff, kredensial tidak terpapar dan staff tidak dapat menggantinya. Browser memeriksa modal koneksi dan impor tanpa menyimpan data atau memanggil supplier produksi.
+
+
+## Sinkronisasi dokumentasi — 2 November 2026
+
+Dokumentasi utama diperiksa kembali terhadap route/controller, menu React, services.forwarder, parser QRIS/OtomaX, StaffPermissions, ProductPricing, Provisioning, StoreRetention, domain owner dan metadata panduan. README root/web, arsitektur, keputusan/backlog, aturan bisnis, domain, deployment, hak staff dan panduan diselaraskan. Keterangan lama tentang ZIP gabungan, sembilan paket aktif, ketiadaan domain owner/topup Hanshop/purge/refund provisioning diperbaiki. Riwayat tes di dokumen ini dipertahankan sesuai waktu pengujiannya.
+
+Kondisi saat ini dipisahkan dari pekerjaan operasi: source klaim/verify domain dan adapter Caddy tersedia, namun DNS/TLS publik serta pelepasan provider perlu uji deployment; refund provisioning tersedia setelah approval, bukan auto refund umum; purge otomatis tetap default nonaktif. Tidak mengubah source aplikasi, database, env aktif, rilis biner, repo riset atau layanan lain pada sinkronisasi dokumentasi ini.
+
+Pemeriksaan dokumentasi pada pembaruan ini: 11 dokumen utama, seluruh tautan berkas lokal yang tercantum ditemukan, dan 37 permission/label pada tabel staff sama persis dengan StaffPermissions::labels. Statistik panduan dihitung dari JSON aktual: 22 topik, 111 langkah, 119 visual dan 86 aset unik (71 JPEG, 10 PNG perangkat, 5 SVG). Tidak menjalankan ulang seluruh test suite aplikasi untuk perubahan teks dokumentasi; hasil tes source sebelumnya tetap diberi tanggal/cakupan terpisah.
+
+## Sidebar terbaca dan posisi scroll bertahan — 2 November 2026
+
+- Sidebar expanded diperlebar menjadi 272px (256px pada desktop sempit). Label panjang dan identitas footer membungkus; ikon tetap berukuran tetap. Mode collapsed tetap 80px dengan baris ikon 44px, drawer mobile mengikuti lebar layar tanpa overflow horizontal.
+- Posisi scroll disimpan per pengguna/peran, toko, dan mode desktop/mobile/collapsed. Pemulihan menunggu layout accordion selesai dan tidak menyimpan posisi sementara yang terpotong. Interaksi pengguna membatalkan pemulihan agar sidebar tidak melawan scroll manual. Grup aktif turut menyimpan kondisi terbuka saat berpindah halaman.
+- Validasi: build TypeScript/Vite lulus; 40 tes frontend lulus, termasuk lima regresi untuk pemulihan setelah layout pendek, interupsi pengguna, cleanup navigasi, nilai storage invalid, dan pemanggilan native animation frame tanpa receiver asing.
+- Browser fixture SQLite terisolasi port 8010: Penutupan toko → Staff & hak akses → Langganan & aktivasi mempertahankan scrollTop 854px; collapsed lalu expanded kembali ke 854px. Mobile 390px mempertahankan 710,5px setelah navigasi dan drawer dibuka kembali. Lebar 320px tidak overflow horizontal. Label expanded staff/admin tidak terpotong; tema terang/gelap diperiksa. Tidak mengirim transaksi atau memanggil supplier nyata.
+- Bukti desktop: apps/web/storage/framework/testing/hansdev-device/sidebar-scroll-desktop.jpg. Server pengujian sementara dihentikan setelah verifikasi; PM2 utama tidak diubah.
+
+## Tema navbar publik dan CSS awal — 2 November 2026
+
+- CSS PlatformHeader dan landing page dipindahkan dari import komponen React ke entry stylesheet app.css yang dimuat pada head Blade. Build tidak lagi menghasilkan CSS halaman Home yang menunggu chunk JavaScript; aturan logo/navbar/landing tersedia pada stylesheet awal.
+- Navbar publik memakai palet tema tersimpan yang sama dengan panel. Landing, paket, dan panduan memiliki warna gelap untuk permukaan, teks, border, input, serta kartu; preview template toko tetap mempertahankan identitas visual contohnya.
+- Pemilih tema dipindahkan dari kartu login ke navbar bersama untuk owner, staff dan admin. Panel owner/staff/admin mempertahankan pemilih tema di topbar. Preferensi light/dark/system existing tetap memakai digitaltoko.panel.theme; tidak mengubah tema tenant storefront.
+- Pemeriksaan browser memakai fixture SQLite lokal, tanpa OTP/pembayaran/sinkronisasi nyata: login owner/staff/admin tidak lagi memiliki kontrol tema dalam kartu; perubahan tema dan refresh login bertahan; landing, paket dan panduan selaras; ketiga panel memakai preferensi yang sama. Navbar mobile 390px dan tablet 900px diperiksa, tanpa overflow navbar. Tombol tema mobile berada di samping tombol navigasi.
+- Build TypeScript/Vite final dan 40 tes frontend lulus. Manifest final menempatkan CSS publik pada resources/css/app.css; Home tidak memiliki CSS chunk terpisah. Bukti: apps/web/storage/framework/testing/hansdev-device/platform-theme-login.jpg. Pengujian visual menggunakan build lokal, bukan deployment VPS atau rekaman jaringan lambat produksi. Server fixture dihentikan setelah pemeriksaan; PM2 utama tidak diubah.
+
+## Logo dark mode transparan — 2 November 2026
+
+- Menambahkan public/brand/digitaltoko-logo-dark-v1.png, varian PNG transparan dengan wordmark putih lembut dan ikon indigo/cyan, dibuat melalui built-in imagegen dari logo existing. Logo light mode tetap memakai aset sebelumnya.
+- Komponen Brand memuat kedua aset dengan ukuran sama; CSS memilih berdasarkan data-panel-theme sejak render awal. Latar putih/padding khusus logo dark di sidebar, navbar publik, dan footer landing dihapus. Ikon D sidebar collapsed tetap memakai aset mark existing.
+- Build TypeScript/Vite lulus. Browser fixture memeriksa light/dark navbar login dan sidebar owner: hanya varian yang sesuai terlihat, kedua gambar berhasil dimuat, background logo rgba(0,0,0,0), padding 0. Bukti navbar: apps/web/storage/framework/testing/hansdev-device/dark-logo-navbar.jpg. Tidak mengubah tema atau logo toko tenant.
+- Prompt imagegen yang digunakan untuk aset terpilih: Edit target: the provided existing DigitalToko horizontal logo PNG. Produce its dark-mode variant only. Preserve EXACT existing logo geometry, placement, typography, letter shapes, spelling DigitalToko (one word, capital D and T), proportions, whitespace and canvas aspect ratio. Keep the left DT monogram icon in its original indigo/purple and cyan colors. Change only the very dark navy wordmark DigitalToko to solid soft white #F1F5FF, with clean antialiased edges. Absolutely transparent background, no background rectangle, no glow, no shadows, no redesign or new elements. This is a production UI brand asset for dark navigation bars. Keep image canvas and logo size/alignment matched to the input.
+
+## Panel lebih ringkas dan pintasan tidak ganda — 2 November 2026
+
+- Menghapus pintasan antar-menu sidebar dari header Sumber produk, Katalog & harga, Layanan & kategori, koneksi Digiflazz/Hanshop, serta Supplier OtomaX. Pintasan koneksi pada saldo pemasok dan kartu notifikasi ikut dihapus. Tombol persiapan toko yang sebelumnya disisipkan pada setiap header tidak ditampilkan lagi; checklist tetap tersedia di halaman Langganan & aktivasi dan alur onboarding.
+- Panduan serta tindakan utama seperti Tambah, Sinkronkan, Impor, dan Edit tetap tersedia. Tautan kembali dari rincian serta tautan kontekstual langkah aktivasi tidak dihapus, agar alur kerja tetap jelas.
+- Toolbar massal layanan/kategori hanya tampil setelah checkbox dipilih. Di Sumber produk, tombol impor pilihan muncul setelah ada pilihan; tanpa pilihan/sumber cukup ditampilkan petunjuk satu baris. Memilih sumber tetap membuka impor seluruh katalog/per layanan/per kategori.
+- Meringkas petunjuk inline pada katalog/harga, struktur kategori, stok, QRIS, koneksi pemasok, saldo/deposit, WhatsApp, dan uji worker admin. Langkah struktur katalog menjadi daftar tiga langkah. Informasi pembatasan modal, komisi bertanda, refund, secret, dan tindakan berisiko dipertahankan. Panduan publik lengkap tetap tersedia; tidak mengurangi langkah instalasi perangkat yang dibutuhkan pengguna.
+- Validasi: build TypeScript/Vite dan 40 tes frontend lulus. Browser fixture SQLite terisolasi: header Sumber hanya Panduan; impor 10 pilihan tetap membuka modal tanpa menjalankan impor; katalog tetap menyediakan Tambah produk; layanan/kategori menampilkan/menyembunyikan toolbar sesuai pilihan; koneksi Digiflazz membuka modal; OtomaX menyediakan Tambah supplier. Owner/staff dan viewport desktop/390px diperiksa. Tidak menyimpan credentials, mengimpor data, melakukan transaksi, atau menghubungi pemasok nyata.
+- Bukti: apps/web/storage/framework/testing/hansdev-device/clean-sources-desktop.jpg. Server/tab pengujian ditutup dan viewport dikembalikan; PM2 utama tidak diubah.
+
+## Checkpoint sebelum paket terpadu — 2 November 2026
+
+Checkpoint menyimpan pekerjaan pemisahan koneksi supplier, installer/panduan HansDev Forwarder, sidebar dan pemulihan scroll, sinkronisasi tema/navbar/CSS awal, logo dark mode, peringkasan panel, serta paket storyboard/prompt Flow delapan adegan 60 detik. Rincian pengujian masing-masing tetap tercatat pada bagian sebelumnya. Arsip DigitalToko.zip di root bukan hasil perubahan ini dan tidak dimasukkan.
+
+Permintaan berikutnya: satu paket sewa mencakup Web Topup + Bot WhatsApp serta semua sumber produk; penawaran hanya dibedakan durasi. Admin, onboarding, perpanjangan, halaman publik, panduan dan materi promosi perlu mengikuti konsep ini. Riwayat invoice/snapshot keuangan dan masa aktif harus tetap dapat diaudit. Harga awal memakai penawaran paket lengkap existing; harga dan durasi tetap dikelola administrator.

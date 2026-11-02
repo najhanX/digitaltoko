@@ -1,0 +1,105 @@
+{
+  "brand": "DigitalToko",
+  "format": "9:16",
+  "totalSeconds": 60,
+  "created": "2026-11-02",
+  "sceneMode": "Frames to Video, first frame",
+  "scenes": [
+    {
+      "id": "01",
+      "title": "Pembuka",
+      "duration": 6,
+      "start": 0,
+      "end": 6,
+      "headline": "Toko digital. Brand Anda.",
+      "visual": "Laptop storefront dan smartphone WhatsApp dengan identitas DigitalToko.",
+      "vo": "Punya toko produk digital dengan nama sendiri? Mulai bersama Digital Toko.",
+      "motion": "Slow cinematic push-in. Laptop and smartphone rise gently into view, a cyan ribbon connects the web storefront and chat. A soft light sweep passes over the DigitalToko logo. Keep headline and UI text stable. Hold clearly for one second at the end.",
+      "frame": "frames/01.png"
+    },
+    {
+      "id": "02",
+      "title": "Daftar & pilih paket",
+      "duration": 8,
+      "start": 6,
+      "end": 14,
+      "headline": "Mulai dari paket pilihanmu.",
+      "visual": "One elegant desktop browser panel on a floating screen, a simple onboarding stepper labeled 'Daftar', 'Verifikasi', 'Buat toko', 'Pilih paket'. Three clear pricing choice cards labeled exactly 'Web Topup', 'Bot WhatsApp', 'Web + Bot'. A small storefront-name field filled 'Toko Anda', a neutral domain field labeled 'Subdomain'. A checkmark by verification and a payment confirmation icon imply enrollment, no personal ID photo or actual payment codes. Headline exactly 'Mulai dari paket pilihanmu.'. No listed numeric prices.",
+      "vo": "Daftar, lengkapi verifikasi, buat toko, lalu pilih paket Web, Bot WhatsApp, atau keduanya. Bayar sesuai durasi pilihanmu.",
+      "motion": "Slow dolly toward the onboarding panel. Illuminate Daftar, Verifikasi, Buat toko and Pilih paket in that order. A soft cursor selects Web + Bot, then a simple paid checkmark appears. End on a settled panel.",
+      "frame": "frames/02.png"
+    },
+    {
+      "id": "03",
+      "title": "Hubungkan pemasok",
+      "duration": 8,
+      "start": 14,
+      "end": 22,
+      "headline": "Semua sumber, satu katalog.",
+      "visual": "A central beautiful catalog dashboard with product cards and small generic icons for pulsa, paket data, games and premium apps. Three external supplier connector tiles labeled exactly 'Digiflazz', 'API Hanshop', 'OtomaX' connect into this dashboard using thin curved cyan paths. A fourth tile 'Stok premium' joins the catalog. A discreet UI control labeled 'Atur markup', no invented prices. Large headline exactly 'Semua sumber, satu katalog.'. The logo and overall style match the first reference.",
+      "vo": "Hubungkan Digiflazz, Hanshop, atau pemasok OtomaX. Impor katalog, atur markup harga, dan kelola stok aplikasi premium.",
+      "motion": "Three supplier tiles softly illuminate, cyan pulses travel toward the central catalog, then product rows populate once. Briefly highlight Atur markup and Stok premium. Restrained camera orbit under three degrees, no shaking.",
+      "frame": "frames/03.png"
+    },
+    {
+      "id": "04",
+      "title": "Custom tampilan toko",
+      "duration": 8,
+      "start": 22,
+      "end": 30,
+      "headline": "Desain sesuai brand Anda.",
+      "visual": "An elegant website design editor floating above a white rounded pedestal. Side panel with three template thumbnail cards labeled 'Nebula', 'Aurora', 'Atlas', a row of indigo cyan and pastel color swatches, logo upload icon, banner thumbnail and reorder handle icons. Main preview shows an attractive digital store mobile homepage with banner and product categories. Large headline exactly 'Desain sesuai brand Anda.'. Small label 'Template • Warna • Logo • Banner'. The mock editor is illustrative and clean rather than microscopic.",
+      "vo": "Pilih template, ganti warna, logo, dan banner. Susun beranda sesuai brand, lalu siapkan domain toko milikmu.",
+      "motion": "Cursor selects Aurora, then a cyan swatch. The storefront preview smoothly switches palette, one banner slides in, and two homepage sections gently reorder. End with the completed storefront preview enlarged slightly. Keep all existing text stable.",
+      "frame": "frames/04.png"
+    },
+    {
+      "id": "05",
+      "title": "Panduan bergambar",
+      "duration": 8,
+      "start": 30,
+      "end": 38,
+      "headline": "Ada panduan di setiap langkah.",
+      "visual": "An open DigitalToko help center on a large vertical-friendly floating browser card. Top label 'Panduan'. Three large readable illustrated step cards numbered 1, 2, 3 with simple diagram screenshot thumbnails, indigo click markers and one cyan arrow each. Sidebar topic chips 'Pemasok', 'Pembayaran', 'WhatsApp'. Hero headline exactly 'Ada panduan di setiap langkah.'. A small 'Panduan' button visually connects from a mini admin panel to the help page. No walls of text, no invented technical data.",
+      "vo": "Butuh bantuan? Ikuti panduan bergambar, dari koneksi pemasok, pembayaran, hingga pengaturan toko. Langkahnya bisa kamu ikuti dari panel.",
+      "motion": "Start by highlighting the small Panduan button. The guide opens with a soft card expansion; camera pans slowly across steps 1, 2, 3. Click markers pulse once each. No scrolling through unreadable text.",
+      "frame": "frames/05.png"
+    },
+    {
+      "id": "06",
+      "title": "Pelanggan memesan",
+      "duration": 8,
+      "start": 38,
+      "end": 46,
+      "headline": "Pilih. Bayar. Pantau.",
+      "visual": "One premium smartphone in front of a matching digital storefront display. A clean checkout UI with three stacked steps labeled exactly 'Pilih produk', 'Isi tujuan', 'Bayar', then a green verified status tile 'Pembayaran diterima' and a subtle order tracking card. A separate small generic WhatsApp-style bubble says 'Pesanan diproses'. No scannable QR or payment credentials. Products are generic data topup cards; show a fake destination field as bullet dots only. Large headline exactly 'Pilih. Bayar. Pantau.'.",
+      "vo": "Toko aktif, pelanggan pilih produk, isi tujuan, lalu bayar. Pesanan diproses dan statusnya dipantau lewat web atau WhatsApp.",
+      "motion": "Soft cursor chooses a data product, destination field fills with masked dots, then payment confirmation transitions to order processing. A WhatsApp notification gently slides up. Show a natural pending processing stage; do not imply every supplier always succeeds instantly.",
+      "frame": "frames/06.png"
+    },
+    {
+      "id": "07",
+      "title": "Operasional lebih mudah",
+      "duration": 6,
+      "start": 46,
+      "end": 52,
+      "headline": "Kelola usaha, lebih terarah.",
+      "visual": "A beautifully organized DigitalToko owner dashboard as central floating tablet, four compact feature cards around it labeled 'Transaksi', 'Saldo pelanggan', 'Voucher', 'Staff'. Restrained tiny line chart with no numeric profit claims, transaction list with neutral status dots, one voucher ticket icon, and team permission avatars as generic symbols not real people. Large headline exactly 'Kelola usaha, lebih terarah.'. White indigo cyan studio 3D style consistent.",
+      "vo": "Pantau transaksi, kelola saldo pelanggan, buat voucher, dan bagi tugas bersama staff dalam satu panel.",
+      "motion": "A smooth lateral camera move reveals the four feature cards one at a time, then they align neatly around the dashboard. Highlight transaction status and a voucher ticket, no rapid blinking.",
+      "frame": "frames/07.png"
+    },
+    {
+      "id": "08",
+      "title": "Ajakan mulai",
+      "duration": 8,
+      "start": 52,
+      "end": 60,
+      "headline": "Bangun toko digital Anda.",
+      "visual": "A confident clean brand end card with original DigitalToko logo large and sharp in the upper middle, a polished laptop and smartphone storefront pair lower down echoing the first reference, subtle indigo cyan ribbon flowing between them. Large readable headline exactly 'Bangun toko digital Anda.'. A prominent rounded indigo CTA button with exact text 'Lihat paket & mulai'. Small option line 'Web Topup • Bot WhatsApp • Web + Bot'. No domain URL, no price, no free trial or guarantees. Keep the CTA in the central safe area not at the bottom edge. Elegant conclusive composition with breathing room.",
+      "vo": "Siap membangun toko digital dengan brand sendiri? Pilih paketmu, siapkan tokomu, dan mulai bersama Digital Toko.",
+      "motion": "Bring laptop and phone into a calm balanced arrangement. Very slow push-in toward the logo and CTA, a single subtle cyan shimmer through the ribbon, hold the CTA clearly for the last three seconds. Finish in a clean stable frame.",
+      "frame": "frames/08.png"
+    }
+  ]
+}

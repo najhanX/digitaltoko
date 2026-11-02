@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import Brand from './Brand';
-import '../../css/platform-header.css';
+import ThemeToggle from './ThemeToggle';
 
 const navigation = [
     {label:'Layanan',href:'/#layanan',section:true},
@@ -20,12 +20,13 @@ export default function PlatformHeader() {
     const toggle = useRef<HTMLButtonElement>(null);
     useEffect(()=>{setOpen(false);},[url]);
 
-    return <header className="public-header" onKeyDown={event=>{
+    return <header className="public-header panel-surface" onKeyDown={event=>{
         if(event.key==='Escape'&&open){setOpen(false);toggle.current?.focus();}
     }}>
         <div className="public-header-inner">
             <Brand/>
-            <button ref={toggle} className="public-header-toggle" type="button" aria-label={open?'Tutup navigasi':'Buka navigasi'} aria-expanded={open} aria-controls="platform-navigation" onClick={()=>setOpen(!open)}>{open?<X size={22}/>:<Menu size={22}/>}</button>
+            <div className="public-header-actions"><ThemeToggle compactOnMobile/>
+            <button ref={toggle} className="public-header-toggle" type="button" aria-label={open?'Tutup navigasi':'Buka navigasi'} aria-expanded={open} aria-controls="platform-navigation" onClick={()=>setOpen(!open)}>{open?<X size={22}/>:<Menu size={22}/>}</button></div>
             <nav id="platform-navigation" className={'public-header-nav'+(open?' is-open':'')} aria-label="Navigasi utama" onClick={()=>setOpen(false)}>
                 {navigation.map(item=>{
                     const active = !item.section&&(pathname===item.href||pathname.startsWith(item.href+'/'));

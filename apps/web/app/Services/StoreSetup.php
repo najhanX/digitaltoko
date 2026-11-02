@@ -18,7 +18,7 @@ class StoreSetup
             ->whereHas('product', fn ($query) => $query->where('store_id', $store->id)->where('kind', 'premium'))->exists();
         $hasConnection = SupplierConnection::where('store_id', $store->id)->where('enabled', true)->whereNotNull('verified_at')->exists();
         $stockLink = $can(['stock.view', 'stock.manage', 'stock.credentials']) ? $base.'/stock' : null;
-        $sourceLink = $can(['products.view', 'products.manage', 'pricing.manage', 'suppliers.manage', 'suppliers.responses', 'suppliers.import', 'suppliers.deposit', 'suppliers.balance']) ? $base.'/sources' : null;
+        $sourceLink = $can(['products.view', 'products.manage', 'pricing.manage', 'suppliers.manage', 'suppliers.responses', 'suppliers.import', 'suppliers.deposit', 'suppliers.balance']) ? $base.'/supplier-connections/digiflazz' : null;
         $catalogReady = false;
         $catalog = app(StoreCatalog::class);
         $catalog->query($store, false)->where('active', true)->chunkById(100, function ($products) use ($store, $catalog, &$catalogReady) {

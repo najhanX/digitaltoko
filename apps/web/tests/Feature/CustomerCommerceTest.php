@@ -200,21 +200,28 @@ class CustomerCommerceTest extends TestCase
         $this->assertSame('paid', $order->fresh()->payment_status);
     }
 
-    public function test_forwarder_download_returns_bundle_and_missing_release_is_not_exposed(): void
+    public function test_forwarder_downloads_separate_apk_and_each_os_with_safe_missing_releases(): void
     {
-        config(['services.forwarder.bundle_path' => __DIR__.'/missing-forwarder.zip']);
-        $this->get('/downloads/hansdev-forwarder')->assertNotFound();
+        config(['services.forwarder.apk_path' => __DIR__.'/missing-forwarder.apk']);
+        $this->get('/downloads/hansdev-forwarder.apk')->assertNotFound();
         $path = tempnam(sys_get_temp_dir(), 'forwarder-test-');
-        file_put_contents($path, 'PK-SYNTHETIC-ZIP-FOR-RESPONSE-TEST');
+        file_put_contents($path, 'SYNTHETIC-RELEASE');
         try {
-            config(['services.forwarder.bundle_path' => $path]);
-            foreach (['/downloads/hansdev-forwarder.zip', '/downloads/hansdev-forwarder'] as $url) {
-                $response = $this->get($url)->assertOk()
-                    ->assertDownload('HansDev-Forwarder.zip')
-                    ->assertHeader('Content-Type', 'application/zip')
-                    ->assertHeader('Pragma', 'no-cache');
+            config(['services.forwarder.apk_path' => $path]);
+            foreach (['/downloads/hansdev-forwarder.apk', '/downloads/hansdev-forwarder'] as $url) {
+                $response = $this->get($url)->assertOk()->assertDownload('HansDev-Forwarder.apk')
+                    ->assertHeader('Content-Type', 'application/vnd.android.package-archive')->assertHeader('Pragma', 'no-cache');
                 $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
             }
+            foreach (['windows', 'macos', 'linux'] as $os) {
+                config(['services.forwarder.tools.'.$os => __DIR__.'/missing-tools.zip']);
+                $this->get('/downloads/hansdev-listener/'.$os.'.zip')->assertNotFound();
+                config(['services.forwarder.tools.'.$os => $path]);
+                $this->get('/downloads/hansdev-listener/'.$os.'.zip')->assertOk()
+                    ->assertDownload('HansDev-Listener-'.$os.'.zip')->assertHeader('Content-Type', 'application/zip');
+            }
+            $this->get('/downloads/hansdev-listener/unknown.zip')->assertNotFound();
+            $this->get('/downloads/hansdev-forwarder.zip')->assertRedirect('/panduan/aktifkan-listener');
         } finally {
             unlink($path);
         }

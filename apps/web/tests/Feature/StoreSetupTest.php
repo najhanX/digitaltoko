@@ -59,7 +59,7 @@ class StoreSetupTest extends TestCase
         $store = $this->shop();
         $this->actingAs($store->owner)->get('/stores/'.$store->id.'/subscription')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('setup.total', 4)->where('setup.completed', 1)->where('setup.ready', false)
-            ->where('setup.items.0.ready', false)->where('setup.items.0.href', '/stores/'.$store->id.'/sources')
+            ->where('setup.items.0.ready', false)->where('setup.items.0.href', '/stores/'.$store->id.'/supplier-connections/digiflazz')
             ->where('setup.items.3.ready', true)->where('setup.items.4.required', false));
         $this->assertTrue(app(SubscriptionService::class)->ready($store));
         $this->assertDatabaseCount('store_payment_settings', 0);
@@ -128,7 +128,7 @@ class StoreSetupTest extends TestCase
             ->where('setup.items.0.href', null)->where('setup.items.1.href', null)->where('setup.items.2.href', null)->where('setup.items.3.href', null)->where('setup.items.4.href', null));
         $staff->update(['permissions' => ['dashboard.view', 'subscription.view', 'pricing.manage', 'bot.manage', 'payments.policy']]);
         $this->get('/staff/'.$store->id.'/dashboard')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('setup.items.0.href', '/stores/'.$store->id.'/sources')->where('setup.items.2.href', '/stores/'.$store->id.'/payments')
+            ->where('setup.items.0.href', '/stores/'.$store->id.'/supplier-connections/digiflazz')->where('setup.items.2.href', '/stores/'.$store->id.'/payments')
             ->where('setup.items.3.href', null)->where('setup.items.4.href', '/stores/'.$store->id.'/bot'));
     }
 

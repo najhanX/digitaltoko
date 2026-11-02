@@ -66,9 +66,39 @@ def package(source, output):
     return hashlib.sha256(output.read_bytes()).hexdigest()
 
 
+def split_releases(bundle, directory):
+    """Publish only the APK and one tools ZIP per OS; never extract arbitrary names."""
+    directory = Path(directory).resolve()
+    directory.mkdir(parents=True, exist_ok=True)
+    names = {'HansDev-Forwarder.apk': 'HansDev-Forwarder.apk'}
+    names.update({f'platform-tools-latest-{os}.zip': f'HansDev-Listener-{os}.zip' for os in LAUNCHERS})
+    with zipfile.ZipFile(bundle) as archive:
+        if set(archive.namelist()) != set(names) or archive.testzip():
+            raise ValueError('Unexpected or corrupt bundle.')
+        for entry, name in names.items():
+            data = archive.read(entry)
+            if entry.endswith('.zip'):
+                platform = next(os for os in LAUNCHERS if entry == f'platform-tools-latest-{os}.zip')
+                with zipfile.ZipFile(io.BytesIO(data)) as tools:
+                    if tools.testzip() or LAUNCHERS[platform][0] not in tools.namelist():
+                        raise ValueError('Missing portable launcher or corrupt tools: ' + platform)
+            handle, temporary = tempfile.mkstemp(dir=directory, suffix='.tmp')
+            try:
+                with os.fdopen(handle, 'wb') as output:
+                    output.write(data)
+                os.replace(temporary, directory / name)
+            finally:
+                if os.path.exists(temporary):
+                    os.unlink(temporary)
+    return list(names.values())
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', required=True)
     parser.add_argument('--output', required=True)
+    parser.add_argument('--split-dir', help='Publish APK and separate OS tools from the completed bundle')
     args = parser.parse_args()
     print(package(args.source, args.output))
+    if args.split_dir:
+        print(split_releases(args.output, args.split_dir))

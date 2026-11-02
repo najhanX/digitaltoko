@@ -6,7 +6,7 @@ import {
     Plus,
     Pencil,
     Trash2,
-    Plug,
+
     Package,
     Power,
     PowerOff,
@@ -328,10 +328,6 @@ export default function Catalog({
             }
             actions={
                 <>
-                    <Link href={base + "/sources"} className="button secondary">
-                        <Plug size={16} />
-                        Sumber produk
-                    </Link>
                     {tab === "products" && canManage && (
                         <button
                             className="button"
@@ -374,8 +370,8 @@ export default function Catalog({
             <CatalogHelp title={tab === "products" ? "Cara kerja sumber dan harga produk" : "Prioritas aturan: produk → kategori → layanan"}>
                 <p>
                     {tab === "products"
-                        ? "Harga jual otomatis memakai modal parsing termurah atau termahal sesuai pilihan produk; transaksi mencoba parsing termurah lebih dahulu. Modal melebihi harga jual membuat produk tidak tersedia sampai harganya diperbaiki atau pembaruan otomatis diaktifkan."
-                        : "Markup dan pembaruan otomatis diatur terpisah. Masing-masing mengikuti urutan produk → kategori → layanan. Jika tidak ada aturan, markup 0 dan pembaruan otomatis nonaktif."}
+                        ? "Harga jual mengikuti dasar markup terpilih. Transaksi mencoba sumber termurah dahulu. Produk tidak tersedia jika modal melebihi harga jual; perbarui harga atau aktifkan pembaruan otomatis."
+                        : "Markup dan pembaruan otomatis masing-masing mengikuti produk → kategori → layanan. Tanpa aturan: markup 0, pembaruan nonaktif."}
                 </p>
             </CatalogHelp>
             {selectedCategory && (
@@ -1039,7 +1035,7 @@ export default function Catalog({
                                     />
                                 </label>
                             </div>
-                            <p className="field-help">Dasar modal mengikuti aturan kategori, lalu layanan. Jika belum diatur, gunakan parsing termahal. Atur sekaligus melalui tab Aturan harga.</p>
+                            <p className="field-help">Dasar modal: kategori → layanan → parsing termahal. Ubah bersama di tab Aturan harga.</p>
                             <PricingSettings
                                 postpaid={product.data.kind === "postpaid"}
                                 scope="product"
@@ -1071,9 +1067,7 @@ export default function Catalog({
                             )}
                             {product.data.kind === "postpaid" && (
                                 <p>
-                                    Total pelanggan = tagihan + admin layanan + penyesuaian sumber + markup. Harga OtomaX negatif mengurangi modal, positif menambah modal. Persen memakai besar penyesuaian sumber dasar yang dipilih. Harga katalog belum termasuk pokok tagihan.
-                                    Nominal tagihan perlu inquiry pada tahap
-                                    pemesanan.
+                                    Total bayar = tagihan + admin layanan + penyesuaian sumber + markup. Penyesuaian OtomaX negatif mengurangi modal; positif menambah modal. Markup persen memakai besar penyesuaian sumber terpilih. Tagihan baru diketahui setelah cek tagihan.
                                 </p>
                             )}
                         </section>
@@ -1232,7 +1226,7 @@ export default function Catalog({
                             <option value="highest">Parsing dengan modal termahal</option>
                         </select>
                     </label>
-                    <p className="field-help">Berlaku untuk seluruh produk pada kategori atau layanan ini, termasuk produk dengan markup sendiri. Kategori didahulukan dari layanan. Urutan transaksi tetap dari parsing termurah.</p>
+                    <p className="field-help">Dasar modal berlaku untuk semua produk, termasuk yang memiliki markup sendiri. Prioritas: kategori → layanan. Transaksi tetap dari sumber termurah.</p>
                     <PricingSettings
                         scope={
                             rule.data.scope === "service"

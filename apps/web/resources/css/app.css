@@ -13,6 +13,8 @@
 @import './storefront-mobile.css';
 @import './workspace-mobile.css';
 @import './system-health.css';
+@import './platform-home.css';
+@import './platform-header.css';
 
 .sandbox-indicator{position:fixed;bottom:16px;left:16px;z-index:90;display:grid;gap:3px;max-width:min(300px,calc(100vw - 100px));padding:10px 14px;border:1px solid #d9a122;border-radius:12px;background:#fff7d6;color:#684309;box-shadow:0 4px 18px #0002;font-size:var(--text-small);pointer-events:none}.sandbox-indicator strong{font-size:var(--text-body)}
 
@@ -45,3 +47,8 @@
 
 
 .qris-parser-picker{display:flex;align-items:flex-end;gap:10px}.qris-parser-picker>label{flex:1;min-width:0}.qris-parser-picker>.button{flex-shrink:0;margin-bottom:0}.qris-parser-rule{padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--panel-soft)}.qris-parser-rule-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.qris-parser-tokens{display:flex;flex-wrap:wrap;gap:6px}.qris-parser-tokens .button{font-size:13px;padding:6px 9px;min-height:32px}.qris-parser-advanced summary{cursor:pointer;color:var(--primary);font-weight:600;padding:10px 0}.qris-parser-advanced[open]>.form-stack{margin-top:8px}.qris-parser-result{padding:16px;border-radius:14px;border:1px solid var(--border);background:var(--panel-soft);overflow-wrap:anywhere}.qris-parser-result>strong{display:flex;align-items:center;gap:8px}.qris-parser-result.is-match{border-color:#28a886}.qris-parser-result dl{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:12px 0}.qris-parser-result dl>div{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px}.qris-parser-result dd{margin:0;font-weight:600}.qris-parser-result p{margin-top:8px}@media(max-width:480px){.qris-parser-rule{padding:12px}.qris-parser-picker{gap:8px}.qris-parser-picker>.button{padding-inline:10px}}
+
+/* Both assets share a canvas; the initial document theme chooses without JS swapping. */
+.brand>img.brand-dark{display:none}
+[data-panel-theme=dark] .brand>img.brand-light{display:none}
+[data-panel-theme=dark] .brand>img.brand-dark{display:block}

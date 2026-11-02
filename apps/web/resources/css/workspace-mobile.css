@@ -104,3 +104,29 @@
     .workspace-shell .interactive-modal .modal-body :is(input,select,textarea):not([type=checkbox]):not([type=radio]){font-size:16px;padding:10px 11px}
     .workspace-shell .interactive-modal .catalog-select-control input:not([type=checkbox]):not([type=radio]){padding:7px 0}
 }
+
+/* Expanded navigation wraps labels; collapsed rows remain fixed icon buttons. */
+.workspace-shell { --sidebar-expanded-width: 272px; --sidebar-inline-padding: 18px; }
+.workspace-shell.compact-navigation { --sidebar-inline-padding: 14px; }
+.workspace-shell .workspace-sidebar .nav-item,
+.workspace-shell .workspace-sidebar .sidebar-section-toggle { height: auto; line-height: 1.4; }
+.workspace-shell .workspace-sidebar .nav-item > span,
+.workspace-shell .workspace-sidebar .sidebar-section-toggle > span { min-width: 0; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.workspace-shell .workspace-sidebar .nav-item > span { flex: 1; }
+.workspace-shell .workspace-sidebar .nav-item > svg,
+.workspace-shell .workspace-sidebar .sidebar-store > svg { flex-shrink: 0; }
+.workspace-shell .workspace-sidebar .sidebar-bottom > div { flex: 1; min-width: 0; white-space: normal; overflow: visible; }
+.workspace-shell .workspace-sidebar .sidebar-bottom strong,
+.workspace-shell .workspace-sidebar .sidebar-store > strong { max-width: none; min-width: 0; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+@media (min-width: 701px) {
+    .panel-surface.workspace-shell:not(.sidebar-collapsed) { grid-template-columns: var(--sidebar-expanded-width) minmax(0, 1fr); }
+    /* Keep label layout stable while the outer column animates open. */
+    .workspace-shell:not(.sidebar-collapsed) .workspace-nav { width: calc(var(--sidebar-expanded-width) - 2 * var(--sidebar-inline-padding) - 10px); }
+    .workspace-shell.sidebar-collapsed .workspace-sidebar .nav-item,
+    .workspace-shell.sidebar-collapsed .workspace-sidebar .sidebar-section-toggle { height: 44px; }
+    .workspace-shell.sidebar-collapsed .workspace-sidebar .nav-item > span,
+    .workspace-shell.sidebar-collapsed .workspace-sidebar .sidebar-section-toggle > span { overflow: hidden; }
+}
+@media (min-width: 701px) and (max-width: 900px) {
+    .workspace-shell { --sidebar-expanded-width: 256px; }
+}

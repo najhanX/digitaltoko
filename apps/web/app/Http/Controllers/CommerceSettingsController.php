@@ -10,6 +10,7 @@ use App\Services\CustomQris;
 use App\Services\ProductPricing;
 use App\Services\QrisNotificationParser;
 use App\Support\CatalogAccess;
+use App\Support\ForwarderDownloads;
 use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -35,7 +36,7 @@ class CommerceSettingsController extends Controller
         $page = $list->paginate($list->apply(ModulePurchase::where('store_id', $store->id), ['id'], ['status' => 'status'])->latest()->orderByDesc('id'));
 
         return Inertia::render('Owner/Payments', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'settings' => [...$setting->toArray(), 'application_package' => $setting->credentials['application_package'] ?? 'id.dana', 'application_name' => $setting->credentials['application_name'] ?? ''],
-            'forwarderDownload' => is_file(config('services.forwarder.bundle_path')) ? route('forwarder.download') : null,
+            'forwarderDownloads' => ForwarderDownloads::available(),
             'configured' => ['midtrans' => filled($setting->credentials['server_key'] ?? null), 'custom' => filled($setting->credentials['qris_payload'] ?? null)],
             'qrisParser' => $setting->credentials['notification_parser'] ?? app(QrisNotificationParser::class)->defaults(), 'hasQrisParser' => isset($setting->credentials['notification_parser']),
             'canParser' => CatalogAccess::has($request, $role, 'payments.parsers'),
@@ -106,10 +107,20 @@ class CommerceSettingsController extends Controller
 
     public function download(): BinaryFileResponse
     {
-        $path = config('services.forwarder.bundle_path');
-        abort_unless(is_string($path) && is_file($path), 404, 'Paket instalasi belum tersedia. Hubungi administrator DigitalToko.');
+        return $this->release(config('services.forwarder.apk_path'), 'HansDev-Forwarder.apk', 'application/vnd.android.package-archive');
+    }
 
-        $response = response()->download($path, 'HansDev-Forwarder.zip', ['Content-Type' => 'application/zip', 'X-Content-Type-Options' => 'nosniff']);
+    public function downloadTools(string $os): BinaryFileResponse
+    {
+        abort_unless(in_array($os, ['windows', 'macos', 'linux'], true), 404);
+
+        return $this->release(config('services.forwarder.tools.'.$os), 'HansDev-Listener-'.$os.'.zip', 'application/zip');
+    }
+
+    private function release(?string $path, string $name, string $mime): BinaryFileResponse
+    {
+        abort_unless($path && is_file($path), 404, 'File unduhan belum tersedia. Hubungi administrator DigitalToko.');
+        $response = response()->download($path, $name, ['Content-Type' => $mime, 'X-Content-Type-Options' => 'nosniff']);
         $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
         $response->headers->set('Pragma', 'no-cache');
         $response->headers->set('Expires', '0');

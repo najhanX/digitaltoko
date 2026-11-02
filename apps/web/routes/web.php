@@ -43,7 +43,9 @@ use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
-Route::get('/downloads/hansdev-forwarder.zip', [CommerceSettingsController::class, 'download'])->middleware('throttle:20,1')->name('forwarder.download');
+Route::redirect('/downloads/hansdev-forwarder.zip', '/panduan/aktifkan-listener');
+Route::get('/downloads/hansdev-forwarder.apk', [CommerceSettingsController::class, 'download'])->middleware('throttle:20,1')->name('forwarder.download');
+Route::get('/downloads/hansdev-listener/{os}.zip', [CommerceSettingsController::class, 'downloadTools'])->where('os', 'windows|macos|linux')->middleware('throttle:20,1')->name('forwarder.tools');
 Route::get('/downloads/hansdev-forwarder', [CommerceSettingsController::class, 'download'])->middleware('throttle:20,1');
 Route::post('/game-identity', GameIdentityController::class)->middleware('throttle:20,1,storefront-game-identity');
 Route::get('/search', [StorefrontPageController::class, 'search'])->middleware('throttle:60,1,storefront-search')->name('storefront.search');
@@ -155,6 +157,7 @@ Route::middleware('platform.host')->group(function () {
         Route::post('/imports/{import}/confirm', 'confirm')->middleware('throttle:10,1');
     });
 
+    Route::get('/stores/{store}/supplier-connections/{kind}', [SupplierController::class, 'connections'])->where('kind', 'digiflazz|hanshop');
     Route::get('/stores/{store}/sources', [SupplierController::class, 'index']);
     Route::post('/stores/{store}/sources/{connection}/webhook', [SupplierController::class, 'webhook'])->middleware('throttle:6,1');
     Route::post('/stores/{store}/provisioning', [ProvisioningController::class, 'update'])->middleware('throttle:10,1,provisioning');

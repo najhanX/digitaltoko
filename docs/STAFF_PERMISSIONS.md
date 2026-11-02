@@ -1,6 +1,6 @@
 # Hak akses staff toko
 
-Disinkronkan dengan `apps/web/app/Support/StaffPermissions.php` dan controller pada **22 Oktober 2026**. Maksimal lima akun lokal per toko, termasuk nonaktif; owner tidak dihitung. Login memakai username/email dan password dengan konteks toko. Staff tidak didaftarkan ke Hanshop.
+Disinkronkan dengan `apps/web/app/Support/StaffPermissions.php` dan controller pada **2 November 2026**. Maksimal lima akun lokal per toko, termasuk nonaktif; owner tidak dihitung. Login memakai username/email dan password dengan konteks toko. Staff tidak didaftarkan ke Hanshop.
 
 ## Aturan akses
 
@@ -21,20 +21,22 @@ Owner-only: pengelolaan staff, identitas/KTP, credential Digiflazz/Hanshop dan g
 | `stock.view` | Lihat jumlah stok |
 | `stock.manage` | Kelola stok ready |
 | `stock.credentials` | Lihat credential stok |
-| `suppliers.balance` | Lihat saldo pemasok toko (Digiflazz/OtomaX) |
-| `suppliers.manage` | Kelola koneksi, URL daftar harga, dan callback OtomaX |
+| `suppliers.manage` | Kelola koneksi, URL harga & callback OtomaX |
 | `suppliers.responses` | Kelola kelompok jawaban OtomaX |
-| `suppliers.import` | Sinkronisasi katalog URL dan fondasi impor berkas OtomaX |
-| `suppliers.deposit` | Ambil & lihat tiket deposit OtomaX |
+| `suppliers.import` | Sinkronisasi & impor katalog OtomaX |
+| `suppliers.deposit` | Buat deposit pemasok (Hanshop khusus owner) |
+| `suppliers.balance` | Lihat saldo pemasok toko |
 | `orders.view` | Lihat & cek transaksi |
-| `orders.manage` | Putuskan sukses/gagal transaksi Digiflazz/OtomaX manual |
+| `orders.manage` | Kirim ulang pemasok & putuskan sukses/gagal manual |
 | `orders.resend` | Kirim ulang hasil ke penerima asli |
 | `guests.resolve` | Tindak lanjut pesanan guest |
 | `customers.view` | Lihat pelanggan |
 | `customers.contacts` | Lihat kontak pelanggan |
 | `customers.manage` | Kelola profil pelanggan |
 | `payments.view` | Lihat pembayaran |
+| `payments.parsers` | Kelola penangkap notifikasi QRIS |
 | `payments.policy` | Atur fee dan kebijakan kode unik |
+| `payments.confirm` | Konfirmasi penerimaan pembayaran QRIS manual |
 | `wallet.view` | Lihat ledger saldo pelanggan |
 | `wallet.settlement` | Catat pencairan saat toko berhenti |
 | `web.manage` | Kelola template & branding |
@@ -64,3 +66,8 @@ suppliers.balance membuka pemantauan saldo, pemeriksaan manual dan snapshot pema
 
 
 `payments.parsers`: kelola dan uji format notifikasi QRIS HansDev. Menyertakan akses baca Pembayaran pelanggan; tidak memberi akses token, mengubah gateway atau melunasi invoice manual. Staff lama tidak otomatis mendapat izin ini.
+
+
+## Akses koneksi pemasok — 2 November 2026
+
+Halaman API Hanshop/Digiflazz pada Koneksi supplier memakai `CatalogAccess::authorize` (products.view atau grant yang mengimplikasikannya). Staff dapat membaca metadata tanpa credential. Aksi koneksi/nonaktifkan dan secret webhook tetap khusus owner. `products.manage` mengizinkan sinkronisasi/impor katalog; grant OtomaX tetap terpisah. Saldo/deposit Hanshop tetap khusus owner, meskipun menu pemantauan umum terlihat.

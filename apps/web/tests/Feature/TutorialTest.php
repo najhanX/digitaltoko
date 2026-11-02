@@ -43,28 +43,30 @@ class TutorialTest extends TestCase
             $this->assertGreaterThan(1000, $size[0]);
             $this->assertGreaterThan(600, $size[1]);
             foreach ($guide['steps'] as $step) {
-                $visual = $step['visual'];
-                $this->assertNotEmpty($visual['caption']);
-                $this->assertStringStartsWith('/guides/steps/', $visual['image']);
-                $this->assertStringNotContainsString('..', $visual['image']);
-                $this->assertFileExists(public_path($visual['image']));
-                $this->assertGreaterThan(0, $visual['width']);
-                $this->assertGreaterThan(0, $visual['height']);
-                if (str_ends_with($visual['image'], '.svg')) {
-                    $this->assertTrue($visual['illustration']);
-                    $this->assertStringContainsString('ILUSTRASI', file_get_contents(public_path($visual['image'])));
-                } else {
-                    $imageSize = getimagesize(public_path($visual['image']));
-                    $this->assertSame($visual['width'], $imageSize[0]);
-                    $this->assertSame($visual['height'], $imageSize[1]);
-                }
-                $this->assertGreaterThanOrEqual(1, count($visual['markers']));
-                $this->assertLessThanOrEqual(3, count($visual['markers']));
-                foreach ($visual['markers'] as $marker) {
-                    $this->assertNotEmpty($marker['label']);
-                    foreach (['x', 'y', 'w', 'h'] as $coordinate) {
-                        $this->assertGreaterThanOrEqual(0, $marker[$coordinate]);
-                        $this->assertLessThanOrEqual(100, $marker[$coordinate]);
+                $visuals = [$step['visual'], ...($step['additionalVisuals'] ?? [])];
+                foreach ($visuals as $visual) {
+                    $this->assertNotEmpty($visual['caption']);
+                    $this->assertStringStartsWith('/guides/steps/', $visual['image']);
+                    $this->assertStringNotContainsString('..', $visual['image']);
+                    $this->assertFileExists(public_path($visual['image']));
+                    $this->assertGreaterThan(0, $visual['width']);
+                    $this->assertGreaterThan(0, $visual['height']);
+                    if (str_ends_with($visual['image'], '.svg')) {
+                        $this->assertTrue($visual['illustration']);
+                        $this->assertStringContainsString('ILUSTRASI', file_get_contents(public_path($visual['image'])));
+                    } else {
+                        $imageSize = getimagesize(public_path($visual['image']));
+                        $this->assertSame($visual['width'], $imageSize[0]);
+                        $this->assertSame($visual['height'], $imageSize[1]);
+                    }
+                    $this->assertGreaterThanOrEqual(1, count($visual['markers']));
+                    $this->assertLessThanOrEqual(3, count($visual['markers']));
+                    foreach ($visual['markers'] as $marker) {
+                        $this->assertNotEmpty($marker['label']);
+                        foreach (['x', 'y', 'w', 'h'] as $coordinate) {
+                            $this->assertGreaterThanOrEqual(0, $marker[$coordinate]);
+                            $this->assertLessThanOrEqual(100, $marker[$coordinate]);
+                        }
                     }
                 }
             }
@@ -86,9 +88,9 @@ class TutorialTest extends TestCase
 
     public function test_listener_guide_has_os_specific_commands_and_only_links_an_available_bundle(): void
     {
-        config(['services.forwarder.bundle_path' => __DIR__.'/missing-installer.zip']);
+        config(['services.forwarder.apk_path' => __DIR__.'/missing-installer.apk', 'services.forwarder.tools' => ['windows' => null, 'macos' => null, 'linux' => null]]);
         $this->get('http://localhost/panduan/aktifkan-listener')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('guide.download', null)->has('guide.steps', 12)
+            ->where('guide.downloads.apk', null)->where('guide.downloads.tools.0.url', null)->has('guide.steps', 12)
             ->where('guide.steps.6.commands.0.code', 'platform-tools\\adb.exe devices')
             ->where('guide.steps.6.commands.1.code', '.\\platform-tools\\adb.exe devices')
             ->where('guide.steps.6.commands.2.code', './platform-tools/adb devices')
@@ -96,9 +98,11 @@ class TutorialTest extends TestCase
         $path = tempnam(sys_get_temp_dir(), 'forwarder-guide-');
         file_put_contents($path, 'ZIP-FIXTURE');
         try {
-            config(['services.forwarder.bundle_path' => $path]);
+            config(['services.forwarder.apk_path' => $path, 'services.forwarder.tools.windows' => $path]);
             $this->get('http://localhost/panduan/aktifkan-listener')->assertInertia(fn (Assert $page) => $page
-                ->where('guide.download.url', 'http://localhost/downloads/hansdev-forwarder.zip'));
+                ->where('guide.downloads.apk', 'http://localhost/downloads/hansdev-forwarder.apk')
+                ->where('guide.downloads.tools.0.url', 'http://localhost/downloads/hansdev-listener/windows.zip')
+                ->where('guide.downloads.tools.1.url', null));
         } finally {
             unlink($path);
         }

@@ -143,6 +143,17 @@ class LauncherTests(unittest.TestCase):
                     self.assertEqual((info.external_attr >> 16) & 0o777, 0o644 if platform == 'windows' else 0o755)
                     data = sdk.read(info)
                     self.assertEqual(b'\r\n' in data, platform == 'windows')
+        published = self.root / 'published'
+        packager.split_releases(output, published)
+        self.assertEqual(set(path.name for path in published.iterdir()), {'HansDev-Forwarder.apk'} | {f'HansDev-Listener-{os}.zip' for os in packager.LAUNCHERS})
+        self.assertEqual((published / 'HansDev-Forwarder.apk').read_bytes(), b'unchanged-apk')
+        for platform, (launcher, _) in packager.LAUNCHERS.items():
+            with zipfile.ZipFile(published / f'HansDev-Listener-{platform}.zip') as tools:
+                self.assertIn(launcher, tools.namelist())
+                self.assertFalse(any(name.endswith('.apk') or name.endswith('.zip') for name in tools.namelist()))
+                self.assertIsNone(tools.testzip())
+        with self.assertRaises(ValueError):
+            packager.split_releases(source, self.root / 'invalid')
         with self.assertRaises(ValueError):
             packager.package(source, source)
 

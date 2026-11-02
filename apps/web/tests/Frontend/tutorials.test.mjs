@@ -17,7 +17,7 @@ test('listener guide covers development mode, RSA authorization and commands for
 });
 
 test('each panel menu links to an existing relevant guide, including nested pages and staff tab', () => {
-    const scenarios = {sources:'digiflazz',otomax:'otomax',payments:'midtrans',products:'katalog','catalog-structure':'katalog',stock:'stok',bot:'whatsapp',notifications:'notifikasi',articles:'artikel',vouchers:'voucher',subscription:'langganan',orders:'transaksi',customers:'pelanggan',closure:'penutupan'};
+    const scenarios = {sources:'katalog',digiflazz:'digiflazz',hanshop:'hanshop',otomax:'otomax',payments:'midtrans',products:'katalog','catalog-structure':'katalog',stock:'stok',bot:'whatsapp',notifications:'notifikasi',articles:'artikel',vouchers:'voucher',subscription:'langganan',orders:'transaksi',customers:'pelanggan',closure:'penutupan'};
     for (const [menu, expected] of Object.entries(scenarios)) {
         assert.equal(tutorialForPath('/stores/demo/'+menu), expected);
         assert.ok(guides.some(item => item.slug === expected));

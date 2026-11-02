@@ -29,12 +29,25 @@ class SupplierController extends Controller
         $page = $list->paginate($list->apply(SupplierProduct::where('store_id', $store->id), ['sku', 'name', 'category', 'service'], ['connection' => 'connection_id', 'available' => 'available', 'mode' => 'mode'])->orderBy('name')->orderBy('id'));
 
         return Inertia::render('Owner/Sources', ['role' => $role, 'store' => $store->only(['id', 'name', 'plan', 'status', 'sandbox']),
-            'connections' => $connections->map(fn ($item) => [...$item->only(['id', 'name', 'kind', 'enabled', 'verified_at', 'synced_at', 'last_error']), 'webhook_configured' => filled($item->credentials['webhook_secret'] ?? null)]),
-            'supplierOutboundIp' => SupplierNetwork::outboundIp('digiflazz'),
-            'digiflazzWebhookUrl' => config('suppliers.digiflazz_webhook_url') ?: rtrim(config('app.url'), '/').'/api/commerce/digiflazz',
-            'features' => array_values(array_filter(['digiflazz', 'stock', 'hanshop', 'otomax'], fn ($kind) => CatalogAccess::supports($store, $kind))),
+            'connections' => $connections->map(fn ($item) => [...$item->only(['id', 'name', 'kind', 'enabled', 'verified_at', 'synced_at', 'last_error'])]),
             'canManage' => CatalogAccess::has($request, $role, 'products.manage'), 'items' => $page->getCollection()->map(fn ($item) => $item->only(['id', 'connection_id', 'sku', 'mode', 'name', 'kind', 'billing', 'service', 'category', 'cost', 'available', 'availability_reason', 'quantity', 'observed_at'])),
             'filters' => $list->filters, 'pagination' => ListQuery::meta($page)]);
+    }
+
+    public function connections(Request $request, Store $store, string $kind): Response
+    {
+        $role = CatalogAccess::authorize($request, $store);
+        abort_unless(in_array($kind, ['digiflazz', 'hanshop'], true), 404);
+        $connections = SupplierConnection::where('store_id', $store->id)->where('kind', $kind)->get();
+
+        return Inertia::render('Owner/SupplierConnections', [
+            'role' => $role, 'store' => $store->only(['id', 'name', 'plan', 'status', 'sandbox']), 'kind' => $kind,
+            'connections' => $connections->map(fn ($item) => [...$item->only(['id', 'name', 'kind', 'enabled', 'verified_at', 'synced_at', 'last_error']), 'webhook_configured' => filled($item->credentials['webhook_secret'] ?? null)]),
+            'features' => CatalogAccess::supports($store, $kind) ? [$kind] : [],
+            'canManage' => CatalogAccess::has($request, $role, 'products.manage'),
+            'supplierOutboundIp' => SupplierNetwork::outboundIp('digiflazz'),
+            'digiflazzWebhookUrl' => config('suppliers.digiflazz_webhook_url') ?: rtrim(config('app.url'), '/').'/api/commerce/digiflazz',
+        ]);
     }
 
     public function save(Request $request, Store $store, SupplierCatalog $catalog): RedirectResponse

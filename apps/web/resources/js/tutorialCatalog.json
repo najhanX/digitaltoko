@@ -705,57 +705,57 @@
       {
         "title": "Aktifkan sumber",
         "paragraphs": [
-          "Buka Sumber produk → kartu Hanshop → Atur koneksi. Aktifkan lalu simpan. Identitas yang dipakai adalah akun owner, bukan staff; tidak perlu menempel API key akun ke form Digiflazz."
+          "Buka Koneksi supplier → API Hanshop → Atur koneksi. Aktifkan lalu simpan. Identitas yang dipakai adalah akun owner, bukan staff; tidak perlu menempel API key akun ke form Digiflazz."
         ],
         "visual": {
-          "image": "/guides/steps/hanshop-connection.jpg",
+          "image": "/guides/steps/hanshop-connection-page.jpg",
+          "width": 1280,
           "height": 720,
+          "caption": "Data simulasi: Koneksi supplier → API Hanshop. Aktifkan sumber dan simpan akun owner yang sudah tertaut.",
           "markers": [
             {
-              "h": 1.8055555555555551,
-              "label": "Gunakan akun Hanshop owner",
-              "w": 1.015625,
-              "x": 29.4921875,
-              "y": 53.31922743055556
+              "label": "Aktifkan sumber Hanshop",
+              "x": 50,
+              "y": 54,
+              "w": 45,
+              "h": 6
             },
             {
-              "h": 5.555555555555555,
-              "label": "Verifikasi lalu simpan koneksi",
-              "w": 10.799560546875,
-              "x": 67.0220947265625,
-              "y": 64.08311631944444
+              "label": "Periksa lalu simpan",
+              "x": 67,
+              "y": 64,
+              "w": 11,
+              "h": 6
             }
-          ],
-          "width": 1280,
-          "caption": "Aktifkan sumber menggunakan akun Hanshop owner yang sudah tertaut."
+          ]
         }
       },
       {
         "title": "Sinkronkan dan impor",
         "paragraphs": [
-          "Tekan Sinkronkan, periksa produk dan ketersediaannya, lalu impor pilihan/all/per layanan/per kategori. Produk pemasok belum otomatis menjadi produk jual."
+          "Pada halaman API Hanshop, pilih Sinkronkan. Setelah selesai, tekan Sumber produk untuk membuka daftar khusus Hanshop. Gunakan Impor semua / layanan / kategori untuk impor satu sumber, atau checkbox tabel dan Impor pilihan. Produk toko memakai parsing ke sumber tersebut."
         ],
         "visual": {
-          "image": "/guides/steps/source-import.jpg",
-          "height": 720,
+          "image": "/guides/steps/hanshop-products-page.jpg",
+          "width": 1272,
+          "height": 716,
+          "caption": "Data simulasi: Sumber produk difilter ke Hanshop. Akun dan kredensial dikelola pada Koneksi supplier.",
           "markers": [
             {
-              "h": 6.319444444444445,
-              "label": "Tentukan cakupan impor",
-              "w": 44.84375,
-              "x": 50.0,
-              "y": 45.69444444444444
+              "label": "Pilih sumber Hanshop",
+              "x": 56,
+              "y": 54,
+              "w": 12,
+              "h": 7
             },
             {
-              "h": 5.555555555555555,
-              "label": "Mulai impor setelah diperiksa",
-              "w": 12.7593994140625,
-              "x": 66.04217529296875,
-              "y": 69.82530381944444
+              "label": "Impor katalog sumber",
+              "x": 73,
+              "y": 74,
+              "w": 19,
+              "h": 6
             }
-          ],
-          "width": 1280,
-          "caption": "Setelah sinkronisasi Hanshop, pilih cakupan produk yang akan diimpor."
+          ]
         }
       },
       {
@@ -847,22 +847,29 @@
       {
         "title": "Pilih toko dan lingkungan",
         "paragraphs": [
-          "Buka Produk & harga → Sumber produk pada toko yang benar. Untuk uji, aktifkan mode pengujian toko; form meminta API key development. Untuk penjualan nyata gunakan key produksi. Mode tidak bisa diganti selama masih ada pesanan berjalan."
+          "Buka Koneksi supplier → Digiflazz pada toko yang benar. Untuk uji, aktifkan mode pengujian toko; form meminta API key development. Untuk penjualan nyata gunakan key produksi. Mode tidak bisa diganti selama masih ada pesanan berjalan."
         ],
         "visual": {
-          "image": "/guides/steps/sources.jpg",
-          "height": 716,
+          "image": "/guides/steps/digiflazz-connection-page.jpg",
+          "width": 1280,
+          "height": 720,
+          "caption": "Data simulasi: koneksi Digiflazz berada pada grup Koneksi supplier. Salin IP terbaru dari panel Anda.",
           "markers": [
             {
-              "h": 5.334540851955308,
-              "label": "Klik Atur koneksi Digiflazz",
-              "w": 10.02727004716981,
-              "x": 25.14310632861635,
-              "y": 68.39156337290504
+              "label": "Isi username dan API key",
+              "x": 50,
+              "y": 65,
+              "w": 46,
+              "h": 21
+            },
+            {
+              "label": "Periksa lalu simpan",
+              "x": 67,
+              "y": 91,
+              "w": 11,
+              "h": 6
             }
-          ],
-          "width": 1272,
-          "caption": "Pilih toko yang benar, lalu buka Atur koneksi pada kartu Digiflazz."
+          ]
         }
       },
       {
@@ -901,33 +908,26 @@
           "Tekan Atur koneksi pada kartu Digiflazz. Isi Username Digiflazz, API key yang sesuai, aktifkan sumber lalu Periksa & simpan. Kolom credential kosong pada koneksi existing mempertahankan nilai lama. API key berbeda dari secret webhook."
         ],
         "visual": {
-          "image": "/guides/steps/digiflazz-connection.jpg",
+          "image": "/guides/steps/digiflazz-connection-page.jpg",
+          "width": 1280,
           "height": 720,
+          "caption": "Data simulasi: koneksi Digiflazz berada pada grup Koneksi supplier. Salin IP terbaru dari panel Anda.",
           "markers": [
             {
-              "h": 6.388888888888888,
-              "label": "Isi username Digiflazz",
-              "w": 44.84375,
-              "x": 50.0,
-              "y": 59.06792534722223
+              "label": "Isi username dan API key",
+              "x": 50,
+              "y": 65,
+              "w": 46,
+              "h": 21
             },
             {
-              "h": 6.388888888888888,
-              "label": "Isi API key yang sesuai",
-              "w": 44.84375,
-              "x": 50.0,
-              "y": 71.845703125
-            },
-            {
-              "h": 5.555555555555555,
-              "label": "Periksa dan simpan koneksi",
-              "w": 10.799560546875,
-              "x": 67.0220947265625,
-              "y": 91.42903645833331
+              "label": "Periksa lalu simpan",
+              "x": 67,
+              "y": 91,
+              "w": 11,
+              "h": 6
             }
-          ],
-          "width": 1280,
-          "caption": "Isi username dan API key sesuai lingkungan, kemudian Periksa & simpan."
+          ]
         }
       },
       {
@@ -969,30 +969,29 @@
       {
         "title": "Sinkronkan lalu impor",
         "paragraphs": [
-          "Tekan Sinkronkan, pilih prabayar/pascabayar yang diperlukan, lalu periksa produk pemasok. Gunakan Impor produk untuk semua/per layanan/per kategori, atau checkbox tabel untuk pilihan tertentu.",
-          "Produk pemasok belum otomatis menjadi produk jual. Pada Katalog & harga periksa parsing, harga, status aktif dan ketersediaannya."
+          "Sinkronkan katalog dari halaman Digiflazz, lalu tekan Sumber produk untuk membuka daftar pemasok. Pilih sumber Digiflazz pada filter; gunakan Impor semua / layanan / kategori atau checkbox tabel dan Impor pilihan. Impor ulang tidak menggandakan parsing yang sudah ada. Atur harga jual dan aktif/nonaktif melalui Katalog & harga."
         ],
         "visual": {
-          "image": "/guides/steps/sources.jpg",
+          "image": "/guides/steps/supplier-products-page.jpg",
+          "width": 1272,
           "height": 716,
+          "caption": "Data simulasi: daftar sumber Digiflazz dan tindakan impor terpisah dari pengaturan koneksi.",
           "markers": [
             {
-              "h": 5.334540851955308,
-              "label": "Sinkronkan katalog",
-              "w": 9.371929048742139,
-              "x": 35.393020341981135,
-              "y": 68.39156337290504
+              "label": "Filter pemasok",
+              "x": 56,
+              "y": 56,
+              "w": 12,
+              "h": 7
             },
             {
-              "h": 5.334540851955308,
-              "label": "Impor ke katalog toko",
-              "w": 10.701036753144654,
-              "x": 15.806493219339625,
-              "y": 74.70375785614526
+              "label": "Impor katalog sumber",
+              "x": 73,
+              "y": 75,
+              "w": 19,
+              "h": 6
             }
-          ],
-          "width": 1272,
-          "caption": "Sinkronkan katalog terlebih dahulu, kemudian impor produk ke katalog toko."
+          ]
         }
       },
       {
@@ -2151,29 +2150,28 @@
       {
         "title": "Download dan pasang aplikasi",
         "paragraphs": [
-          "Pada Pembayaran pelanggan klik Hans Forward → Download paket instalasi ZIP. Ekstrak ZIP; di dalamnya ada HansDev-Forwarder.apk dan platform-tools Windows/macOS/Linux. Pasang APK pada HP penerima pembayaran.",
-          "Buka file APK dari Unduhan. Jika Android meminta izin, buka pengaturan pemasangan aplikasi untuk browser/pengelola berkas yang dipakai, izinkan pemasangan dari sumber ini lalu kembali dan Pasang. Jika sudah mempunyai HansDev Forwarder dengan package yang sama, pilih update; jangan uninstall agar konfigurasi dan antrean tetap tersimpan.",
-          "Buka aplikasi setelah pemasangan. Versi unduhan saat ini 1.0.3 untuk Android ARM64, minimum Android 8. Jangan membagikan token atau memakai endpoint pembayaran sewa platform."
+          "Tekan Hans Forward pada Pembayaran pelanggan. Download APK untuk HP; pilih OS komputer pada dropdown tools lalu download ZIP khusus OS tersebut. File APK dan tools diunduh terpisah.",
+          "Pasang APK pada HP penerima notifikasi. Untuk aktivasi listener, buka panduan Aktifkan listener Android lewat USB. Panduan tersebut menjelaskan mode pengembang, USB debugging, izin komputer, dan script sesuai OS."
         ],
         "visual": {
-          "image": "/guides/steps/custom-forwarder-setup.jpg",
-          "width": 1280,
-          "height": 720,
-          "caption": "Data simulasi: unduh ZIP lengkap dan buka panduan aktivasi listener; token disamarkan.",
+          "image": "/guides/steps/forwarder-download-options.jpg",
+          "width": 1272,
+          "height": 716,
+          "caption": "Data simulasi: APK dan tools diunduh terpisah, baik dari popup Hans Forward maupun panduan listener.",
           "markers": [
             {
-              "label": "Download ZIP lengkap",
-              "x": 48,
-              "y": 19,
-              "w": 17,
-              "h": 6
+              "label": "APK untuk HP",
+              "x": 15,
+              "y": 76,
+              "w": 13,
+              "h": 7
             },
             {
-              "label": "Salin endpoint dan token toko",
-              "x": 50,
-              "y": 74,
-              "w": 44,
-              "h": 30
+              "label": "Tools sesuai OS komputer",
+              "x": 59,
+              "y": 79,
+              "w": 30,
+              "h": 6
             }
           ]
         }
@@ -2185,28 +2183,96 @@
           "Buka Koneksi → Endpoint sendiri · POST JSON. Salin Endpoint dan Bearer token dari popup Hans Forward di panel toko. Gunakan token saja tanpa awalan Bearer pada kolom token. Pertahankan JSON bawaan yang menyertakan event_id, application_package, app_name, title, text dan occurred_at; simpan koneksi."
         ],
         "visual": {
-          "image": "/guides/steps/forwarder-android-setup.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: pilih sumber notifikasi dan isi koneksi POST JSON khusus toko.",
+          "image": "/guides/steps/hansdev-device-sources.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "exampleData": true,
+          "caption": "Buka Sumber, lalu pilih aplikasi merchant penerima pembayaran. Nama dan package harus sesuai panel toko.",
           "markers": [
             {
-              "label": "Pilih aplikasi penerima uang",
-              "x": 18,
-              "y": 43,
-              "w": 25,
-              "h": 9
-            },
-            {
-              "label": "Isi endpoint dan token toko",
+              "label": "Buka pemilih aplikasi",
               "x": 50,
-              "y": 53,
-              "w": 25,
-              "h": 17
+              "y": 24,
+              "w": 88,
+              "h": 6
             }
-          ],
-          "illustration": true
-        }
+          ]
+        },
+        "additionalVisuals": [
+          {
+            "image": "/guides/steps/hansdev-device-source-picker.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Centang aplikasi yang digunakan, lalu tekan Gunakan aplikasi. Daftar ini memakai data contoh.",
+            "markers": [
+              {
+                "label": "Centang aplikasi merchant",
+                "x": 90,
+                "y": 40,
+                "w": 5,
+                "h": 3
+              },
+              {
+                "label": "Simpan pilihan aplikasi",
+                "x": 50,
+                "y": 94,
+                "w": 88,
+                "h": 5
+              }
+            ]
+          },
+          {
+            "image": "/guides/steps/hansdev-device-connection.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Pada Koneksi, pilih Endpoint sendiri · POST JSON; isi endpoint dan Bearer token dari panel toko Anda.",
+            "markers": [
+              {
+                "label": "Pilih POST JSON",
+                "x": 50,
+                "y": 32,
+                "w": 77,
+                "h": 6
+              },
+              {
+                "label": "Isi endpoint dan token toko",
+                "x": 50,
+                "y": 54,
+                "w": 78,
+                "h": 22
+              }
+            ]
+          },
+          {
+            "image": "/guides/steps/hansdev-device-connection-save.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Gulir ke bawah, aktifkan pengiriman dan simpan koneksi. Tombol uji hanya menguji endpoint, bukan mengesahkan pembayaran.",
+            "markers": [
+              {
+                "label": "Aktifkan pengiriman",
+                "x": 81,
+                "y": 56,
+                "w": 12,
+                "h": 4
+              },
+              {
+                "label": "Tekan Simpan koneksi",
+                "x": 50,
+                "y": 69,
+                "w": 88,
+                "h": 5
+              }
+            ]
+          }
+        ]
       },
       {
         "title": "Aktifkan izin dan pastikan listener terhubung",
@@ -2217,41 +2283,136 @@
           "Jika perlu aktivasi lewat komputer, ikuti panduan Aktifkan listener Android lewat USB pada bagian Lanjutkan membaca; panduan itu memuat mode pengembang, USB debugging dan perintah untuk tiap OS."
         ],
         "visual": {
-          "image": "/guides/steps/forwarder-android-setup.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: aktifkan pengiriman, akses notifikasi dan pengaturan baterai.",
+          "image": "/guides/steps/hansdev-device-listener-permission.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "caption": "Akses notifikasi HansDev Forwarder di pengaturan Android. Ikuti panduan aktivasi listener untuk langkah USB dan baterai.",
           "markers": [
             {
-              "label": "Aktifkan pengiriman",
-              "x": 82,
-              "y": 38,
-              "w": 25,
-              "h": 9
-            },
-            {
               "label": "Izinkan akses notifikasi",
-              "x": 82,
-              "y": 48,
-              "w": 25,
-              "h": 9
+              "x": 86,
+              "y": 43,
+              "w": 14,
+              "h": 4
+            }
+          ]
+        },
+        "additionalVisuals": [
+          {
+            "image": "/guides/steps/hansdev-device-dashboard.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Periksa status Sedang mendengarkan di Ringkasan. Status dan angka kiriman pada gambar adalah data contoh, bukan bukti mutasi nyata.",
+            "markers": [
+              {
+                "label": "Periksa status listener",
+                "x": 44,
+                "y": 25,
+                "w": 66,
+                "h": 4
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Buka Penangkap QRIS dan pilih format pesan",
+        "paragraphs": [
+          "Pada Pembayaran pelanggan, cari kartu Penangkap QRIS → Atur format. Owner dapat mengatur langsung; staff memerlukan hak mengatur penangkap pembayaran dan lisensi modul QRIS custom toko harus aktif.",
+          "Beri nama profil agar mudah dikenali. Pilih format yang sudah ada untuk diedit atau tekan Tambah untuk membuat format lain. Satu profil dapat mempunyai maksimal 10 format; minimal satu harus aktif. Setiap bentuk pesan pembayaran masuk dapat memakai format tersendiri. Sumber aplikasi di bagian atas harus sama dengan aplikasi merchant yang diatur melalui Atur gateway."
+        ],
+        "visual": {
+          "image": "/guides/steps/qris-parser-profile.jpg",
+          "width": 1280,
+          "height": 720,
+          "caption": "Data simulasi: profil penangkap dan pilihan format. Belum ada perubahan pembayaran.",
+          "markers": [
+            {
+              "label": "Beri nama profil",
+              "x": 50,
+              "y": 32,
+              "w": 44,
+              "h": 7
             },
             {
-              "label": "Atur pemantau dan baterai",
-              "x": 82,
-              "y": 62,
-              "w": 25,
-              "h": 17
+              "label": "Pilih format atau Tambah",
+              "x": 50,
+              "y": 44,
+              "w": 44,
+              "h": 7
             }
-          ],
-          "illustration": true
+          ]
         }
       },
       {
-        "title": "Atur kebijakan dan uji",
+        "title": "Tulis format sesuai notifikasi merchant",
+        "paragraphs": [
+          "Ambil teks lengkap dari Riwayat → Penerimaan pada HansDev, lalu salin ke Format notifikasi. Contoh pesan Rp10.123 diterima DANA Bisnis. ditulis sebagai Rp[nominal] diterima DANA Bisnis. Pertahankan kalimat, titik, spasi, dan baris yang digunakan aplikasi; jangan memakai format contoh jika pesan merchant Anda berbeda.",
+          "Gunakan [nominal] tepat satu kali untuk jumlah uang yang masuk. [pengirim], [referensi], dan [waktu] bersifat opsional; [abaikan] menangkap bagian berubah yang tidak diperlukan, misalnya Pembayaran Rp[nominal] dari [abaikan] diterima. Setiap placeholder hanya boleh dipakai sekali dalam satu format, dan teks tetap minimal 8 karakter.",
+          "Di Pengaturan tambahan, gunakan Isi notifikasi saja untuk pesan biasa, atau Judul + isi notifikasi jika format perlu membaca judul dan isi sekaligus. Untuk pilihan kedua, tulis judul, baris baru, lalu isi pesan pada format. Tambahkan kata pengecualian satu frasa per baris agar promo atau uang keluar tidak dianggap pembayaran. Pesan gagal, dibatalkan, dan berhasil dikirim selalu ditolak."
+        ],
+        "visual": {
+          "image": "/guides/steps/qris-parser-format.jpg",
+          "width": 1280,
+          "height": 720,
+          "caption": "Data simulasi: ganti angka dengan [nominal], pertahankan teks dan tanda baca.",
+          "markers": [
+            {
+              "label": "Isi format dengan [nominal]",
+              "x": 50,
+              "y": 51,
+              "w": 42,
+              "h": 14
+            },
+            {
+              "label": "Uji sebelum menyimpan",
+              "x": 56,
+              "y": 92,
+              "w": 7,
+              "h": 6
+            }
+          ]
+        }
+      },
+      {
+        "title": "Uji penangkap lalu simpan pengaturannya",
+        "paragraphs": [
+          "Tekan Uji contoh dari form untuk menguji perubahan yang belum disimpan. Isi judul bila diperlukan dan tempel pesan lengkap asli pada Isi notifikasi, kemudian tekan Uji pesan. Untuk contoh di atas, hasil yang benar adalah Format cocok dan nominal Rp10.123.",
+          "Jika tidak cocok, periksa tanda baca, baris, format aktif, pilihan judul/isi, dan kata pengecualian. Uji juga contoh pesan gagal atau transfer keluar; pesan tersebut tidak boleh diterima sebagai pembayaran. Jika dua format menangkap nominal atau referensi berbeda, sistem menolak karena ambigu.",
+          "Setelah uji sesuai, tekan Kembali ke format → Simpan penangkap. Uji contoh tidak menyimpan perubahan dan tidak mengesahkan invoice. Setelah tersimpan, pengaturan berlaku juga untuk invoice berjalan dengan sumber aplikasi yang sama."
+        ],
+        "visual": {
+          "image": "/guides/steps/qris-parser-test.jpg",
+          "width": 1280,
+          "height": 720,
+          "caption": "Data simulasi: nominal cocok Rp10.123. Uji format tidak mengubah pembayaran atau saldo.",
+          "markers": [
+            {
+              "label": "Periksa nominal hasil tangkapan",
+              "x": 50,
+              "y": 74,
+              "w": 43,
+              "h": 25
+            },
+            {
+              "label": "Kembali lalu simpan format",
+              "x": 59,
+              "y": 92,
+              "w": 12,
+              "h": 6
+            }
+          ]
+        }
+      },
+      {
+        "title": "Uji alur pembayaran dan kebijakan toko",
         "paragraphs": [
           "Kredit kode unik topup dan refund produk adalah dua pengaturan berbeda. Tentukan apakah nominal pokok saja atau termasuk kode unik.",
-          "Pada produksi bayar satu invoice dengan nominal persis. Periksa riwayat forwarder, invoice dan pesanan. Pengujian tanpa uang mengikuti mode pengujian; jangan membuat mutasi palsu di produksi."
+          "Pada produksi bayar satu invoice dengan nominal persis. Periksa riwayat forwarder, invoice dan pesanan. Pengujian tanpa uang mengikuti mode pengujian; jangan membuat mutasi palsu di produksi.",
+          "Buat pesanan uji di toko, bayar tepat nominal termasuk kode unik, lalu periksa notifikasi merchant, status kiriman di HansDev, dan perubahan invoice di panel. Format cocok saja belum cukup: sumber aplikasi, waktu notifikasi, nominal, dan invoice juga diperiksa. Jika tidak cocok, invoice tidak boleh dipaksa lunas sebelum mutasi diperiksa."
         ],
         "visual": {
           "image": "/guides/steps/custom-forwarder.jpg",
@@ -2320,6 +2481,10 @@
       {
         "question": "Notifikasi dari aplikasi lain ditolak",
         "answer": "Package/nama harus cocok dengan gateway dan dipilih di Sumber HansDev Forwarder. Parser tetap memerlukan pesan pembayaran masuk dan satu nominal Rupiah yang jelas. Jika bentuk pesan berbeda, periksa mutasi lalu gunakan konfirmasi manual; jangan menganggap setiap notifikasi sebagai pembayaran."
+      },
+      {
+        "question": "Notifikasi terkirim tetapi pembayaran belum lunas",
+        "answer": "Periksa sumber package/nama aplikasi di Atur gateway dan Sumber HansDev. Salin judul/isi dari Riwayat → Penerimaan, lalu uji di Penangkap QRIS. Cocokkan nominal lengkap termasuk kode unik dan waktu notifikasi dengan invoice. Uji penangkap hanya memeriksa format; konfirmasi manual dilakukan dari rincian transaksi setelah mutasi merchant benar-benar diperiksa."
       }
     ],
     "related": [
@@ -2337,7 +2502,7 @@
       "dana",
       "shopeepay"
     ],
-    "reviewed": "1 November 2026"
+    "reviewed": "2 November 2026"
   },
   {
     "slug": "pengujian",
@@ -3429,48 +3594,48 @@
     "title": "Aktifkan listener Android lewat USB",
     "category": "Pembayaran",
     "summary": "Paket Windows/macOS/Linux, mode pengembang, USB debugging, izin komputer dan aktivasi listener HansDev.",
-    "reviewed": "1 November 2026",
+    "reviewed": "2 November 2026",
     "image": "/guides/payments.png",
     "imageAlt": "Panduan pengaktifan listener HansDev Forwarder",
     "prerequisites": [
       "Komputer pribadi Windows/macOS/Linux, kabel USB data dan HP Android ARM64 (Android 8+).",
       "Hak membuka kunci HP dan mengizinkan debugging; internet untuk aplikasi forwarder.",
-      "Paket ZIP HansDev Forwarder dari DigitalToko. Pilih OS komputer pada pilihan terminal di bawah."
+      "APK HansDev Forwarder untuk HP dan ZIP tools sesuai OS komputer dari dua bagian download di atas.",
+      "Screenshot HP menggunakan Redmi Note 10 Pro (Android 13 / MIUI 14). Nama dan letak menu dapat berbeda pada perangkat Anda."
     ],
     "steps": [
       {
-        "title": "Download dan ekstrak paket di komputer",
+        "title": "Download APK dan tools sesuai OS komputer",
         "paragraphs": [
-          "Klik Download paket HansDev Forwarder (ZIP) di atas. Ekstrak ZIP utama; jangan menjalankan aplikasi dari dalam arsip. Isinya HansDev-Forwarder.apk dan tiga ZIP platform-tools untuk Windows, macOS dan Linux.",
-          "Pilih SATU ZIP sesuai OS komputer Anda, lalu ekstrak lagi. Hasil ekstrak berisi folder platform-tools dan script aktivasi di sebelahnya: aktifkan-listener.cmd (Windows), aktifkan-listener.command (macOS), atau aktifkan-listener.sh (Linux). Folder boleh berada di drive/lokasi mana saja; pertahankan folder platform-tools di sebelah script. Tidak perlu memasang Android Studio."
+          "Download APK melalui tombol Aplikasi Android. File APK ini dipasang pada HP, terpisah dari tools komputer.",
+          "Pada Tools aktivasi listener, pilih Windows, macOS, atau Linux melalui dropdown, lalu tekan Download tools. Satu ZIP hanya memuat tools OS yang dipilih; tidak perlu mengunduh OS lain. Ekstrak ZIP tools sebelum menjalankan script. Script aktifkan-listener berada sejajar dengan folder platform-tools dan boleh disimpan di lokasi mana saja."
         ],
         "visual": {
-          "image": "/guides/steps/listener-bundle.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: ekstrak ZIP utama, lalu ZIP OS; script sejajar dengan folder platform-tools.",
-          "illustration": true,
+          "image": "/guides/steps/forwarder-download-options.jpg",
+          "width": 1272,
+          "height": 716,
+          "caption": "Data simulasi: download APK untuk HP dan pilih OS sebelum mengunduh tools.",
           "markers": [
             {
-              "label": "Ekstrak ZIP utama",
-              "x": 18,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "label": "Download APK terpisah",
+              "x": 15,
+              "y": 76,
+              "w": 13,
+              "h": 7
             },
             {
               "label": "Pilih OS komputer",
-              "x": 50,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "x": 59,
+              "y": 79,
+              "w": 30,
+              "h": 6
             },
             {
-              "label": "Buka hasil ekstrak ZIP OS",
-              "x": 82,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "label": "Download ZIP OS pilihan",
+              "x": 53,
+              "y": 88,
+              "w": 18,
+              "h": 7
             }
           ]
         }
@@ -3478,22 +3643,21 @@
       {
         "title": "Pasang HansDev Forwarder pada HP",
         "paragraphs": [
-          "Salin HansDev-Forwarder.apk dari hasil ekstrak ke HP, lalu buka melalui pengelola berkas. Saat diminta, izinkan pemasangan aplikasi dari pengelola berkas tersebut dan tekan Pasang. Paket yang disediakan berisi APK ARM64 untuk Android 8 atau lebih baru.",
+          "Download HansDev-Forwarder.apk dari bagian Aplikasi Android di atas, lalu salin ke HP dan buka melalui pengelola berkas. Izinkan pemasangan dari pengelola berkas jika diminta, lalu tekan Pasang. APK ARM64 memerlukan Android 8 atau lebih baru.",
           "Jika sudah terpasang dengan package yang sama, pilih update tanpa uninstall agar pengaturan dan antrean tetap tersimpan. Setelah selesai, buka HansDev Forwarder sekali. Izinkan notifikasi aplikasi jika diminta."
         ],
         "visual": {
-          "image": "/guides/steps/listener-bundle.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: APK berada pada hasil ekstrak paket utama.",
-          "illustration": true,
+          "image": "/guides/steps/forwarder-download-options.jpg",
+          "width": 1272,
+          "height": 716,
+          "caption": "Data simulasi: gunakan tombol Download APK, bukan ZIP tools untuk memasang aplikasi pada HP.",
           "markers": [
             {
-              "label": "Temukan APK pada paket utama",
-              "x": 18,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "label": "Download APK untuk HP",
+              "x": 15,
+              "y": 76,
+              "w": 13,
+              "h": 7
             }
           ]
         }
@@ -3505,18 +3669,18 @@
           "Pada Xiaomi/Redmi, bagian yang diketuk dapat bernama Versi MIUI atau Versi OS. Nama menu berbeda antarperangkat; gunakan pencarian Pengaturan bila perlu."
         ],
         "visual": {
-          "image": "/guides/steps/listener-developer.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: aktifkan opsi pengembang dari informasi perangkat.",
-          "illustration": true,
+          "image": "/guides/steps/hansdev-device-about-phone.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "caption": "Redmi Note 10 Pro, Android 13 / MIUI 14. Pada merek lain, cari Nomor bentukan atau Build number.",
           "markers": [
             {
-              "label": "Ketuk versi/bentukan 7 kali",
-              "x": 18,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "label": "Ketuk Versi MIUI 7 kali",
+              "x": 70,
+              "y": 69,
+              "w": 40,
+              "h": 19
             }
           ]
         }
@@ -3528,18 +3692,18 @@
           "Jika muncul konfirmasi Izinkan USB debugging, baca lalu pilih OK/Izinkan untuk melanjutkan. Pada tahap ini Anda baru mengaktifkan fitur debugging; komputer belum tentu sudah diberi izin."
         ],
         "visual": {
-          "image": "/guides/steps/listener-developer.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: nyalakan USB debugging pada opsi pengembang.",
-          "illustration": true,
+          "image": "/guides/steps/hansdev-device-usb-debug.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "caption": "Opsi pengembang pada HP asli. Aktifkan Debugging USB; jangan memilih Batalkan otorisasi.",
           "markers": [
             {
-              "label": "Aktifkan USB debugging",
-              "x": 50,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "label": "Aktifkan Debugging USB",
+              "x": 86,
+              "y": 57,
+              "w": 14,
+              "h": 4
             }
           ]
         }
@@ -3570,9 +3734,9 @@
       {
         "title": "Buka folder hasil ekstrak ZIP OS",
         "paragraphs": [
-          "Buka hasil ekstrak ZIP OS. Di tingkat yang sama harus terlihat script aktifkan-listener dan folder platform-tools. Jangan masuk ke platform-tools untuk menjalankan script. Pertahankan susunan ini meskipun folder dipindahkan ke drive atau lokasi lain.",
-          "Windows: klik dua kali aktifkan-listener.cmd. Untuk memakai perintah pada panduan ini, buka CMD dari kolom alamat File Explorer dengan mengetik cmd lalu Enter, atau pilih Buka di Terminal untuk PowerShell. macOS/Linux: buka Terminal, ketik cd diikuti spasi, seret folder hasil ekstrak ZIP OS ke Terminal, lalu Enter.",
-          "Semua perintah di bawah dijalankan dari folder hasil ekstrak ZIP OS yang berisi script dan subfolder platform-tools. Pilih terminal sesuai komputer pada bagian Sebelum mulai. Pemeriksaan versi berikut bersifat opsional; script aktivasi juga memeriksa ADB. Pada macOS/Linux, jika pemeriksaan versi ditolak karena izin eksekusi, jalankan script aktivasi pada langkah berikutnya agar izin eksekusi ADB disiapkan."
+          "Buka hasil ekstrak ZIP tools OS. Di tingkat yang sama harus terlihat script aktifkan-listener dan folder platform-tools. Jangan masuk ke platform-tools untuk menjalankan script. Pertahankan susunan ini meskipun folder dipindahkan ke drive atau lokasi lain.",
+          "Windows: klik dua kali aktifkan-listener.cmd. Untuk memakai perintah pada panduan ini, buka CMD dari kolom alamat File Explorer dengan mengetik cmd lalu Enter, atau pilih Buka di Terminal untuk PowerShell. macOS/Linux: buka Terminal, ketik cd diikuti spasi, seret folder hasil ekstrak ZIP tools OS ke Terminal, lalu Enter.",
+          "Semua perintah di bawah dijalankan dari folder hasil ekstrak ZIP tools OS yang berisi script dan subfolder platform-tools. Pilih terminal sesuai komputer pada bagian Sebelum mulai. Pemeriksaan versi berikut bersifat opsional; script aktivasi juga memeriksa ADB. Pada macOS/Linux, jika pemeriksaan versi ditolak karena izin eksekusi, jalankan script aktivasi pada langkah berikutnya agar izin eksekusi ADB disiapkan."
         ],
         "visual": {
           "image": "/guides/steps/listener-bundle.svg",
@@ -3729,25 +3893,18 @@
           "Jika izin pengaturan dibatasi pada Android 13+, buka Info aplikasi HansDev Forwarder → menu tiga titik → Izinkan setelan terbatas jika tersedia, lalu ulangi pemberian akses notifikasi. Hanya izinkan aplikasi yang Anda percayai. Pada HP yang dikelola organisasi, minta administrator membantu bila izin ditolak kebijakan."
         ],
         "visual": {
-          "image": "/guides/steps/listener-grant.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: pisahkan pemeriksaan izin dari status listener terhubung.",
-          "illustration": true,
+          "image": "/guides/steps/hansdev-device-listener-permission.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "caption": "Izin akses notifikasi HansDev Forwarder pada HP asli. Sakelar biru menunjukkan izin sudah aktif.",
           "markers": [
             {
-              "label": "Aktifkan pengiriman",
-              "x": 50,
-              "y": 46,
-              "w": 26,
-              "h": 13
-            },
-            {
-              "label": "Periksa status terhubung",
-              "x": 82,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "label": "Izinkan akses notifikasi",
+              "x": 86,
+              "y": 43,
+              "w": 14,
+              "h": 4
             }
           ]
         },
@@ -3772,37 +3929,124 @@
             "label": "Linux · Terminal",
             "code": "./platform-tools/adb shell settings get secure enabled_notification_listeners"
           }
+        ],
+        "additionalVisuals": [
+          {
+            "image": "/guides/steps/hansdev-device-dashboard.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Periksa status Sedang mendengarkan di Ringkasan. Status dan angka kiriman pada gambar adalah data contoh, bukan bukti mutasi nyata.",
+            "markers": [
+              {
+                "label": "Periksa status listener",
+                "x": 44,
+                "y": 25,
+                "w": 66,
+                "h": 4
+              }
+            ]
+          }
         ]
       },
       {
         "title": "Atur sumber notifikasi dan koneksi toko",
         "paragraphs": [
           "Pada menu Sumber, pilih aplikasi merchant penerima uang dari daftar aplikasi terpasang, atau isi package manual. Samakan package/nama dengan pengaturan gateway QRIS pada panel DigitalToko.",
-          "Buka Koneksi → Endpoint sendiri · POST JSON. Salin endpoint dan Bearer token dari Pembayaran pelanggan → Hans Forward pada panel toko. Isi token tanpa awalan Bearer pada kolom token. Simpan; pertahankan format JSON bawaan. Jangan memakai endpoint dari gambar ilustrasi atau toko lain."
+          "Buka Koneksi → Endpoint sendiri · POST JSON. Salin endpoint dan Bearer token dari Pembayaran pelanggan → Hans Forward pada panel toko. Isi token tanpa awalan Bearer pada kolom token. Simpan; pertahankan format JSON bawaan. Jangan memakai endpoint dari gambar contoh atau toko lain."
         ],
         "visual": {
-          "image": "/guides/steps/forwarder-android-setup.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: pilih sumber dan simpan koneksi khusus toko.",
-          "illustration": true,
+          "image": "/guides/steps/hansdev-device-sources.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "exampleData": true,
+          "caption": "Buka Sumber, lalu pilih aplikasi merchant penerima pembayaran. Nama dan package harus sesuai panel toko.",
           "markers": [
             {
-              "label": "Pilih aplikasi merchant",
-              "x": 18,
-              "y": 43,
-              "w": 26,
-              "h": 13
-            },
-            {
-              "label": "Isi endpoint dan token toko",
+              "label": "Buka pemilih aplikasi",
               "x": 50,
-              "y": 53,
-              "w": 26,
-              "h": 17
+              "y": 24,
+              "w": 88,
+              "h": 6
             }
           ]
-        }
+        },
+        "additionalVisuals": [
+          {
+            "image": "/guides/steps/hansdev-device-source-picker.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Centang aplikasi yang digunakan, lalu tekan Gunakan aplikasi. Daftar ini memakai data contoh.",
+            "markers": [
+              {
+                "label": "Centang aplikasi merchant",
+                "x": 90,
+                "y": 40,
+                "w": 5,
+                "h": 3
+              },
+              {
+                "label": "Simpan pilihan aplikasi",
+                "x": 50,
+                "y": 94,
+                "w": 88,
+                "h": 5
+              }
+            ]
+          },
+          {
+            "image": "/guides/steps/hansdev-device-connection.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Pada Koneksi, pilih Endpoint sendiri · POST JSON; isi endpoint dan Bearer token dari panel toko Anda.",
+            "markers": [
+              {
+                "label": "Pilih POST JSON",
+                "x": 50,
+                "y": 32,
+                "w": 77,
+                "h": 6
+              },
+              {
+                "label": "Isi endpoint dan token toko",
+                "x": 50,
+                "y": 54,
+                "w": 78,
+                "h": 22
+              }
+            ]
+          },
+          {
+            "image": "/guides/steps/hansdev-device-connection-save.png",
+            "width": 1080,
+            "height": 2400,
+            "capture": "device",
+            "exampleData": true,
+            "caption": "Gulir ke bawah, aktifkan pengiriman dan simpan koneksi. Tombol uji hanya menguji endpoint, bukan mengesahkan pembayaran.",
+            "markers": [
+              {
+                "label": "Aktifkan pengiriman",
+                "x": 81,
+                "y": 56,
+                "w": 12,
+                "h": 4
+              },
+              {
+                "label": "Tekan Simpan koneksi",
+                "x": 50,
+                "y": 69,
+                "w": 88,
+                "h": 5
+              }
+            ]
+          }
+        ]
       },
       {
         "title": "Atur agar aplikasi tetap berjalan",
@@ -3811,18 +4055,18 @@
           "Jangan force-stop aplikasi. Setelah restart HP, periksa apakah listener kembali terhubung. Bila perlu buka aplikasi untuk memulihkannya. Kabel komputer tidak diperlukan untuk penerusan notifikasi setelah listener aktif; HP tetap memerlukan koneksi internet."
         ],
         "visual": {
-          "image": "/guides/steps/forwarder-android-setup.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: izin pemantau dan pengelolaan baterai pada HP.",
-          "illustration": true,
+          "image": "/guides/steps/hansdev-device-battery.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "caption": "Pengaturan baterai HansDev Forwarder pada MIUI 14. Nama menu dapat berbeda pada HP lain.",
           "markers": [
             {
-              "label": "Atur notifikasi dan baterai",
-              "x": 82,
-              "y": 62,
-              "w": 26,
-              "h": 17
+              "label": "Pilih Tidak ada pembatasan",
+              "x": 50,
+              "y": 58,
+              "w": 88,
+              "h": 8
             }
           ]
         }
@@ -3834,18 +4078,19 @@
           "Setelah penyiapan selesai, cabut kabel. USB debugging boleh dimatikan kembali; izin listener berbeda dari izin debugging. Periksa listener tetap terhubung. Bila tidak ada notifikasi merchant atau formatnya belum cocok, periksa mutasi dan gunakan konfirmasi manual sesuai panduan QRIS."
         ],
         "visual": {
-          "image": "/guides/steps/listener-grant.svg",
-          "width": 1280,
-          "height": 720,
-          "caption": "ILUSTRASI: pastikan hasil di aplikasi dan invoice, bukan hanya keluaran terminal.",
-          "illustration": true,
+          "image": "/guides/steps/hansdev-device-history.png",
+          "width": 1080,
+          "height": 2400,
+          "capture": "device",
+          "exampleData": true,
+          "caption": "Buka Riwayat dan periksa hasil pengiriman. Contoh Terkirim berarti endpoint menerima kiriman; tetap cek invoice di panel toko.",
           "markers": [
             {
-              "label": "Periksa listener dan riwayat",
-              "x": 82,
-              "y": 46,
-              "w": 26,
-              "h": 13
+              "label": "Periksa hasil kiriman",
+              "x": 50,
+              "y": 50,
+              "w": 88,
+              "h": 16
             }
           ]
         }

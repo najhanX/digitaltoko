@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ForwarderDownloads;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,9 +14,7 @@ class TutorialController extends Controller
         $guide = $slug ? $guides->firstWhere('slug', $slug) : null;
         abort_if($slug && ! $guide, 404);
         if (in_array($slug, ['pembayaran-custom', 'aktifkan-listener'], true)) {
-            $guide['download'] = is_file(config('services.forwarder.bundle_path'))
-                ? ['label' => 'Download paket HansDev Forwarder (ZIP)', 'url' => route('forwarder.download')]
-                : null;
+            $guide['downloads'] = ForwarderDownloads::available();
         }
 
         return Inertia::render('Platform/Tutorials', [

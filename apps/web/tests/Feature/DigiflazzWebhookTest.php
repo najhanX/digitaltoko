@@ -191,10 +191,10 @@ class DigiflazzWebhookTest extends TestCase
     {
         [$store] = $this->pending();
         config(['suppliers.digiflazz_webhook_url' => 'https://callback.example.test/api/commerce/digiflazz']);
-        $this->actingAs($store->owner)->get('/stores/'.$store->id.'/sources')->assertInertia(fn ($page) => $page->where('digiflazzWebhookUrl', 'https://callback.example.test/api/commerce/digiflazz'));
+        $this->actingAs($store->owner)->get('/stores/'.$store->id.'/supplier-connections/digiflazz')->assertInertia(fn ($page) => $page->where('digiflazzWebhookUrl', 'https://callback.example.test/api/commerce/digiflazz'));
         $this->assertSame('http://localhost', config('app.url'));
         config(['suppliers.digiflazz_webhook_url' => null]);
-        $this->get('/stores/'.$store->id.'/sources')->assertInertia(fn ($page) => $page->where('digiflazzWebhookUrl', 'http://localhost/api/commerce/digiflazz'));
+        $this->get('/stores/'.$store->id.'/supplier-connections/digiflazz')->assertInertia(fn ($page) => $page->where('digiflazzWebhookUrl', 'http://localhost/api/commerce/digiflazz'));
     }
 
     public function test_ping_checks_endpoint_reachability_without_changing_any_order(): void
@@ -468,7 +468,7 @@ class DigiflazzWebhookTest extends TestCase
         $this->actingAs($staff, 'staff')->postJson($url)->assertForbidden();
         $response = $this->actingAs($store->owner, 'web')->postJson($url)->assertOk()->assertJsonPath('secret', 'test-webhook-secret-123456789');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
-        $this->get('/stores/'.$store->id.'/sources')->assertDontSee('test-webhook-secret-123456789');
+        $this->get('/stores/'.$store->id.'/supplier-connections/digiflazz')->assertDontSee('test-webhook-secret-123456789');
         [$otherStore, $otherCustomer, $otherConnection] = $this->pending();
         $this->postJson('/stores/'.$store->id.'/sources/'.$otherConnection->id.'/webhook-secret')->assertNotFound();
         $this->post('/stores/'.$store->id.'/sources/'.$connection->id.'/webhook', ['webhook_secret' => str_repeat('x', 256)])->assertSessionHasErrors('webhook_secret');

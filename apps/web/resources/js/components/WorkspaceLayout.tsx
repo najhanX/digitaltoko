@@ -1,6 +1,7 @@
+import { restoreSidebarPosition } from './sidebarScroll';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Activity, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, Activity, Plug, type LucideIcon } from 'lucide-react';
 import Brand from './Brand';
 import TutorialLink from './TutorialLink';
 import SidebarSection from './SidebarSection';
@@ -12,7 +13,7 @@ import type { WorkspaceContext } from '../types';
 const sidebarOffsets = new Map<string, number>();
 const sidebarCollapsedStates = new Map<string, boolean>();
 
-type NavSection = 'catalog' | 'sales' | 'channels' | 'management';
+type NavSection = 'suppliers' | 'catalog' | 'sales' | 'channels' | 'management';
 type NavLink = { href: string; label: string; icon: LucideIcon; active: boolean; section?: NavSection };
 
 export default function WorkspaceLayout({ title, description, role = 'owner', canCreate: _canCreate, children, actions, eyebrow, breadcrumb, preview = false, contentClassName = '' }: {
@@ -49,28 +50,30 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     }
     const navigationRef = useRef<HTMLElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
+    const restoringSidebar = useRef(false);
     const path = page.url.split(/[?#]/)[0];
     const scoped = path.startsWith('/stores/') || (path.startsWith('/owner/stores/') && path !== '/owner/stores/create') || role === 'staff';
     const tab = new URLSearchParams(page.url.split('?')[1] ?? '').get('tab');
     const notificationSummary = page.props.notificationSummary as NotificationSummary|null;
     const sidebarScrollKey = 'digitaltoko.sidebar.'+role+'.'+(preview?'preview':notificationSummary?.recipient ?? viewer?.name ?? 'panel');
+    const sidebarContextKey = sidebarScrollKey+'.'+(store?.id ?? 'global');
     function saveSidebarScroll() {
         const sidebar = navigationRef.current;
-        if (!sidebar || sidebar.clientHeight === 0) return;
-        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop'+(sidebarCollapsed?'.collapsed':''));
+        if (!sidebar || sidebar.clientHeight === 0 || restoringSidebar.current) return;
+        const key = sidebarContextKey+(window.innerWidth <= 700?'.mobile':'.desktop'+(sidebarCollapsed?'.collapsed':''));
         sidebarOffsets.set(key, sidebar.scrollTop);
         try { sessionStorage.setItem(key, String(sidebar.scrollTop)); } catch { /* In-memory restoration remains available when storage is blocked. */ }
     }
     useLayoutEffect(() => {
         const sidebar = navigationRef.current;
         if (!sidebar || sidebar.clientHeight === 0) return;
-        const key = sidebarScrollKey+(window.innerWidth <= 700?'.mobile':'.desktop'+(sidebarCollapsed?'.collapsed':''));
+        const key = sidebarContextKey+(window.innerWidth <= 700?'.mobile':'.desktop'+(sidebarCollapsed?'.collapsed':''));
         let offset = sidebarOffsets.get(key);
         if (offset === undefined) {
             try { const saved = sessionStorage.getItem(key); if (saved !== null) offset = Number(saved); } catch { /* Storage can be unavailable in private browser settings. */ }
         }
-        if (offset !== undefined && Number.isFinite(offset) && offset >= 0) sidebar.scrollTop = offset;
-    }, [sidebarScrollKey, page.url, mobileOpen, sidebarCollapsed]);
+        if (offset !== undefined) return restoreSidebarPosition(sidebar,offset,active=>{restoringSidebar.current=active;});
+    }, [sidebarContextKey, page.url, mobileOpen, sidebarCollapsed]);
     useEffect(() => { setMobileOpen(false); }, [page.url]);
     useEffect(() => {
         if (!mobileOpen) return;
@@ -110,13 +113,15 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         const overview = role === 'owner' ? '/owner/stores/'+store.id : '/staff/'+store.id+'/dashboard';
         if (role === 'owner' || permissions.includes('dashboard.view')) scopedLinks.push({href:overview,label:'Ringkasan toko',icon:LayoutDashboard,active:path === overview});
         if (role === 'owner' || permissions.includes('subscription.view')) scopedLinks.push({href:'/stores/'+store.id+'/subscription',label:'Langganan & aktivasi',section:'management',icon:CreditCard,active:path === '/stores/'+store.id+'/subscription'});
-        if (role === 'owner' || permissions.includes('suppliers.balance')) scopedLinks.push({href:'/stores/'+store.id+'/supplier-wallets',label:'Saldo & deposit pemasok',section:'catalog',icon:CreditCard,active:path === '/stores/'+store.id+'/supplier-wallets'});
         if (role === 'owner' || permissions.some(value=>['products.view','products.manage','pricing.manage','suppliers.manage','suppliers.responses','suppliers.import','suppliers.balance','suppliers.deposit'].includes(value))) {
-            scopedLinks.push({href:'/stores/'+store.id+'/otomax',label:'Supplier OtomaX',section:'catalog',icon:Package,active:path.startsWith('/stores/'+store.id+'/otomax')});
+            scopedLinks.push({href:'/stores/'+store.id+'/supplier-connections/hanshop',label:'API Hanshop',section:'suppliers',icon:Plug,active:path === '/stores/'+store.id+'/supplier-connections/hanshop'});
+            scopedLinks.push({href:'/stores/'+store.id+'/supplier-connections/digiflazz',label:'Digiflazz',section:'suppliers',icon:Plug,active:path === '/stores/'+store.id+'/supplier-connections/digiflazz'});
+            scopedLinks.push({href:'/stores/'+store.id+'/otomax',label:'Supplier OtomaX',section:'suppliers',icon:Package,active:path.startsWith('/stores/'+store.id+'/otomax')});
             scopedLinks.push({href:'/stores/'+store.id+'/sources',label:'Sumber produk',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/sources'});
             scopedLinks.push({href:'/stores/'+store.id+'/catalog-structure',label:'Layanan & kategori',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/catalog-structure'});
             scopedLinks.push({href:'/stores/'+store.id+'/products',label:'Katalog & harga',section:'catalog',icon:Package,active:path === '/stores/'+store.id+'/products'});
         }
+        if (role === 'owner' || permissions.includes('suppliers.balance')) scopedLinks.push({href:'/stores/'+store.id+'/supplier-wallets',label:'Saldo & deposit pemasok',section:'suppliers',icon:CreditCard,active:path === '/stores/'+store.id+'/supplier-wallets'});
         if(role==='owner' || permissions.some(value=>['vouchers.view','vouchers.manage'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/vouchers',label:'Voucher diskon',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/vouchers')});
         if(role==='owner' || permissions.some(value=>['orders.view','orders.manage','orders.resend','guests.resolve','payments.confirm'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/orders',label:'Transaksi pelanggan',section:'sales',icon:CreditCard,active:path.startsWith('/stores/'+store.id+'/orders')});
         if(role==='owner' || permissions.some(value=>['customers.view','customers.contacts','wallet.view','wallet.settlement'].includes(value)))scopedLinks.push({href:'/stores/'+store.id+'/customers',label:'Pelanggan & saldo',section:'sales',icon:Users,active:path.startsWith('/stores/'+store.id+'/customers')});
@@ -132,6 +137,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     }
     const sections: {id:NavSection;label:string;icon:LucideIcon}[] = [
         {id:'sales',label:'Penjualan',icon:CreditCard},
+        {id:'suppliers',label:'Koneksi supplier',icon:Plug},
         {id:'catalog',label:'Produk & harga',icon:Package},
         {id:'channels',label:'Kanal & tampilan',icon:Smartphone},
         {id:'management',label:'Administrasi toko',icon:Settings2},
@@ -171,7 +177,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
                     <div className="panel-top-right"><ThemeToggle compactOnMobile/><NotificationBell summary={notificationSummary} preview={preview}/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div><Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
                 </header>
                 <main className={'workspace-content panel-content '+(role==='admin'?'catalog-workspace admin-workspace ':'')+contentClassName}>
-                    <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div><div className="page-heading-actions">{!preview && store?.status==='provisioning' && role!=='admin' && (role==='owner'||permissions.includes('subscription.view')) && !path.endsWith('/subscription') && <Link className="button secondary" href={'/stores/'+store.id+'/subscription#persiapan-toko'}><ClipboardCheck size={17}/>Persiapan toko</Link>}<TutorialLink path={path} tab={tab}/>{actions}</div></div>
+                    <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div><div className="page-heading-actions"><TutorialLink path={path} tab={tab}/>{actions}</div></div>
                     {role !== 'admin' && store?.admin_suspended_at && <div className="feedback warning" role="status"><strong>Toko ditangguhkan administrator</strong><p>{store.admin_suspension_reason}</p><p>Layanan bot dan web berhenti. Hubungi administrator untuk tindak lanjut. Masa sewa tetap berjalan.</p></div>}
                     {store?.sandbox && <div className="feedback warning" role="status"><strong>Sandbox · Mode pengujian</strong><p>Saldo uji terpisah. Pesanan Hanshop dan stok premium disimulasikan; Digiflazz memakai key development. Sewa toko tetap berlaku.</p></div>}
                     {children}

@@ -44,12 +44,12 @@ class SupplierNetworkTest extends TestCase
         foreach (['web' => $owner, 'staff' => $staff] as $guard => $actor) {
             auth('web')->logout();
             $this->actingAs($actor, $guard);
-            foreach (['sources', 'otomax'] as $menu) {
+            foreach (['supplier-connections/digiflazz', 'otomax'] as $menu) {
                 $this->get('http://localhost/stores/'.$store->id.'/'.$menu)->assertOk()->assertInertia(fn (Assert $page) => $page->where('supplierOutboundIp', '8.8.4.4'));
             }
         }
         config(['suppliers.outbound_ip' => null]);
-        $this->get('http://localhost/stores/'.$store->id.'/sources')->assertOk()->assertInertia(fn (Assert $page) => $page->where('supplierOutboundIp', null));
+        $this->get('http://localhost/stores/'.$store->id.'/supplier-connections/digiflazz')->assertOk()->assertInertia(fn (Assert $page) => $page->where('supplierOutboundIp', null));
         Http::assertNothingSent();
     }
 }

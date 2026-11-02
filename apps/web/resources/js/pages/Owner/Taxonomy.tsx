@@ -230,13 +230,6 @@ export default function Taxonomy({
             }
             actions={
                 <>
-                    <Link
-                        className="button secondary"
-                        href={base + "/products"}
-                    >
-                        Katalog produk
-                        <ArrowRight size={16} />
-                    </Link>
                     {canManage && (
                         <button
                             type="button"
@@ -269,12 +262,7 @@ export default function Taxonomy({
                 </Link>
             </nav>
             <CatalogHelp title="Struktur katalog: layanan → kategori → produk">
-                <p>
-                    Buat layanan, tambahkan kategori di dalamnya, lalu pilih
-                    kategori saat membuat produk. Data toko Anda terpisah dari
-                    toko lain. Bagian yang belum memiliki produk aktif belum
-                    ditampilkan pada katalog bot/web.
-                </p>
+                <ol><li>Buat layanan.</li><li>Tambahkan kategori.</li><li>Masukkan produk ke kategori.</li></ol><p>Hanya bagian dengan produk aktif yang tampil di toko.</p>
             </CatalogHelp>
             {category && selectedService && (
                 <div className="summary-note admin-owner-filter">
@@ -311,7 +299,7 @@ export default function Taxonomy({
                     }
                 />
 
-                {canManage && (
+                {canManage && selected.length > 0 && (
                     <div className="catalog-bulk-toolbar taxonomy-bulk-toolbar">
                         <span>
                             {selected.length}{" "}
@@ -787,11 +775,7 @@ export default function Taxonomy({
                                 <details className="compact-help">
                                     <summary>Dampak perubahan kategori</summary>
                                     <p>
-                                        Semua produk ikut berpindah saat layanan
-                                        diubah. Aturan harga kategori/produk
-                                        tetap; harga yang mengikuti layanan
-                                        memakai aturan layanan baru. Nama
-                                        kategori pada layanan tujuan harus unik.
+                                        Produk ikut berpindah. Aturan kategori/produk tetap; aturan turunan memakai layanan baru. Nama kategori tidak boleh bentrok.
                                     </p>
                                 </details>
                             )}
@@ -850,9 +834,7 @@ export default function Taxonomy({
                             )}
                             {effectiveType === "premium" ? (
                                 <p>
-                                    Kolom tujuan tidak ditampilkan. Tujuan
-                                    pesanan diambil otomatis dari nomor WhatsApp
-                                    wajib pada bagian kontak pembeli.
+                                    Tanpa kolom tujuan. Pesanan memakai WhatsApp pembeli.
                                 </p>
                             ) : effectiveType === "game" ? (
                                 <>
@@ -1338,9 +1320,7 @@ export default function Taxonomy({
                                         </select>
                                     </label>
                                     <p className="field-help">
-                                        Jumlah kolom, nickname dan format
-                                        gabungan hanya dipakai untuk tujuan
-                                        game.
+                                        Jumlah kolom, nickname, dan format gabungan khusus game.
                                     </p>
                                 </>
                             )}

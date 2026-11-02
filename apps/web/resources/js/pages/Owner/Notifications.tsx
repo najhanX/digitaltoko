@@ -1,4 +1,4 @@
-import { Link, useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Mail, MessageCircle, Pencil, Send } from 'lucide-react';
 import WorkspaceLayout from '../../components/WorkspaceLayout';
@@ -7,7 +7,7 @@ import { FormErrors } from '../../components/CatalogForms';
 
 type Settings={mode:'platform'|'smtp';host?:string;port?:number;username?:string;from_address?:string;has_password:boolean;ready:boolean;platform_ready:boolean;platform_from?:string};
 type Props={role:'owner'|'staff';store:{id:string;name:string;category:string};canManage:boolean;canViewWhatsapp:boolean;whatsappReady:boolean;emailSettings:Settings};
-export default function Notifications({role,store,canManage,canViewWhatsapp,whatsappReady,emailSettings:settings}:Props){
+export default function Notifications({role,store,canManage,whatsappReady,emailSettings:settings}:Props){
     const [editing,setEditing]=useState(false),[testing,setTesting]=useState(false);
     const base='/stores/'+store.id+'/notifications';
     const form=useForm({mode:settings.mode,host:settings.host??'',port:settings.port??587,username:settings.username??'',password:'',from_address:settings.from_address??''});
@@ -15,7 +15,7 @@ export default function Notifications({role,store,canManage,canViewWhatsapp,what
     function edit(){form.setData({mode:settings.mode,host:settings.host??'',port:settings.port??587,username:settings.username??'',password:'',from_address:settings.from_address??''});form.clearErrors();setEditing(true);}
     return <WorkspaceLayout role={role} title="Notifikasi & email" description={'Pengirim OTP dan pemberitahuan pelanggan '+store.name+'.'}>
         <div className="cards notification-settings-grid">
-            <section className="card"><div className="card-section-heading"><MessageCircle size={22}/><h2>WhatsApp toko</h2><span className={'store-status '+(whatsappReady?'active':'draft')}>{whatsappReady?'Terhubung':'Belum tersedia'}</span></div><p>OTP dan informasi pesanan dikirim dari nomor toko sendiri.</p>{canViewWhatsapp && <div className="card-actions"><Link className="button secondary small" href={'/stores/'+store.id+'/bot'}>Kelola koneksi WhatsApp</Link></div>}{store.category==='web' && <p className="field-help">Paket Web mencakup WhatsApp notifikasi. Pemesanan melalui chat memerlukan paket Bot.</p>}</section>
+            <section className="card"><div className="card-section-heading"><MessageCircle size={22}/><h2>WhatsApp toko</h2><span className={'store-status '+(whatsappReady?'active':'draft')}>{whatsappReady?'Terhubung':'Belum tersedia'}</span></div><p>OTP dan informasi pesanan dikirim dari nomor toko sendiri.</p>{store.category==='web' && <p className="field-help">Paket Web mencakup WhatsApp notifikasi. Pemesanan melalui chat memerlukan paket Bot.</p>}</section>
             <section className="card"><div className="card-section-heading"><Mail size={22}/><h2>Pengirim email</h2><span className={'store-status '+(settings.ready?'active':'draft')}>{settings.ready?'Terkonfigurasi':'Belum siap'}</span></div><p><strong>{settings.mode==='smtp'?'Email milik toko':'Email bawaan DigitalToko'}</strong><br/>{settings.mode==='smtp'?settings.from_address:settings.platform_from}</p><p className="field-help">Nama pengirim memakai {store.name}. OTP dan notifikasi menggunakan pengirim yang sama.</p>{canManage && <div className="card-actions"><button type="button" className="button secondary small" onClick={edit}><Pencil size={15}/>Atur pengirim</button><button type="button" className="button small" disabled={!settings.ready} onClick={()=>{test.clearErrors();setTesting(true);}}><Send size={15}/>Kirim email uji</button></div>}</section>
         </div>
         {!settings.platform_ready && settings.mode==='platform' && <div className="feedback warning" role="status"><strong>Email platform belum dikonfigurasi</strong><p>Administrator perlu mengatur layanan email DigitalToko. Anda juga dapat memakai SMTP toko sendiri.</p></div>}

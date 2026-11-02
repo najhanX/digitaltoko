@@ -6,7 +6,11 @@ export default function SidebarSection({label, icon: Icon, links, storageKey, co
     const activeHref = links.find(link => link.active)?.href;
     const [open, setOpen] = useState(Boolean(activeHref));
     useLayoutEffect(() => {
-        if (activeHref) {setOpen(true);return;}
+        if (activeHref) {
+            setOpen(true);
+            try {sessionStorage.setItem(storageKey,'open');} catch { /* The active group remains open for this page. */ }
+            return;
+        }
         try {setOpen(sessionStorage.getItem(storageKey) === 'open');} catch {setOpen(false);}
     }, [activeHref, storageKey]);
     function toggle() {

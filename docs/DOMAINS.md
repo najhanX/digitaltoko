@@ -1,61 +1,39 @@
-# Rancangan domain web toko
+# Domain web toko DigitalToko
 
-Status source **21 Oktober 2026**: host resolver tersedia untuk slug di domain/alias platform serta custom hostname active+verified. Model/tabel StoreDomain dan pembacaan domain pada panel admin tersedia; belum ada endpoint panel owner untuk klaim/kelola custom domain maupun otomatisasi ownership/DNS/TLS/provider. Keadaan DNS/VPS/kepemilikan domain nyata tidak diperiksa pada sinkronisasi ini. Domain awal yang direncanakan hansdigi.biz.id, final digitaltoko.com; konfigurasi transisi di DEPLOYMENT.md.
+Status source lokal: **2 November 2026**. Resolver host, klaim domain owner, verifikasi TXT/arah DNS/HTTPS, dan pelepasan binding sudah tersedia. Konfigurasi DNS, penerbitan sertifikat publik dan kesiapan VPS nyata tetap harus diuji pada lingkungan deployment. Domain awal yang direncanakan hansdigi.biz.id; domain final yang diinginkan digitaltoko.com. Dokumen ini tidak memeriksa kepemilikan atau DNS live.
 
-## Routing yang tersedia
+## Satu aplikasi, beberapa hostname
 
-- Domain platform awal hansdigi.biz.id; final digitaltoko.com.
-- Panel foundation /admin, /owner, /staff/<uuid>/login pada domain platform sama.
-- Domain bawaan <slug>.<PLATFORM_DOMAIN>, contoh tokonya.hansdigi.biz.id lalu tokonya.digitaltoko.com.
-- Domain custom opsional: `shop.tokonya.example` atau `www.tokonya.example`.
+Panel admin/owner/staff berjalan pada host platform. Storefront memakai `<slug>.<PLATFORM_DOMAIN>` atau satu hostname pribadi aktif dan terverifikasi. APP_URL, PLATFORM_DOMAIN, alias serta mapping StoreDomain menentukan routing, bukan salinan source/frontend per toko. Toko Bot tetap mempunyai slug sebagai identitas tanpa hak storefront transaksi Web.
 
-Satu aplikasi storefront melayani banyak hostname. Backend memetakan hostname terdaftar ke `store_id`, lalu memeriksa status toko dan entitlement web. Deploy aplikasi per toko tidak diperlukan.
-
-Ketentuan pengguna: satu subdomain per toko ditentukan saat pembelian, tetap pada fitur awal; rename berbayar mungkin fase berikut. Koneksi domain gratis maksimal satu domain custom per toko, dengan panduan DNS. Rancangan www/apex bila didukung alias domain utama sama. Setelah purge slug dapat dipakai toko lain. Reservasi checkout/binding mencegah dua tenant menguasai hostname sama. Slug juga disimpan untuk toko Bot sebagai identitas toko, tetapi tidak menerbitkan storefront tanpa hak web.
+Subdomain bawaan dipilih ketika membuat toko dan tidak dapat diganti melalui fitur awal. Domain pribadi opsional dan gratis, maksimal satu per toko Web/Full. Owner membeli/memiliki domain pada registrar; DigitalToko tidak membeli atau memperpanjang domain tersebut. Slug dapat dipakai lagi setelah toko benar-benar dipurge, bukan sekadar kedaluwarsa.
 
 ## Subdomain bawaan
 
-Gunakan wildcard DNS ke ingress platform dan konfigurasi TLS yang mencakup subdomain satu tingkat. Wildcard DNS dan wildcard certificate merupakan konfigurasi berbeda; keduanya perlu disiapkan. Subdomain dibuat secara logis dalam database sehingga tidak perlu record DNS manual per toko.
+Sediakan wildcard DNS ke ingress platform dan TLS yang mencakup subdomain satu tingkat; DNS wildcard dan wildcard certificate adalah konfigurasi berbeda. Slug dibuat secara logis dalam database, sehingga tidak perlu record DNS manual untuk setiap toko. Record spesifik milik layanan lain harus tetap diperiksa saat menyiapkan DNS.
 
-Slug toko unik, hostname dinormalisasi, dan nama sistem seperti panel, api, admin, www, serta status dicadangkan. Host tidak terdaftar ditolak, meskipun wildcard DNS membuatnya dapat mencapai server. Cookie panel bersifat host-only; tidak dibagikan kepada seluruh subdomain toko.
+Hostname dinormalisasi dan unik, nama sistem dicadangkan, dan host yang tidak terdaftar ditolak. Cookie panel/customer bersifat host-only. Domain bukan bukti izin owner; guard, store_id dan permission tetap diperiksa. Header forwarded host hanya dipercaya dari proxy yang dikonfigurasi.
 
-## Custom domain
+## Domain pribadi yang sudah diimplementasikan
 
-Usulan layanan: Cloudflare for SaaS untuk registrasi custom hostname, routing ke fallback origin platform, validasi hostname, dan pengelolaan sertifikat TLS. Pemilihan penyedia final dan biaya belum ditetapkan.
+Owner terverifikasi membuka **Tampilan & pengaturan → Pengaturan toko → Domain pribadi**. Staff tidak mendapat aksi klaim/verifikasi/lepas.
 
-Owner membeli/memiliki domain di registrar pilihannya. Untuk onboarding awal, arahkan hostname seperti `shop.tokonya.example` atau `www.tokonya.example` dengan CNAME ke target platform. Panel menampilkan record verifikasi TXT bila diperlukan dan record routing yang harus dipasang.
+1. Masukkan hostname tanpa URL, port atau path. IP, wildcard, domain lokal serta domain platform ditolak.
+2. Pasang TXT `_digitaltoko-domain.<hostname>` dengan kode kepemilikan dari popup.
+3. Pasang CNAME ke target platform, atau metode apex yang didukung DNS provider. Gunakan record/nilai aktual dari panel. `www` dan apex berbeda; tidak dibuat alias/redirect otomatis.
+4. Klik Verifikasi & aktifkan. `pending_verification` berarti TXT/arah belum sesuai; `pending_tls` berarti DNS cocok tetapi HTTPS/proof origin belum sesuai. Hanya `active` dan verified yang membuka storefront pada hostname itu.
+5. Mengganti/melepas domain mengubah binding; domain registrar dan toko tidak dihapus. Pembeli masuk kembali pada hostname baru. Subdomain bawaan tetap tersedia.
 
-Domain utama tanpa prefix (apex) tidak diperlakukan identik dengan subdomain. Dukungan bergantung pada kemampuan DNS provider dan fasilitas apex proxying penyedia hosting/CDN. Tahap awal prioritaskan subdomain/www; dukungan apex direncanakan setelah jalur yang didukung dan biayanya diverifikasi. Redirect dari apex ke www harus disediakan tersendiri dengan HTTPS yang valid.
+Klaim belum terverifikasi kedaluwarsa setelah tujuh hari dan dapat diambil pada klaim berikutnya. Pengambilan domain terverifikasi milik toko lain tetap ditolak. Probe HTTPS mem-pin IP publik yang dipercaya, memvalidasi sertifikat serta menolak redirect; token/binding harus terkini. Endpoint proof tidak membuka data pelanggan atau storefront pending.
 
-Cloudflare for SaaS tidak membeli domain pelanggan atau mengurus tagihan registrarnya. Masa aktif domain, masa aktif paket Web App, dan status sertifikat TLS adalah lifecycle berbeda.
+Route owner: POST `/owner/stores/{store}/domain`, POST `/owner/stores/{store}/domain/verify`, dan DELETE `/owner/stores/{store}/domain`. Izin On-Demand TLS Caddy dan proof origin terpisah dari halaman toko.
 
-## Target onboarding domain otomatis (belum lengkap)
+## Deployment dan batas operasional
 
-1. Owner memasukkan hostname; backend memeriksa entitlement custom domain, normalisasi, dan keunikan global.
-2. Backend mendaftarkan custom hostname menggunakan credential platform yang tetap berada di server.
-3. Panel menampilkan record ownership dan routing yang dikembalikan penyedia.
-4. Worker memeriksa status validasi hostname, routing, dan sertifikat secara terpisah.
-5. Domain aktif untuk storefront hanya setelah kepemilikan, routing, sertifikat, dan hak toko valid.
+Konfigurasi `CUSTOM_DOMAIN_CNAME_TARGET`, `CUSTOM_DOMAIN_ORIGIN_IPS`, dan `CUSTOM_DOMAIN_TLS_ASK_KEY`, contoh Caddy/Nginx, batas verifikasi dan langkah DNS rinci ada di [CUSTOM_DOMAINS.md](CUSTOM_DOMAINS.md). APP_URL/PLATFORM_DOMAIN dan transisi domain platform ada di [DEPLOYMENT.md](DEPLOYMENT.md).
 
-Simpan `store_domains` dengan `store_id`, hostname unik, jenis domain, ID penyedia, status verifikasi/DNS/TLS, waktu verifikasi, dan penanda domain utama. Gunakan status onboarding seperti PENDING_VERIFICATION, PENDING_DNS, PENDING_TLS, ACTIVE, ERROR, dan DISABLED tanpa mencampurkannya dengan status langganan toko.
+Adapter izin Caddy tersedia; integrasi provisioning Cloudflare for SaaS API bukan fitur aktif. DNS/TLS tidak dianggap siap hanya karena hostname tersimpan. Dukungan apex bergantung DNS/provider; registrar, TTL, sertifikat dan langganan toko memiliki lifecycle berbeda. Pelepasan DNS/sertifikat provider eksternal saat purge dan backup/restore masih tanggung jawab operasi yang perlu ditetapkan.
 
-Hostname bukan bukti otorisasi owner. Perubahan domain memakai sesi panel dan akses toko. Header forwarded host hanya dipercaya dari proxy terkonfigurasi. Link, redirect, cache, dan event tenant harus mengikuti mapping domain yang diverifikasi; jangan membangun URL callback pembayaran dari Host request yang tidak dipercaya.
+## Kedaluwarsa dan penghapusan toko
 
-Saat domain dilepas atau dipindah toko, hapus/nonaktifkan binding di penyedia dan aplikasi secara terkoordinasi. Klaim ulang wajib verifikasi kepemilikan baru; jangan memindahkan domain hanya berdasarkan teks hostname. Jangan mengubah record email/MX pelanggan untuk onboarding storefront.
-
-## Batas implementasi lifecycle
-
-Pemblokiran akses sesuai langganan tersedia di backend. Renewal memperbarui masa aktif. Tidak ada job purge toko penuh atau pelepasan provider domain otomatis; aturan berikut adalah kebijakan target, bukan tindakan yang sudah dijalankan scheduler.
-
-## Kebijakan expiry dan operasional
-
-Web bertransaksi selama grace tujuh hari, lalu publik diblokir. Hari ke-30 memeriksa eligibility purge: saldo pelanggan/transaksi/refund belum selesai menahan penghapusan dan domain mapping. Panel renewal/penyelesaian tetap tersedia. Renewal sebelum purge memulihkan routing setelah readiness check. Slug hanya dilepas setelah purge benar-benar selesai, bukan ketika tanggal ke-30 tercapai dalam DELETION_HOLD. Saat purge binding penyedia/aplikasi dilepas; akun/saldo/riwayat owner Hanshop dan domain tenant di registrar tetap ada. Klaim ulang custom domain membutuhkan verifikasi.
-
-Subdomain bawaan menjadi alamat cadangan ketika custom domain belum siap. Bila dua hostname aktif untuk toko yang sama, tentukan domain utama dan canonical URL; redirect hanya setelah domain utama benar-benar aktif. Pembelian/perpanjangan domain atas nama penyewa dapat menjadi layanan tambahan pada tahap berikutnya, dengan kepemilikan dan biaya dijelaskan.
-
-## Referensi teknis
-
-- Cloudflare for SaaS: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/
-- Fallback origin dan CNAME target: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/getting-started/
-- Validasi hostname: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/domain-support/hostname-validation/
-- Apex proxying: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/apex-proxying/
+Grace tujuh hari masih bertransaksi; setelahnya operasional publik diblokir. Pada expiry+30, saldo/transaksi/refund atau kewajiban lain menahan penghapusan beserta mapping. Panel renewal/penyelesaian tetap tersedia. Renewal sebelum purge dapat memulihkan routing setelah pemeriksaan kesiapan; tidak mengembalikan toko yang sudah terhapus. Akun/saldo/riwayat owner Hanshop dan kepemilikan domain registrar tetap dipertahankan. Klaim ulang domain memerlukan verifikasi baru.

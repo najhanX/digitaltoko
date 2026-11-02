@@ -41,6 +41,40 @@ class StoreCatalogTest extends TestCase
         Cache::store('array')->flush();
     }
 
+    public function test_supplier_connection_pages_are_scoped_and_separate_from_source_catalog(): void
+    {
+        $store = $this->shop();
+        $other = $this->shop();
+        $digi = $this->connection($store);
+        $hanshop = $this->connection($store, 'hanshop');
+        $this->connection($other);
+        $this->item($digi);
+        foreach (['digiflazz' => $digi, 'hanshop' => $hanshop] as $kind => $connection) {
+            $this->actingAs($store->owner)->get('/stores/'.$store->id.'/supplier-connections/'.$kind)->assertOk()
+                ->assertInertia(fn (AssertableInertia $page) => $page->component('Owner/SupplierConnections')
+                    ->where('kind', $kind)->has('connections', 1)->where('connections.0.id', $connection->id)
+                    ->missing('connections.0.credentials')->missing('items'));
+        }
+        $this->get('/stores/'.$store->id.'/sources')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Owner/Sources')->has('items', 1)->missing('digiflazzWebhookUrl')->missing('supplierOutboundIp'));
+        $this->get('/stores/'.$other->id.'/supplier-connections/digiflazz')->assertForbidden();
+        $this->get('/stores/'.$store->id.'/supplier-connections/unknown')->assertNotFound();
+        Http::assertNothingSent();
+    }
+
+    public function test_staff_can_read_connections_without_receiving_or_changing_credentials(): void
+    {
+        $store = $this->shop();
+        $connection = $this->connection($store);
+        $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Viewer', 'username' => 'connection-viewer', 'email' => 'connection-viewer@example.test', 'password' => 'test-only', 'active' => true, 'permissions' => ['products.view']]);
+        $this->actingAs($staff, 'staff')->get('/stores/'.$store->id.'/supplier-connections/digiflazz')->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('role', 'staff')->where('canManage', false)->missing('connections.0.credentials'));
+        $this->post('/stores/'.$store->id.'/sources', ['kind' => 'digiflazz', 'enabled' => false])->assertForbidden();
+        $this->assertTrue($connection->fresh()->enabled);
+        $this->actingAs($staff, 'staff')->get('/stores/'.$this->shop()->id.'/supplier-connections/digiflazz')->assertForbidden();
+        Http::assertNothingSent();
+    }
+
     private function shop(string $plan = 'galaxy'): Store
     {
         $owner = User::factory()->create(['role' => 'owner', 'verification_status' => 'approved', 'hanshop_user_id' => 'HD'.random_int(1000, 99999), 'phone_verified_at' => now(), 'email_verified_at' => now()]);

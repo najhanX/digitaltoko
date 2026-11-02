@@ -1,6 +1,6 @@
 # DigitalToko — workspace Hansbot
 
-Dokumentasi disinkronkan dengan source lokal pada **23 Oktober 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
+Dokumentasi disinkronkan dengan source lokal pada **2 November 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
 
 DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk digital, bot WhatsApp, atau keduanya. Satu owner dapat memiliki banyak toko; setiap toko memiliki langganan, katalog, stok, pelanggan, wallet, pesanan, konfigurasi, dan sesi WhatsApp sendiri.
 
@@ -42,7 +42,7 @@ Domain memakai `APP_URL`, `PLATFORM_DOMAIN`, alias, dan mapping custom host veri
 
 ## Batas saat ini
 
-Retensi per toko sudah tersedia: jadwal 7/30 hari, hold kewajiban, reminder, pratinjau admin, pembatalan saat renewal, dan purge data/media/sesi WhatsApp. Persetujuan penutupan manual tersedia melalui modal admin, termasuk toko tanpa langganan. Penghapusan otomatis dinonaktifkan secara bawaan (`STORE_PURGE_ENABLED=false`) dan terpisah dari persetujuan manual. Kebijakan backup/log server bersama, otomatisasi DNS/TLS dan hardening worker multi-host tetap memerlukan tindak lanjut operasional. Pemantauan saldo dan permintaan deposit Digiflazz/Hanshop/OtomaX tersedia di Produk & harga → Saldo & deposit pemasok; saldo pemasok terpisah dari wallet pelanggan. Deposit nyata dan konfirmasi tiap supplier tetap perlu diuji pada lingkungan operasional.
+Retensi per toko sudah tersedia: jadwal 7/30 hari, hold kewajiban, reminder, pratinjau admin, pembatalan saat renewal, dan purge data/media/sesi WhatsApp. Persetujuan penutupan manual tersedia melalui modal admin, termasuk toko tanpa langganan. Penghapusan otomatis dinonaktifkan secara bawaan (`STORE_PURGE_ENABLED=false`) dan terpisah dari persetujuan manual. Kebijakan backup/log server bersama, otomatisasi DNS/TLS dan hardening worker multi-host tetap memerlukan tindak lanjut operasional. Pemantauan saldo dan permintaan deposit Digiflazz/Hanshop/OtomaX tersedia di Koneksi supplier → Saldo & deposit pemasok; saldo pemasok terpisah dari wallet pelanggan. Deposit nyata dan konfirmasi tiap supplier tetap perlu diuji pada lingkungan operasional.
 
 Source di working tree dapat lebih baru daripada commit/deployment. Pengujian historis tercatat dengan tanggal dan lingkungannya; keberadaan source/test tidak membuktikan layanan produksi sudah diperbarui.
 
@@ -74,4 +74,14 @@ Penanganan sewa awal gagal disiapkan tersedia di Langganan & aktivasi dan Detail
 
 Pembaruan1November2026: failover beberapa periode pascabayar memiliki regresi Digiflazz/OtomaX dua arah, normalisasi daftar bulan dan penolakan mismatch. QRIS HansDev menerima gambar langsung, aplikasi sumber package/nama bebas, tautan APK/panduan instalasi, dan konfirmasi penerimaan manual berizin dengan audit/idempotensi. Tanpa migrasi schema. APK release harus disalin ketika deploy (DEPLOYMENT.md); uji perubahan ini terisolasi, bukan pembayaran atau instalasi HP produksi.
 
-Panduan `/panduan/aktifkan-listener` menyediakan aktivasi listener USB langkah demi langkah (mode pengembang, USB debugging, RSA dan ADB tiap OS). Unduhan HansDev kini ZIP lengkap dari owner platform. Salin ke `storage/app/releases/HansDev-Forwarder.zip` atau atur `HANSDEV_FORWARDER_BUNDLE_PATH` ketika deploy; biner tidak termasuk Git.
+Panduan `/panduan/aktifkan-listener` menyediakan aktivasi listener USB langkah demi langkah (mode pengembang, USB debugging, RSA dan ADB tiap OS). APK diunduh terpisah dari tools. Pilih OS komputer pada dropdown sebelum mengunduh ZIP Windows/macOS/Linux; tiap ZIP berisi SDK satu OS dan script aktivasi sejajar dengan folder platform-tools. Deploy empat file rilis sesuai [deployment](docs/DEPLOYMENT.md); biner tidak termasuk Git.
+
+
+## Navigasi pemasok dan QRIS terkini — 2 November 2026
+
+- **Koneksi supplier**: API Hanshop, Digiflazz, Supplier OtomaX, serta Saldo & deposit pemasok. Akun dan webhook Digiflazz dikelola di halaman koneksi; perubahan kredensial Hanshop/Digiflazz tetap khusus owner.
+- **Produk & harga → Sumber produk**: tabel, pencarian/filter, pagination, sinkronisasi katalog dan impor. Pilih sumber pada filter untuk impor semua/per layanan/per kategori; checkbox untuk pilihan massal. Data koneksi/parsing existing tetap dipakai.
+- **Pembayaran pelanggan**: unggah QRIS, Hans Forward, penangkap format notifikasi, uji contoh, dan konfirmasi penerimaan manual berizin. Format cocok bukan bukti pembayaran lunas; server tetap memeriksa token, sumber aplikasi, waktu, nominal dan invoice.
+- **Panduan publik**: 22 topik, 111 langkah; QRIS custom 10 langkah dan aktivasi listener 12 langkah. Gambar memakai screenshot panel simulasi, 10 screenshot HP asli, serta ilustrasi berlabel. APK dokumentasi dengan data contoh bukan APK rilis tenant.
+
+Perubahan terbaru tidak memerlukan migrasi atau dependensi tambahan. Jika memperbarui instalasi, deploy seluruh source/aset, build frontend, salin empat file rilis bila menyediakan unduhan HansDev, serta muat ulang konfigurasi/proses sesuai [DEPLOYMENT.md](docs/DEPLOYMENT.md). Catatan validasi bertanggal berada di [FOUNDATION_VALIDATION.md](docs/FOUNDATION_VALIDATION.md); tidak menyatakan semua tes atau layanan produksi diuji ulang pada setiap perubahan dokumen.

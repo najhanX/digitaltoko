@@ -5,7 +5,6 @@ import Brand from '../../components/Brand';
 import PlatformHeader from '../../components/PlatformHeader';
 import { packages } from '../../components/packageCatalog';
 import useStorefrontReveal from '../../components/useStorefrontReveal';
-import '../../../css/platform-home.css';
 
 const features = [
     {icon:Package,title:'Katalog yang Anda kendalikan',text:'Impor produk pemasok, kelola stok premium, lalu tentukan markup nominal, persen, atau kombinasi. Atur per produk, kategori, atau layanan.'},

@@ -1,6 +1,6 @@
 # DigitalToko web
 
-Status source lokal: **22 Oktober 2026**. Laravel 13 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff, landing dan storefront dijalankan satu Laravel. Worker WhatsApp berada di `../bot`.
+Status source lokal: **2 November 2026**. Laravel 13 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff, landing dan storefront dijalankan satu Laravel. Worker WhatsApp berada di `../bot`.
 
 ## Menjalankan lokal
 
@@ -73,7 +73,7 @@ Katalog publik dan bot memakai proyeksi yang sama tanpa credential/modal/stok ra
 
 Pembaruan 28 Oktober: **Admin → Kesehatan sistem** tersedia di `/admin/system-health`. Mengamati layanan inti, antrean/failed jobs, koneksi WhatsApp, sinkronisasi pemasok dan callback. Collector berjalan tiap menit melalui scheduler existing; `php artisan digitaltoko:health-check` menjalankan pemeriksaan manual tanpa memalsukan heartbeat scheduler. Setelah migrasi, muat ulang worker memakai `php artisan queue:restart`. Tidak ada dependency baru, akses publik, retry transaksi atau restart layanan dari panel. Detail instalasi dan batas monitoring ada di `../../docs/DEPLOYMENT.md` bagian Kesehatan sistem.
 
-Belum ada otomatisasi DNS/TLS/custom-host provider, purge seluruh data toko setelah 30 hari, penghapusan sesi/file/provider terkoordinasi, refund sewa gagal provisioning otomatis, dan hardening sesi WA multi-host. Pembersihan KTP ditolak, upload artikel, dan endpoint membersihkan profil owner ketika tidak ada toko tersedia, berbeda dari purge toko. Panel topup saldo Hanshop owner belum memiliki alur tersendiri. Label `customers.manage` belum menyediakan CRUD profil customer penuh.
+Purge data/media/sesi toko sudah tersedia dengan hold kewajiban, pratinjau admin dan flag otomatis yang default-nya nonaktif. Refund sewa awal gagal provisioning sudah tersedia setelah persetujuan admin, dengan rekonsiliasi idempoten ke saldo Hanshop. Otomatisasi DNS/TLS provider, pelepasan sumber daya provider eksternal, backup/restore operasional dan hardening sesi WA multi-host tetap memerlukan tindak lanjut. Pembersihan KTP ditolak, upload artikel, dan endpoint membersihkan profil owner ketika tidak ada toko tersedia, berbeda dari purge toko. Topup Hanshop owner tersedia melalui Koneksi supplier → Saldo & deposit pemasok, terpisah dari wallet pelanggan. Label `customers.manage` belum menyediakan CRUD profil customer penuh.
 
 Penutupan manual dan pemeriksaan kewajiban tersedia; pencairan hanya mencatat transfer yang dilakukan toko. Keputusan manual produk dibatasi Digiflazz eligible, bukan pembatalan sembarang request pemasok ambigu. Callback terverifikasi tetap dapat mengoreksi hasil.
 
@@ -100,8 +100,17 @@ Untuk mengubah warna: Desain web → Logo & warna → Ubah. Filter Semua/Terang/
 
 ## QRIS HansDev — pembaruan 1 November 2026
 
-Pembayaran pelanggan → Atur gateway menerima gambar QRIS langsung (PNG/JPG/WebP≤5MB), dibaca lokal oleh browser; pengguna tidak perlu mendapatkan payload sendiri. Menu Hans Forward menyediakan ZIP lengkap (APK ARM64 + platform-tools Windows/macOS/Linux) dan panduan aktivasi listener USB. Salin ZIP ke storage/app/releases/HansDev-Forwarder.zip saat deploy atau tentukan HANSDEV_FORWARDER_BUNDLE_PATH; tidak termasuk Git. Detail versi/hash dan penempatan file ada pada DEPLOYMENT.md.
+Pembayaran pelanggan → Atur gateway menerima gambar QRIS langsung (PNG/JPG/WebP≤5MB), dibaca lokal oleh browser; pengguna tidak perlu mendapatkan payload sendiri. Menu Hans Forward menyediakan Download APK (ARM64) dan dropdown OS untuk mengunduh tools Windows/macOS/Linux secara terpisah, disertai panduan aktivasi listener USB. Salin APK serta tiga ZIP tools ke storage/app/releases ketika deploy; gunakan HANSDEV_FORWARDER_APK_PATH dan HANSDEV_FORWARDER_TOOLS_WINDOWS_PATH/MACOS_PATH/LINUX_PATH bila memakai lokasi khusus. HANSDEV_FORWARDER_BUNDLE_PATH tidak lagi dipakai. Biner tidak termasuk Git. Detail versi/hash dan penempatan file ada pada DEPLOYMENT.md.
 
 Aplikasi penerima boleh memakai package Android lain atau nama aplikasi; pilih sumber yang sama pada Android. Format pesan pembayaran tetap diperiksa. Tombol Periksa pembayaran manual mengarah ke transaksi belum dibayar; di rincian transaksi tersedia Konfirmasi pembayaran QRIS bagi owner/staff berizin payments.confirm. Nominal/waktu/referensi/catatan dicatat dengan idempotensi; invoice expired masuk review, bukan otomatis dikirim ke pemasok. Tanpa migrasi schema atau perubahan APK native. Tutorial `/panduan/pembayaran-custom` mencakup seluruh alur.
 
 Panduan `/panduan/aktifkan-listener` menjelaskan mode pengembang, USB debugging, persetujuan RSA di HP, perintah ADB sesuai terminal dan perbedaan akses notifikasi dengan listener terhubung. Tidak menjalankan aktivasi pada perangkat pengguna secara otomatis.
+
+
+## Koneksi supplier dan sumber produk — 2 November 2026
+
+Grup sidebar Koneksi supplier memuat API Hanshop (`/stores/{store}/supplier-connections/hanshop`), Digiflazz (`/stores/{store}/supplier-connections/digiflazz`), Supplier OtomaX (`/stores/{store}/otomax`), dan Saldo & deposit pemasok (`/stores/{store}/supplier-wallets`). Digiflazz/Hanshop memiliki modal koneksi; webhook Digiflazz juga berada di halaman ini. Staff berizin dapat membaca metadata koneksi, tanpa credential atau hak menggantinya. Izin pengelolaan OtomaX tetap memakai allowlist existing.
+
+`/stores/{store}/sources` hanya memuat daftar/filter/pagination, sync katalog dan impor. Setelah filter sumber diterapkan, tombol impor semua/per layanan/per kategori tersedia untuk sumber aktif; impor checkbox tetap tersedia. Endpoint mutasi existing di bawah `/sources` dipertahankan; memindahkan UI tidak mengubah ID koneksi, mapping, callback URL atau kredensial yang tersimpan.
+
+Penangkap QRIS berada pada Pembayaran pelanggan: profil dengan maksimal 10 format, [nominal] tepat sekali, placeholder opsional tanpa pengulangan, pilihan isi atau judul+isi, pengecualian dan penguji tanpa settlement. Staff perlu `payments.parsers`; melunasi penerimaan QRIS manual tetap memerlukan `payments.confirm`. Panduan `/panduan/pembayaran-custom` menjelaskan alur beserta screenshot. Deploy unduhan: HansDev-Forwarder.apk dan HansDev-Listener-windows.zip / -macos.zip / -linux.zip; alias ZIP gabungan lama mengarah ke panduan.
