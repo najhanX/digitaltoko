@@ -2,7 +2,8 @@
   "brand": "DigitalToko",
   "format": "9:16",
   "totalSeconds": 60,
-  "created": "2026-11-02",
+  "updated": "2026-11-03",
+  "offer": "Web Topup + Bot WhatsApp; duration only",
   "sceneMode": "Frames to Video, first frame",
   "scenes": [
     {
@@ -11,9 +12,9 @@
       "duration": 6,
       "start": 0,
       "end": 6,
-      "headline": "Toko digital. Brand Anda.",
-      "visual": "Laptop storefront dan smartphone WhatsApp dengan identitas DigitalToko.",
-      "vo": "Punya toko produk digital dengan nama sendiri? Mulai bersama Digital Toko.",
+      "headline": "Web + Bot. Satu paket.",
+      "visual": "Opening hero for the NEW SINGLE-BUNDLE offer. One elegant laptop storefront and one WhatsApp smartphone side by side joined as ONE unified product by a smooth cyan loop, on the same soft white indigo studio pedestal. Original DigitalToko logo above. Large headline exactly 'Web + Bot. Satu paket.'. Small subtitle exactly 'Web Topup + Bot WhatsApp'. No separate pricing tiers or separate web/bot choice. Minimal clean original digital product icons, no physical merchandise.",
+      "vo": "Sekarang, satu paket untuk web topup dan bot WhatsApp. Kenalkan, Digital Toko.",
       "motion": "Slow cinematic push-in. Laptop and smartphone rise gently into view, a cyan ribbon connects the web storefront and chat. A soft light sweep passes over the DigitalToko logo. Keep headline and UI text stable. Hold clearly for one second at the end.",
       "frame": "frames/01.png"
     },
@@ -23,10 +24,10 @@
       "duration": 8,
       "start": 6,
       "end": 14,
-      "headline": "Mulai dari paket pilihanmu.",
-      "visual": "One elegant desktop browser panel on a floating screen, a simple onboarding stepper labeled 'Daftar', 'Verifikasi', 'Buat toko', 'Pilih paket'. Three clear pricing choice cards labeled exactly 'Web Topup', 'Bot WhatsApp', 'Web + Bot'. A small storefront-name field filled 'Toko Anda', a neutral domain field labeled 'Subdomain'. A checkmark by verification and a payment confirmation icon imply enrollment, no personal ID photo or actual payment codes. Headline exactly 'Mulai dari paket pilihanmu.'. No listed numeric prices.",
-      "vo": "Daftar, lengkapi verifikasi, buat toko, lalu pilih paket Web, Bot WhatsApp, atau keduanya. Bayar sesuai durasi pilihanmu.",
-      "motion": "Slow dolly toward the onboarding panel. Illuminate Daftar, Verifikasi, Buat toko and Pilih paket in that order. A soft cursor selects Web + Bot, then a simple paid checkmark appears. End on a settled panel.",
+      "headline": "Bedanya cuma durasi.",
+      "visual": "Registration and subscription keyframe for ONE SINGLE PACKAGE, no platform selection. A clean digital dashboard with an onboarding stepper 'Daftar', 'Verifikasi', 'Buat toko', 'Pilih durasi'. ONE large bundle card labeled exactly 'Web Topup + Bot WhatsApp'. Within the same single card two included checkmarks read 'Web toko' and 'Bot WhatsApp'. Under them one collapsed duration dropdown labeled 'Pilih durasi sewa' and one indigo button 'Lanjutkan'. A store identity area says 'Nama toko' and 'Subdomain'. Do not show separate Web, Bot or Combo price cards. No numeric prices, no annual savings claims. Main headline exactly 'Bedanya cuma durasi.'.",
+      "vo": "Daftar, lengkapi verifikasi, lalu buat toko. Web Topup dan Bot WhatsApp sudah termasuk. Tinggal pilih durasi sewanya.",
+      "motion": "Slow dolly toward the single bundle panel. Illuminate Daftar, Verifikasi, Buat toko and Pilih durasi in order. Highlight both included web and WhatsApp checkmarks together. Gently pulse the duration dropdown then Lanjutkan once. Never create platform tabs or a separate Bot-only/Web-only choice.",
       "frame": "frames/02.png"
     },
     {
@@ -95,9 +96,9 @@
       "duration": 8,
       "start": 52,
       "end": 60,
-      "headline": "Bangun toko digital Anda.",
-      "visual": "A confident clean brand end card with original DigitalToko logo large and sharp in the upper middle, a polished laptop and smartphone storefront pair lower down echoing the first reference, subtle indigo cyan ribbon flowing between them. Large readable headline exactly 'Bangun toko digital Anda.'. A prominent rounded indigo CTA button with exact text 'Lihat paket & mulai'. Small option line 'Web Topup • Bot WhatsApp • Web + Bot'. No domain URL, no price, no free trial or guarantees. Keep the CTA in the central safe area not at the bottom edge. Elegant conclusive composition with breathing room.",
-      "vo": "Siap membangun toko digital dengan brand sendiri? Pilih paketmu, siapkan tokomu, dan mulai bersama Digital Toko.",
+      "headline": "Satu paket. Dua cara jualan.",
+      "visual": "Final CTA brand keyframe for ONE SINGLE PACKAGE. Original DigitalToko logo large and sharp in upper safe area. Elegant laptop storefront and WhatsApp smartphone together on a matching white indigo cyan pedestal, joined by a cyan loop. Large headline exactly 'Satu paket. Dua cara jualan.'. One benefit line exactly 'Web Topup + Bot WhatsApp'. Single prominent CTA exactly 'Pilih durasi & mulai'. No separate platform options, three tiers, numeric prices, dates, free trial, URL or money claims. Generic digital topup icons only, no physical goods for sale. Holdable clean composition.",
+      "vo": "Satu paket, dua cara berjualan. Pilih durasi, bangun toko digital dengan brand sendiri, dan mulai bersama Digital Toko.",
       "motion": "Bring laptop and phone into a calm balanced arrangement. Very slow push-in toward the logo and CTA, a single subtle cyan shimmer through the ribbon, hold the CTA clearly for the last three seconds. Finish in a clean stable frame.",
       "frame": "frames/08.png"
     }

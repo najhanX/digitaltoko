@@ -12,7 +12,7 @@ class PackagePlanSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
-            PlanOption::where('plan', '!=', 'galaxy')->update(['active' => false]);
+            PlanOption::where(fn ($query) => $query->where('category', '!=', 'full')->orWhere('plan', '!=', 'galaxy'))->update(['active' => false]);
             foreach (PackageCatalog::all() as $package) {
                 $offers = PlanOption::where('category', $package['category'])->where('plan', $package['plan'])->lockForUpdate()->get();
                 if ($offers->isEmpty()) {
@@ -27,6 +27,6 @@ class PackagePlanSeeder extends Seeder
                 }
             }
         });
-        $this->command?->info('Tiga platform disiapkan dengan seluruh sumber produk. Harga dan durasi paket terlengkap dipertahankan; penawaran lama dinonaktifkan.');
+        $this->command?->info('Satu paket Web Topup + Bot WhatsApp disiapkan. Harga dan durasi paket lengkap dipertahankan; penawaran terpisah dinonaktifkan.');
     }
 }

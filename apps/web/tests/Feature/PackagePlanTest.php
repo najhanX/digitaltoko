@@ -26,11 +26,11 @@ class PackagePlanTest extends TestCase
         Http::preventStrayRequests();
     }
 
-    public function test_three_platforms_include_all_sources_and_preserve_channel_boundaries(): void
+    public function test_single_package_includes_both_channels_and_all_sources(): void
     {
         $this->seed(PackagePlanSeeder::class);
-        $expected = [['Bot WhatsApp', 'bot', 'galaxy'], ['Web Topup', 'web', 'galaxy'], ['Web + Bot WhatsApp', 'full', 'galaxy']];
-        $this->assertDatabaseCount('plan_options', 3);
+        $expected = [['Web Topup + Bot WhatsApp', 'full', 'galaxy']];
+        $this->assertDatabaseCount('plan_options', 1);
         $this->assertSame($expected, array_map(fn ($item) => [$item['name'], $item['category'], $item['plan']], PackageCatalog::all()));
         foreach ($expected as [$name,$category,$source]) {
             $offer = PlanOption::where('category', $category)->where('plan', $source)->firstOrFail();
@@ -38,8 +38,8 @@ class PackagePlanTest extends TestCase
             $this->assertFalse($offer->active);
             $features = app(SubscriptionService::class)->features($category, $source);
             $this->assertContains('hanshop', $features);
-            $this->assertSame($category !== 'web', in_array('bot', $features));
-            $this->assertSame($category !== 'bot', in_array('web', $features));
+            $this->assertSame(true, in_array('bot', $features));
+            $this->assertSame(true, in_array('web', $features));
             $this->assertSame($source !== 'space', in_array('digiflazz', $features));
             $this->assertSame($source !== 'orbit', in_array('stock', $features));
         }
@@ -57,11 +57,11 @@ class PackagePlanTest extends TestCase
         $expiry = $store->expires_at;
         $this->seed(PackagePlanSeeder::class);
         $this->seed(PackagePlanSeeder::class);
-        $this->assertDatabaseCount('plan_options', 4);
-        $this->assertSame('Bot WhatsApp · 90 hari', $offer->fresh()->name);
+        $this->assertDatabaseCount('plan_options', 3);
+        $this->assertSame('Demo Galaxy BOT 90 hari', $offer->fresh()->name);
         $this->assertSame(123456, $offer->fresh()->price);
         $this->assertSame(90, $offer->fresh()->duration_days);
-        $this->assertTrue($offer->fresh()->active);
+        $this->assertFalse($offer->fresh()->active);
         $this->assertSame('Promo khusus toko', $other->fresh()->name);
         $this->assertSame($snapshot, $invoice->fresh()->snapshot);
         $this->assertSame($snapshot, $store->fresh()->subscription);
@@ -69,21 +69,12 @@ class PackagePlanTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_package_filters_scope_both_channel_and_source_and_admin_keeps_the_agreed_order(): void
+    public function test_admin_only_lists_current_bundle_offers(): void
     {
         $this->seed(PackagePlanSeeder::class);
+        PlanOption::create(['name' => 'Retired', 'category' => 'bot', 'plan' => 'galaxy', 'price' => 10000, 'duration_days' => 7, 'active' => true]);
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->get('/admin/plans')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('plans', 3)->where('plans.0.name', 'Bot WhatsApp · 30 hari')->where('plans.2.name', 'Web + Bot WhatsApp · 30 hari'));
-        $this->get('/admin/plans?package=bot')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('plans', 1)->where('plans.0.category', 'bot')->where('plans.0.plan', 'galaxy'));
-        $owner = User::factory()->create(['role' => 'owner', 'verification_status' => 'approved']);
-        foreach ([['bot', 'space'], ['web', 'space'], ['bot', 'orbit']] as $i => [$category,$source]) {
-            Store::create(['owner_id' => $owner->id, 'name' => 'Toko '.$i, 'slug' => 'package-'.$i, 'category' => $category, 'plan' => $source, 'status' => 'draft']);
-        }
-        $this->get('/admin?package=bot')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('stores', 2)->where('stores.0.category', 'bot')->where('counts.stores', 3));
-        $this->actingAs($owner)->get('/owner/stores?package=bot')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('stores', 2)->where('stores.0.category', 'bot')->where('counts.stores', 3));
+            ->has('plans', 1)->where('plans.0.category', 'full')->where('plans.0.name', 'Web Topup + Bot WhatsApp · 30 hari'));
     }
 }

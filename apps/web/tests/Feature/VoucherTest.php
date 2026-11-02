@@ -13,6 +13,7 @@ use App\Models\PremiumStock;
 use App\Models\ProductMapping;
 use App\Models\Store;
 use App\Models\StoreStaff;
+use App\Models\SubscriptionInvoice;
 use App\Models\User;
 use App\Services\CommerceModules;
 use App\Services\CustomerCommerce;
@@ -21,6 +22,7 @@ use App\Services\CustomerPayments;
 use App\Services\SubscriptionService;
 use App\Services\Vouchers;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -228,7 +230,7 @@ class VoucherTest extends TestCase
         config(['services.hanshop.url' => 'https://hanshop.test', 'services.hanshop.token' => str_repeat('x', 40)]);
         Http::fake(['https://hanshop.test/*' => fn ($r) => Http::response(['status' => 'SUCCESS', 'data' => ['invoice' => ['invoice_id' => $r['invoice_id'], 'id_user' => $r['id_user'], 'amount' => $r['amount'], 'total' => $r['amount'] + 123, 'id_payment' => 'PAY'.$r['invoice_id'], 'status' => 'PENDING', 'expires_at' => now()->addMinutes(15)->toIso8601String(), 'qr_url' => 'https://example.test/qr', 'paid_at' => null]]])]);
         $s = $this->store();
-        $plan = PlanOption::create(['name' => 'Web Tes', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Web Tes', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         $v = DiscountVoucher::factory()->create(['all_targets' => false, 'targets' => ['plans' => [(string) $plan->id]], 'value' => 5000]);
         $invoice = app(SubscriptionService::class)->checkout($s, $plan, $v->code);
         $this->assertSame(45000, $invoice->snapshot['price']);
@@ -244,8 +246,8 @@ class VoucherTest extends TestCase
     public function test_free_subscription_requires_request_key_and_activates_without_gateway_or_replay_extension(): void
     {
         $store = $this->store();
-        $store->update(['status' => 'draft', 'category' => 'web', 'starts_at' => null, 'expires_at' => null]);
-        $plan = PlanOption::create(['name' => 'Gratis Web', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 7, 'active' => true]);
+        $store->update(['status' => 'draft', 'category' => 'full', 'starts_at' => null, 'expires_at' => null]);
+        $plan = PlanOption::create(['name' => 'Gratis Web', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 7, 'active' => true]);
         $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000, 'usage_limit' => 1]);
         $service = app(SubscriptionService::class);
         $this->invalid(fn () => $service->checkout($store, $plan, $voucher->code));
@@ -258,7 +260,8 @@ class VoucherTest extends TestCase
         $this->assertNull($invoice->provider_id);
         $this->assertSame('provisioning', $store->fresh()->status);
         $this->assertNull($store->fresh()->expires_at);
-        $service->activate($store);
+        Cache::forever('bot:'.$store->id.':state', ['status' => 'CONNECTED']);
+        $service->activate($store->fresh());
         $expiry = $store->fresh()->expires_at;
         $this->assertSame('active', $store->fresh()->status);
         $this->assertFalse($store->fresh()->is_trial);
@@ -271,12 +274,12 @@ class VoucherTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_free_renewal_is_idempotent_and_free_downgrade_waits_for_next_period(): void
+    public function test_free_renewal_is_idempotent_and_other_durations_also_extend_the_same_bundle(): void
     {
         $store = $this->store();
-        $store->update(['category' => 'web', 'plan' => 'galaxy', 'starts_at' => now()->subDay()]);
+        $store->update(['category' => 'full', 'plan' => 'galaxy', 'starts_at' => now()->subDay()]);
         $base = $store->fresh()->expires_at;
-        $plan = PlanOption::create(['name' => 'Web', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Web', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         $voucher = DiscountVoucher::factory()->create(['value' => 50000]);
         $key = (string) Str::uuid();
         $service = app(SubscriptionService::class);
@@ -286,17 +289,17 @@ class VoucherTest extends TestCase
         $service->checkout($store, $plan, $voucher->code, $key);
         $this->assertTrue($base->addDays(30)->equalTo($store->fresh()->expires_at));
         $store->update(['category' => 'full']);
-        $lower = PlanOption::create(['name' => 'Web Dasar', 'category' => 'web', 'plan' => 'galaxy', 'price' => 25000, 'duration_days' => 7, 'active' => true]);
+        $lower = PlanOption::create(['name' => 'Web Dasar', 'category' => 'full', 'plan' => 'galaxy', 'price' => 25000, 'duration_days' => 7, 'active' => true]);
         $this->invalid(fn () => $service->checkout($store, $lower, $voucher->code, $key));
         $down = $service->checkout($store, $lower, $voucher->code, (string) Str::uuid());
-        $this->assertSame('paid', $down->status);
+        $this->assertSame('applied', $down->status);
         $this->assertSame('galaxy', $store->fresh()->plan);
         $expiry = $store->fresh()->expires_at;
         $this->travelTo($expiry);
         $service->tick($store);
-        $this->assertSame('web', $store->fresh()->category);
+        $this->assertSame('full', $store->fresh()->category);
         $this->assertSame('galaxy', $store->fresh()->plan);
-        $this->assertTrue($expiry->addDays(7)->equalTo($store->fresh()->expires_at));
+        $this->assertTrue($expiry->equalTo($store->fresh()->expires_at));
         Http::assertNothingSent();
     }
 
@@ -318,16 +321,86 @@ class VoucherTest extends TestCase
     public function test_owner_checkout_accepts_free_voucher_and_repeated_http_request_only_renews_once(): void
     {
         $store = $this->store();
-        $store->update(['category' => 'web', 'starts_at' => now()->subDay()]);
+        $store->update(['category' => 'full', 'starts_at' => now()->subDay()]);
         $expiry = $store->fresh()->expires_at;
-        $plan = PlanOption::create(['name' => 'Web Promo', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 7, 'active' => true]);
-        $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000, 'usage_limit' => 1]);
+        $plan = PlanOption::create(['name' => 'Web Promo', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 7, 'active' => true]);
+        $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000, 'once_per_user' => true]);
         $input = ['plan_id' => $plan->id, 'voucher_code' => $voucher->code, 'request_id' => (string) Str::uuid()];
         $url = '/stores/'.$store->id.'/subscription/checkout';
         $this->actingAs($store->owner)->post($url, $input)->assertSessionHasNoErrors()->assertRedirect();
         $this->post($url, $input)->assertSessionHasNoErrors()->assertRedirect();
         $this->assertTrue($expiry->addDays(7)->equalTo($store->fresh()->expires_at));
         $this->assertDatabaseCount('subscription_invoices', 1);
+        $other = $this->store();
+        $other->update(['owner_id' => $store->owner_id]);
+        $staff = StoreStaff::create(['store_id' => $other->id, 'name' => 'Staff', 'username' => 'claimstaff', 'email' => 'claimstaff@example.test', 'password' => 'test-password', 'active' => true, 'permissions' => ['subscription.renew']]);
+        auth('web')->logout();
+        $this->actingAs($staff, 'staff')->post('/stores/'.$other->id.'/subscription/checkout', [...$input, 'request_id' => (string) Str::uuid()])->assertSessionHasErrors('voucher_code');
+        $this->assertDatabaseCount('subscription_invoices', 1);
         Http::assertNothingSent();
+    }
+
+    public function test_once_per_customer_blocks_guest_and_reuse_but_not_other_accounts(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $c = $this->customer($s);
+        $v = $this->voucher($s, ['once_per_user' => true]);
+        $service = app(Vouchers::class);
+        $this->invalid(fn () => $service->quote($s, $v->code, 15000, $p));
+        $this->invalid(fn () => app(CustomerCommerce::class)->begin($s, $this->input($p, $v, ['payment' => 'gateway']), null));
+        $order = app(CustomerCommerce::class)->begin($s, $this->input($p, $v), $c);
+        $this->assertDatabaseHas('voucher_redemptions', ['subject_id' => $order->id, 'claimant_type' => 'customer', 'claimant_id' => $c->id]);
+        $this->invalid(fn () => $service->quote($s, $v->code, 15000, $p, customer: $c));
+        app(CustomerCommerce::class)->fail($order, 'Gagal');
+        $this->invalid(fn () => $service->quote($s, $v->code, 15000, $p, customer: $c));
+        $other = Customer::create(['store_id' => $s->id, 'name' => 'Lain', 'phone' => '628999999999', 'phone_verified_at' => now()]);
+        $this->assertNotNull($service->quote($s, $v->code, 15000, $p, customer: $other));
+        $s->update(['sandbox' => true]);
+        $this->assertNotNull($service->quote($s, $v->code, 15000, $p, customer: $c));
+    }
+
+    public function test_once_per_owner_is_shared_between_subscription_and_module_and_preserves_cancelled_allowance(): void
+    {
+        $s = $this->store();
+        $owner = $s->owner;
+        $v = DiscountVoucher::factory()->create(['once_per_user' => true]);
+        $plan = PlanOption::create(['category' => 'full', 'plan' => 'galaxy', 'name' => '30 hari', 'duration_days' => 30, 'price' => 50000, 'active' => true]);
+        $service = app(Vouchers::class);
+        $q = $service->quote(null, $v->code, 50000, plan: $plan, owner: $owner);
+        $invoice = SubscriptionInvoice::create(['store_id' => $s->id, 'owner_id' => $owner->id, 'status' => 'pending', 'purpose' => 'renew', 'snapshot' => $plan->snapshot()]);
+        $service->redeem($q, 'subscription', $invoice->id, owner: $owner);
+        $this->invalid(fn () => $service->quote(null, $v->code, 50000, module: true, owner: $owner));
+        $this->assertNotNull($service->quote(null, $v->code, 50000, module: true, owner: User::factory()->create()));
+        $invoice->update(['status' => 'cancelled']);
+        $this->assertNotNull($service->quote(null, $v->code, 50000, module: true, owner: $owner));
+        $invoice->update(['status' => 'applied']);
+        $this->invalid(fn () => $service->quote(null, $v->code, 50000, plan: $plan, owner: $owner));
+    }
+
+    public function test_enabling_once_per_user_honors_previous_redemptions(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $c = $this->customer($s);
+        $v = $this->voucher($s);
+        app(CustomerCommerce::class)->begin($s, $this->input($p, $v), $c);
+        $v->update(['once_per_user' => true]);
+        $this->invalid(fn () => app(Vouchers::class)->quote($s, $v->code, 15000, $p, customer: $c));
+    }
+
+    public function test_claim_migration_recovers_historical_account_identity(): void
+    {
+        $s = $this->store();
+        $p = $this->product($s);
+        $c = $this->customer($s);
+        $v = $this->voucher($s);
+        $order = app(CustomerCommerce::class)->begin($s, $this->input($p, $v), $c);
+        $migration = require database_path('migrations/2026_11_02_173649_add_once_per_user_to_vouchers.php');
+        $migration->down();
+        $migration->up();
+        $this->assertDatabaseHas('voucher_redemptions', ['subject_id' => $order->id, 'claimant_type' => 'customer', 'claimant_id' => $c->id]);
+        $v->refresh()->update(['once_per_user' => true]);
+        $this->invalid(fn () => app(Vouchers::class)->quote($s, $v->code, 15000, $p, customer: $c));
     }
 }

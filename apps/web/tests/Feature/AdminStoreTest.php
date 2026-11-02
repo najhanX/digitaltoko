@@ -8,9 +8,7 @@ use App\Models\StoreStaff;
 use App\Models\SubscriptionInvoice;
 use App\Models\User;
 use App\Services\SubscriptionService;
-use App\Support\CatalogAccess;
 use App\Support\HanshopIdentity;
-use App\Support\PackageCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
@@ -66,13 +64,13 @@ class AdminStoreTest extends TestCase
         $owner = User::factory()->create(['name' => 'Owner Sasaran']);
         $owner->forceFill(['phone' => '628123450000', 'hanshop_user_id' => 'TARGET01'])->save();
         for ($i = 0; $i < 12; $i++) {
-            $this->store($owner, ['category' => 'bot', 'plan' => 'space']);
+            $this->store($owner, ['category' => 'full', 'plan' => 'galaxy']);
         }
-        $this->store($owner, ['category' => 'web', 'plan' => 'space']);
+        $this->store($owner, ['category' => 'full', 'plan' => 'galaxy']);
         $this->store();
-        $this->actingAs($admin)->get('/admin/stores?q=628123450000&package=bot&per_page=5&page=2')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('Admin/Stores')->has('stores', 5)->where('pagination.total', 12)->where('pagination.current_page', 2)->where('counts.total', 14)
-            ->where('stores.0.category', 'bot')->where('stores.0.plan', 'space')->missing('stores.0.owner.ktp_path')->missing('stores.0.worker_token_hash'));
+        $this->actingAs($admin)->get('/admin/stores?q=628123450000&per_page=5&page=2')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Admin/Stores')->has('stores', 5)->where('pagination.total', 13)->where('pagination.current_page', 2)->where('counts.total', 14)
+            ->where('stores.0.category', 'full')->where('stores.0.plan', 'galaxy')->missing('stores.0.owner.ktp_path')->missing('stores.0.worker_token_hash'));
         $this->get('/admin/stores?owner='.$owner->id)->assertInertia(fn (AssertableInertia $page) => $page->where('pagination.total', 13)->where('selectedOwner.id', $owner->id));
         Http::assertNothingSent();
     }
@@ -143,75 +141,34 @@ class AdminStoreTest extends TestCase
         $this->assertFalse($store->fresh()->acceptsOrders());
     }
 
-    public function test_admin_can_switch_to_each_package_and_entitlements_change_without_resetting_commercial_history(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $this->actingAs($admin);
-        foreach (PackageCatalog::all() as $package) {
-            $oldCategory = $package['category'] === 'full' ? 'bot' : 'full';
-            $snapshot = ['name' => 'Penawaran dibayar', 'category' => $oldCategory, 'plan' => 'galaxy', 'price' => 95000, 'duration_days' => 30, 'features' => ['bot', 'web', 'digiflazz', 'stock', 'hanshop']];
-            $store = $this->store(null, ['category' => $oldCategory, 'subscription' => $snapshot, 'admin_suspended_at' => now(), 'admin_suspension_reason' => 'Tetap diperiksa']);
-            $other = $this->store($store->owner);
-            $invoice = SubscriptionInvoice::create(['owner_id' => $store->owner_id, 'store_id' => $store->id, 'snapshot' => $snapshot, 'purpose' => 'initial', 'status' => 'applied']);
-            $unchanged = $store->only(['starts_at', 'expires_at', 'status', 'is_trial', 'owner_id', 'slug', 'admin_suspended_at', 'admin_suspension_reason']);
-            $this->patch('/admin/stores/'.$store->id, ['action' => 'package', 'package' => $package['key'], 'reason' => 'Koreksi administratif paket toko'])->assertRedirect()->assertSessionHasNoErrors();
-            $store->refresh();
-            $this->assertEquals($unchanged, $store->only(array_keys($unchanged)));
-            $this->assertSame($package['category'], $store->category);
-            $this->assertSame($package['plan'], $store->plan);
-            $this->assertSame(95000, $store->subscription['price']);
-            $this->assertSame(30, $store->subscription['duration_days']);
-            $this->assertSame($snapshot, $invoice->fresh()->snapshot);
-            $this->assertTrue($other->fresh()->acceptsOrders());
-            $this->assertFalse($store->acceptsOrders());
-            $this->assertSame($package['plan'] !== 'space', CatalogAccess::supports($store, 'digiflazz'));
-            $this->assertSame($package['plan'] !== 'orbit', CatalogAccess::supports($store, 'stock'));
-            $this->assertTrue(CatalogAccess::supports($store, 'hanshop'));
-            $this->assertSame($package['category'] !== 'bot', $store->supportsWeb());
-            $this->assertSame($package['name'], StoreAdminEvent::where('store_id', $store->id)->firstOrFail()->after['package_name']);
-            $this->assertDatabaseHas('panel_notifications', ['user_id' => $store->owner_id, 'title' => 'Paket toko diubah administrator']);
-        }
-        $this->assertDatabaseCount('subscription_invoices', 3);
-        Http::assertNothingSent();
-    }
-
-    public function test_package_change_blocks_trial_open_invoices_invalid_selection_and_non_admins(): void
+    public function test_retired_package_switch_cannot_change_commercial_history_or_access(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $store = $this->store();
-        $input = ['action' => 'package', 'package' => 'bot', 'reason' => 'Koreksi paket oleh administrator'];
-        $this->actingAs($store->owner)->patch('/admin/stores/'.$store->id, $input)->assertForbidden();
-        $this->actingAs($admin)->patch('/admin/stores/'.$store->id, [...$input, 'package' => 'unknown'])->assertSessionHasErrors('package');
-        $this->patch('/admin/stores/'.$store->id, [...$input, 'package' => 'full'])->assertSessionHasErrors('package');
-        $this->patch('/admin/stores/'.$store->id, [...$input, 'reason' => ''])->assertSessionHasErrors('reason');
-        foreach (['pending', 'paid', 'review'] as $status) {
-            $blocked = $this->store();
-            SubscriptionInvoice::create(['owner_id' => $blocked->owner_id, 'store_id' => $blocked->id, 'snapshot' => [], 'purpose' => 'downgrade', 'status' => $status]);
-            $this->patch('/admin/stores/'.$blocked->id, $input)->assertSessionHasErrors('package');
-            $this->assertSame('galaxy', $blocked->fresh()->plan);
+        $expiry = $store->expires_at;
+        $snapshot = ['category' => 'full', 'plan' => 'galaxy', 'price' => 99900, 'duration_days' => 30];
+        $store->update(['subscription' => $snapshot]);
+        $invoice = SubscriptionInvoice::create(['owner_id' => $store->owner_id, 'store_id' => $store->id, 'snapshot' => $snapshot, 'purpose' => 'initial', 'status' => 'applied']);
+        $this->actingAs($admin);
+        foreach (['bot', 'web', 'full'] as $target) {
+            $this->patch('/admin/stores/'.$store->id, ['action' => 'package', 'package' => $target, 'reason' => 'Permintaan dari halaman lama'])->assertSessionHasErrors('action');
         }
-        foreach ([['is_trial' => true], ['status' => 'provisioning'], ['status' => 'purging']] as $attributes) {
-            $blocked = $this->store(null, $attributes);
-            $response = $this->patch('/admin/stores/'.$blocked->id, $input);
-            $response->assertSessionHasErrors($blocked->status === 'purging' ? 'action' : 'package');
-            $this->assertSame('galaxy', $blocked->fresh()->plan);
-        }
+        $this->assertSame($snapshot, $invoice->fresh()->snapshot);
+        $this->assertSame($snapshot, $store->fresh()->subscription);
+        $this->assertTrue($expiry->equalTo($store->fresh()->expires_at));
         $this->assertDatabaseCount('store_admin_events', 0);
         Http::assertNothingSent();
     }
 
-    public function test_changing_draft_selection_does_not_start_subscription_and_history_can_filter_package_changes(): void
+    public function test_historical_package_audit_remains_filterable_without_reopening_package_changes(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $store = $this->store(null, ['status' => 'draft', 'starts_at' => null, 'expires_at' => null, 'subscription' => null]);
-        $this->actingAs($admin)->patch('/admin/stores/'.$store->id, ['action' => 'package', 'package' => 'bot', 'reason' => 'Perbaikan pilihan paket sebelum pembayaran'])->assertSessionHasNoErrors();
-        $store->refresh();
-        $this->assertSame('draft', $store->status);
-        $this->assertNull($store->expires_at);
-        $this->assertNull($store->subscription);
-        $this->assertFalse($store->canConnectBot());
-        $this->get('/admin/stores/'.$store->id.'?action=package')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('events', 1)->where('events.0.action', 'package')->where('events.0.after.package_name', 'Bot WhatsApp')->where('filters.action', 'package'));
+        StoreAdminEvent::create(['store_id' => $store->id, 'admin_id' => $admin->id, 'action' => 'package', 'reason' => 'Catatan historis', 'before' => ['package_name' => 'Web Topup'], 'after' => ['package_name' => 'Bot WhatsApp']]);
+        $this->actingAs($admin)->get('/admin/stores/'.$store->id.'?action=package')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('events', 1)->where('events.0.action', 'package')->where('events.0.after.package_name', 'Bot WhatsApp'));
+        $this->assertNull($store->fresh()->expires_at);
+        $this->assertNull($store->fresh()->subscription);
     }
 
     public function test_detail_audit_is_paginated_scoped_and_keeps_supplier_and_stock_secrets_private(): void

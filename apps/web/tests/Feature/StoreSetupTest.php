@@ -33,7 +33,7 @@ class StoreSetupTest extends TestCase
         Http::preventStrayRequests();
     }
 
-    private function shop(string $category = 'web'): Store
+    private function shop(string $category = 'full'): Store
     {
         $owner = User::factory()->create(['role' => 'owner', 'verification_status' => 'approved', 'email_verified_at' => now(), 'phone_verified_at' => now()]);
 
@@ -54,14 +54,14 @@ class StoreSetupTest extends TestCase
         return collect(app(StoreSetup::class)->summary($store)['items'])->firstWhere('key', $key);
     }
 
-    public function test_paid_web_store_has_actionable_checklist_without_requiring_custom_domain_or_whatsapp(): void
+    public function test_bundle_setup_requires_whatsapp_but_not_a_custom_domain(): void
     {
         $store = $this->shop();
         $this->actingAs($store->owner)->get('/stores/'.$store->id.'/subscription')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('setup.total', 4)->where('setup.completed', 1)->where('setup.ready', false)
+            ->where('setup.total', 5)->where('setup.completed', 1)->where('setup.ready', false)
             ->where('setup.items.0.ready', false)->where('setup.items.0.href', '/stores/'.$store->id.'/supplier-connections/digiflazz')
-            ->where('setup.items.3.ready', true)->where('setup.items.4.required', false));
-        $this->assertTrue(app(SubscriptionService::class)->ready($store));
+            ->where('setup.items.3.ready', true)->where('setup.items.4.required', true));
+        $this->assertFalse(app(SubscriptionService::class)->ready($store));
         $this->assertDatabaseCount('store_payment_settings', 0);
         Http::assertNothingSent();
     }
@@ -71,9 +71,10 @@ class StoreSetupTest extends TestCase
         $store = $this->shop();
         $product = $this->stock($store);
         StorePaymentSetting::create(['store_id' => $store->id, 'gateway' => 'midtrans', 'sandbox' => false, 'credentials' => ['server_key' => 'private-key']]);
+        Cache::forever('bot:'.$store->id.':state', ['status' => 'CONNECTED']);
         $summary = app(StoreSetup::class)->summary($store);
         $this->assertTrue($summary['ready']);
-        $this->assertSame(4, $summary['completed']);
+        $this->assertSame(5, $summary['completed']);
         $this->assertSame('/stores/'.$store->id.'/stock', $summary['items'][0]['href']);
         $this->assertSame('/stores/'.$store->id.'/stock', app(StoreSetup::class)->summary($store, false, ['stock.manage'])['items'][0]['href']);
         $this->assertStringNotContainsString('private-key', json_encode($summary));
@@ -132,7 +133,7 @@ class StoreSetupTest extends TestCase
             ->where('setup.items.3.href', null)->where('setup.items.4.href', '/stores/'.$store->id.'/bot'));
     }
 
-    public function test_bot_platform_requires_whatsapp_and_has_no_domain_item(): void
+    public function test_all_stores_require_whatsapp_and_include_the_domain_item(): void
     {
         foreach (['bot', 'full'] as $category) {
             $store = $this->shop($category);
@@ -143,7 +144,7 @@ class StoreSetupTest extends TestCase
             $this->assertTrue($this->item($store, 'whatsapp')['ready']);
             $this->assertTrue(app(SubscriptionService::class)->ready($store));
             $keys = array_column(app(StoreSetup::class)->summary($store)['items'], 'key');
-            $this->assertSame($category === 'full', in_array('domain', $keys, true));
+            $this->assertTrue(in_array('domain', $keys, true));
         }
     }
 

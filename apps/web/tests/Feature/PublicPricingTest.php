@@ -24,7 +24,7 @@ class PublicPricingTest extends TestCase
 
     public function test_public_prices_use_only_active_current_offers_and_follow_admin_changes(): void
     {
-        $offer = PlanOption::create(['name' => 'Web 90 hari', 'category' => 'web', 'plan' => 'galaxy', 'duration_days' => 90, 'price' => 240000, 'active' => true]);
+        $offer = PlanOption::create(['name' => 'Web 90 hari', 'category' => 'full', 'plan' => 'galaxy', 'duration_days' => 90, 'price' => 240000, 'active' => true]);
         PlanOption::create(['name' => 'Tidak aktif', 'category' => 'bot', 'plan' => 'galaxy', 'duration_days' => 30, 'price' => 1000, 'active' => false]);
         PlanOption::create(['name' => 'Paket lama', 'category' => 'bot', 'plan' => 'orbit', 'duration_days' => 30, 'price' => 1000, 'active' => true]);
         $this->get('https://digitaltoko.example/paket')->assertOk()->assertInertia(fn (Assert $page) => $page
@@ -53,7 +53,7 @@ class PublicPricingTest extends TestCase
     public function test_taken_reserved_and_invalid_subdomains_are_rejected_without_exposing_owner_data(): void
     {
         $owner = User::factory()->create(['role' => 'owner']);
-        Store::create(['owner_id' => $owner->id, 'name' => 'Nama privat', 'slug' => 'sudah-ada', 'category' => 'web', 'plan' => 'galaxy', 'status' => 'draft']);
+        Store::create(['owner_id' => $owner->id, 'name' => 'Nama privat', 'slug' => 'sudah-ada', 'category' => 'full', 'plan' => 'galaxy', 'status' => 'draft']);
         foreach (['sudah-ada', 'SUDAH-ADA', 'admin', 'a', '-toko', 'toko-', 'dua--kata', 'toko.test', 'dua kata', str_repeat('a', 41)] as $slug) {
             $response = $this->getJson('https://digitaltoko.example/paket/subdomain?'.http_build_query(['slug' => $slug]))
                 ->assertUnprocessable()->assertJsonValidationErrors('slug');
@@ -68,8 +68,8 @@ class PublicPricingTest extends TestCase
     {
         $owner = User::factory()->create(['role' => 'owner', 'verification_status' => 'approved', 'phone_verified_at' => now(), 'email_verified_at' => now()]);
         $this->getJson('https://digitaltoko.example/paket/subdomain?slug=rebutan')->assertOk();
-        Store::create(['owner_id' => $owner->id, 'name' => 'Lebih dulu', 'slug' => 'rebutan', 'category' => 'web', 'plan' => 'galaxy', 'status' => 'draft']);
-        $this->actingAs($owner)->postJson('https://digitaltoko.example/owner/stores', ['name' => 'Toko saya', 'slug' => 'REBUTAN', 'category' => 'web', 'template' => 'aurora'])
+        Store::create(['owner_id' => $owner->id, 'name' => 'Lebih dulu', 'slug' => 'rebutan', 'category' => 'full', 'plan' => 'galaxy', 'status' => 'draft']);
+        $this->actingAs($owner)->postJson('https://digitaltoko.example/owner/stores', ['name' => 'Toko saya', 'slug' => 'REBUTAN', 'category' => 'full', 'template' => 'aurora'])
             ->assertUnprocessable()->assertJsonValidationErrors('slug');
         $this->assertDatabaseCount('stores', 1);
     }

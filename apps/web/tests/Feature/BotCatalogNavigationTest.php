@@ -91,12 +91,12 @@ class BotCatalogNavigationTest extends TestCase
         $this->assertSame(['G-A2', 'G-A10', 'G-A1', 'G-A20', 'G-A30', 'G-B1', 'G-B2'], array_column($this->getJson('/api/internal/bot/products')->assertOk()->json('data.items'), 'code'));
     }
 
-    public function test_every_level_rejects_missing_auth_suspension_expiry_and_web_only_shops(): void
+    public function test_every_level_rejects_missing_auth_suspension_and_expiry(): void
     {
         $token = str_repeat('a', 40);
         $shop = $this->shop($token);
         $this->getJson('/api/internal/bot/catalog?view=services')->assertUnauthorized();
-        foreach ([['admin_suspended_at' => now()], ['expires_at' => now()->subDays(8)], ['category' => 'web']] as $changes) {
+        foreach ([['admin_suspended_at' => now()], ['expires_at' => now()->subDays(8)]] as $changes) {
             $shop->update(['admin_suspended_at' => null, 'expires_at' => now()->addDay(), 'category' => 'full', ...$changes]);
             foreach (['services', 'categories', 'products'] as $view) {
                 $this->withToken($token)->getJson('/api/internal/bot/catalog?'.http_build_query(['view' => $view, 'service' => 'Pulsa', 'category' => 'Telkomsel']))->assertForbidden();

@@ -48,62 +48,62 @@
       {
         "title": "Buat toko",
         "paragraphs": [
-          "Setelah disetujui, buka Toko saya → Buat toko. Isi nama, subdomain bawaan seperti bogor (bukan domain lengkap), platform dan template jika memakai web. Subdomain ditetapkan sejak awal. Domain pribadi dapat dihubungkan setelah toko dibuat melalui Pengaturan toko → Domain pribadi.",
-          "Pilih Bot WhatsApp, Web Topup atau Web + Bot. Semua sumber termasuk. Setiap toko punya masa aktif dan konfigurasi sendiri."
+          "Setelah disetujui, buka Toko saya → Buat toko. Isi nama, subdomain bawaan seperti bogor (bukan domain lengkap), template web. Subdomain ditetapkan sejak awal. Domain pribadi dapat dihubungkan setelah toko dibuat melalui Pengaturan toko → Domain pribadi.",
+          "Web Topup + Bot WhatsApp dan semua sumber produk sudah termasuk. Setiap toko memiliki masa aktif dan konfigurasi sendiri."
         ],
         "visual": {
           "image": "/guides/steps/create-store.jpg",
-          "height": 720,
+          "height": 900,
           "markers": [
             {
-              "h": 6.944444444444445,
               "label": "Isi nama toko",
-              "w": 30.46875,
               "x": 33.75,
-              "y": 42.41536458333333
+              "y": 33.91,
+              "w": 30.47,
+              "h": 5.56
             },
             {
-              "h": 6.944444444444445,
-              "label": "Tentukan subdomain tetap",
-              "w": 30.46875,
+              "label": "Tentukan subdomain bawaan",
               "x": 65.625,
-              "y": 42.41536458333333
+              "y": 33.91,
+              "w": 30.47,
+              "h": 5.56
             },
             {
-              "h": 6.138237847222222,
-              "label": "Lanjutkan ke pemilihan paket",
-              "w": 16.0888671875,
-              "x": 73.43994140625,
-              "y": 91.51421440972224
+              "label": "Lanjutkan ke pilihan durasi",
+              "x": 73.3,
+              "y": 93.2,
+              "w": 16.5,
+              "h": 4.9
             }
           ],
           "width": 1280,
-          "caption": "Isi identitas toko dan lanjutkan ke pemilihan platform serta durasi."
+          "caption": "Isi identitas toko dan lanjutkan ke pemilihan durasi sewa."
         }
       },
       {
         "title": "Bayar lalu siapkan layanan",
         "paragraphs": [
           "Pada Langganan & aktivasi pilih durasi, masukkan voucher bila ada dan buat invoice. Bayar sesuai total atau gunakan voucher sah 100%. Pembayaran sewa berbeda dari gateway pelanggan toko.",
-          "Setelah pembayaran diterima, checklist Persiapan berjualan tersedia pada Langganan & aktivasi serta Ringkasan toko. Gunakan tombol tiap langkah untuk mengatur sumber atau stok premium, katalog/harga, pembayaran pelanggan, alamat web dan WhatsApp sesuai platform. Status mengikuti konfigurasi tersimpan, bukan centang manual."
+          "Setelah pembayaran diterima, checklist Persiapan berjualan tersedia pada Langganan & aktivasi serta Ringkasan toko. Gunakan tombol tiap langkah untuk mengatur sumber atau stok premium, katalog/harga, pembayaran pelanggan, alamat web dan WhatsApp toko. Status mengikuti konfigurasi tersimpan, bukan centang manual."
         ],
         "visual": {
           "image": "/guides/steps/subscription-confirm.jpg",
-          "height": 720,
+          "height": 937,
           "markers": [
             {
-              "h": 6.944444444444445,
               "label": "Masukkan voucher jika tersedia",
-              "w": 32.5,
               "x": 50.0,
-              "y": 51.388888888888886
+              "y": 59.76520811099253,
+              "w": 32.5,
+              "h": 5.3361792956243335
             },
             {
-              "h": 6.138237847222222,
               "label": "Konfirmasikan invoice paket",
-              "w": 10.545654296875,
-              "x": 60.9771728515625,
-              "y": 73.81781684027777
+              "x": 60.97734375,
+              "y": 77.0,
+              "w": 10.5453125,
+              "h": 4.717182497331911
             }
           ],
           "width": 1280,
@@ -113,25 +113,25 @@
       {
         "title": "Aktifkan toko",
         "paragraphs": [
-          "Konfirmasikan aktivasi untuk mulai menghitung masa aktif. Syarat aktivasi tetap subdomain bawaan dan koneksi WhatsApp untuk paket Bot/Web + Bot; domain pribadi dan WhatsApp pada paket Web opsional. Checklist persiapan berjualan tidak mengubah syarat aktivasi. Lengkapi katalog dan pembayaran sebelum menerima pelanggan. Tanpa konfirmasi, sistem dapat mengaktifkan setelah 24 jam sejak syarat aktivasi terpenuhi. Uji checkout/notifikasi setelah toko aktif."
+          "Konfirmasikan aktivasi untuk mulai menghitung masa aktif. Syarat aktivasi tetap subdomain bawaan dan koneksi WhatsApp toko; domain pribadi opsional. Checklist persiapan berjualan tidak mengubah syarat aktivasi. Lengkapi katalog dan pembayaran sebelum menerima pelanggan. Tanpa konfirmasi, sistem dapat mengaktifkan setelah 24 jam sejak syarat aktivasi terpenuhi. Uji checkout/notifikasi setelah toko aktif."
         ],
         "visual": {
           "image": "/guides/steps/subscription-activation.jpg",
-          "height": 716,
+          "height": 1876,
           "markers": [
             {
-              "h": 3.3519553072625703,
-              "label": "Selesaikan persiapan yang diminta",
-              "w": 13.91755110062893,
-              "x": 19.30154284591195,
-              "y": 68.24153282122906
+              "label": "Hubungkan WhatsApp toko",
+              "x": 88.10141509433963,
+              "y": 73.04371002132196,
+              "w": 15.149371069182388,
+              "h": 2.0362473347547976
             },
             {
-              "h": 6.1725296787709505,
-              "label": "Aktifkan setelah semua siap",
-              "w": 21.28107802672956,
-              "x": 21.56821196933962,
-              "y": 78.59036749301677
+              "label": "Aktivasi setelah syarat siap",
+              "x": 36.660377358490564,
+              "y": 89.40938166311301,
+              "w": 21.281446540880502,
+              "h": 2.3560767590618337
             }
           ],
           "width": 1272,
@@ -180,14 +180,14 @@
         ],
         "visual": {
           "image": "/guides/steps/admin-navigation.jpg",
-          "height": 716,
+          "height": 931,
           "markers": [
             {
-              "h": 6.145251396648044,
+              "h": 5.112781954887218,
               "label": "Periksa identitas pengaju",
-              "w": 15.959119496855346,
-              "x": 9.394654088050315,
-              "y": 40.08379888268157
+              "w": 17.767295597484274,
+              "x": 10.29874213836478,
+              "y": 37.44146079484425
             }
           ],
           "width": 1272,
@@ -197,18 +197,18 @@
       {
         "title": "Kelola toko",
         "paragraphs": [
-          "Periksa owner, platform, masa aktif dan kewajiban di Kelola toko. Perubahan paket/masa aktif memerlukan alasan untuk audit. Penangguhan menghentikan layanan, bukan menghapus data atau otomatis refund."
+          "Periksa owner, masa aktif dan kewajiban di Kelola toko. Koreksi masa aktif memerlukan alasan untuk audit. Penangguhan menghentikan layanan, bukan menghapus data atau otomatis refund."
         ],
         "visual": {
           "image": "/guides/steps/admin-navigation.jpg",
-          "height": 716,
+          "height": 931,
           "markers": [
             {
-              "h": 6.145251396648044,
+              "h": 5.112781954887218,
               "label": "Kelola status setiap toko",
-              "w": 15.959119496855346,
-              "x": 9.394654088050315,
-              "y": 33.24022346368715
+              "w": 17.767295597484274,
+              "x": 10.29874213836478,
+              "y": 31.791621911922668
             }
           ],
           "width": 1272,
@@ -218,7 +218,7 @@
       {
         "title": "Atur paket dan voucher",
         "paragraphs": [
-          "Paket & harga berisi tiga platform dengan harga/durasi masing-masing. Harga baru tidak menulis ulang invoice lama. Voucher promo platform menarget penawaran/layanan dan dapat 100%."
+          "Paket & harga berisi satu paket Web Topup + Bot WhatsApp dengan variasi harga/durasi. Harga baru tidak menulis ulang invoice lama. Voucher promo platform menarget penawaran/layanan dan dapat 100%."
         ],
         "visual": {
           "image": "/guides/steps/admin-offers.jpg",
@@ -250,14 +250,14 @@
         ],
         "visual": {
           "image": "/guides/steps/admin-navigation.jpg",
-          "height": 716,
+          "height": 931,
           "markers": [
             {
-              "h": 6.145251396648044,
+              "h": 5.112781954887218,
               "label": "Pantau invoice platform",
-              "w": 15.959119496855346,
-              "x": 9.394654088050315,
-              "y": 53.770949720670394
+              "w": 17.767295597484274,
+              "x": 10.29874213836478,
+              "y": 48.74006444683136
             }
           ],
           "width": 1272,
@@ -288,7 +288,7 @@
     "slug": "langganan",
     "title": "Paket dan perpanjangan",
     "category": "Administrasi",
-    "summary": "Durasi, invoice, perubahan platform dan masa tenggang.",
+    "summary": "Durasi, invoice, perpanjangan dan masa tenggang.",
     "image": "/guides/subscription.png",
     "imageAlt": "Contoh Paket dan perpanjangan pada toko simulasi",
     "prerequisites": [
@@ -296,24 +296,24 @@
     ],
     "steps": [
       {
-        "title": "Pilih platform",
+        "title": "Pilih durasi sewa",
         "paragraphs": [
-          "Langganan & aktivasi menyediakan Bot WhatsApp, Web Topup dan Web + Bot WhatsApp, masing-masing dengan pilihan durasi/harga admin. Semua sumber termasuk; langganan berlaku per toko."
+          "Web Topup + Bot WhatsApp tersedia dalam satu paket. Pilih durasi dan harga yang disediakan admin. Langganan berlaku per toko."
         ],
         "visual": {
           "image": "/guides/steps/subscription-platform.jpg",
-          "height": 716,
+          "height": 1303,
           "markers": [
             {
-              "h": 6.284916201117319,
-              "label": "Pilih platform toko",
-              "w": 10.068420794025156,
-              "x": 14.310939956761008,
-              "y": 91.66593924581008
+              "label": "Pilih durasi sewa toko",
+              "x": 43.797955974842765,
+              "y": 68.47045280122794,
+              "w": 36.16352201257861,
+              "h": 3.7989255564082884
             }
           ],
           "width": 1272,
-          "caption": "Pilih Bot WhatsApp, Web Topup, atau Web + Bot; seluruh sumber sudah termasuk."
+          "caption": "Web Topup + Bot WhatsApp dan seluruh sumber sudah termasuk. Pilih durasi sewa."
         }
       },
       {
@@ -323,21 +323,21 @@
         ],
         "visual": {
           "image": "/guides/steps/subscription-confirm.jpg",
-          "height": 720,
+          "height": 937,
           "markers": [
             {
-              "h": 6.944444444444445,
               "label": "Masukkan voucher jika tersedia",
-              "w": 32.5,
               "x": 50.0,
-              "y": 51.388888888888886
+              "y": 59.76520811099253,
+              "w": 32.5,
+              "h": 5.3361792956243335
             },
             {
-              "h": 6.138237847222222,
               "label": "Konfirmasikan invoice paket",
-              "w": 10.545654296875,
-              "x": 60.9771728515625,
-              "y": 73.81781684027777
+              "x": 60.97734375,
+              "y": 77.0,
+              "w": 10.5453125,
+              "h": 4.717182497331911
             }
           ],
           "width": 1280,
@@ -351,14 +351,14 @@
         ],
         "visual": {
           "image": "/guides/steps/subscription-platform.jpg",
-          "height": 716,
+          "height": 1303,
           "markers": [
             {
-              "h": 4.691864525139666,
-              "label": "Periksa masa aktif toko ini",
-              "w": 17.1297661163522,
-              "x": 19.492556014150942,
-              "y": 62.1562936452514
+              "label": "Periksa masa aktif toko",
+              "x": 89.5,
+              "y": 36.68457405986186,
+              "w": 13,
+              "h": 4
             }
           ],
           "width": 1272,
@@ -368,7 +368,7 @@
       {
         "title": "Perhatikan tenggang",
         "paragraphs": [
-          "Tujuh hari sesudah expiry masih boleh transaksi dengan pemberitahuan panel. Sesudahnya layanan berhenti. Hari ke-30 ditinjau untuk penghapusan, tetapi saldo/transaksi menggantung menahannya. Staff berizin hanya memperpanjang platform saat ini."
+          "Tujuh hari sesudah expiry masih boleh transaksi dengan pemberitahuan panel. Sesudahnya layanan berhenti. Hari ke-30 ditinjau untuk penghapusan, tetapi saldo/transaksi menggantung menahannya. Staff berizin dapat memilih durasi perpanjangan toko."
         ],
         "visual": {
           "image": "/guides/steps/subscription-retention.jpg",
@@ -397,7 +397,7 @@
     "troubleshooting": [
       {
         "question": "Paket lama tidak ada",
-        "answer": "Paket kini dibedakan platform. Harga/durasi penawaran terlengkap dipertahankan, invoice lama tetap memakai snapshot historis."
+        "answer": "Paket kini menyertakan Web Topup + Bot WhatsApp. Hanya durasi yang bervariasi. Invoice lama tetap memakai snapshot historis."
       }
     ],
     "related": [
@@ -410,8 +410,8 @@
       "paket",
       "masa aktif",
       "perpanjangan",
-      "upgrade",
-      "downgrade"
+      "durasi",
+      "paket lengkap"
     ]
   },
   {
@@ -647,7 +647,7 @@
       {
         "title": "Uji dan nonaktifkan",
         "paragraphs": [
-          "Staff masuk melalui halaman staff toko dengan username/email dan password. Periksa menu sesuai izin. Nonaktifkan jika tidak bertugas. Izin di satu toko tidak berlaku di toko lain; perpanjangan bukan hak mengganti platform."
+          "Staff masuk melalui halaman staff toko dengan username/email dan password. Periksa menu sesuai izin. Nonaktifkan jika tidak bertugas. Izin di satu toko tidak berlaku di toko lain; perpanjangan hanya berlaku untuk toko tempat staff terdaftar."
         ],
         "visual": {
           "image": "/guides/steps/staff-list.jpg",
@@ -1564,7 +1564,7 @@
       {
         "title": "Uji kanal",
         "paragraphs": [
-          "Bot/Web + Bot mendukung command seperti #produk/#saldo. Paket Web mengizinkan WA toko untuk OTP/notifikasi, tanpa command penjualan. Uji OTP pelanggan dan perubahan pesanan; pesan platform tetap terpisah dari pesan toko."
+          "Semua toko mendukung command seperti #produk/#saldo, OTP, dan notifikasi WhatsApp. Uji OTP pelanggan dan perubahan pesanan; pesan platform tetap terpisah dari pesan toko."
         ],
         "visual": {
           "image": "/guides/steps/whatsapp-connected.jpg",
@@ -2874,7 +2874,7 @@
       {
         "title": "Buat kode dan aturan",
         "paragraphs": [
-          "Generate/isi kode, nama, jenis nominal/persen, periode, kuota serta batas yang tersedia. Tentukan syarat dengan jelas."
+          "Isi kode, nominal/persen, periode dan kuota. Di Batas penggunaan, aktifkan Sekali per akun bila diperlukan. Voucher toko ini wajib login; guest tidak dapat memakainya. Voucher platform menghitung satu owner di seluruh tokonya."
         ],
         "visual": {
           "image": "/guides/steps/voucher-code.jpg",

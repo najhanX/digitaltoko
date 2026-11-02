@@ -24,7 +24,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -124,8 +123,7 @@ class AdminStoreController extends Controller
         if (is_string($request->input('reason'))) {
             $request->merge(['reason' => trim($request->input('reason'))]);
         }
-        $data = $request->validate(['action' => 'required|in:edit,expiry,package,suspend,resume', 'reason' => 'required|string|min:5|max:1000',
-            'package' => ['required_if:action,package', 'string', Rule::in(PackageCatalog::keys())],
+        $data = $request->validate(['action' => 'required|in:edit,expiry,suspend,resume', 'reason' => 'required|string|min:5|max:1000',
             'name' => 'required_if:action,edit|string|max:100', 'template' => 'required_if:action,edit|in:aurora,nebula,atlas',
             'expires_at' => 'required_if:action,expiry|date|after:now|before_or_equal:'.now()->addDays(730)->toIso8601String()]);
         DB::transaction(function () use ($request, $store, $data) {
@@ -151,26 +149,6 @@ class AdminStoreController extends Controller
                     }
                     app(StoreRetention::class)->renewed($locked);
                     $locked->update(['expires_at' => Carbon::parse($data['expires_at']), 'status' => 'active']);
-                    break;
-                case 'package':
-                    if ($locked->is_trial || ! in_array($locked->status, ['draft', 'active', 'grace', 'expired'], true)) {
-                        throw ValidationException::withMessages(['package' => 'Perubahan admin tersedia untuk toko draft atau langganan berbayar yang sudah pernah aktif. Trial harus mengikuti alur langganan.']);
-                    }
-                    if (SubscriptionInvoice::where('store_id', $locked->id)->whereIn('status', ['pending', 'paid', 'review'])->exists()) {
-                        throw ValidationException::withMessages(['package' => 'Selesaikan invoice atau jadwal perubahan paket terlebih dahulu.']);
-                    }
-                    $package = collect(PackageCatalog::all())->firstWhere('key', $data['package']);
-                    if ($locked->category === $package['category']) {
-                        throw ValidationException::withMessages(['package' => 'Pilih paket yang berbeda dari paket toko saat ini.']);
-                    }
-                    $subscription = $locked->subscription;
-                    if ($subscription !== null) {
-                        $subscription = [...$subscription, 'name' => isset($subscription['duration_days'])
-                            ? PackageCatalog::offerName($package['category'], $package['plan'], (int) $subscription['duration_days']) : $package['name'],
-                            'category' => $package['category'], 'plan' => $package['plan'],
-                            'features' => app(SubscriptionService::class)->features($package['category'], $package['plan']), 'features_version' => 2];
-                    }
-                    $locked->update(['category' => $package['category'], 'plan' => $package['plan'], 'subscription' => $subscription]);
                     break;
                 case 'suspend':
                     if ($locked->admin_suspended_at) {

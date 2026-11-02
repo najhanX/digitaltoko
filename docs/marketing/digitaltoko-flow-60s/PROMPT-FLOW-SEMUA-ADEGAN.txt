@@ -1,115 +1,73 @@
-DIGITALTOKO — PROMPT GOOGLE FLOW, 60 DETIK
 
-Gunakan SATU prompt adegan per generasi, bersama gambar bernomor sama sebagai START FRAME. Jangan tempel seluruh buku ini untuk satu klip. Durasi: 6,8,8,8,8,8,6,8 detik. Rasio 9:16.
-
-============================================================
-ADEGAN 01 — Pembuka — 0–6 detik
-GAMBAR: frames/01.png
-============================================================
 
 Create ONE promotional video clip, vertical 9:16, 6 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
+SCENE 01 — Pembuka
 MOTION: Slow cinematic push-in. Laptop and smartphone rise gently into view, a cyan ribbon connects the web storefront and chat. A soft light sweep passes over the DigitalToko logo. Keep headline and UI text stable. Hold clearly for one second at the end.
-EXACT INDONESIAN VOICE-OVER: "Punya toko produk digital dengan nama sendiri? Mulai bersama Digital Toko."
-END: Finish in a steady readable frame, ready for a match cut.
-
-
-============================================================
-ADEGAN 02 — Daftar & pilih paket — 6–14 detik
-GAMBAR: frames/02.png
-============================================================
+EXACT INDONESIAN VOICE-OVER: Sekarang, satu paket untuk web topup dan bot WhatsApp. Kenalkan, Digital Toko.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.
 
 Create ONE promotional video clip, vertical 9:16, 8 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
-MOTION: Slow dolly toward the onboarding panel. Illuminate Daftar, Verifikasi, Buat toko and Pilih paket in that order. A soft cursor selects Web + Bot, then a simple paid checkmark appears. End on a settled panel.
-EXACT INDONESIAN VOICE-OVER: "Daftar, lengkapi verifikasi, buat toko, lalu pilih paket Web, Bot WhatsApp, atau keduanya. Bayar sesuai durasi pilihanmu."
-END: Finish in a steady readable frame, ready for a match cut.
-
-
-============================================================
-ADEGAN 03 — Hubungkan pemasok — 14–22 detik
-GAMBAR: frames/03.png
-============================================================
+SCENE 02 — Daftar & pilih paket
+MOTION: Slow dolly toward the single bundle panel. Illuminate Daftar, Verifikasi, Buat toko and Pilih durasi in order. Highlight both included web and WhatsApp checkmarks together. Gently pulse the duration dropdown then Lanjutkan once. Never create platform tabs or a separate Bot-only/Web-only choice.
+EXACT INDONESIAN VOICE-OVER: Daftar, lengkapi verifikasi, lalu buat toko. Web Topup dan Bot WhatsApp sudah termasuk. Tinggal pilih durasi sewanya.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.
 
 Create ONE promotional video clip, vertical 9:16, 8 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
+SCENE 03 — Hubungkan pemasok
 MOTION: Three supplier tiles softly illuminate, cyan pulses travel toward the central catalog, then product rows populate once. Briefly highlight Atur markup and Stok premium. Restrained camera orbit under three degrees, no shaking.
-EXACT INDONESIAN VOICE-OVER: "Hubungkan Digiflazz, Hanshop, atau pemasok OtomaX. Impor katalog, atur markup harga, dan kelola stok aplikasi premium."
-END: Finish in a steady readable frame, ready for a match cut.
-
-
-============================================================
-ADEGAN 04 — Custom tampilan toko — 22–30 detik
-GAMBAR: frames/04.png
-============================================================
+EXACT INDONESIAN VOICE-OVER: Hubungkan Digiflazz, Hanshop, atau pemasok OtomaX. Impor katalog, atur markup harga, dan kelola stok aplikasi premium.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.
 
 Create ONE promotional video clip, vertical 9:16, 8 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
+SCENE 04 — Custom tampilan toko
 MOTION: Cursor selects Aurora, then a cyan swatch. The storefront preview smoothly switches palette, one banner slides in, and two homepage sections gently reorder. End with the completed storefront preview enlarged slightly. Keep all existing text stable.
-EXACT INDONESIAN VOICE-OVER: "Pilih template, ganti warna, logo, dan banner. Susun beranda sesuai brand, lalu siapkan domain toko milikmu."
-END: Finish in a steady readable frame, ready for a match cut.
-
-
-============================================================
-ADEGAN 05 — Panduan bergambar — 30–38 detik
-GAMBAR: frames/05.png
-============================================================
+EXACT INDONESIAN VOICE-OVER: Pilih template, ganti warna, logo, dan banner. Susun beranda sesuai brand, lalu siapkan domain toko milikmu.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.
 
 Create ONE promotional video clip, vertical 9:16, 8 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
+SCENE 05 — Panduan bergambar
 MOTION: Start by highlighting the small Panduan button. The guide opens with a soft card expansion; camera pans slowly across steps 1, 2, 3. Click markers pulse once each. No scrolling through unreadable text.
-EXACT INDONESIAN VOICE-OVER: "Butuh bantuan? Ikuti panduan bergambar, dari koneksi pemasok, pembayaran, hingga pengaturan toko. Langkahnya bisa kamu ikuti dari panel."
-END: Finish in a steady readable frame, ready for a match cut.
-
-
-============================================================
-ADEGAN 06 — Pelanggan memesan — 38–46 detik
-GAMBAR: frames/06.png
-============================================================
+EXACT INDONESIAN VOICE-OVER: Butuh bantuan? Ikuti panduan bergambar, dari koneksi pemasok, pembayaran, hingga pengaturan toko. Langkahnya bisa kamu ikuti dari panel.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.
 
 Create ONE promotional video clip, vertical 9:16, 8 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
+SCENE 06 — Pelanggan memesan
 MOTION: Soft cursor chooses a data product, destination field fills with masked dots, then payment confirmation transitions to order processing. A WhatsApp notification gently slides up. Show a natural pending processing stage; do not imply every supplier always succeeds instantly.
-EXACT INDONESIAN VOICE-OVER: "Toko aktif, pelanggan pilih produk, isi tujuan, lalu bayar. Pesanan diproses dan statusnya dipantau lewat web atau WhatsApp."
-END: Finish in a steady readable frame, ready for a match cut.
-
-
-============================================================
-ADEGAN 07 — Operasional lebih mudah — 46–52 detik
-GAMBAR: frames/07.png
-============================================================
+EXACT INDONESIAN VOICE-OVER: Toko aktif, pelanggan pilih produk, isi tujuan, lalu bayar. Pesanan diproses dan statusnya dipantau lewat web atau WhatsApp.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.
 
 Create ONE promotional video clip, vertical 9:16, 6 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
+SCENE 07 — Operasional lebih mudah
 MOTION: A smooth lateral camera move reveals the four feature cards one at a time, then they align neatly around the dashboard. Highlight transaction status and a voucher ticket, no rapid blinking.
-EXACT INDONESIAN VOICE-OVER: "Pantau transaksi, kelola saldo pelanggan, buat voucher, dan bagi tugas bersama staff dalam satu panel."
-END: Finish in a steady readable frame, ready for a match cut.
-
-
-============================================================
-ADEGAN 08 — Ajakan mulai — 52–60 detik
-GAMBAR: frames/08.png
-============================================================
+EXACT INDONESIAN VOICE-OVER: Pantau transaksi, kelola saldo pelanggan, buat voucher, dan bagi tugas bersama staff dalam satu panel.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.
 
 Create ONE promotional video clip, vertical 9:16, 8 seconds, for the Indonesian SaaS platform DigitalToko. Use the uploaded scene image as the START FRAME. Match its composition, DigitalToko logo, off-white studio, indigo #4F46E5 and cyan #06B6D4 identity. This is premium animated product illustration, not a live browser recording. Preserve spelling, logo shape and existing headline. Animate only the specified UI and camera; maintain calm readable composition and social safe margins. No people, hands, invented text, invented prices, fake testimonials, earnings claims, 'free trial', URLs, extra watermarks or random subtitles. No wild morphing, flicker, rapid zooms, distorted device geometry or illegible UI.
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
+SCENE 08 — Ajakan mulai
 MOTION: Bring laptop and phone into a calm balanced arrangement. Very slow push-in toward the logo and CTA, a single subtle cyan shimmer through the ribbon, hold the CTA clearly for the last three seconds. Finish in a clean stable frame.
-EXACT INDONESIAN VOICE-OVER: "Siap membangun toko digital dengan brand sendiri? Pilih paketmu, siapkan tokomu, dan mulai bersama Digital Toko."
-END: Hold the logo and CTA for the last 3 seconds; let music resolve gently.
-
+EXACT INDONESIAN VOICE-OVER: Satu paket, dua cara berjualan. Pilih durasi, bangun toko digital dengan brand sendiri, dan mulai bersama Digital Toko.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.

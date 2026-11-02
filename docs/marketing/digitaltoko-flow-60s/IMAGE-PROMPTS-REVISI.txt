@@ -1,0 +1,1 @@
+Revisi 3 November 2026: seluruh 8 gambar diganti untuk satu paket Web Topup + Bot WhatsApp, variasi hanya durasi. Prompt persis ada di IMAGE-PROMPTS.txt.

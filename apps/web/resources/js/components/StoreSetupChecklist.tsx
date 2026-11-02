@@ -13,6 +13,6 @@ export default function StoreSetupChecklist({setup,preparing=false}:{setup:Store
             <span className="setup-step-icon"><Icon size={20}/></span><div className="setup-step-copy"><div><h3>{item.title}</h3><span className={'setup-step-status '+(item.ready?'done':'')}>{item.ready?<Check size={13}/>:<Circle size={12}/>} {item.ready?'Siap':item.required?'Perlu disiapkan':'Opsional'}</span></div><p>{item.description}</p></div>
             {item.href?<Link className="button secondary small" href={item.href}>{item.action}<ArrowRight size={14}/></Link>:<span className="setup-access-note">Minta owner mengatur</span>}
         </li>})}</ul>
-        <p className="setup-footnote">Checklist mengikuti data tersimpan; koneksi dan pembayaran tetap perlu diuji. Domain pribadi serta WhatsApp pada paket Web bersifat opsional untuk aktivasi.</p>
+        <p className="setup-footnote">Checklist mengikuti data tersimpan; koneksi dan pembayaran tetap perlu diuji. Domain pribadi opsional. Hubungkan WhatsApp sebelum aktivasi.</p>
     </section>;
 }

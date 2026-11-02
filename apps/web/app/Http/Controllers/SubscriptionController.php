@@ -44,7 +44,7 @@ class SubscriptionController extends Controller
         $page = $list->paginate($list->apply($history, ['id', 'snapshot->name'], ['status' => 'status'])->latest()->orderByDesc('id'));
 
         return Inertia::render('Owner/Subscription', ['role' => $role, 'store' => $store->only(['id', 'name', 'slug', 'category', 'plan', 'status', 'expires_at', 'ready_at', 'is_trial']),
-            'plans' => PlanOption::where('active', true)->where('plan', 'galaxy')->orderBy('duration_days')->orderBy('price')->get()
+            'plans' => PlanOption::where('active', true)->where('plan', 'galaxy')->where('category', 'full')->orderBy('duration_days')->orderBy('price')->get()
                 ->map(fn ($plan) => [...$plan->toArray(), 'purpose' => $service->purpose($store, $plan)]),
             'invoices' => $page->items(), 'currentInvoice' => $current, 'historyPagination' => ListQuery::meta($page), 'historyFilters' => $list->filters,
             'provisioning' => app(Provisioning::class)->current($store),
@@ -62,7 +62,7 @@ class SubscriptionController extends Controller
         $data = $request->validate(['request_id' => 'nullable|uuid', 'voucher_code' => 'nullable|string|max:40', 'plan_id' => 'required|integer|exists:plan_options,id']);
         $plan = PlanOption::findOrFail($data['plan_id']);
         if ($role === 'staff') {
-            abort_unless(! $store->is_trial && $store->expires_at && $store->category === $plan->category, 403);
+            abort_unless(! $store->is_trial && $store->expires_at && $plan->category === 'full', 403);
         }
         $invoice = $service->checkout($store, $plan, $data['voucher_code'] ?? null, $data['request_id'] ?? null);
 

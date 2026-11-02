@@ -250,11 +250,19 @@ class StoreRetention
         }
     }
 
-    /** Preserve only anonymous platform quota counters, never deleted tenant transactions or contacts. */
+    /** Preserve platform quota and owner claims; tenant transactions and contacts are removed. */
     private function eraseRedemptions(Store $store): void
     {
         foreach (['order' => 'customer_orders', 'subscription' => 'subscription_invoices', 'module' => 'module_purchases'] as $type => $table) {
             $query = DB::table('voucher_redemptions')->where('subject_type', $type)->whereIn('subject_id', DB::table($table)->where('store_id', $store->id)->select('id'));
+            if ($type !== 'order') {
+                $claims = (clone $query)->join($table.' as subject', 'subject.id', '=', 'voucher_redemptions.subject_id')
+                    ->join('discount_vouchers as voucher', 'voucher.id', '=', 'voucher_redemptions.voucher_id')
+                    ->whereNull('voucher.store_id')->where('voucher_redemptions.claimant_type', 'owner')
+                    ->whereNotNull('voucher_redemptions.claimant_id')->whereNotIn('subject.status', ['expired', 'cancelled'])
+                    ->pluck('voucher_redemptions.id');
+                $query->whereNotIn('voucher_redemptions.id', $claims);
+            }
             $voucherIds = (clone $query)->distinct()->pluck('voucher_id')->sort();
             foreach ($voucherIds as $id) {
                 $voucher = DiscountVoucher::withTrashed()->whereNull('store_id')->whereKey($id)->lockForUpdate()->first();

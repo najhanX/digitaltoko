@@ -54,7 +54,7 @@ class StoreNotificationsTest extends TestCase
         return 'http://'.$store->slug.'.localhost';
     }
 
-    public function test_web_package_can_connect_and_receive_notices_but_cannot_access_chat_commerce_or_catalog(): void
+    public function test_all_subscriptions_connect_and_receive_notices_and_access_chat_commerce_and_catalog(): void
     {
         $store = $this->shop();
         Http::fake(['127.0.0.1:3099/*' => Http::response(['status' => 'SUCCESS'])]);
@@ -63,9 +63,9 @@ class StoreNotificationsTest extends TestCase
         $this->post($url.'/connect', ['phone' => '081234567890', 'method' => 'qr'])->assertSessionHasNoErrors();
         $store->refresh();
         $store->update(['worker_token_hash' => hash('sha256', str_repeat('w', 64))]);
-        $this->withToken(str_repeat('w', 64))->getJson('http://localhost/api/internal/bot/access')->assertJsonPath('data.allowed', false)->assertJsonPath('data.can_connect', true);
-        $this->getJson('http://localhost/api/internal/bot/catalog')->assertForbidden();
-        $this->postJson('http://localhost/api/internal/bot/commerce', ['phone' => '6281234567890', 'action' => 'balance'])->assertForbidden();
+        $this->withToken(str_repeat('w', 64))->getJson('http://localhost/api/internal/bot/access')->assertJsonPath('data.allowed', true)->assertJsonPath('data.can_connect', true);
+        $this->getJson('http://localhost/api/internal/bot/catalog?view=services')->assertOk();
+        $this->postJson('http://localhost/api/internal/bot/commerce', ['phone' => '6281234567890', 'action' => 'balance'])->assertOk();
         $this->getJson('http://localhost/api/internal/bot/notices')->assertOk();
     }
 

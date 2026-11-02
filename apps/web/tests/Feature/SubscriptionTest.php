@@ -47,12 +47,15 @@ class SubscriptionTest extends TestCase
         return $u;
     }
 
-    private function store(User $owner, string $category = 'web'): Store
+    private function store(User $owner, string $category = 'full'): Store
     {
-        return Store::create(['owner_id' => $owner->id, 'slug' => 'toko-'.Store::count(), 'name' => 'Toko Test', 'category' => $category, 'plan' => 'orbit', 'status' => 'draft', 'template' => 'aurora']);
+        $store = Store::create(['owner_id' => $owner->id, 'slug' => 'toko-'.Store::count(), 'name' => 'Toko Test', 'category' => $category, 'plan' => 'orbit', 'status' => 'draft', 'template' => 'aurora']);
+        Cache::forever('bot:'.$store->id.':state', ['status' => 'CONNECTED']);
+
+        return $store;
     }
 
-    private function plan(string $category = 'web', string $plan = 'galaxy'): PlanOption
+    private function plan(string $category = 'full', string $plan = 'galaxy'): PlanOption
     {
         return PlanOption::create(['name' => 'Paket Uji', 'category' => $category, 'plan' => $plan, 'price' => 50000, 'duration_days' => 30, 'active' => true]);
     }
@@ -117,25 +120,20 @@ class SubscriptionTest extends TestCase
         $this->assertTrue($s->fresh()->expires_at->equalTo($i->paid_at->addDays(30)));
     }
 
-    public function test_upgrade_full_price_resets_and_downgrade_waits_until_next_period(): void
+    public function test_legacy_scheduled_invoice_keeps_its_original_start_but_grants_both_channels(): void
     {
         $s = $this->store($this->owner());
-        $s->update(['status' => 'active', 'starts_at' => now()->subDays(2), 'expires_at' => now()->addDays(50)]);
-        $this->gatewayStatus = 'PAID';
-        $i = $this->service()->checkout($s, $this->plan('full', 'galaxy'));
-        $this->assertSame(50000, $i->snapshot['price']);
-        $this->assertTrue($s->fresh()->expires_at->equalTo($i->paid_at->addDays(30)));
-        $s->refresh();
-        $expiry = $s->expires_at;
-        $down = $this->service()->checkout($s, $this->plan());
-        $this->assertSame('paid', $down->status);
-        $this->assertSame('galaxy', $s->fresh()->plan);
-        $this->travelTo($expiry->addSecond());
+        $expiry = now()->startOfSecond()->addDays(5);
+        $s->update(['status' => 'active', 'starts_at' => now()->subDays(25), 'expires_at' => $expiry]);
+        $snapshot = $this->plan('web')->snapshot();
+        $invoice = SubscriptionInvoice::create(['store_id' => $s->id, 'owner_id' => $s->owner_id, 'snapshot' => $snapshot, 'purpose' => 'downgrade', 'status' => 'paid', 'paid_at' => now()]);
         $this->service()->tick($s);
-        $this->assertSame('web', $s->fresh()->category);
-        $this->assertSame('galaxy', $s->fresh()->plan);
+        $this->assertSame('paid', $invoice->fresh()->status);
+        $this->travelTo($expiry->copy()->addSecond());
+        $this->service()->tick($s);
+        $this->assertSame('full', $s->fresh()->category);
         $this->assertTrue($s->fresh()->expires_at->equalTo($expiry->addDays(30)));
-        $this->assertSame('applied', $down->fresh()->status);
+        $this->assertSame($snapshot, $invoice->fresh()->snapshot);
     }
 
     public function test_new_trial_route_is_removed_and_panel_does_not_offer_trial(): void
@@ -196,7 +194,7 @@ class SubscriptionTest extends TestCase
         $store = $this->store($owner, 'bot');
         $store->update(['status' => 'active', 'plan' => 'galaxy', 'is_trial' => true, 'starts_at' => now()->subDay(), 'expires_at' => now()->addDays(6), 'trial_requested_at' => now()->subDay()]);
         $this->gatewayStatus = 'PAID';
-        $invoice = $this->service()->checkout($store, $this->plan('bot', 'galaxy'));
+        $invoice = $this->service()->checkout($store, $this->plan('full', 'galaxy'));
         $this->assertFalse($store->fresh()->is_trial);
         $this->assertTrue($store->fresh()->expires_at->equalTo($invoice->paid_at->addDays(30)));
     }
@@ -255,7 +253,7 @@ class SubscriptionTest extends TestCase
     public function test_admin_can_publish_plan_but_owner_cannot(): void
     {
         $owner = $this->owner();
-        $input = ['name' => 'Orbit Bulanan', 'category' => 'bot', 'plan' => 'orbit', 'price' => 50000, 'duration_days' => 30, 'active' => true];
+        $input = ['name' => 'Bulanan', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true];
         $this->actingAs($owner)->post('/admin/plans', $input)->assertForbidden();
         $admin = User::factory()->create();
         $admin->forceFill(['role' => 'admin'])->save();
@@ -299,7 +297,7 @@ class SubscriptionTest extends TestCase
         $store = $this->store($owner);
         $store->update(['status' => 'active', 'expires_at' => now()->addDays(5)]);
         $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Billing', 'username' => 'billing', 'email' => 'b@example.test', 'password' => 'password-test123', 'permissions' => ['subscription.view', 'subscription.renew']]);
-        $this->actingAs($staff, 'staff')->post('/stores/'.$store->id.'/subscription/checkout', ['plan_id' => $this->plan('full', 'galaxy')->id])->assertForbidden();
+        $this->actingAs($staff, 'staff')->post('/stores/'.$store->id.'/subscription/checkout', ['plan_id' => $this->plan('bot', 'galaxy')->id])->assertForbidden();
         $this->post('/stores/'.$store->id.'/subscription/checkout', ['plan_id' => $this->plan()->id])->assertSessionHasNoErrors();
         $this->assertDatabaseCount('subscription_invoices', 1);
         $this->assertSame('renew', SubscriptionInvoice::first()->purpose);

@@ -48,7 +48,7 @@ class DemoStoreSeeder extends Seeder
             ];
             foreach ($scenarios as [$slug, $name, $category, $plan, $status, $template, $days, $trial]) {
                 $store = Store::firstOrCreate(['slug' => $slug], [
-                    'owner_id' => $owner->id, 'name' => $name, 'category' => $category,
+                    'owner_id' => $owner->id, 'name' => $name, 'category' => 'full',
                     'plan' => $plan, 'status' => $status, 'template' => $template,
                     'expires_at' => $days === null ? null : now()->addDays($days), 'is_trial' => $trial,
                 ]);
@@ -68,7 +68,7 @@ class DemoStoreSeeder extends Seeder
             }
             Store::firstOrCreate(['slug' => 'demo-owner-two'], [
                 'owner_id' => $secondOwner->id, 'name' => 'Draft Owner Kedua Demo',
-                'category' => 'bot', 'plan' => 'galaxy', 'status' => 'draft', 'template' => 'aurora',
+                'category' => 'full', 'plan' => 'galaxy', 'status' => 'draft', 'template' => 'aurora',
             ]);
         });
         $this->command?->info('Data dummy siap. Akun baru admin/staff memakai password: '.self::PASSWORD);

@@ -139,7 +139,9 @@ class QuickOrderTest extends TestCase
         app(CustomerCommerce::class)->settings($store)->update(['closing' => true]);
         $this->getJson($url)->assertNotFound();
         app(CustomerCommerce::class)->settings($store)->update(['closing' => false]);
-        foreach ([['category' => 'bot'], ['category' => 'full', 'status' => 'suspended_manual'], ['status' => 'active', 'template' => 'nebula']] as $change) {
+        $store->update(['category' => 'bot']);
+        $this->getJson($url)->assertOk();
+        foreach ([['category' => 'full', 'status' => 'suspended_manual'], ['status' => 'active', 'template' => 'nebula']] as $change) {
             $store->update($change);
             $this->getJson($url)->assertNotFound();
         }

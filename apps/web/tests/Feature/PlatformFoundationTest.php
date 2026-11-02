@@ -181,7 +181,7 @@ class PlatformFoundationTest extends TestCase
         $a = $this->store($owner);
         $b = $this->store(null, 'another');
         Cache::put('bot:'.$a->id.':state', ['status' => 'PAIRING', 'qr' => 'test-qr'], 90);
-        $this->getJson('https://hansdigi.biz.id/stores/'.$a->id.'/bot-state')->assertForbidden();
+        $this->getJson('https://hansdigi.biz.id/stores/'.$a->id.'/bot-state')->assertUnauthorized();
         $this->actingAs($owner)->getJson('https://hansdigi.biz.id/stores/'.$a->id.'/bot-state')->assertJsonPath('data.qr', 'test-qr');
         $this->getJson('https://hansdigi.biz.id/stores/'.$b->id.'/bot-state')->assertForbidden();
     }
@@ -195,10 +195,10 @@ class PlatformFoundationTest extends TestCase
         $this->assertNull(config('session.domain'));
     }
 
-    public function test_bot_only_store_has_no_public_web_storefront(): void
+    public function test_all_subscriptions_include_the_public_storefront(): void
     {
         $store = $this->store();
         $store->update(['category' => 'bot']);
-        $this->get('https://studio.hansdigi.biz.id/')->assertNotFound();
+        $this->get('https://studio.hansdigi.biz.id/')->assertOk();
     }
 }

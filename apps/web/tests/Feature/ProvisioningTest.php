@@ -33,6 +33,10 @@ class ProvisioningTest extends TestCase
         $store = Store::create(['owner_id' => $owner->id, 'name' => 'Provisioning Test', 'slug' => 'case-'.User::count(), 'category' => $category, 'plan' => 'galaxy', 'status' => 'provisioning', 'template' => 'aurora']);
         $invoice = SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $owner->id, 'status' => 'paid', 'purpose' => 'initial', 'snapshot' => ['category' => $category, 'plan' => 'galaxy', 'price' => $free ? 0 : 50000, 'duration_days' => 30, 'name' => 'Test', 'voucher' => $free ? ['discount' => 50000] : null], 'total' => $free ? 0 : 50123, 'paid_at' => now(), 'provider_id' => $free ? null : 'DTTEST']);
 
+        if ($category === 'web') {
+            Cache::forever('bot:'.$store->id.':state', ['status' => 'CONNECTED']);
+        }
+
         return [$store, $invoice, app(Provisioning::class)->monitor($store)];
     }
 

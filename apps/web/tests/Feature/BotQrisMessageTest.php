@@ -117,7 +117,7 @@ class BotQrisMessageTest extends TestCase
         CustomerNotice::withoutEvents(fn () => CustomerNotice::create(['store_id' => $store->id, 'order_id' => $order->id, 'event' => 'order:'.$order->id.':success', 'phone' => $order->phone, 'message' => 'Success']));
         $this->withToken($token)->getJson('/api/internal/bot/notices')->assertOk()->assertJsonPath('data.0.commerce_enabled', true);
         $store->update(['category' => 'web']);
-        $this->getJson('/api/internal/bot/notices')->assertOk()->assertJsonPath('data.0.commerce_enabled', false);
+        $this->getJson('/api/internal/bot/notices')->assertOk()->assertJsonPath('data.0.commerce_enabled', true);
         $store->update(['category' => 'bot']);
         $this->getJson('/api/internal/bot/notices')->assertOk()->assertJsonPath('data.0.commerce_enabled', true);
         $order->update(['purpose' => 'topup']);

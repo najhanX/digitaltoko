@@ -18,7 +18,7 @@ class BotCatalogController extends Controller
         abort_unless(is_string($token) && strlen($token) >= 32, 401);
         $store = Store::where('worker_token_hash', hash('sha256', $token))->first();
         abort_unless($store, 401);
-        abort_unless(in_array($store->category, ['bot', 'full'], true) && $store->acceptsOrders(), 403);
+        abort_unless($store->supportsBot() && $store->acceptsOrders(), 403);
 
         return $store;
     }

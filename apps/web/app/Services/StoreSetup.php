@@ -59,8 +59,8 @@ class StoreSetup
                 'description' => $customActive ? 'Domain pribadi aktif. Subdomain bawaan tetap tersedia.' : ($domain ? 'Subdomain bawaan siap. Domain pribadi masih perlu verifikasi DNS/HTTPS.' : 'Subdomain bawaan siap digunakan. Domain pribadi opsional dan dapat dihubungkan kapan saja.'),
                 'href' => $owner ? '/owner/stores/'.$store->id.'/manage#domain-pribadi' : null, 'action' => 'Kelola domain'];
         }
-        $items[] = ['key' => 'whatsapp', 'title' => $store->category === 'web' ? 'WhatsApp notifikasi' : 'Bot WhatsApp', 'ready' => $botReady, 'required' => $store->category !== 'web',
-            'description' => $botReady ? 'Nomor WhatsApp toko terhubung.' : ($store->category === 'web' ? 'Opsional untuk aktivasi. Hubungkan nomor toko untuk OTP WhatsApp dan notifikasi pelanggan.' : 'Hubungkan nomor toko melalui QR atau kode pairing sebelum aktivasi.'),
+        $items[] = ['key' => 'whatsapp', 'title' => 'Bot WhatsApp', 'ready' => $botReady, 'required' => true,
+            'description' => $botReady ? 'Nomor WhatsApp toko terhubung.' : 'Hubungkan nomor toko melalui QR atau kode pairing sebelum aktivasi.',
             'href' => $can(['bot.view', 'bot.manage']) ? $base.'/bot' : null, 'action' => 'Hubungkan WhatsApp'];
         $required = array_values(array_filter($items, fn ($item) => $item['required']));
         $completed = count(array_filter($required, fn ($item) => $item['ready']));

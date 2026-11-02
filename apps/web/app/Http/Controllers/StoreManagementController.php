@@ -60,7 +60,8 @@ class StoreManagementController extends Controller
         $request->merge(['slug' => StoreSubdomain::normalize($request->input('slug'))]);
         $data = $request->validate(['name' => 'required|string|max:100',
             'slug' => StoreSubdomain::rules(),
-            'category' => 'required|in:bot,web,full', 'template' => 'required|in:aurora,nebula,atlas'], StoreSubdomain::messages());
+            'category' => 'sometimes|in:full', 'template' => 'required|in:aurora,nebula,atlas'], StoreSubdomain::messages());
+        $data['category'] = 'full';
         $data['plan'] = 'galaxy';
         $store = DB::transaction(function () use ($owner, $data) {
             $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
@@ -69,7 +70,7 @@ class StoreManagementController extends Controller
             return Store::create([...$data, 'owner_id' => $owner->id, 'status' => 'draft', 'expires_at' => null, 'is_trial' => false]);
         });
 
-        return redirect('/stores/'.$store->id.'/subscription')->with('success', 'Toko dibuat. Pilih paket dan durasi untuk melanjutkan. Masa sewa belum dimulai.');
+        return redirect('/stores/'.$store->id.'/subscription')->with('success', 'Toko dibuat. Pilih durasi sewa untuk melanjutkan. Masa sewa belum dimulai.');
     }
 
     public function show(Request $request, Store $store): Response

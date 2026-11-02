@@ -63,7 +63,7 @@ class VoucherController extends Controller
             'plans' => ['id', 'name', 'duration_days', 'price'],'categories' => ['id', 'name', 'service_id'],'products' => ['id', 'name', 'code'],default => ['id', 'name']
         };
 
-        return $model::query()->when($type === 'plans', fn ($q) => $q->where('plan', 'galaxy'))->when($store, fn ($q) => $q->where('store_id', $store->id))->when($type === 'categories', fn ($q) => $q->with('service:id,name'))->select($fields);
+        return $model::query()->when($type === 'plans', fn ($q) => $q->where('plan', 'galaxy')->where('category', 'full'))->when($store, fn ($q) => $q->where('store_id', $store->id))->when($type === 'categories', fn ($q) => $q->with('service:id,name'))->select($fields);
     }
 
     private function option(Model $item, string $type): array
@@ -103,7 +103,7 @@ class VoucherController extends Controller
         $scope = $store?->id ?? 'platform';
         abort_if($voucher && $voucher->scope_key !== $scope, 404);
         $request->merge(['code' => Vouchers::code($request->input('code'))]);
-        $data = $request->validate(['code' => 'required|string|min:3|max:40|regex:/^[A-Z0-9_-]+$/', 'name' => 'required|string|max:120', 'active' => 'required|boolean', 'all_targets' => 'required|boolean', 'type' => 'required|in:fixed,percent', 'value' => 'required|numeric|min:0.01|max:100000000', 'min_purchase' => 'required|integer|min:0|max:100000000', 'max_discount' => 'nullable|integer|min:1|max:100000000', 'usage_limit' => 'nullable|integer|min:1|max:1000000', 'starts_at' => 'nullable|date', 'ends_at' => 'nullable|date', 'targets' => 'required|array:services,categories,products,plans', 'targets.services' => 'present|array|max:300', 'targets.categories' => 'present|array|max:300', 'targets.products' => 'present|array|max:300', 'targets.plans' => 'present|array|max:300', 'targets.*.*' => 'required|string|max:40']);
+        $data = $request->validate(['code' => 'required|string|min:3|max:40|regex:/^[A-Z0-9_-]+$/', 'name' => 'required|string|max:120', 'active' => 'required|boolean', 'all_targets' => 'required|boolean', 'type' => 'required|in:fixed,percent', 'value' => 'required|numeric|min:0.01|max:100000000', 'min_purchase' => 'required|integer|min:0|max:100000000', 'max_discount' => 'nullable|integer|min:1|max:100000000', 'once_per_user' => 'sometimes|boolean', 'usage_limit' => 'nullable|integer|min:1|max:1000000', 'starts_at' => 'nullable|date', 'ends_at' => 'nullable|date', 'targets' => 'required|array:services,categories,products,plans', 'targets.services' => 'present|array|max:300', 'targets.categories' => 'present|array|max:300', 'targets.products' => 'present|array|max:300', 'targets.plans' => 'present|array|max:300', 'targets.*.*' => 'required|string|max:40']);
         if (! empty($data['starts_at']) && ! empty($data['ends_at']) && strtotime($data['ends_at']) <= strtotime($data['starts_at'])) {
             throw ValidationException::withMessages(['ends_at' => 'Tanggal akhir harus setelah tanggal mulai.']);
         }
@@ -120,7 +120,7 @@ class VoucherController extends Controller
                 continue;
             }
             if (! $store && $type === 'services') {
-                abort_unless(count(array_diff($ids, ['bot', 'web', 'full', 'custom_qris'])) === 0, 422);
+                abort_unless(count(array_diff($ids, ['full', 'custom_qris'])) === 0, 422);
 
                 continue;
             }
@@ -175,6 +175,6 @@ class VoucherController extends Controller
             $amount = $inquiry->amount;
         }
 
-        return response()->json(['voucher' => $vouchers->quote($store, $data['voucher_code'], $amount, $product)])->header('Cache-Control', 'private, no-store');
+        return response()->json(['voucher' => $vouchers->quote($store, $data['voucher_code'], $amount, $product, customer: $access->customer($request, $store))])->header('Cache-Control', 'private, no-store');
     }
 }

@@ -138,7 +138,7 @@ class CustomerCommerce
             $voucher = null;
             if (filled($input['voucher_code'] ?? null)) {
                 $this->ensure($purpose === 'product', 'Voucher tidak berlaku untuk topup saldo.');
-                $voucher = app(Vouchers::class)->quote($store, $input['voucher_code'], $amount, $product, lock: true);
+                $voucher = app(Vouchers::class)->quote($store, $input['voucher_code'], $amount, $product, lock: true, customer: $customer);
                 $snapshot = [...$snapshot, 'subtotal' => $amount, 'voucher' => $voucher];
                 $amount = $voucher['total'];
             }
@@ -174,7 +174,7 @@ class CustomerCommerce
                 'amount' => $amount, 'fee' => $fee, 'unique_code' => $unique, 'total' => $total, 'credit_amount' => $purpose === 'topup' ? $amount + ($gateway === 'custom' && $setting->topup_unique ? $unique : 0) : 0,
                 'refund_amount' => $amount + ($gateway === 'custom' && $setting->refund_unique ? $unique : 0), 'merchant_key' => $merchant, 'active_amount_key' => $active,
                 'payment_credentials' => in_array($gateway, ['wallet', 'sandbox'], true) ? null : $credentials, 'expires_at' => $inquiry?->expires_at ?? now()->addMinutes(15)]);
-            app(Vouchers::class)->redeem($voucher, 'order', $order->id, $order->is_sandbox);
+            app(Vouchers::class)->redeem($voucher, 'order', $order->id, $order->is_sandbox, customer: $customer);
             foreach ($candidates as $index => $candidate) {
                 $mapping = ProductMapping::with('item.connection')->findOrFail($candidate['mapping_id']);
                 $connection = $mapping->item?->connection;

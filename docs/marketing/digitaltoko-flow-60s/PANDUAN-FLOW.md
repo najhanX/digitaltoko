@@ -1,9 +1,12 @@
-# DigitalToko — Paket produksi video promosi 60 detik
+# DigitalToko: Web Topup + Bot WhatsApp — 60 detik
+
+Revisi 3 November 2026: satu paket mencakup web dan bot, pilihan hanya durasi. Semua 8 gambar, narasi dan prompt telah diperbarui. Harga tidak dicantumkan agar mengikuti harga aktif panel admin.
+
 
 Format: **vertikal 9:16**, untuk Reels, TikTok, Shorts, dan Status WhatsApp. Delapan gambar dibuat menggunakan **built-in imagegen**. Ini ilustrasi promosi dengan alur sesuai fitur platform, bukan screenshot atau rekaman UI sebenarnya.
 
 ## File yang dipakai
-- `STORYBOARD.html`: urutan visual, waktu, narasi, dan tautan prompt.
+- `STORYBOARD.html`: urutan visual, waktu, dan narasi.
 - `STORYBOARD.jpg`: lembar ringkasan delapan adegan.
 - `frames/01.png` sampai `08.png`: gambar awal tiap klip. Unggah gambar satu per satu, bukan lembar storyboard.
 - `prompts/01.txt` sampai `08.txt`: prompt lengkap siap salin, masing-masing sudah menyertakan arahan visual, musik, dan dubbing.
@@ -66,5 +69,5 @@ Dubbing harus lebih terdengar daripada musik. Duck musik saat narator berbicara.
 - Paket ini berisi **gambar, storyboard, dan prompt**, belum MP4/video/audio yang dirender di Flow.
 
 ## Asal aset
-Gambar memakai logo platform existing sebagai referensi. Prompt asli tersedia di IMAGE-PROMPTS.txt. Dua revisi menghilangkan ilustrasi barang fisik dan ikon pengiriman agar konteks tetap produk digital. Tidak mengganti asset aplikasi yang sedang dipakai.
+Gambar memakai logo platform existing sebagai referensi. Prompt asli tersedia di IMAGE-PROMPTS.txt. Seluruh delapan gambar telah dibuat ulang sesuai paket terpadu, dengan ikon produk digital. Tidak mengganti asset aplikasi yang sedang dipakai.
 

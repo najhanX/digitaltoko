@@ -52,3 +52,8 @@
 .brand>img.brand-dark{display:none}
 [data-panel-theme=dark] .brand>img.brand-light{display:none}
 [data-panel-theme=dark] .brand>img.brand-dark{display:block}
+
+/* One commercial bundle, with duration as the only subscription choice. */
+.pricing-bundle{display:flex;align-items:center;gap:18px;padding:24px;border:1px solid var(--public-line,#dce2ef);border-radius:18px;background:var(--public-card,#fff);margin:0 0 22px}.pricing-bundle>.icon-box{margin:0;flex:none}.pricing-bundle>div{flex:1;min-width:0}.pricing-bundle h2{font-size:23px}.pricing-bundle p{margin-top:6px;color:var(--public-muted,#5d6b82)}.pricing-bundle>.store-status{flex:none}
+.dt-unified-plan .dt-plan{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px 36px}.dt-unified-plan .dt-plan>div>p{color:var(--muted);margin-top:14px}.dt-unified-plan .dt-plan ul{margin:0;border:0;padding:0;align-content:center}.dt-unified-plan .dt-plan>.dt-button{width:fit-content;grid-column:1/-1}.unified-subscription ul{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.unified-subscription .duration-choice{max-width:460px;margin-top:22px}
+@media(max-width:700px){.pricing-bundle{padding:18px;gap:12px;flex-wrap:wrap}.pricing-bundle h2{font-size:20px}.pricing-bundle>.store-status{margin-left:58px}.dt-unified-plan .dt-plan{grid-template-columns:1fr;padding:23px;gap:24px}.dt-unified-plan .dt-plan>.dt-button{width:100%}.unified-subscription ul{grid-template-columns:repeat(2,minmax(0,1fr))}}

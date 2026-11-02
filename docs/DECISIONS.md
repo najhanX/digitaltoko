@@ -1,18 +1,18 @@
 # Keputusan DigitalToko
 
-Disinkronkan dengan source dan keputusan pengguna sampai **2 November 2026**. Keberadaan implementasi lokal tidak menjamin konfigurasi/deployment produksi.
+Disinkronkan dengan source dan keputusan pengguna sampai **3 November 2026**. Keberadaan implementasi lokal tidak menjamin konfigurasi/deployment produksi.
 
 ## Keputusan yang berlaku dan implementasi
 
 - Brand DigitalToko, warna Indigo/Cyan/Navy; ikon D untuk favicon platform dan sidebar collapsed. Domain aplikasi dapat diganti melalui konfigurasi; hansdigi.biz.id adalah domain awal yang direncanakan dan digitaltoko.com domain final yang diinginkan. Kepemilikan/routing aktif tidak diaudit pada sinkronisasi dokumen ini.
 - Laravel/Inertia React melayani seluruh panel dan tiga template storefront; Baileys berada di proses terpisah. Owner multi-store, staff/customer scope toko, satu database aplikasi terpisah dari Hanshop.
-- Tiga platform Bot WhatsApp, Web Topup dan Web + Bot WhatsApp; semua mendapat Digiflazz, Hanshop, OtomaX dan stok premium. Penawaran lama terbatas sumber tidak dijual untuk pembelian baru. Harga/durasi ditentukan admin, bukan hardcoded komersial.
+- Satu paket Web Topup + Bot WhatsApp, variasi hanya durasi. Semua toko mendapat Digiflazz, API Hanshop, OtomaX dan stok premium. Harga/durasi berasal dari admin. Penawaran bot/web lama dinonaktifkan untuk pembelian baru; invoice historis dan masa aktif dipertahankan. Trial baru tidak tersedia; voucher platform mendukung diskon 100%.
 - Trial otomatis tujuh hari dihapus. Voucher admin dapat menutup 100% tagihan sewa/modul tanpa gateway. Trial lama yang sudah aktif dihormati sampai expiry awal tanpa grace; trial belum dimulai kembali ke pilih paket.
 - Aktivasi pertama setelah layanan siap dan konfirmasi owner, otomatis setelah 24 jam siap. Renewal aktif dari expiry; setelah habis dari paid_at; perubahan/upgrade harga penuh memulai periode baru; downgrade saat periode berikutnya. Semua per toko.
 - Grace tujuh hari masih bertransaksi; selanjutnya akses operasional ditolak. Evaluasi purge expiry+30 dengan hold kewajiban sudah diimplementasikan. Evaluasi dijadwalkan per jam; penghapusan membutuhkan `STORE_PURGE_ENABLED=true` setelah pratinjau diperiksa.
 - Identitas/saldo owner milik Hanshop. Staff maksimal lima (termasuk nonaktif), akun lokal toko. Profil/KTP approved wajib sebelum pembelian. Pendaftaran owner, sinkron email, OTP, dan review manual tersedia.
 - Pendaftaran customer web membutuhkan nama, email, nomor WA dan password. Jalur login WA OTP/email-password serta OTP email tersedia sesuai verifikasi. Guest wajib WA, email opsional. Verifikasi email tidak sekaligus memverifikasi WA.
-- Semua paket boleh menghubungkan satu WA toko untuk OTP/notifikasi. Paket Web tidak memperoleh fitur command transaksi chat. Tidak ada fallback WA Hanshop pusat untuk OTP/customer notice toko. Email dapat memakai pengirim platform atau SMTP toko.
+- Setiap toko memperoleh satu sesi WhatsApp untuk OTP, notifikasi dan transaksi chat. Tidak ada fallback WA Hanshop pusat untuk pesan pelanggan toko. Email memakai pengirim platform atau SMTP toko.
 - Satu gateway customer aktif: Midtrans merchant toko atau QRIS custom berlisensi permanen per toko. Modul tidak dipindah/refund. Fee, topup kode unik dan refund kode unik disnapshot per invoice. Midtrans topup/refund mengecualikan fee.
 - Wallet customer terpisah per toko. Gagal dibayar customer login direfund ke wallet; guest ditindaklanjuti toko. Pencairan manual hanya saat berhenti. Penutupan final menunggu kewajiban selesai.
 - Produk mengikuti layanan → kategori → produk. Provider quick order, tujuan/format dan cek nickname di kategori. Parsing modal termurah dahulu, fallback hanya kegagalan pasti; ambigu tidak dipaksa gagal/retry.
@@ -57,6 +57,8 @@ ARCHITECTURE.md untuk peta source, BUSINESS_RULES.md untuk kebijakan/batas imple
 
 ## 23 Oktober 2026 — Paket berdasarkan platform
 
+> Kebijakan historis ini digantikan oleh keputusan 3 November 2026: satu paket Web Topup + Bot WhatsApp, variasi hanya durasi.
+
 - Mengganti sembilan kombinasi sumber/kanal menjadi Bot WhatsApp, Web Topup, dan Web + Bot WhatsApp, masing-masing dengan harga dan durasi dari admin.
 - Semua platform mendapat Digiflazz, API Hanshop, OtomaX, serta stok premium. Kanal penjualan tetap mengikuti platform; Web tetap boleh menautkan WA untuk OTP/notifikasi, tanpa command penjualan bot.
 - Sesuai persetujuan owner platform, harga/durasi awal memakai penawaran terlengkap lama tiap platform. ID penawaran dipertahankan agar sasaran voucher tetap cocok; penawaran terbatas sumber dinonaktifkan untuk pembelian baru.
@@ -81,3 +83,12 @@ Disetujui owner platform: admin dapat mengembalikan pembayaran penuh termasuk ko
 Koneksi supplier dikelompokkan terpisah dari katalog sumber. Kredensial Digiflazz/Hanshop tetap owner-only, grant OtomaX tidak berubah. Memindahkan halaman tidak membuat akun/mapping baru atau mengganti URL callback. Saldo/deposit pemasok berada pada grup koneksi yang sama.
 
 Unduhan tenant dipisah menjadi APK dan satu ZIP tools sesuai OS pilihan; tidak lagi mengunduh semua OS sekaligus. Script berada di luar folder platform-tools pada masing-masing ZIP. APK screenshot dokumentasi terpisah tidak masuk distribusi tenant. Panduan QRIS mencakup profil, format, pengujian dan simpan; screenshot diberi asal yang jelas agar data contoh tidak dianggap mutasi nyata.
+
+## 3 November 2026 — Satu paket, sesi panel dan voucher sekali per akun
+
+- Satu paket Web Topup + Bot WhatsApp; semua sumber termasuk. Hanya durasi/harga dari admin yang dipilih. Kunci full/galaxy dipertahankan. Invoice dan masa aktif lama tidak ditulis ulang. Harga/durasi full lama tetap, bot/web nonaktif untuk penjualan baru. Entitlement toko lama diperluas; histori paket dan jadwal lama tetap dapat dibaca/diproses.
+- Aktivasi awal semua toko mensyaratkan WA terhubung; subdomain bawaan tetap tersedia dan domain pribadi opsional. Checklist dan panduan disesuaikan. Tidak ada pembelian upgrade/downgrade kanal baru.
+- Sesi panel hilang/kedaluwarsa: navigasi HTML/Inertia menuju login, API JSON mendapat 401. Pengguna terautentikasi yang mengakses toko lain atau tidak berizin tetap ditolak. Cookie HttpOnly hanya petunjuk halaman login staff, bukan otorisasi.
+- Voucher memiliki opsi Sekali per akun. Toko: per akun pelanggan terverifikasi, guest ditolak; bot mengenali akun pelanggan dari nomor pengirim terverifikasi. Platform: per owner lintas toko serta sewa/perpanjangan/modul; pembelian staff memakai jatah owner.
+- Invoice pending menahan jatah; expired/cancelled yang belum dibayar melepas jatah. Pesanan sudah dibayar tetap menggunakan jatah walau produk gagal/refund. Kuota sandbox terpisah. Identitas penggunaan dicatat juga saat opsi belum aktif; migrasi menautkan riwayat yang masih dapat diidentifikasi. Riwayat yang telah dipurge sebelum migrasi tidak dapat dipulihkan identitasnya dari counter anonim.
+- Claim voucher owner yang diketahui dipertahankan setelah toko dihapus; tidak menyimpan isi transaksi atau kontak toko. Delapan ilustrasi promosi dan prompt Flow 60 detik diperbarui; bukan video final/rekaman UI.

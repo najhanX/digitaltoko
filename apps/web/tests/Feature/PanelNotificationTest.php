@@ -206,7 +206,7 @@ class PanelNotificationTest extends TestCase
         $owner = $this->owner();
         $store = $this->store($owner);
         $store->update(['status' => 'draft', 'expires_at' => null]);
-        $plan = PlanOption::create(['name' => 'Uji', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Uji', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         $service = app(SubscriptionService::class);
         $invoice = $service->checkout($store, $plan);
         $service->sync($invoice->fresh());

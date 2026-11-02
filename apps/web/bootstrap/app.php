@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuthenticatePanelSession;
 use App\Http\Middleware\CapturePanelNotifications;
 use App\Http\Middleware\ConfiguredTrustProxies;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -23,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(ObserveCommerceWebhook::class);
-        $middleware->web(prepend: [ResolvePlatformHost::class], append: [ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
+        $middleware->web(prepend: [ResolvePlatformHost::class], append: [AuthenticatePanelSession::class, ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->trimStrings(except: ['pin', 'payload', 'entries.*', 'content.*.text', 'config.rules.*.captures.*.prefix', 'config.rules.*.captures.*.suffix', 'config.rules.*.keyword', 'config.rules.*.regex', 'config.rules.*.template', 'text']);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);

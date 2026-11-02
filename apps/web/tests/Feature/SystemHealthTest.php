@@ -62,9 +62,9 @@ class SystemHealthTest extends TestCase
 
     public function test_only_admin_can_view_or_refresh_system_health(): void
     {
-        $this->get('/admin/system-health')->assertForbidden();
-        $this->post('/admin/system-health/refresh')->assertForbidden();
-        $this->post('/admin/system-health/queue-probe')->assertForbidden();
+        $this->get('/admin/system-health')->assertRedirect('/admin/login');
+        $this->post('/admin/system-health/refresh')->assertRedirect('/admin/login');
+        $this->post('/admin/system-health/queue-probe')->assertRedirect('/admin/login');
         $owner = User::factory()->create(['role' => 'owner']);
         $this->actingAs($owner)->get('/admin/system-health')->assertForbidden();
         $this->post('/admin/system-health/refresh')->assertForbidden();

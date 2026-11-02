@@ -1,6 +1,6 @@
 # VPS dan domain deployment DigitalToko
 
-Panduan disinkronkan dengan source lokal **2 November 2026**. Modul bisnis, checkout, OTP dan notifikasi sudah tersedia; DNS/VPS, kepemilikan domain, secret dan layanan produksi harus diverifikasi pada lingkungan tujuan. Sinkronisasi dokumen tidak mengubah server atau membuktikan deploy telah dilakukan.
+Panduan disinkronkan dengan source lokal **3 November 2026**. Modul bisnis, checkout, OTP dan notifikasi sudah tersedia; DNS/VPS, kepemilikan domain, secret dan layanan produksi harus diverifikasi pada lingkungan tujuan. Sinkronisasi dokumen tidak mengubah server atau membuktikan deploy telah dilakukan.
 
 ## Runtime
 
@@ -24,7 +24,7 @@ Landing di root; panel /admin, /owner, dan /staff/<uuid>/login pada domain platf
 
 DNS root dan wildcard *.hansdigi.biz.id harus diarahkan ke origin yang sesuai, dengan TLS mencakup masing-masing host. Wildcard certificate dan DNS adalah konfigurasi berbeda. Periksa apakah domain awal sudah melayani aplikasi lain sebelum mengganti routing VPS; contoh tidak menimpa konfigurasi existing.
 
-Untuk custom domain, DNS saja belum cukup: verifikasi kepemilikan, routing, dan sertifikat sebelum menandai row domain active/verified. Alur owner dan adapter izin Caddy tersedia; konfigurasi origin/sertifikat tetap perlu diterapkan di VPS. Lihat CUSTOM_DOMAINS.md dan deploy/Caddyfile.example. Cloudflare for SaaS API belum dibuat. Host tak terdaftar ditolak aplikasi; web bot-only tidak membuka storefront. Nginx example menerima host ke satu origin dan Laravel memvalidasi mapping.
+Untuk custom domain, DNS saja belum cukup: verifikasi kepemilikan, routing, dan sertifikat sebelum menandai row domain active/verified. Alur owner dan adapter izin Caddy tersedia; konfigurasi origin/sertifikat tetap perlu diterapkan di VPS. Lihat CUSTOM_DOMAINS.md dan deploy/Caddyfile.example. Cloudflare for SaaS API belum dibuat. Host tak terdaftar ditolak aplikasi; semua toko berlangganan memperoleh storefront dan bot WhatsApp. Nginx example menerima host ke satu origin dan Laravel memvalidasi mapping.
 
 ## Install pada VPS
 
@@ -172,11 +172,11 @@ Dokumen KTP disimpan pada disk privat, diakses hanya owner terkait/admin melalui
 ## Panel theme dan langganan (13 Oktober 2026)
 
 - Panel admin/owner/staff dan login memakai palet indigo/cyan dengan pilihan terang, gelap, atau sistem. Preferensi localStorage `digitaltoko.panel.theme` hanya memengaruhi panel; template storefront tetap milik tenant. Bootstrap tema berjalan sebelum stylesheet/SSR agar tidak flash warna terang.
-- Jalankan migrasi Laravel `2026_10_13_161039_create_subscription_billing_tables` setelah backup. Pada instalasi baru seeder menyediakan tiga penawaran platform **nonaktif** seharga dummy Rp50.000/30 hari; pada instalasi existing harga/durasi penawaran terlengkap dipertahankan. Admin harus mengatur harga sebenarnya dan mengaktifkan penawaran pada `/admin/plans`.
+- Jalankan migrasi Laravel `2026_10_13_161039_create_subscription_billing_tables` setelah backup. Pada instalasi baru seeder menyediakan satu penawaran lengkap **nonaktif** seharga dummy Rp50.000/30 hari; pada instalasi existing harga/durasi penawaran terlengkap dipertahankan. Admin harus mengatur harga sebenarnya dan mengaktifkan penawaran pada `/admin/plans`.
 - Pada API Hanshop, terapkan `scripts/migrations/20261013_digitaltoko_billing.sql`, build source, lalu restart proses yang Anda kelola. Development `npm run dev` memuat source; jangan menjalankan instance kedua pada port 4000.
 - Gateway memakai URL/token bridge existing, QR_DYNAMIC/Cloudinary existing, dan tabel mutasi dari forwarder. `/internal/digitaltoko/billing/invoice` hanya server-to-server. ID invoice menjadi kunci idempotensi; nominal dan akun yang berubah pada ID yang sama ditolak. Pembayaran sewa tidak mengkredit saldo Hanshop.
 - Laravel cron `schedule:run` per menit menjalankan `digitaltoko:subscriptions`; saat development jalankan `php artisan schedule:work` di terminal Anda. Ini memeriksa pembayaran, aktivasi 24 jam setelah siap, downgrade terjadwal, dan grace. Tombol cek pembayaran juga memeriksa invoice tanpa menunggu cron.
-- Pembayaran pertama menunggu konfirmasi aktivasi. Web siap ketika slug tersedia; Bot/Full perlu heartbeat CONNECTED worker per toko. Owner/staff berizin sekarang dapat menghubungkan worker lewat menu Koneksi WhatsApp menggunakan QR atau kode pairing; panduan manager di bawah.
+- Pembayaran pertama menunggu konfirmasi aktivasi. Semua toko memerlukan slug dan heartbeat CONNECTED worker per toko. Owner/staff berizin sekarang dapat menghubungkan worker lewat menu Koneksi WhatsApp menggunakan QR atau kode pairing; panduan manager di bawah.
 - Upgrade penuh berlaku saat lunas; kanal bot yang baru ditambahkan tetap membutuhkan worker tersambung untuk beroperasi. Downgrade (mengurangi kanal/sumber) berlaku setelah periode existing selesai. Trial baru dinonaktifkan; promo memakai voucher, termasuk diskon 100% tanpa gateway. Trial lama yang sudah aktif tetap berakhir sesuai jadwal tanpa grace.
 - Invoice ambigu masuk REVIEW dan tidak mengaktifkan toko. Pembayaran setelah invoice sudah EXPIRED tidak otomatis diterapkan; perlu pemeriksaan/refund operator. Jangan memalsukan status lunas dari browser. Rekonsiliasi gateway tidak membuat transaksi produk atau mengubah saldo pelanggan.
 - Nominal unik sewa +1 sampai +999 dialokasikan bersama gateway existing dengan named lock. Nominal historis tidak didaur ulang untuk mencegah mutasi lama membayar invoice baru; jika seluruh rentang telah digunakan, pembuatan invoice ditolak dan perlu penanganan operator.
@@ -248,7 +248,7 @@ Integrasi memanggil endpoint publik, tanpa menyalin implementasi worker pihak ke
 - Restart bot manager dan worker existing setelah build; jangan menjalankan instance kedua. Restart queue worker agar layanan notifikasi/fulfillment terbaru dimuat. File sesi tetap dipertahankan.
 - Mode Pengujian diatur di toko; selesaikan/batalkan order berjalan dan tunggu inquiry kedaluwarsa sebelum beralih. Digiflazz menggunakan development key/testing; sumber Hanshop dan stok premium disimulasikan. Simulasi bayar lokal ada pada halaman status pesanan yang eligible; Midtrans Sandbox bukan pembayaran uang nyata.
 - URL payload Digiflazz yang berlaku: `{APP_URL}/api/commerce/digiflazz`, satu URL platform; secret per koneksi dan referensi attempt diverifikasi. Midtrans `/api/commerce/midtrans/{store}` dan Forwarder `/api/commerce/forward/{store}` per toko. Gunakan URL yang ditampilkan panel. Tunnel ngrok harus diterima sebagai host platform (APP_URL/domain/alias yang sesuai), bukan hanya mengganti payload URL di Digiflazz. Restart/clear config ketika konfigurasi URL berubah.
-- Semua paket termasuk Web dapat pairing WA untuk notifikasi/OTP. Paket Web tetap tidak menjalankan transaksi chat. Menu Notifikasi & email memilih MAIL_* bawaan atau SMTP tenant; gunakan sender sah dan uji pengiriman secara terkontrol. Jalur OTP lokal tidak memerlukan callback HTTP sinkron worker → Laravel saat request kirim OTP sedang ditahan.
+- Semua toko memakai satu paket web dan bot: pairing WA untuk OTP/notifikasi sekaligus command transaksi. Menu Notifikasi & email memilih MAIL_* bawaan atau SMTP tenant; gunakan sender sah dan uji pengiriman secara terkontrol.
 - Status/SN callback Digiflazz dapat mengoreksi hasil terminal/manual DigitalToko. Reclaim refund dapat membuat wallet customer minus; pesanan baru diblokir sampai saldo pulih. Penerapan API Hanshop memiliki aturan/marker tersendiri, lihat dokumentasi source API tersebut. Jangan menyamakan dua database atau menjalankan SQL API pada DB Laravel.
 - API Hanshop memiliki migration manual `20261020_manual_result_supplier_callback.sql` dan `20261020_negative_balance_support.sql` untuk perubahan callback/ledger/saldo sumber API sendiri. Periksa prasyarat M9/M12, backup dan nama schema sesuai instruksi file sebelum deploy source terkait; pembaruan dokumentasi ini tidak menjalankannya.
 - Retensi toko: source tersedia dan penghapusan bawaan nonaktif. Purge memerlukan ACK bot manager, disk lokal yang dapat dibersihkan, serta kewajiban nol. DNS/TLS eksternal dan backup/log bersama bukan target cleanup otomatis.
@@ -517,3 +517,11 @@ Preset Sudah pernah (status dari pesan) tersedia di Tambah penangkap. Sesuaikan 
 
 ### Pemisahan unduhan dan panduan penangkap QRIS — 2 November 2026
 `deploy/package-forwarder.py --split-dir` memublikasikan empat file terpisah dari hasil paket yang tervalidasi. Arsip gabungan hanya bahan kerja internal, tidak ditautkan dari UI. SDK, executable mode launcher, serta APK rilis dipertahankan; APK dokumentasi tidak didistribusikan. Tutorial pembayaran-custom kini memuat pengaturan profil, format/placeholder, pengecualian, uji draf dan Simpan penangkap dengan screenshot UI simulasi. Uji browser membuktikan format contoh menghasilkan Rp10.123 tanpa pembayaran nyata. Tidak ada migrasi atau dependency baru.
+
+## Pembaruan satu paket dan claim voucher — 3 November 2026
+
+Backup tabel stores, plan_options, subscription_invoices, discount_vouchers dan voucher_redemptions sebelum `php artisan migrate --force`. Migrasi `2026_11_02_141827_unify_web_and_whatsapp_subscription_package` memperluas entitlement dan menonaktifkan penawaran kanal tunggal; tanggal/invoice lama tidak diubah. `2026_11_02_173649_add_once_per_user_to_vouchers` menambahkan opsi dan identitas claim, menautkan riwayat yang masih tersedia. Riwayat yang sudah dihapus sebelum migrasi tidak dapat diidentifikasi dari counter agregat. Tidak ada SQL API Hanshop atau perubahan database aplikasi Android untuk tahap ini.
+
+Jalankan `php artisan db:seed --class=PackagePlanSeeder --force` bila diperlukan; seeder mempertahankan harga/durasi/status full existing, bukan mengaktifkan harga dummy. Install baru menyiapkan penawaran nonaktif. Build web, restart queue dan muat ulang scheduler/web/bot manager long-lived melalui konfigurasi proses yang sudah dipakai; jangan membuat instance ganda. Kebijakan paket tidak memiliki rollback otomatis: pemulihan membutuhkan backup.
+
+Backup lokal tahap ini tersimpan pada disk private: `backups/unified-package-20261102-144319.json` dan `backups/voucher-claims-20261102-174436.json`. Migrasi lokal sudah diterapkan, belum merupakan bukti deployment VPS. Arsip promosi ada di docs/marketing/DigitalToko-Promo-60-Detik.zip.

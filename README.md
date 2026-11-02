@@ -1,8 +1,8 @@
 # DigitalToko — workspace Hansbot
 
-Dokumentasi disinkronkan dengan source lokal pada **2 November 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
+Dokumentasi disinkronkan dengan source lokal pada **3 November 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
 
-DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk digital, bot WhatsApp, atau keduanya. Satu owner dapat memiliki banyak toko; setiap toko memiliki langganan, katalog, stok, pelanggan, wallet, pesanan, konfigurasi, dan sesi WhatsApp sendiri.
+DigitalToko adalah platform SaaS multi-store dengan satu paket Web Topup + Bot WhatsApp. Pilihan sewa dibedakan berdasarkan durasi. Satu owner dapat memiliki banyak toko; langganan, katalog, stok, pelanggan, saldo, pesanan, konfigurasi dan sesi WhatsApp dipisahkan per toko.
 
 ## Peta proyek
 
@@ -21,12 +21,12 @@ DigitalToko adalah platform SaaS multi-store untuk menyewakan web toko produk di
 ## Implementasi yang tersedia
 
 - Onboarding owner lewat bridge identitas Hanshop, profil/email, KTP manual, toko draft, serta maksimal lima staff lokal per toko.
-- Tiga platform (Web Topup, Bot WhatsApp, Web + Bot WhatsApp), seluruh sumber produk termasuk Digiflazz/Hanshop/OtomaX/stok premium, harga/durasi admin, invoice sewa, aktivasi pertama, renewal, perubahan paket dan masa tenggang per toko. **Trial baru dihapus**; voucher platform mendukung diskon 100% tanpa gateway.
+- Satu paket Web Topup + Bot WhatsApp, variasi hanya durasi. Semua toko mendapat Digiflazz, API Hanshop, OtomaX dan stok premium. Harga/durasi berasal dari admin. Penawaran bot/web lama dinonaktifkan untuk pembelian baru; invoice historis dan masa aktif dipertahankan. Trial baru tidak tersedia; voucher platform mendukung diskon 100%.
 - Admin mengelola toko, paket, verifikasi, pembayaran, voucher dan harga modul. Penangguhan admin dan koreksi paket/masa aktif memiliki audit.
 - Sumber Digiflazz/Hanshop serta multi-supplier OtomaX melalui IP Center dan sinkronisasi URL Webreport, cache akun bersama Redis, layanan → kategori → produk, impor semua/per layanan/per kategori/pilihan, parsing, markup dan stok premium privat.
 - Checkout web dan bot, inquiry pascabayar Digiflazz dan pasangan cek/bayar OtomaX, failover pascabayar setelah gagal pasti dengan cek ulang tagihan cadangan, akun pelanggan, wallet/topup/refund, guest checkout, Midtrans merchant toko dan QRIS custom berlisensi.
 - Webhook Digiflazz dan rekonsiliasi status/SN, keputusan manual yang dibatasi transaksi Digiflazz eligible, koreksi refund, serta blok pembelian bagi pelanggan bersaldo minus.
-- WhatsApp toko untuk OTP/notifikasi termasuk paket Web. Perintah transaksi chat tetap memerlukan paket Bot/Full. Email memakai pengirim platform atau SMTP toko.
+- WhatsApp toko untuk OTP, notifikasi dan transaksi chat termasuk satu paket sewa. Email memakai pengirim platform atau SMTP toko.
 - Aurora, Nebula dan Atlas memiliki susunan mobile khusus, navigasi ringkas, pencarian dropdown dengan infinite scroll, quick order Aurora dengan dropdown scroll/loading 500 ms, dan 24 preset warna (terang/gelap/pastel). Ketiganya memakai katalog/checkout bersama: desain warna/section/banner, flash sale, trending, artikel, leaderboard, cek pesanan, profil dan pengecekan akun game sesuai konfigurasi.
 - Mode pengujian per toko: Digiflazz development, pembayaran simulasi atau Midtrans Sandbox, wallet/kuota uji terpisah; sumber Hanshop dan stok premium disimulasikan.
 - UI panel responsif, tema terang/gelap, sidebar collapsed, modal aksi, tabel berfilter/pagination, notifikasi lonceng dengan infinite scroll dan toast.

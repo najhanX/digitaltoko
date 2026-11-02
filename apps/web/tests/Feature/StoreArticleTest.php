@@ -132,9 +132,9 @@ class StoreArticleTest extends TestCase
         $this->assertDatabaseHas('store_articles', ['title' => 'Tulisan staff', 'author_name' => 'Editor']);
         $this->get($this->url($other))->assertForbidden();
         $store->update(['category' => 'bot']);
-        $this->get($this->url($store))->assertForbidden();
-        $this->post($this->url($store), $this->data())->assertForbidden();
-        $this->get($this->publicUrl($store))->assertNotFound();
+        $this->get($this->url($store))->assertOk();
+        $this->post($this->url($store), $this->data())->assertRedirect()->assertSessionHasNoErrors();
+        $this->get($this->publicUrl($store))->assertOk();
     }
 
     public function test_rich_text_roundtrip_preserves_formatting_and_rejects_executable_urls_unsupported_nodes_and_styles(): void

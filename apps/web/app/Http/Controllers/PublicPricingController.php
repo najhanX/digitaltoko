@@ -17,7 +17,7 @@ class PublicPricingController extends Controller
     {
         return Inertia::render('Platform/Pricing', [
             'domain' => app(PlatformHost::class)->domain(),
-            'offers' => PlanOption::where('active', true)->where('plan', 'galaxy')
+            'offers' => PlanOption::where('active', true)->where('plan', 'galaxy')->where('category', 'full')
                 ->whereIn('category', PackageCatalog::keys())->orderBy('duration_days')->orderBy('price')->orderBy('id')
                 ->get(['id', 'name', 'category', 'price', 'duration_days']),
         ])->toResponse($request)->header('Cache-Control', 'no-store');

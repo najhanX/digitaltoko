@@ -2,8 +2,7 @@ Create ONE promotional video clip, vertical 9:16, 6 seconds, for the Indonesian 
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
-SCENE 07: Operasional lebih mudah
-DURATION: 6 seconds, final timeline 46–52 seconds.
+SCENE 07 — Operasional lebih mudah
 MOTION: A smooth lateral camera move reveals the four feature cards one at a time, then they align neatly around the dashboard. Highlight transaction status and a voucher ticket, no rapid blinking.
-EXACT INDONESIAN VOICE-OVER: "Pantau transaksi, kelola saldo pelanggan, buat voucher, dan bagi tugas bersama staff dalam satu panel."
-END: End with a stable readable frame suitable for a soft match cut.
+EXACT INDONESIAN VOICE-OVER: Pantau transaksi, kelola saldo pelanggan, buat voucher, dan bagi tugas bersama staff dalam satu panel.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.

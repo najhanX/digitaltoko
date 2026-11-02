@@ -29,9 +29,9 @@ class CommerceModules
 
                 return $open;
             }
-            $voucher = app(Vouchers::class)->quote(null, $voucherCode, $this->price(), module: true, lock: true);
+            $voucher = app(Vouchers::class)->quote(null, $voucherCode, $this->price(), module: true, lock: true, owner: $store->owner);
             $invoice = ModulePurchase::create(['status' => 'pending', 'store_id' => $store->id, 'amount' => $voucher['total'] ?? $this->price(), 'snapshot' => $voucher ? ['subtotal' => $this->price(), 'voucher' => $voucher] : null]);
-            app(Vouchers::class)->redeem($voucher, 'module', $invoice->id);
+            app(Vouchers::class)->redeem($voucher, 'module', $invoice->id, owner: $store->owner);
 
             return $invoice;
         });

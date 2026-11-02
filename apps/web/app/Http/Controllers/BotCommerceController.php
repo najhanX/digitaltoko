@@ -29,7 +29,7 @@ class BotCommerceController extends Controller
     public function handle(Request $request, CustomerAccess $access, CustomerCommerce $commerce): JsonResponse
     {
         $store = $access->worker($request);
-        abort_unless(in_array($store->category, ['bot', 'full'], true) && $store->acceptsOrders(), 403);
+        abort_unless($store->supportsBot() && $store->acceptsOrders(), 403);
         $data = $request->validate(['phone' => 'required|string|max:30', 'action' => 'required|in:quote,inquiry,buy,topup,balance,status', 'code' => 'required_if:action,quote|nullable|string|max:50',
             'product_id' => 'required_if:action,buy,inquiry|nullable|uuid', 'destination' => 'required_if:action,buy,inquiry|nullable|string|max:255', 'amount' => 'required_if:action,topup|nullable|integer|min:5000|max:100000000',
             'destination_id' => 'nullable|string|max:100', 'destination_server' => 'nullable|string|max:64',
@@ -85,7 +85,7 @@ class BotCommerceController extends Controller
                     abort_unless($inquiry->status === 'ready' && (bool) ($inquiry->data['sandbox'] ?? false) === $store->sandbox, 422);
                     $amount = $inquiry->amount;
                 }
-                $result['voucher'] = app(Vouchers::class)->quote($store, $data['voucher_code'], $amount, $product);
+                $result['voucher'] = app(Vouchers::class)->quote($store, $data['voucher_code'], $amount, $product, customer: $customer);
             }
         } else {
             if ($data['action'] === 'buy') {
@@ -120,7 +120,7 @@ class BotCommerceController extends Controller
             }
 
             return ['id' => $notice->id, 'phone' => $notice->phone, 'message' => $message, 'order_id' => $order?->id, 'revision' => $notice->id, 'order_status' => $order?->status, 'payment_status' => $order?->payment_status,
-                'commerce_enabled' => in_array($store->category, ['bot', 'full'], true) && $store->acceptsOrders() && in_array($order?->status, ['success', 'failed', 'expired'], true) && (bool) preg_match('/^order:[a-f0-9-]{36}:(?:success|failed|expired)(?:$|:)/i', $notice->event),
+                'commerce_enabled' => $store->supportsBot() && $store->acceptsOrders() && in_array($order?->status, ['success', 'failed', 'expired'], true) && (bool) preg_match('/^order:[a-f0-9-]{36}:(?:success|failed|expired)(?:$|:)/i', $notice->event),
                 'superseded' => $order && CustomerNotice::where('order_id', $order->id)->latest()->orderByDesc('id')->value('id') !== $notice->id];
         });
 

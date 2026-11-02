@@ -499,7 +499,7 @@ class StoreCatalogTest extends TestCase
         $response = $this->withToken($token)->getJson('/api/internal/bot/products?page=2')->assertOk()->assertJsonCount(3, 'data.items')->assertJsonPath('data.pagination.total', 13)->assertJsonMissingPath('data.items.0.cost')->assertDontSee('Produk Rahasia Lain');
         $this->getJson('/api/internal/bot/products?q='.$product->code)->assertJsonPath('data.items.0.code', $product->code)->assertJsonPath('data.items.0.price', 15000);
         $store->update(['category' => 'web']);
-        $this->getJson('/api/internal/bot/products')->assertForbidden();
+        $this->getJson('/api/internal/bot/products')->assertOk();
     }
 
     public function test_hanshop_uses_linked_owner_and_staff_never_receives_global_balance(): void

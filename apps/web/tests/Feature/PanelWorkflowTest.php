@@ -65,7 +65,7 @@ class PanelWorkflowTest extends TestCase
     public function test_create_store_redirects_to_package_selection_without_starting_rent(): void
     {
         $this->actingAs($this->owner())->post('/owner/stores', ['name' => 'Toko Baru', 'slug' => 'toko-baru',
-            'category' => 'bot', 'plan' => 'orbit', 'template' => 'aurora'])->assertSessionHasNoErrors()
+            'category' => 'full', 'plan' => 'galaxy', 'template' => 'aurora'])->assertSessionHasNoErrors()
             ->assertRedirect('/stores/'.Store::firstOrFail()->id.'/subscription');
         $store = Store::firstOrFail();
         $this->assertSame('draft', $store->status);
@@ -93,7 +93,7 @@ class PanelWorkflowTest extends TestCase
         $owner->forceFill(['phone_verified_at' => null])->save();
         $this->actingAs($owner)->get('/owner')->assertInertia(fn (Assert $page) => $page->where('workspace.canCreate', false));
         $this->get('/owner/stores/create')->assertForbidden();
-        $this->post('/owner/stores', ['name' => 'Toko Baru', 'slug' => 'toko-baru', 'category' => 'bot', 'plan' => 'orbit', 'template' => 'aurora'])->assertForbidden();
+        $this->post('/owner/stores', ['name' => 'Toko Baru', 'slug' => 'toko-baru', 'category' => 'full', 'plan' => 'galaxy', 'template' => 'aurora'])->assertForbidden();
         $this->assertDatabaseCount('stores', 0);
     }
 
@@ -155,11 +155,11 @@ class PanelWorkflowTest extends TestCase
         $owner = $this->owner();
         $store = $this->store($owner);
         $store->update(['status' => 'active', 'category' => 'full', 'plan' => 'galaxy', 'starts_at' => now()->subDay(), 'expires_at' => now()->addDays(20)]);
-        PlanOption::create(['name' => 'Bot', 'category' => 'bot', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
-        PlanOption::create(['name' => 'Galaxy', 'category' => 'web', 'plan' => 'galaxy', 'price' => 100000, 'duration_days' => 30, 'active' => true]);
+        PlanOption::create(['name' => 'Bulanan', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        PlanOption::create(['name' => 'Panjang', 'category' => 'full', 'plan' => 'galaxy', 'price' => 100000, 'duration_days' => 30, 'active' => true]);
         PlanOption::create(['name' => 'Nonaktif', 'category' => 'web', 'plan' => 'space', 'price' => 10000, 'duration_days' => 30, 'active' => false]);
         $this->actingAs($owner)->get('/stores/'.$store->id.'/subscription')->assertInertia(fn (Assert $page) => $page
-            ->has('plans', 2)->where('plans.0.purpose', 'downgrade')->where('plans.1.purpose', 'downgrade'));
+            ->has('plans', 2)->where('plans.0.purpose', 'renew')->where('plans.1.purpose', 'renew'));
         $store->update(['is_trial' => true]);
         $staff = $this->staff($store, ['subscription.view', 'subscription.renew']);
         $this->app['auth']->guard('web')->logout();
@@ -181,7 +181,7 @@ class PanelWorkflowTest extends TestCase
         $service = app(SubscriptionService::class);
         $owner->forceFill(['trial_store_id' => $store->id])->save();
         $store->update(['status' => 'provisioning', 'is_trial' => true, 'trial_requested_at' => now()]);
-        $plan = PlanOption::create(['name' => 'Galaxy Bot', 'category' => 'bot', 'plan' => 'galaxy', 'price' => 100000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Lengkap', 'category' => 'full', 'plan' => 'galaxy', 'price' => 100000, 'duration_days' => 30, 'active' => true]);
         $service->checkout($store, $plan);
         $this->assertFalse($store->fresh()->is_trial);
         $this->assertNull($store->fresh()->trial_requested_at);

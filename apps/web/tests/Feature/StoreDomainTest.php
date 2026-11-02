@@ -90,7 +90,7 @@ class StoreDomainTest extends TestCase
     {
         $store = $this->store();
         $store->update(['category' => 'bot']);
-        $this->post($this->base($store), ['hostname' => 'shop.customer.com'])->assertForbidden();
+        $this->post($this->base($store), ['hostname' => 'shop.customer.com'])->assertRedirect()->assertSessionHasNoErrors();
         $store->update(['category' => 'web']);
         $store->owner->forceFill(['verification_status' => 'pending'])->save();
         $this->actingAs($store->owner)->post($this->base($store), ['hostname' => 'shop.customer.com'])->assertForbidden();
@@ -224,7 +224,7 @@ class StoreDomainTest extends TestCase
         $this->get($ask.'unregistered.digitaltoko.com')->assertForbidden();
         $this->get($ask.'admin.digitaltoko.com')->assertForbidden();
         $store->update(['category' => 'bot']);
-        $this->get($ask.$store->slug.'.digitaltoko.com')->assertForbidden();
+        $this->get($ask.$store->slug.'.digitaltoko.com')->assertOk();
         config(['domains.tls_ask_key' => '']);
         $this->get($ask.'digitaltoko.com')->assertForbidden();
     }

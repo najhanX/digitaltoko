@@ -175,7 +175,7 @@ class StoreRetentionTest extends TestCase
         app(StoreRetention::class)->review($store);
         CustomerNotice::first()->update(['wa_sent_at' => now()]);
         CustomerNotice::create(['event' => 'retention:'.$store->id.':'.$store->expires_at->timestamp.':day21:unsent', 'store_id' => $store->id, 'phone' => $customer->phone, 'message' => 'Old warning']);
-        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000]);
         $invoice = app(SubscriptionService::class)->checkout($store, $plan, $voucher->code, (string) Str::uuid());
         $this->assertSame('applied', $invoice->status);
@@ -227,7 +227,7 @@ class StoreRetentionTest extends TestCase
         }
         $this->assertModelExists($customer);
         Storage::disk('local')->assertExists('storefront/'.$store->id.'/test.png');
-        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'web', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+        $plan = PlanOption::create(['name' => 'Renewal', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
         try {
             app(SubscriptionService::class)->checkout($store->fresh(), $plan);
             $this->fail('Purge must prevent renewal');
@@ -367,5 +367,18 @@ class StoreRetentionTest extends TestCase
         app(CustomerDelivery::class)->send(CustomerNotice::first());
         Mail::assertSent(StoreMessageMail::class, 1);
         Http::assertNothingSent();
+    }
+
+    public function test_platform_voucher_owner_claim_survives_store_deletion(): void
+    {
+        config(['platform.store_purge_enabled' => true]);
+        $store = $this->store();
+        $voucher = DiscountVoucher::factory()->create(['once_per_user' => true]);
+        $invoice = SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $store->owner_id, 'status' => 'applied', 'purpose' => 'initial', 'snapshot' => []]);
+        app(Vouchers::class)->redeem(['id' => $voucher->id, 'discount' => 1000], 'subscription', $invoice->id, owner: $store->owner);
+        $this->assertTrue(app(StoreRetention::class)->purge($store));
+        $this->assertSame(1, app(Vouchers::class)->used($voucher, false, false, 'owner', (string) $store->owner_id));
+        $this->assertSame(1, app(Vouchers::class)->used($voucher));
+        $this->assertDatabaseMissing('subscription_invoices', ['id' => $invoice->id]);
     }
 }

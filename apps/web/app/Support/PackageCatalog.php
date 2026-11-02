@@ -18,7 +18,9 @@ class PackageCatalog
 
     public static function name(string $category, string $plan): string
     {
-        return collect(self::all())->first(fn ($item) => $item['category'] === $category)['name'] ?? 'Paket toko';
+        return collect(self::all())->first(fn ($item) => $item['category'] === $category)['name'] ?? match ($category) {
+            'bot' => 'Bot WhatsApp (paket lama)', 'web' => 'Web Topup (paket lama)', default => 'Paket toko'
+        };
     }
 
     public static function offerName(string $category, string $plan, int $days): string

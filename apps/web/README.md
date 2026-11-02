@@ -1,6 +1,6 @@
 # DigitalToko web
 
-Status source lokal: **2 November 2026**. Laravel 13 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff, landing dan storefront dijalankan satu Laravel. Worker WhatsApp berada di `../bot`.
+Status source lokal: **3 November 2026**. Laravel 13 + Inertia 3 + React 19/TypeScript/Vite. Panel admin/owner/staff, landing dan storefront dijalankan satu Laravel. Worker WhatsApp berada di `../bot`.
 
 ## Menjalankan lokal
 
@@ -53,7 +53,7 @@ Toko demo: demo-aurora, demo-nebula, demo-atlas, demo-grace, demo-expired, **dem
 - Penjualan: pesanan, detail/hasil, keputusan manual Digiflazz eligible, callback koreksi status/SN, pelanggan/wallet/ledger, pencairan manual saat berhenti, gateway dan voucher.
 - Pembayaran: wallet, Midtrans merchant toko, QRIS custom berlisensi per toko; inquiry pasca Digiflazz dan pasangan SKU cek/bayar OtomaX, guest checkout, pembatalan invoice belum dibayar, topup/refund dan snapshot fee/kode unik.
 - Sandbox toko: development key Digiflazz, saldo uji, sumber Hanshop/stok simulasi, bayar simulasi lokal atau Midtrans Sandbox. Perubahan mode ditolak bila masih ada pesanan/inquiry berjalan.
-- Kanal: WA toko untuk OTP/notifikasi termasuk paket Web, email platform atau SMTP toko, branding pesan per toko. Transaksi chat hanya paket Bot/Full.
+- WhatsApp toko untuk OTP, notifikasi dan transaksi chat termasuk satu paket sewa. Email memakai pengirim platform atau SMTP toko.
 - Storefront: Aurora/Nebula/Atlas dengan susunan mobile khusus dan menu ringkas, pencarian dropdown infinite scroll, 24 preset tema (delapan terang/gelap/pastel), kategori/checkout, quick order Aurora ringkas dengan dropdown scroll dan loading minimal 500 ms, nickname/tujuan kategori, banner/warna/logo/favicon/section, flash sale, trending, iklan, CS, leaderboard, kalkulator, artikel dan akun pelanggan.
 - Artikel: Tiptap lazy-loaded, JSON tervalidasi, draf/terbit, revisi konflik, media privat sesuai akses, tags/share/related. Warna isi publik mengikuti tema; editor memiliki latar putih.
 - UI: sidebar compact/collapsed, terang/gelap/sistem, modal aksi, pencarian dan pagination tabel utama atas/bawah. Picker popup memakai dropdown overlay dan pemuatan lanjutan saat scroll. Staff maksimal lima tanpa filter/pagination. Notifikasi lonceng memakai infinite scroll; aksi menghasilkan toast.

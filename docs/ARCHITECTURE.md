@@ -1,6 +1,6 @@
 # Arsitektur DigitalToko
 
-Status source lokal: **2 November 2026**. Dokumen ini menggantikan rancangan awal yang masih menyebut skeleton, trial baru, dan checkout sebagai pekerjaan berikutnya. Catatan pengujian/deployment tidak disimpulkan dari keberadaan kode.
+Status source lokal: **3 November 2026**. Dokumen ini menggantikan rancangan awal yang masih menyebut skeleton, trial baru, dan checkout sebagai pekerjaan berikutnya. Catatan pengujian/deployment tidak disimpulkan dari keberadaan kode.
 
 ## Runtime dan batas aplikasi
 
@@ -31,13 +31,11 @@ API Hanshop adalah backend Node/Express + MySQL/Redis di proyek terpisah. Bot `b
 
 | Paket | Kanal transaksi | Sumber produk |
 | --- | --- | --- |
-| Bot WhatsApp | Bot | Digiflazz, API Hanshop, OtomaX, stok premium |
-| Web Topup | Web | Digiflazz, API Hanshop, OtomaX, stok premium |
-| Web + Bot WhatsApp | Bot + Web | Digiflazz, API Hanshop, OtomaX, stok premium |
+| Web Topup + Bot WhatsApp | Web + Bot | Digiflazz, API Hanshop, OtomaX, stok premium |
 
-Sejak 23 Oktober 2026 paket dibedakan hanya oleh platform, harga, dan durasi. Definisi bersama ada di `apps/web/resources/js/packageCatalog.json`. Kolom internal `plan=galaxy` dipertahankan untuk kompatibilitas; nilai lama `space/orbit` bukan pembatas sumber lagi. Backend tetap memeriksa kanal, masa aktif, dan permission per toko. Penawaran terlengkap lama dipakai kembali beserta ID, harga, durasi, dan statusnya; penawaran sumber terbatas dinonaktifkan. Migrasi tidak mengubah tanggal masa aktif, status invoice, atau snapshot invoice historis.
+Sejak 3 November 2026 satu paket mencakup Web Topup + Bot WhatsApp, dengan variasi durasi saja. Definisi bersama: `apps/web/resources/js/packageCatalog.json`. Kunci internal `category=full`, `plan=galaxy` dipertahankan. Harga/durasi penawaran lengkap tetap dipakai; penawaran kanal tunggal dinonaktifkan. Entitlement semua toko diperluas tanpa mengubah masa aktif atau snapshot invoice lama. Pembelian berikutnya menjadi perpanjangan; jadwal lama tetap dihormati dengan entitlement lengkap.
 
-Semua kanal dapat menghubungkan satu nomor WhatsApp toko untuk OTP/notifikasi. Paket Web tidak boleh menggunakan command katalog/saldo/pemesanan chat. Trial baru tidak tersedia; promo memakai voucher platform, termasuk 100%. Penanda trial lama dipertahankan untuk kompatibilitas.
+Setiap toko dapat memakai web dan satu bot WhatsApp untuk OTP/notifikasi/katalog/saldo/pemesanan. Trial baru tidak tersedia; promo memakai voucher platform termasuk 100%. Aktivasi pertama mensyaratkan WA terhubung dan subdomain bawaan siap; domain pribadi tetap opsional.
 
 ## Data multi-store
 
@@ -49,7 +47,7 @@ Produk, stok, ledger, order, invoice, media, credential, notifikasi dan job haru
 
 Owner OTP → profil dan verifikasi email → review KTP approved → toko draft → pilih paket/durasi/voucher → invoice → provisioning → siap → aktivasi owner atau otomatis setelah 24 jam siap.
 
-Invoice berbayar diterbitkan/diperiksa melalui bridge billing Hanshop dan tidak mengkredit saldo Hanshop. Invoice voucher Rp0 dilunasi lokal tanpa gateway. Pembelian pertama tetap menunggu aktivasi. Web siap berdasarkan slug; Bot/Full juga memerlukan WA CONNECTED. Ini tidak membuktikan DNS/TLS custom domain sudah siap.
+Invoice berbayar diterbitkan/diperiksa melalui bridge billing Hanshop dan tidak mengkredit saldo Hanshop. Invoice voucher Rp0 dilunasi lokal tanpa gateway. Pembelian pertama tetap menunggu aktivasi. Semua toko memerlukan slug dan WA CONNECTED. Ini tidak membuktikan DNS/TLS custom domain sudah siap.
 
 Renew aktif menambah dari expiry, renew setelah habis dari paid_at. Upgrade/perubahan efektif memakai harga penuh paket tujuan dan masa aktif baru. Pengurangan fitur yang masih aktif dijadwalkan pada akhir periode. Grace tujuh hari masih menerima pesanan; penangguhan admin terpisah dan tidak hilang karena pembayaran. Lifecycle sebenarnya berada di `SubscriptionService` dan `Store::acceptsOrders()`.
 
@@ -77,7 +75,7 @@ OTP owner/platform tetap lewat jalur identitas platform. OTP customer memakai WA
 
 `routes/console.php` menjadwalkan invoice/langganan dan commerce tiap menit, sinkron Digiflazz/Hanshop tiap dua menit dan antrean URL OtomaX tiap menit, outbox notice tiap lima detik, purge KTP ditolak tiap menit, pembersihan upload artikel harian, serta evaluasi retensi toko setiap jam. Retensi hanya menghapus jika `STORE_PURGE_ENABLED=true`; mode bawaan hanya memeriksa/mengirim pengingat. Queue worker menjalankan job setelah pembayaran/commit.
 
-`StoreObligations` memeriksa saldo positif/minus, pesanan, refund/guest, inquiry, invoice sewa dan modul. `StoreRetention` menghitung expiry+7/+30, menahan purge, menghapus notice expiry lama ketika diperpanjang, serta menjalankan purge dua fase dengan lock owner/toko. Claim `purging` memblokir renewal dan callback/mutasi; kegagalan cleanup disimpan sebagai error untuk retry. Data relasional toko, media lokal, job database/failed job terkait, cache bot/OTP dan registry/sesi WA dibersihkan; owner dan API Hanshop tidak dihapus. Kuota voucher platform dipertahankan sebagai counter agregat tanpa redemption tenant. DNS/TLS provider, penghapusan DNS/certificate eksternal, dan operasi worker multi-host belum sepenuhnya diotomatisasi. Refund sewa awal setelah persetujuan admin tersedia melalui Provisioning; bukan refund otomatis untuk semua pembatalan. Mapping custom host verified sudah ada; workflow Cloudflare for SaaS masih rancangan. Detail konfigurasi dan batasnya di DEPLOYMENT.md/DOMAINS.md.
+`StoreObligations` memeriksa saldo positif/minus, pesanan, refund/guest, inquiry, invoice sewa dan modul. `StoreRetention` menghitung expiry+7/+30, menahan purge, menghapus notice expiry lama ketika diperpanjang, serta menjalankan purge dua fase dengan lock owner/toko. Claim `purging` memblokir renewal dan callback/mutasi; kegagalan cleanup disimpan sebagai error untuk retry. Data relasional toko, media lokal, job database/failed job terkait, cache bot/OTP dan registry/sesi WA dibersihkan; owner dan API Hanshop tidak dihapus. Kuota voucher platform anonim diarsipkan. Claim owner yang diketahui tetap disimpan tanpa isi transaksi/kontak agar batas sekali per owner bertahan setelah toko dihapus. DNS/TLS provider, penghapusan DNS/certificate eksternal, dan operasi worker multi-host belum sepenuhnya diotomatisasi. Refund sewa awal setelah persetujuan admin tersedia melalui Provisioning; bukan refund otomatis untuk semua pembatalan. Mapping custom host verified sudah ada; workflow Cloudflare for SaaS masih rancangan. Detail konfigurasi dan batasnya di DEPLOYMENT.md/DOMAINS.md.
 
 Rincian batas backup, antrean khusus, kanal reminder, dan hasil validasi retensi: [RETENTION_PROGRESS.md](RETENTION_PROGRESS.md).
 

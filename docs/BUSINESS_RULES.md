@@ -1,6 +1,6 @@
 # Aturan bisnis DigitalToko
 
-Status: kebijakan pengguna, disinkronkan dengan source lokal pada **2 November 2026**. Retensi/purge dan refund sewa awal setelah approval admin sudah memiliki implementasi; aktivasi purge otomatis dan kesiapan provider/DNS/TLS nyata tetap harus diverifikasi terpisah. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
+Status: kebijakan pengguna, disinkronkan dengan source lokal pada **3 November 2026**. Retensi/purge dan refund sewa awal setelah approval admin sudah memiliki implementasi; aktivasi purge otomatis dan kesiapan provider/DNS/TLS nyata tetap harus diverifikasi terpisah. Lihat ARCHITECTURE.md untuk peta implementasi; catatan di bawah membedakan alur yang tersedia dari target lanjutan.
 
 ## Identitas dan akun Hanshop
 
@@ -48,16 +48,16 @@ Payment adapter menerima status valid server-side, tidak percaya redirect/browse
 ## Pembayaran sewa dan aktivasi
 
 - Pembayaran paket DigitalToko memakai gateway custom owner platform yang sudah ada di API Hanshop dan HansDev Forwarder dari project `android-listener`.
-- Setelah bayar, provisioning otomatis/idempotent; durasi pertama belum mulai. Kriteria siap: data wajib lengkap, kategori bot wajib koneksi WA terhubung; kategori web sudah menentukan subdomain atau memasukkan custom domain. Rancangan teknis: memasukkan hostname tidak membuktikan DNS/TLS siap; subdomain bawaan diprovision sebagai jalur web siap sementara custom domain diverifikasi. Paket lengkap memenuhi kesiapan bot dan web. Setelah siap simpan ready_at, klik Aktifkan mulai durasi; tanpa klik auto-aktif setelah 24 jam. Bila kebutuhan wajib belum siap, timer belum dimulai. Aktivasi manual/otomatis hanya sekali dan memeriksa kesiapan terkini.
+- Setelah pembayaran, provisioning idempotent; durasi awal belum berjalan. Syarat aktivasi: data wajib lengkap, subdomain bawaan siap dan WA toko terhubung. Custom domain opsional dan memerlukan verifikasi DNS/TLS. Setelah siap, ready_at dicatat; konfirmasi aktivasi memulai durasi atau otomatis setelah 24 jam. Jika syarat belum terpenuhi, timer belum dimulai.
 - Pembayaran invoice sewa tidak dikonversi menjadi deposit saldo tanpa tujuan invoice yang eksplisit. SubscriptionInvoice dan bridge billing Hanshop mendukung invoice sewa terpisah; invoice voucher Rp0 diselesaikan lokal.
 - Pemenuhan verifikasi KTP merupakan syarat owner yang diminta. Pembayaran sukses, status subscription, approval KTP, dan readiness worker/domain adalah state berbeda.
 - Flow paid: login/daftar -> data diri/email -> KTP approved -> pilih paket/subdomain -> bayar -> provisioning -> siap -> manual/auto-aktif 24 jam -> durasi berjalan. Gagal provisioning diperbaiki admin terlebih dahulu; jika layanan tetap tidak dapat diberikan dan belum aktif, pembayaran sewa direfund. Kriteria/batas waktu usaha perbaikan dan metode refund teknis perlu dirinci; refund sewa tidak mengubah lisensi custom nonrefund secara otomatis.
-- Perpanjangan, upgrade/downgrade, dan pengelolaan masa tenggang dilakukan melalui panel tenant. Usulan: admin menetapkan policy durasi/biaya/eligibility; panel tenant menampilkan dan menjalankan policy tersebut, bukan memberi tenant hak memperpanjang gratis atau menentukan masa tenggang sendiri.
+- Perpanjangan dan pemilihan durasi dilakukan pada panel tenant, memakai harga dari admin. Pembelian upgrade/downgrade kanal baru tidak tersedia karena web dan bot sudah termasuk.
 - Perpanjangan saat aktif menambah durasi dari tanggal kedaluwarsa existing. Perpanjangan setelah habis dimulai dari waktu pembayaran berhasil, termasuk bila masih dalam masa tenggang. Status pembayaran sukses harus berasal dari server, bukan waktu callback diterima belakangan.
-- Upgrade membayar harga penuh paket tujuan dan masa aktif dimulai ulang dari waktu upgrade efektif; expiry lama tidak menjadi dasar penambahan. Upgrade dapat mencakup kategori Bot ke Web + Bot. Downgrade berlaku periode berikutnya. Readiness/konfirmasi untuk kanal baru masih perlu dirinci. Konfirmasi aktivasi pertama tidak mengubah aturan perpanjangan existing.
+- Invoice/jadwal perubahan kanal yang sudah ada sebelum kebijakan satu paket tetap diproses sesuai waktu dan durasi historis, tetapi hak akses menjadi web dan bot. Pembelian baru selalu memakai full/galaxy.
 - Masa tenggang tujuh hari tetap mengizinkan transaksi baru di web/bot dan integrasi Hanshop sesuai entitlement paket terakhir. Panel owner dan staff menampilkan notifikasi bahwa toko dalam masa tenggang, tanggal berakhir, dan deadline penghapusan. Aksi perpanjangan hanya tersedia bagi role yang berwenang.
 - Setelah tujuh hari web/bot diblokir, data tetap disimpan. Hari ke-30 memeriksa penghapusan: saldo pelanggan/transaksi/refund belum selesai menahan purge; jika tidak ada kewajiban dan tidak diperpanjang, seluruh data toko dihapus. Akun/saldo/riwayat owner Hanshop tetap dipertahankan.
-- SLA/batas usaha perbaikan provisioning, kesiapan upgrade kanal baru, dan backup dirinci pada desain teknis. Gagal total sebelum layanan diberikan memakai refund sewa. Batas konfirmasi 24 jam setelah siap, bukan setelah invoice dibuat/dibayar.
+- Gangguan provisioning ditangani melalui alasan kegagalan, periksa ulang/laporan owner dan persetujuan admin. Refund hanya untuk sewa awal yang belum aktif dan gangguan platform sesuai modul penanganan persiapan.
 
 ## Promo langganan melalui voucher
 
@@ -131,14 +131,14 @@ Usulan pemasangan: setiap tenant modul custom memakai perangkat/notifikasi QRIS 
 
 ## Paket, toko, staf, dan domain
 
-- Admin mengatur harga serta durasi dari panel, untuk tiga platform: Web Topup, Bot WhatsApp, dan Web + Bot WhatsApp. Semua platform termasuk Digiflazz, API Hanshop, OtomaX, dan stok premium; sumber produk tidak membedakan paket lagi.
+- Satu paket Web Topup + Bot WhatsApp, variasi hanya durasi. Semua toko mendapat Digiflazz, API Hanshop, OtomaX dan stok premium. Harga/durasi berasal dari admin. Penawaran bot/web lama dinonaktifkan untuk pembelian baru; invoice historis dan masa aktif dipertahankan. Trial baru tidak tersedia; voucher platform mendukung diskon 100%.
 - Tidak ada trial baru; promo memakai voucher admin, termasuk diskon 100%. Trial aktif lama dihormati sampai berakhir.
 - Harga/fitur/durasi disnapshot pada invoice dan subscription; pengeditan paket tidak mengubah invoice lama atau hak sewa existing secara diam-diam.
-- Setiap toko maksimal satu nomor/sesi WhatsApp termasuk paket Web untuk OTP/notifikasi. Command transaksi chat tetap hanya Bot/Full. Pergantian nomor harus melalui logout/pelepasan sesi lama, bukan dua sesi aktif.
+- Setiap toko maksimal satu nomor/sesi WhatsApp untuk OTP, notifikasi dan transaksi. Pergantian nomor melalui logout/pelepasan sesi lama.
 - Owner dapat menambah maksimal lima staff lokal toko dengan permission terkonfigurasi. Rancangan permission didelegasikan kepada pengembang dan dirinci di `docs/STAFF_PERMISSIONS.md`.
 - Slug subdomain unik ditentukan saat membuat toko draft dan nama sistem ditolak. Belum ada reservasi checkout dengan TTL; custom domain mempunyai klaim owner, verifikasi TXT/arah DNS/HTTPS, penggantian dan pelepasan di Tampilan & pengaturan. Aktivasi storefront menunggu pemeriksaan HTTPS; sertifikat memerlukan konfigurasi origin sebagaimana CUSTOM_DOMAINS.md.
 - Koneksi domain gratis, maksimal satu domain custom per toko selain satu subdomain bawaan; pembelian/perpanjangan registrar tanggung jawab tenant. Rancangan www/apex bila didukung diperlakukan alias satu domain utama, bukan dua domain bisnis. Subdomain tidak diganti melalui fitur biasa; rename berbayar mungkin fase berikut. Slug boleh dipakai lagi setelah purge; custom domain baru wajib verifikasi.
-- Toko Bot tetap menyimpan slug sebagai identitas, tetapi tidak membuka storefront tanpa hak kanal Web.
+- Semua toko menyimpan subdomain tetap dan memperoleh storefront serta satu bot WhatsApp dalam langganan yang sama.
 
 ## Produk, parsing, dan fallback
 
@@ -185,7 +185,7 @@ Stok selalu dipisahkan per toko, termasuk dua toko owner yang sama. Fitur platfo
 
 `CustomerOrderDecision` mendukung keputusan sukses/gagal manual untuk produk Digiflazz lunas yang eligible dan sudah memiliki attempt terkirim. Owner atau staff `orders.manage` harus memberi alasan; riwayat disimpan. Callback Digiflazz sah tetap dapat mengubah status/SN dari hasil manual maupun terminal otomatis. Koreksi gagal memberi refund satu kali; koreksi sukses menarik refund kembali, boleh menjadi minus. Saldo minus membatasi pembelian melalui saldo maupun gateway. Callback bukan izin mengulang dispatch pemasok.
 
-WA OTP/notifikasi customer menggunakan worker toko dan identitas nama toko, termasuk paket Web. Perintah chat tetap berlisensi Bot/Full. Email dapat memakai mail platform atau SMTP toko terenkripsi; tidak ada fallback WA pusat tersembunyi. Owner/platform tetap jalur identitas Hanshop. Pengiriman WA/outbox tidak menjamin exactly-once ketika pesan diterima sebelum ACK tersimpan.
+WA OTP/notifikasi customer menggunakan worker dan nama toko. Transaksi chat termasuk paket yang sama. Email memakai mail platform atau SMTP toko terenkripsi; tanpa fallback WA pusat. OTP owner tetap memakai identitas Hanshop. Pengiriman outbox tidak menjamin exactly-once bila pesan terkirim sebelum ACK tersimpan.
 
 Mode Pengujian memakai development key Digiflazz, testing=true, wallet/kuota terpisah dan simulasi sumber Hanshop/stok. Pembayaran simulasi lokal tersedia selain Midtrans Sandbox. Pergantian mode ditolak saat masih ada pesanan atau inquiry berjalan.
 
@@ -218,3 +218,7 @@ Konfirmasi manual penerimaan uang hanya untuk modul QRIS berlisensi, oleh owner 
 Dasar harga otomatis dipilih pada aturan kategori/layanan: kandidat termurah (`cheapest`) atau termahal (`highest`, default). Kategori mengalahkan layanan; tidak perlu mengatur dasar pada setiap produk. Markup dan auto-update tetap diwariskan secara terpisah menurut prioritasnya. Dasar harga jual tidak membalik urutan pemrosesan: parsing eligible termurah tetap dicoba lebih dahulu dan hasil pending/ambigu tidak dianggap gagal aman untuk berpindah. Memilih dasar termahal bukan jaminan semua supplier akan dicoba setelah perubahan harga atau hasil ambigu.
 
 Koneksi supplier menyatukan API Hanshop, Digiflazz, OtomaX dan pemantauan saldo/deposit; Sumber produk hanya katalog dan impor. Tidak ada perubahan hak credential karena pemindahan menu. Penangkap QRIS tidak memberi hak melunasi manual; `payments.parsers` dan `payments.confirm` terpisah. Uji format tidak menciptakan uang masuk atau menyelesaikan invoice.
+
+## Voucher sekali per akun — 3 November 2026
+
+Aktifkan di modal voucher → Batas penggunaan → Sekali per akun. Voucher toko wajib akun pelanggan terverifikasi; guest tidak dapat menggunakannya. Voucher admin dibatasi per owner, lintas toko dan pembelian sewa/perpanjangan/modul oleh owner atau staff. Pending menahan jatah; pembatalan/kedaluwarsa sebelum pembayaran melepas jatah. Pembayaran yang sudah lunas tetap dihitung walau pesanan gagal/refund. Sandbox menggunakan kuota terpisah. Perubahan aturan menjadi sekali per akun ikut menghitung riwayat penggunaan yang identitasnya masih tersedia. Rekaman owner tetap disimpan ketika toko dihapus. Tidak ada perubahan pembatasan satu voucher per pesanan dan larangan voucher topup saldo.

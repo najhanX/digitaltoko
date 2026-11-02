@@ -2,8 +2,7 @@ Create ONE promotional video clip, vertical 9:16, 8 seconds, for the Indonesian 
 AUDIO REQUIRED: clear single Indonesian female voice-over, adult warm alto, confident and friendly, neutral Bahasa Indonesia pronunciation, professional natural delivery around 140–155 words per minute, one consistent narrator across all clips, pronounce DigitalToko as 'Digital Toko'. No visible talking presenter. Speak ONLY the exact Indonesian narration supplied below, no translation, no added words, no English dubbing. Begin after about 0.25 seconds and complete before the final 0.3 seconds; use the entire clip naturally, never truncate the sentence.
 MUSIC: original upbeat modern electronic-pop instrumental, 120 BPM, D major, bright muted synth plucks, warm soft bass, clean light kick/clap, subtle uplifting arpeggio. No song imitation, no sung vocals, no lyrics. Keep music quiet under narration, duck by roughly 12 dB during speech. Add one soft UI click or airy transition whoosh only where appropriate; no loud notification pings. Avoid a fresh intro or final musical crash in intermediate clips. The final edit should use ONE continuous 60-second music bed; independently generated music may need replacing to prevent audible seams.
 
-SCENE 08: Ajakan mulai
-DURATION: 8 seconds, final timeline 52–60 seconds.
+SCENE 08 — Ajakan mulai
 MOTION: Bring laptop and phone into a calm balanced arrangement. Very slow push-in toward the logo and CTA, a single subtle cyan shimmer through the ribbon, hold the CTA clearly for the last three seconds. Finish in a clean stable frame.
-EXACT INDONESIAN VOICE-OVER: "Siap membangun toko digital dengan brand sendiri? Pilih paketmu, siapkan tokomu, dan mulai bersama Digital Toko."
-END: Hold logo and CTA for last 3 seconds, let the music resolve gently.
+EXACT INDONESIAN VOICE-OVER: Satu paket, dua cara berjualan. Pilih durasi, bangun toko digital dengan brand sendiri, dan mulai bersama Digital Toko.
+SINGLE OFFER: Web Topup + Bot WhatsApp are included together. Only rental duration varies; never show separate platform packages.

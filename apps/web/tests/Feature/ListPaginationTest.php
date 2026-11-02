@@ -90,10 +90,10 @@ class ListPaginationTest extends TestCase
         $owner = $this->owner();
         for ($i = 0; $i < 11; $i++) {
             $this->store($owner);
-            PlanOption::create(['name' => 'Penawaran '.$i, 'category' => 'bot', 'plan' => 'galaxy', 'price' => 50000 + $i, 'duration_days' => 30, 'active' => $i < 6]);
+            PlanOption::create(['name' => 'Penawaran '.$i, 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000 + $i, 'duration_days' => 30, 'active' => $i < 6]);
         }
-        $this->actingAs($admin)->get('/admin/plans?per_page=5&active=1&category=bot&plan=galaxy')->assertInertia(fn (Assert $page) => $page->has('plans', 5)->where('pagination.total', 6));
-        $this->get('/admin/plans?per_page=5&active=1&category=bot&plan=galaxy&page=2')->assertInertia(fn (Assert $page) => $page->has('plans', 1)->where('plans.0.name', 'Penawaran 5'));
+        $this->actingAs($admin)->get('/admin/plans?per_page=5&active=1&category=full&plan=galaxy')->assertInertia(fn (Assert $page) => $page->has('plans', 5)->where('pagination.total', 6));
+        $this->get('/admin/plans?per_page=5&active=1&category=full&plan=galaxy&page=2')->assertInertia(fn (Assert $page) => $page->has('plans', 1)->where('plans.0.name', 'Penawaran 5'));
         $this->get('/admin?per_page=5&page=3')->assertInertia(fn (Assert $page) => $page->has('stores', 1)->where('pagination.total', 11));
         $this->get('/admin/plans?q=Penawaran%2010')->assertInertia(fn (Assert $page) => $page->has('plans', 1)->where('plans.0.active', false));
         $this->actingAs($owner)->get('/admin/plans?per_page=50')->assertForbidden();

@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Models\CatalogProduct;
+use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\DiscountVoucher;
 use App\Models\ModulePurchase;
 use App\Models\PlanOption;
 use App\Models\Store;
 use App\Models\SubscriptionInvoice;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,9 +29,9 @@ class Vouchers
     }
 
     /** Pending invoices reserve quota until cancellation/expiry is confirmed; paid failures still use the voucher. */
-    public function used(DiscountVoucher $voucher, bool $sandbox = false, bool $lock = false): int
+    public function used(DiscountVoucher $voucher, bool $sandbox = false, bool $lock = false, ?string $claimantType = null, ?string $claimantId = null): int
     {
-        $count = (int) ($sandbox ? $voucher->archived_sandbox_uses : $voucher->archived_uses);
+        $count = $claimantType ? 0 : (int) ($sandbox ? $voucher->archived_sandbox_uses : $voucher->archived_uses);
         foreach (['order', 'subscription', 'module'] as $type) {
             $model = match ($type) {
                 'order' => CustomerOrder::class,'subscription' => SubscriptionInvoice::class,'module' => ModulePurchase::class,default => null
@@ -46,6 +48,9 @@ class Vouchers
                         $q->orWhere('subject.payment_status', 'paid');
                     }
                 });
+            if ($claimantType) {
+                $query->where('redemption.claimant_type', $claimantType)->where('redemption.claimant_id', $claimantId);
+            }
             $count += $lock ? $query->lockForUpdate()->get(['redemption.id'])->count() : $query->count();
         }
 
@@ -53,7 +58,7 @@ class Vouchers
     }
 
     /** Percent values are basis points (10% = 1000), allowing exact integer arithmetic. */
-    public function quote(?Store $store, ?string $code, int $subtotal, ?CatalogProduct $product = null, ?PlanOption $plan = null, bool $module = false, bool $lock = false): ?array
+    public function quote(?Store $store, ?string $code, int $subtotal, ?CatalogProduct $product = null, ?PlanOption $plan = null, bool $module = false, bool $lock = false, ?Customer $customer = null, ?User $owner = null): ?array
     {
         $code = self::code($code);
         if ($code === '') {
@@ -83,6 +88,11 @@ class Vouchers
         }
         $this->ensure($match, 'Voucher tidak berlaku untuk pilihan ini.');
         $this->ensure(! $v->usage_limit || $this->used($v, (bool) $store?->sandbox, $lock) < $v->usage_limit, 'Kuota voucher sudah habis atau sedang dipakai invoice lain.');
+        if ($v->once_per_user) {
+            $valid = $store ? ($customer && $customer->store_id === $store->id) : $owner !== null;
+            $this->ensure((bool) $valid, 'Login ke akun pelanggan untuk menggunakan voucher satu kali per akun.');
+            $this->ensure($this->used($v, (bool) $store?->sandbox, $lock, $store ? 'customer' : 'owner', (string) ($store ? $customer->id : $owner->id)) === 0, 'Voucher sudah digunakan akun ini atau sedang dipakai invoice lain.');
+        }
         $discount = $v->type === 'percent' ? intdiv($subtotal * $v->value, 10000) : $v->value;
         if ($v->max_discount !== null) {
             $discount = min($discount, $v->max_discount);
@@ -96,11 +106,11 @@ class Vouchers
         return ['id' => $v->id, 'code' => $v->code, 'name' => $v->name, 'subtotal' => $subtotal, 'discount' => $discount, 'total' => $subtotal - $discount];
     }
 
-    public function redeem(?array $quote, string $type, string $id, bool $sandbox = false): void
+    public function redeem(?array $quote, string $type, string $id, bool $sandbox = false, ?Customer $customer = null, ?User $owner = null): void
     {
         if (! $quote) {
             return;
         }
-        DB::table('voucher_redemptions')->insert(['voucher_id' => $quote['id'], 'subject_type' => $type, 'subject_id' => $id, 'is_sandbox' => $sandbox, 'discount' => $quote['discount'], 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('voucher_redemptions')->insert(['voucher_id' => $quote['id'], 'subject_type' => $type, 'subject_id' => $id, 'is_sandbox' => $sandbox, 'discount' => $quote['discount'], 'claimant_type' => $customer ? 'customer' : ($owner ? 'owner' : null), 'claimant_id' => $customer ? (string) $customer->id : ($owner ? (string) $owner->id : null), 'created_at' => now(), 'updated_at' => now()]);
     }
 }

@@ -1,41 +1,11 @@
 [
     {
-        "key": "bot",
-        "name": "Bot WhatsApp",
-        "category": "bot",
-        "plan": "galaxy",
-        "source": "all",
-        "description": "Penjualan melalui bot WhatsApp.",
-        "features": [
-            "Bot WhatsApp",
-            "Digiflazz",
-            "API Hanshop",
-            "Suplier OtomaX",
-            "Stok aplikasi premium"
-        ]
-    },
-    {
-        "key": "web",
-        "name": "Web Topup",
-        "category": "web",
-        "plan": "galaxy",
-        "source": "all",
-        "description": "Penjualan melalui website toko.",
-        "features": [
-            "Website toko",
-            "Digiflazz",
-            "API Hanshop",
-            "Suplier OtomaX",
-            "Stok aplikasi premium"
-        ]
-    },
-    {
         "key": "full",
-        "name": "Web + Bot WhatsApp",
+        "name": "Web Topup + Bot WhatsApp",
         "category": "full",
         "plan": "galaxy",
         "source": "all",
-        "description": "Website dan bot WhatsApp dalam satu toko.",
+        "description": "Web toko dan bot WhatsApp lengkap dalam satu langganan. Pilih durasi sesuai kebutuhan.",
         "features": [
             "Website toko",
             "Bot WhatsApp",

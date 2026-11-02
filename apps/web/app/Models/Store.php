@@ -13,7 +13,7 @@ class Store extends Model
 
     protected $guarded = [];
 
-    protected $attributes = ['sandbox' => false];
+    protected $attributes = ['sandbox' => false, 'category' => 'full', 'plan' => 'galaxy'];
 
     protected $hidden = ['worker_token_hash', 'notification_settings'];
 
@@ -34,7 +34,12 @@ class Store extends Model
 
     public function supportsWeb(): bool
     {
-        return in_array($this->category, ['web', 'full'], true);
+        return in_array($this->category, ['bot', 'web', 'full'], true);
+    }
+
+    public function supportsBot(): bool
+    {
+        return $this->supportsWeb();
     }
 
     public function acceptsOrders(): bool

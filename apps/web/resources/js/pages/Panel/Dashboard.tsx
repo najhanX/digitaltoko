@@ -13,7 +13,7 @@ import type { StoreSummary, WorkspaceContext } from '../../types';
 type Props = {setup?:StoreSetup|null;role:'admin'|'owner'|'staff';preview:boolean;viewer:{name:string};stores:StoreSummary[];counts:{stores?:number;owners?:number;active?:number;setup?:number;subscribed?:number};permissions?:string[];ownerStatus?:string;listing?:boolean;storeScope?:boolean;pagination?:PageMeta;filters?:ListFilters};
 export default function Dashboard({role,preview,viewer,stores,counts,ownerStatus,permissions = [],listing = false,storeScope = false,pagination,setup:storeSetup,filters = {q:'',status:'',category:'',plan:'',package:'',per_page:10}}:Props) {
     const list = useServerList(filters,['stores','pagination','filters','counts']);
-    const controls = pagination && !preview ? <FilterBar filters={filters} onApply={list.apply} busy={list.busy} placeholder="Cari nama toko atau subdomain…" choices={[{key:'status',label:'Status',options:storeStatuses},{key:'package',label:'Paket',options:planOptions}]}/> : null;
+    const controls = pagination && !preview ? <FilterBar filters={filters} onApply={list.apply} busy={list.busy} placeholder="Cari nama toko atau subdomain…" choices={[{key:'status',label:'Status',options:storeStatuses}]}/> : null;
     const topPager = pagination && !preview ? <Pagination compact meta={pagination} onPage={list.go} busy={list.busy} label="Navigasi atas toko"/> : null;
     const pager = pagination && !preview ? <Pagination meta={pagination} onPage={list.go} busy={list.busy}/> : null;
     const context = usePage().props.workspace as WorkspaceContext | null;

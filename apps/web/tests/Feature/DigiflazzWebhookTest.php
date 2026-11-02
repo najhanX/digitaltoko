@@ -462,7 +462,7 @@ class DigiflazzWebhookTest extends TestCase
     {
         [$store, $customer, $connection, $order] = $this->pending();
         $url = '/stores/'.$store->id.'/sources/'.$connection->id.'/webhook-secret';
-        $this->postJson($url)->assertForbidden();
+        $this->postJson($url)->assertUnauthorized();
         $this->actingAs(User::factory()->create(['role' => 'owner']))->postJson($url)->assertForbidden();
         $staff = StoreStaff::create(['store_id' => $store->id, 'name' => 'Operator', 'username' => 'secret-operator', 'email' => 'operator@example.test', 'password' => 'password', 'permissions' => ['products.manage']]);
         $this->actingAs($staff, 'staff')->postJson($url)->assertForbidden();

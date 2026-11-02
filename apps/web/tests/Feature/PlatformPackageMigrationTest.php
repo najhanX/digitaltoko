@@ -34,7 +34,7 @@ class PlatformPackageMigrationTest extends TestCase
         $this->assertSame('Bot WhatsApp · 90 hari', $full->fresh()->name);
         $this->assertSame(123456, $full->fresh()->price);
         $this->assertSame(90, $full->fresh()->duration_days);
-        $this->assertTrue($full->fresh()->active);
+        $this->assertFalse($full->fresh()->active);
         $this->assertEquals($dates, $store->fresh()->only(['starts_at', 'expires_at', 'status']));
         $this->assertSame($snapshot, $invoice->fresh()->snapshot);
         $this->assertSame($snapshot['price'], $store->fresh()->subscription['price']);
@@ -42,7 +42,7 @@ class PlatformPackageMigrationTest extends TestCase
         foreach (['digiflazz', 'stock', 'hanshop', 'otomax'] as $source) {
             $this->assertTrue(CatalogAccess::supports($store->fresh(), $source));
         }
-        $this->assertFalse($store->fresh()->supportsWeb());
+        $this->assertTrue($store->fresh()->supportsWeb());
         $this->assertSame(2, $store->fresh()->subscription['features_version']);
     }
 
