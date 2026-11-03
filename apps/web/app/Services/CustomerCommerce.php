@@ -49,6 +49,7 @@ class CustomerCommerce
 
     public function begin(Store $store, array $input, ?Customer $customer, string $channel = 'web'): CustomerOrder
     {
+        app(StoreMaintenance::class)->assertOpen($store);
         $this->ensure(in_array($channel, ['web', 'bot'], true), 'Kanal pesanan tidak valid.');
         $phone = $customer?->phone ?? HanshopIdentity::phone($input['phone'] ?? '');
         $purpose = $input['purpose'] ?? 'product';
@@ -83,6 +84,7 @@ class CustomerCommerce
             if (! $customer && $channel === 'web' && isset($input['guest_checkout_hash'])) {
                 $this->ensure(! app(GuestCheckout::class)->pending($store, $input['guest_checkout_hash']), 'Masih ada pesanan menunggu pembayaran. Selesaikan atau batalkan pesanan sebelumnya.');
             }
+            app(StoreMaintenance::class)->assertOpen($store);
             $setting = $this->settings($store);
             $this->ensure($store->acceptsOrders() && ! $setting->closing, 'Toko tidak menerima pesanan atau topup baru.');
             $this->ensure(! $customer || ($customer->store_id === $store->id && ($customer->phone_verified_at || $customer->email_verified_at)), 'Akun pelanggan tidak sesuai toko.');

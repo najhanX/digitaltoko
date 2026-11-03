@@ -1,0 +1,3 @@
+{!! $storeName !!} · Informasi pesanan
+
+{!! $messageText !!}

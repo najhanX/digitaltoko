@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\CustomerOtpMail;
 use App\Models\Customer;
+use App\Models\MaintenanceWindow;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\BotManager;
@@ -249,5 +250,15 @@ class CustomerRegistrationTest extends TestCase
         $this->requestOtp($shop)->assertSessionHasNoErrors();
         $this->post($this->url($shop, 'verify'), ['otp' => $this->otpCode])->assertRedirect('/account');
         $this->assertTrue(Hash::check('existing-password-123', $customer->fresh()->password));
+    }
+
+    public function test_registration_otp_issued_before_maintenance_cannot_create_a_new_customer_during_it(): void
+    {
+        $store = $this->shop();
+        $this->requestOtp($store)->assertSessionHasNoErrors();
+        MaintenanceWindow::create(['scope' => 'platform', 'enabled' => true]);
+        $this->post($this->url($store, 'verify'), ['otp' => $this->otpCode, 'intent' => 'register'])->assertSessionHasErrors('maintenance');
+        $this->assertDatabaseCount('customers', 0);
+        $this->assertGuest('customer');
     }
 }

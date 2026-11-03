@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Services\StoreMaintenance;
 use Illuminate\Http\Request;
 
 class BotAccessController extends Controller
@@ -16,7 +17,7 @@ class BotAccessController extends Controller
         $supportsBot = $store->supportsBot();
 
         return response()->json(['status' => 'SUCCESS', 'message' => 'Hak bot dibaca.', 'data' => [
-            'store_name' => $store->name, 'allowed' => $supportsBot && $store->acceptsOrders(),
+            'maintenance' => app(StoreMaintenance::class)->active($store), 'store_name' => $store->name, 'allowed' => $supportsBot && $store->acceptsOrders(),
             'can_connect' => $store->canConnectBot(), 'phone' => $store->bot_phone,
             'method' => $store->bot_method, 'connection_id' => $store->bot_connection_id,
         ]]);

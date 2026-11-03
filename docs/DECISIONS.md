@@ -108,3 +108,12 @@ Administrator dapat membuat snapshot, mengunduh arsip dan meminta restore dari r
 ## 3 November 2026 — Perubahan restore: opsi aktif dan terpisah
 
 Permintaan user memperluas keputusan isolated-only sebelumnya. Panel sekarang menyediakan dua mode yang dijelaskan eksplisit; isolated tetap default dan tidak mengalihkan aplikasi, sedangkan active menimpa schema/media aktif dengan koordinasi maintenance, PM2, lease HTTP, safety backup dan review. Penimpaan tidak dijalankan pada database utama laptop selama implementasi; dibuktikan pada schema MySQL uji. Tinjauan sebelum resume diperlukan karena restore DigitalToko tidak memutar mundur transaksi/saldo di supplier, gateway, atau API Hanshop. Pratinjau hasil terpisah disediakan lewat CLI server localhost read-only, bukan mengganti .env aktif.
+
+
+## Maintenance layanan dan identitas email — 3 November 2026
+
+Maintenance global dikelola admin, maintenance per toko dikelola owner toko (staff tidak diberi izin baru). Jendela memakai pesan, enabled dan ends_at opsional; status efektif otomatis berakhir berdasarkan waktu server meskipun scheduler berhenti. Admin global diutamakan; batas tampil merupakan akhir keseluruhan jendela aktif, atau tanpa estimasi jika salah satunya tanpa batas. Maintenance tidak mengubah masa sewa/status toko dan tidak menutup panel/landing platform.
+
+Admission pesanan/topup/inquiry baru ditolak pada storefront dan mesin bersama bot/web. Registrasi yang OTP-nya terbit sebelum maintenance tidak dapat membuat customer baru selama maintenance. Bot tetap terhubung untuk notifikasi, status dan saldo; lookup selama maintenance tidak membuat customer baru. Pemeriksaan/pembayaran pesanan lama, webhook, refund, stok premium dan supplier failover tetap berjalan. Inquiry internal failover hanya boleh melewati gate bila menunjuk pesanan tersimpan yang sudah paid dengan store/product/tujuan/phone cocok dan status masih berjalan; bukan flag bypass dari request publik.
+
+Semua kelas email existing memakai layout bermerek dengan MIME HTML + text/plain. Owner OTP memakai brand platform; email toko mengikuti branding.design, logo hanya dari media milik toko itu atau URL HTTPS tervalidasi, warna CSS dibatasi hex dan teks OTP dipilih agar kontras. Tidak mengubah transport/pengirim SMTP platform atau pilihan SMTP toko. Konten HTML di-escape; alternatif plain mempertahankan karakter akun/password.

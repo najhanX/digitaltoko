@@ -6,7 +6,7 @@ import { readCustomerMessage } from './messages.js';
 import { sendMenu, sendControls, sendChoices } from './interactive.js';
 import { catalogPage, catalogQuery, catalogText,catalogNavigation,productChoices } from './catalog.js';
 import { navigationQuery, navigationPage, navigationText,navigationControls, navigationUrl, navigationChoices, servicesQuery, navigationHelp } from './navigation.js';
-import { catalogErrorText, expiredMenuText,unknownCommandText } from './replies.js';
+import { catalogErrorText, expiredMenuText,unknownCommandText,shopReply } from './replies.js';
 
 export async function handleCustomerMessage(sock:WASocket,message:WAMessage,tokens:MenuTokens,api:(path:string,body?:unknown)=>Promise<unknown>,qris?:QrisTracker):Promise<void> {
     const chat=message.key.remoteJid;
@@ -40,9 +40,16 @@ export async function handleCustomerMessage(sock:WASocket,message:WAMessage,toke
         if(input.selection!==null||input.text.startsWith('#'))tokens.clearProductInput(chat,sender,input.scope);
         if(!checkoutAction&&(input.selection!==null||input.text.startsWith('#')))tokens.clearCheckout(chat,sender,input.scope);
     }
-    const access=await api('/api/internal/bot/access') as {data?:{allowed?:boolean;store_name?:string}};
+    const access=await api('/api/internal/bot/access') as {data?:{allowed?:boolean;store_name?:string;maintenance?:{message:string;ends_at:string|null}|null}};
     if (access?.data?.allowed!==true) return;
     const storeName=typeof access.data.store_name==='string' ? access.data.store_name : 'Toko Digital';
+    const maintenance=access.data.maintenance;
+    if(maintenance && action!=='balance' && action!=='status') {
+        const estimate=maintenance.ends_at ? new Date(maintenance.ends_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'})+' WIB' : 'Menunggu pemeliharaan selesai';
+        await sock.sendMessage(chat,{text:shopReply(storeName,'🛠 LAYANAN SEDANG MAINTENANCE',[maintenance.message,'','Estimasi buka: '+estimate,'','Pesanan yang sudah dibuat tetap diproses. Cek #status atau #saldo.'])},{quoted:message});
+        await sendControls(sock,message,chat,sender,tokens,[['status','Status pesanan'],['balance','Lihat saldo']],'Pesanan berjalan tetap dapat diperiksa');
+        return;
+    }
     if(unknown){
         await sock.sendMessage(chat,{text:unknownCommandText(storeName)},{quoted:message});
         await sendControls(sock,message,chat,sender,tokens,[['menu','Menu utama'],['services','Layanan & produk']],'Pilih menu yang tersedia');

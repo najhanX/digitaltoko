@@ -5,6 +5,7 @@ use App\Http\Middleware\AuthenticatePanelSession;
 use App\Http\Middleware\CapturePanelNotifications;
 use App\Http\Middleware\ConfiguredTrustProxies;
 use App\Http\Middleware\GuardRecoveryRuntime;
+use App\Http\Middleware\GuardStoreMaintenance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ObserveCommerceWebhook;
 use App\Http\Middleware\ProtectPurgingStore;
@@ -33,7 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend([GuardRecoveryRuntime::class, ObserveCommerceWebhook::class]);
         $middleware->preventRequestsDuringMaintenance(except: ['recovery-status/*', 'recovery-review']);
-        $middleware->web(prepend: [ResolvePlatformHost::class], append: [AuthenticatePanelSession::class, RequireOwnerEmail::class, ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
+        $middleware->web(prepend: [ResolvePlatformHost::class], append: [AuthenticatePanelSession::class, GuardStoreMaintenance::class, RequireOwnerEmail::class, ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->trimStrings(except: ['pin', 'payload', 'entries.*', 'content.*.text', 'config.rules.*.captures.*.prefix', 'config.rules.*.captures.*.suffix', 'config.rules.*.keyword', 'config.rules.*.regex', 'config.rules.*.template', 'text']);
         $middleware->alias(['platform.host' => RequirePlatformHost::class]);

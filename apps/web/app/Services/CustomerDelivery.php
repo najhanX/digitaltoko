@@ -32,9 +32,9 @@ class CustomerDelivery
                 if ($notice->email && ! $notice->email_sent_at && ($platformRetention || app(StoreMail::class)->ready($store))) {
                     try {
                         if ($platformRetention) {
-                            Mail::to($notice->email)->send(new StoreMessageMail($store->name, $notice->message));
+                            Mail::to($notice->email)->send((new StoreMessageMail($store->name, $notice->message))->forStore($store));
                         } else {
-                            app(StoreMail::class)->send($store, $notice->email, new StoreMessageMail($store->name, $notice->message));
+                            app(StoreMail::class)->send($store, $notice->email, (new StoreMessageMail($store->name, $notice->message))->forStore($store));
                         }
                         $notice->update(['email_sent_at' => now()]);
                     } catch (\Throwable) {

@@ -14,6 +14,7 @@ use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\CustomerPanelController;
 use App\Http\Controllers\GameIdentityController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\OtomaxCatalogController;
 use App\Http\Controllers\OtomaxController;
 use App\Http\Controllers\OwnerAuthController;
@@ -43,6 +44,7 @@ use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/maintenance', [MaintenanceController::class, 'notice']);
 Route::get('/', HomeController::class)->name('home');
 Route::redirect('/downloads/hansdev-forwarder.zip', '/panduan/aktifkan-listener');
 Route::get('/downloads/hansdev-forwarder.apk', [CommerceSettingsController::class, 'download'])->middleware('throttle:20,1')->name('forwarder.download');
@@ -120,6 +122,10 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/stores/{store}/design/products', [StoreDesignController::class, 'products']);
     Route::get('/stores/{store}/design/categories', [StoreDesignController::class, 'categories']);
     Route::post('/stores/{store}/design', [StoreDesignController::class, 'save'])->middleware('throttle:12,1');
+    Route::get('/admin/maintenance', [MaintenanceController::class, 'show'])->middleware('auth:web');
+    Route::patch('/admin/maintenance', [MaintenanceController::class, 'save'])->middleware(['auth:web', 'throttle:10,1']);
+    Route::get('/stores/{store}/maintenance', [MaintenanceController::class, 'show']);
+    Route::patch('/stores/{store}/maintenance', [MaintenanceController::class, 'save'])->middleware('throttle:10,1');
     Route::get('/admin/commerce', [CommerceSettingsController::class, 'admin'])->middleware('auth:web');
     Route::patch('/admin/commerce', [CommerceSettingsController::class, 'adminSave'])->middleware('auth:web');
     Route::get('/stores/{store}/closure', [StoreClosureController::class, 'show']);

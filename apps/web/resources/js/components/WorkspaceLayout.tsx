@@ -98,6 +98,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     const globalLinks: NavLink[] = role === 'admin' ? [
         {href:'/admin',label:'Ringkasan',icon:LayoutDashboard,active:path === '/admin'},
         {href:'/admin/backups',label:'Backup & pemulihan',icon:Package,active:path.startsWith('/admin/backups')},
+        {href:'/admin/maintenance',label:'Maintenance layanan',icon:Settings2,active:path === '/admin/maintenance'},
         {href:'/admin/system-health',label:'Kesehatan sistem',icon:Activity,active:path.startsWith('/admin/system-health')},
         {href:'/admin/stores',label:'Kelola toko',icon:Store,active:path.startsWith('/admin/stores')},
         {href:'/admin/verifications',label:'Verifikasi owner',icon:ShieldCheck,active:path === '/admin/verifications'},
@@ -135,6 +136,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         if (role === 'owner' || permissions.some(value=>['articles.view','articles.manage'].includes(value))) scopedLinks.push({href:'/stores/'+store.id+'/articles',label:'Artikel & berita',section:'channels',icon:Package,active:path.startsWith('/stores/'+store.id+'/articles')});
         const settings = role === 'owner' ? '/owner/stores/'+store.id+'/manage' : '/staff/'+store.id+'/settings';
         if (role === 'owner' || permissions.includes('web.manage')) scopedLinks.push({href:settings,label:'Tampilan & pengaturan',section:'channels',icon:Settings2,active:path === settings && tab !== 'staff'});
+        if (role === 'owner') scopedLinks.push({href:'/stores/'+store.id+'/maintenance',label:'Maintenance toko',section:'management',icon:Settings2,active:path === '/stores/'+store.id+'/maintenance'});
         if (role === 'owner') scopedLinks.push({href:'/stores/'+store.id+'/closure',label:'Penutupan toko',section:'management',icon:Store,active:path === '/stores/'+store.id+'/closure'});
         if (role === 'owner') scopedLinks.push({href:settings+'?tab=staff',label:'Staff & hak akses',section:'management',icon:Users,active:path === settings && tab === 'staff'});
     }

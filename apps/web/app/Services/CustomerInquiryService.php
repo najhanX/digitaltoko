@@ -14,9 +14,16 @@ use Illuminate\Support\Str;
 
 class CustomerInquiryService
 {
-    public function quote(Store $store, string $productId, string $destination, string $phone, string $key, ?string $mappingId = null): CustomerInquiry
+    public function quote(Store $store, string $productId, string $destination, string $phone, string $key, ?string $mappingId = null, ?CustomerOrder $continuingOrder = null): CustomerInquiry
     {
         $engine = app(CustomerCommerce::class);
+        if ($continuingOrder) {
+            $engine->ensure(CustomerOrder::whereKey($continuingOrder->id)->where('store_id', $store->id)->where('product_id', $productId)
+                ->where('destination', $destination)->where('phone', $phone)->where('payment_status', 'paid')->where('purpose', 'product')
+                ->whereIn('status', ['paid', 'processing', 'pending'])->exists(), 'Pesanan lanjutan tidak sesuai atau belum dibayar.');
+        } else {
+            app(StoreMaintenance::class)->assertOpen($store);
+        }
         $engine->ensure($store->acceptsOrders() && ! $engine->settings($store)->closing, 'Toko tidak menerima pesanan baru.');
         $phone = HanshopIdentity::phone($phone);
         $hash = hash('sha256', json_encode([...($store->sandbox ? ['sandbox'] : []), $store->id, $productId, $destination, $phone, ...($mappingId ? [$mappingId, $key] : [])]));

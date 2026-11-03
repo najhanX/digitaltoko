@@ -17,6 +17,7 @@ use App\Services\CustomerNoticeText;
 use App\Services\CustomerPayments;
 use App\Services\GameIdentity;
 use App\Services\StoreCatalog;
+use App\Services\StoreMaintenance;
 use App\Services\StoreRetention;
 use App\Services\Vouchers;
 use App\Support\HanshopIdentity;
@@ -34,11 +35,18 @@ class BotCommerceController extends Controller
             'product_id' => 'required_if:action,buy,inquiry|nullable|uuid', 'destination' => 'required_if:action,buy,inquiry|nullable|string|max:255', 'amount' => 'required_if:action,topup|nullable|integer|min:5000|max:100000000',
             'destination_id' => 'nullable|string|max:100', 'destination_server' => 'nullable|string|max:64',
             'idempotency_key' => 'required_if:action,buy,topup,inquiry|nullable|string|max:128', 'payment' => 'nullable|in:gateway,wallet', 'number' => 'nullable|string|max:40', 'voucher_code' => 'nullable|string|max:40', 'expected_price' => 'nullable|integer|min:1', 'inquiry_id' => 'nullable|uuid']);
+        if (! in_array($data['action'], ['balance', 'status'], true)) {
+            app(StoreMaintenance::class)->assertOpen($store);
+        }
         $phone = HanshopIdentity::phone($data['phone']);
         $customer = DB::transaction(function () use ($store, $phone) {
             StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
 
-            $customer = Customer::firstOrCreate(['store_id' => $store->id, 'phone' => $phone], ['name' => 'Pelanggan '.substr($phone, -4), 'phone_verified_at' => now()]);
+            $customer = Customer::where('store_id', $store->id)->where('phone', $phone)->first();
+            if (! $customer && app(StoreMaintenance::class)->active($store)) {
+                return new Customer(['store_id' => $store->id, 'phone' => $phone, 'phone_verified_at' => now(), 'balance' => 0, 'sandbox_balance' => 0]);
+            }
+            $customer ??= Customer::create(['store_id' => $store->id, 'phone' => $phone, 'name' => 'Pelanggan '.substr($phone, -4), 'phone_verified_at' => now()]);
             abort_unless($customer->phone_verified_at, 403, 'Verifikasi nomor WhatsApp melalui akun web terlebih dahulu.');
 
             return $customer;

@@ -2,14 +2,12 @@
 
 namespace App\Mail;
 
-use Illuminate\Mail\Mailable;
-
-class OwnerOtpMail extends Mailable
+class OwnerOtpMail extends BrandedMail
 {
     public function __construct(public readonly string $code) {}
 
     public function build(): static
     {
-        return $this->subject('Kode OTP DigitalToko')->html('<p>Kode OTP DigitalToko: <strong>'.$this->code.'</strong></p><p>Berlaku 5 menit. Jangan bagikan kode ini.</p>');
+        return $this->subject('Kode OTP '.'DigitalToko')->view('mail.otp', ['brand' => $this->brand(), 'title' => 'Verifikasi akun Anda', 'code' => $this->code])->text('mail.otp-text', ['storeName' => 'DigitalToko', 'code' => $this->code]);
     }
 }

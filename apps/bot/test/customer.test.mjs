@@ -13,7 +13,7 @@ function harness(options={}) {
     const sock={user:{id:'628000000099@s.whatsapp.net'},sendMessage:async(chat,body)=>{sent.push({chat,...body});return {key:{id:'fake'}};},relayMessage:async(chat,message)=>{relays.push({chat,message});}};
     const api=async (path,body)=>{
         paths.push(path);
-        if(path==='/api/internal/bot/access')return {data:{allowed:options.allowed ?? true,store_name:'Toko Contoh'}};
+        if(path==='/api/internal/bot/access')return {data:{allowed:options.allowed ?? true,store_name:'Toko Contoh',maintenance:options.maintenance ?? null}};
         if(path==='/api/internal/bot/commerce')return {data:body.action==='balance'?{balance:25000}:{orders:[]}};
         if(options.failure)throw Error('SUPPLIER_SECRET_ERROR');
         return {data:{store_name:'Toko Contoh',items:[],pagination:{current_page:1,last_page:2,total:12}}};
@@ -125,4 +125,21 @@ test('unknown commands do not discard an unfinished checkout or pending destinat
  await h.run(incoming({conversation:'#meni'}));
  assert.equal(h.tokens.checkoutId(pn,pn),checkout);assert.equal(h.tokens.takeProductInput(pn,pn).code,'TEST');
  assert.deepEqual(h.paths,['/api/internal/bot/access']);
+});
+
+
+test('maintenance pauses new shopping interactions while retaining order status and balance access',async()=>{
+    for(const command of ['#menu','#produk','#beli CANVA 081234567890','#topup 50000']){
+        const h=harness({maintenance:{message:'Peningkatan sistem toko.',ends_at:'2030-01-01T10:00:00Z'}});
+        await h.run(incoming({conversation:command}));
+        assert.match(h.sent[0].text,/LAYANAN SEDANG MAINTENANCE/);
+        assert.match(h.sent[0].text,/Peningkatan sistem toko/);
+        assert.deepEqual(h.paths,['/api/internal/bot/access']);
+    }
+    for(const command of ['#status','#saldo']){
+        const h=harness({maintenance:{message:'Maintenance',ends_at:null}});
+        await h.run(incoming({conversation:command}));
+        assert.ok(h.paths.includes('/api/internal/bot/commerce'));
+        assert.ok(!h.sent[0].text.includes('LAYANAN SEDANG MAINTENANCE'));
+    }
 });

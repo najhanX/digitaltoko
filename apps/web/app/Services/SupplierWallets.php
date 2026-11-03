@@ -168,6 +168,7 @@ class SupplierWallets
 
     public function deposit(SupplierConnection $connection, array $data): SupplierDeposit
     {
+        app(StoreMaintenance::class)->assertOpen(Store::findOrFail($connection->store_id));
         if ((int) $data['amount'] < $this->minimumDeposit($connection)) {
             throw ValidationException::withMessages(['amount' => 'Minimal deposit '.ucfirst($connection->kind).' adalah Rp'.number_format($this->minimumDeposit($connection), 0, ',', '.').'.']);
         }

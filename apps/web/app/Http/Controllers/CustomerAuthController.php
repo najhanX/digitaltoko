@@ -8,6 +8,7 @@ use App\Services\CustomerAccess;
 use App\Services\CustomerCommerce;
 use App\Services\CustomerOtp;
 use App\Services\StoreMail;
+use App\Services\StoreMaintenance;
 use App\Services\StoreRetention;
 use App\Support\HanshopIdentity;
 use Illuminate\Http\RedirectResponse;
@@ -100,6 +101,7 @@ class CustomerAuthController extends Controller
                     }
                 }
                 if (! $customer) {
+                    app(StoreMaintenance::class)->assertOpen($store);
                     app(CustomerCommerce::class)->ensure(filled($email) && filled($payload['password_hash'] ?? null), 'Lengkapi email dan password melalui halaman Daftar pelanggan, lalu minta OTP baru.');
                     $fresh = $store->fresh();
                     app(CustomerCommerce::class)->ensure($fresh->acceptsOrders() && ! app(CustomerCommerce::class)->settings($fresh)->closing, 'Toko belum menerima pendaftaran pelanggan baru.');

@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\CustomerInquiry;
 use App\Models\CustomerLedger;
 use App\Models\CustomerOrder;
+use App\Models\MaintenanceWindow;
 use App\Models\OtomaxEvent;
 use App\Models\OtomaxProfile;
 use App\Models\PricingRule;
@@ -946,5 +947,20 @@ class PostpaidCommerceTest extends TestCase
         $this->assertSame(174000, $f['customer']->fresh()->balance);
         $this->assertSame(26000, $order->fresh()->amount);
         $this->assertSame(0, CustomerLedger::where('reason', 'refund')->count());
+    }
+
+    public function test_paid_postpaid_order_can_inquire_and_pay_fallback_during_platform_maintenance(): void
+    {
+        $f = $this->fixture();
+        $f['pay']->update(['cost' => 500, 'billing' => ['adjustment' => 500]]);
+        $this->otomaxAdjustment = 500;
+        $this->addDigiflazzFallback($f, 500);
+        $this->digiPaymentStatus = 'failed';
+        $order = $this->order($f, $this->quote($f));
+        MaintenanceWindow::create(['scope' => 'platform', 'enabled' => true]);
+        app(CustomerFulfillment::class)->run($order);
+        $this->assertSame('success', $order->fresh()->status, $order->fresh()->message);
+        $this->assertSame(['failed', 'success'], $order->attempts()->orderBy('position')->pluck('status')->all());
+        $this->assertSame(1, CustomerLedger::where('event', 'order:'.$order->id.':debit')->where('reason', 'purchase')->count());
     }
 }

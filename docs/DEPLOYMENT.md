@@ -671,3 +671,12 @@ Retensi diperkuat: arsip yang baru selesai dibuat selalu dipertahankan walau tim
 Permintaan Inertia yang ditahan kini memakai external-location 409 ke `/recovery-review`, sehingga tidak memunculkan dialog “plain JSON response”. Form HTML memakai 303 ke halaman yang sama. API/JSON tetap mendapat 423 (atau 503 selama lock restore) dan tidak menjalankan tindakan. Halaman pemberitahuan tidak memerlukan query database, tidak menampilkan ID/journal/credential pemulihan, dan tetap tersedia saat maintenance. Halaman hanya menjelaskan status dan cara membuka kembali layanan; tidak melakukan resume otomatis. Preview tetap hanya baca.
 
 Validasi perbaikan respons recovery: 51 tes terkait backup/recovery/profil/sesi, 50 lulus dan 1 MySQL opsional dilewati; Pint dan diff check lulus. Pengujian memakai hold/lease terisolasi, tidak menjalankan resume pemulihan pengguna.
+
+
+### Maintenance komersial dan email bermerek
+
+Gunakan modul **Maintenance layanan** (admin) atau **Maintenance toko** (owner), bukan `php artisan down`, bila callback dan pesanan berjalan harus tetap diproses. Modul mempertahankan landing DigitalToko, panel, koneksi WA, akses pesanan lama dan endpoint webhook. Tenggat berakhir otomatis berdasarkan waktu server; pastikan jam VPS tersinkron. Tanggal input panel WIB disimpan UTC. Pada beberapa jendela aktif, waktu buka mengikuti akhir seluruh pembatasan; jendela tanpa batas tetap memerlukan penonaktifan manual.
+
+Deploy migration `2026_11_03_155820_create_maintenance_windows_table.php` setelah backup, kemudian build web dan bot. Muat ulang worker supaya template email/service terbaru digunakan, dan muat ulang bot manager untuk respons maintenance. Tidak ada perubahan credential, aplikasi Android atau API Hanshop. Jangan aktifkan maintenance global untuk sekadar menguji UI pada data nyata; gunakan database simulasi.
+
+Email HTML memuat PNG platform atau logo toko yang disematkan dari media lokal; URL logo HTTPS eksternal tidak diunduh server. Layout memakai warna desain toko dan menyediakan MIME text/plain. Pemeriksaan render tidak membuktikan deliverability ke inbox; konfigurasi SMTP/DNS tetap diperlukan. Snapshot versi lama yang belum memiliki maintenance_windows membutuhkan migrasi schema sebelum resume, seperti perubahan schema aplikasi lainnya.

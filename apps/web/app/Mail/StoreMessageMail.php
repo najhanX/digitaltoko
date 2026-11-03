@@ -2,14 +2,12 @@
 
 namespace App\Mail;
 
-use Illuminate\Mail\Mailable;
-
-class StoreMessageMail extends Mailable
+class StoreMessageMail extends BrandedMail
 {
     public function __construct(public string $storeName, public string $messageText) {}
 
     public function build(): static
     {
-        return $this->subject($this->storeName.' · Informasi pesanan')->html('<div style="white-space:pre-wrap">'.nl2br(e($this->messageText)).'</div>');
+        return $this->subject($this->storeName.' · Informasi pesanan')->view('mail.message', ['brand' => $this->brand(), 'title' => 'Informasi pesanan', 'messageText' => $this->messageText])->text('mail.message-text', ['storeName' => $this->storeName, 'messageText' => $this->messageText]);
     }
 }

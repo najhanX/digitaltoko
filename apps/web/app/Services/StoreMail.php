@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\BrandedMail;
 use App\Models\Store;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
@@ -53,6 +54,9 @@ class StoreMail
     {
         if (! $this->ready($store)) {
             throw ValidationException::withMessages(['email' => 'Email toko belum tersedia. Hubungi pengelola toko atau gunakan WhatsApp toko.']);
+        }
+        if ($message instanceof BrandedMail) {
+            $message->forStore($store);
         }
         $settings = $store->notification_settings ?? [];
         $custom = ($settings['mode'] ?? 'platform') === 'smtp';

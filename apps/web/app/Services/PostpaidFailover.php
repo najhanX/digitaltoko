@@ -70,7 +70,7 @@ class PostpaidFailover
         try {
             $inquiry = isset($data['fallback_inquiry_id'])
                 ? CustomerInquiry::where('store_id', $order->store_id)->findOrFail($data['fallback_inquiry_id'])
-                : app(CustomerInquiryService::class)->quote($order->store, $order->product_id, $order->destination, $order->phone, 'fallback:'.$attempt->id, $data['mapping_id']);
+                : app(CustomerInquiryService::class)->quote($order->store, $order->product_id, $order->destination, $order->phone, 'fallback:'.$attempt->id, $data['mapping_id'], $order);
         } catch (ValidationException) {
             return ['status' => 'failed', 'message' => 'Sumber cadangan belum dapat memvalidasi tagihan.'];
         }
