@@ -49,6 +49,6 @@ class WorkspaceContext
             'platformDomain' => config('platform.domain'),
             'currentStoreId' => $selectedId,
             'permissions' => [], 'verificationStatus' => $user->verification_status,
-            'canCreate' => $user->role === 'owner' && $user->verification_status === 'approved' && (bool) $user->email_verified_at && (bool) $user->phone_verified_at];
+            'canCreate' => $user->role === 'owner' && $user->verification_status === 'approved' && ! $user->requiresEmailVerification() && (bool) $user->phone_verified_at];
     }
 }

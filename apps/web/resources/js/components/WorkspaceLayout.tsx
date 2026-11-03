@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutDashboard, ShieldCheck, Store, Package, LogOut, CreditCard, Settings2, Users, Menu, X, ChevronDown, Smartphone, PanelLeftClose, PanelLeftOpen, Activity, Plug, type LucideIcon } from 'lucide-react';
 import Brand from './Brand';
+import OwnerEmailVerification, {type OwnerEmailGate} from './OwnerEmailVerification';
 import TutorialLink from './TutorialLink';
 import SidebarSection from './SidebarSection';
 import ThemeToggle from './ThemeToggle';
@@ -107,7 +108,8 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     ] : role === 'owner' ? [
         {href:'/owner',label:'Ringkasan',icon:LayoutDashboard,active:path === '/owner'},
         {href:'/owner/stores',label:'Toko saya',icon:Store,active:path === '/owner/stores' || path === '/owner/stores/create'},
-        {href:'/owner/profile',label:'Profil & verifikasi',icon:ShieldCheck,active:path === '/owner/profile'},
+        {href:'/owner/account',label:'Profil akun',icon:Users,active:path === '/owner/account'},
+        {href:'/owner/profile',label:'Verifikasi identitas',icon:ShieldCheck,active:path === '/owner/profile'},
     ] : [];
     const scopedLinks: NavLink[] = [];
     if (store) {
@@ -152,6 +154,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         <Head title={title}/>
         {preview && <PreviewBar/>}
         <div data-sidebar-ready={sidebarReady?'true':'false'} className={'panel-layout panel-surface workspace-shell '+(role!=='admin'?'compact-navigation ':'')+(mobileOpen?'nav-open ':'')+(sidebarCollapsed?'sidebar-collapsed':'')}>
+        {!preview && role==='owner' && (page.props.ownerEmailGate as OwnerEmailGate | null)?.required && <OwnerEmailVerification gate={page.props.ownerEmailGate as OwnerEmailGate} mandatory onClose={()=>{}}/>}
             {mobileOpen && <button type="button" className="sidebar-backdrop" aria-label="Tutup menu navigasi" tabIndex={-1} onClick={() => setMobileOpen(false)}/>}
             <aside ref={navigationRef} onScroll={saveSidebarScroll} className="sidebar workspace-sidebar" id="workspace-navigation" aria-label="Navigasi panel" role={mobileOpen?'dialog':undefined} aria-modal={mobileOpen?true:undefined}>
                 <div className="sidebar-brand"><Brand/><Link className="sidebar-mini-brand" href="/" aria-label="DigitalToko" title="DigitalToko"><img src="/brand/digitaltoko-mark.png" alt="" width={48} height={48}/></Link><button type="button" className="icon-button mobile-only" aria-label="Tutup menu" onClick={() => setMobileOpen(false)}><X size={20}/></button></div>
@@ -175,7 +178,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
             <div className="panel-main">
                 <header className="panel-top workspace-topbar">
                     <div className="topbar-location"><button type="button" className="icon-button sidebar-collapse-toggle" aria-label={sidebarCollapsed?'Perluas sidebar':'Perkecil sidebar'} title={sidebarCollapsed?'Perluas sidebar':'Perkecil sidebar'} aria-controls="workspace-navigation" aria-expanded={!sidebarCollapsed} onClick={() => changeSidebarCollapsed(!sidebarCollapsed)}>{sidebarCollapsed?<PanelLeftOpen size={20}/>:<PanelLeftClose size={20}/>}</button><button ref={menuButtonRef} type="button" className="icon-button mobile-only" aria-label="Buka menu" aria-controls="workspace-navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21}/></button><span><span className="topbar-panel-name">{role === 'owner'?'Panel owner':role === 'staff'?'Panel staff':'Panel admin'}</span> <span className="breadcrumb-separator">/</span> <strong>{breadcrumb ?? (scoped?store?.name:null) ?? 'DigitalToko'}</strong></span></div>
-                    <div className="panel-top-right"><ThemeToggle compactOnMobile/><NotificationBell summary={notificationSummary} preview={preview}/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div><Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
+                    <div className="panel-top-right"><ThemeToggle compactOnMobile/><NotificationBell summary={notificationSummary} preview={preview}/>{!preview && <details className="account-menu"><summary aria-label="Menu akun"><span className="avatar">{viewer?.name?.[0] ?? 'D'}</span><span className="account-name">{viewer?.name ?? 'Akun'}</span><ChevronDown size={14}/></summary><div>{role==='owner' && <Link href="/owner/account"><Users size={16}/>Profil akun</Link>}<Link href="/logout" method="post" as="button"><LogOut size={16}/>Keluar</Link></div></details>}</div>
                 </header>
                 <main className={'workspace-content panel-content '+(role==='admin'?'catalog-workspace admin-workspace ':'')+contentClassName}>
                     <div className="page-heading"><div><div className="eyebrow">{eyebrow ?? (scoped?'RUANG TOKO':'DIGITALTOKO')}</div><h1>{title}</h1>{description && <p>{description}</p>}</div><div className="page-heading-actions"><TutorialLink path={path} tab={tab}/>{actions}</div></div>

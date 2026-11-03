@@ -70,6 +70,7 @@ Route::get('/orders/{order}', [CustomerOrderController::class, 'show']);
 Route::post('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel'])->middleware('throttle:6,1,commerce-order-cancel')->block(10, 10);
 Route::post('/orders/{order}/simulate', [CustomerOrderController::class, 'simulate'])->middleware('throttle:6,1,commerce-simulate');
 Route::post('/orders/{order}/refresh', [CustomerOrderController::class, 'refresh'])->middleware('throttle:6,1,commerce-orders-order-refresh');
+Route::patch('/account/profile', [CustomerAuthController::class, 'updateProfile'])->middleware('throttle:10,1');
 Route::get('/account', [CustomerOrderController::class, 'account']);
 Route::get('/account/login', [CustomerAuthController::class, 'show']);
 Route::get('/account/register', [CustomerAuthController::class, 'show']);
@@ -228,6 +229,10 @@ Route::middleware('platform.host')->group(function () {
         Route::get('/admin/stores/{store}', [AdminStoreController::class, 'show'])->name('admin.stores.show');
         Route::patch('/admin/stores/{store}', [AdminStoreController::class, 'update'])->name('admin.stores.update');
         Route::delete('/admin/stores/{store}', [AdminStoreController::class, 'destroy'])->middleware('throttle:6,1')->name('admin.stores.destroy');
+        Route::get('/owner/account', [OwnerOnboardingController::class, 'account']);
+        Route::patch('/owner/account', [OwnerOnboardingController::class, 'updateName'])->middleware('throttle:10,1');
+        Route::post('/owner/account/phone/otp', [OwnerOnboardingController::class, 'phoneOtp'])->middleware('throttle:3,1');
+        Route::post('/owner/account/phone/verify', [OwnerOnboardingController::class, 'verifyPhone'])->middleware('throttle:10,1');
         Route::get('/owner/profile', [OwnerOnboardingController::class, 'show']);
         Route::post('/owner/profile/email/otp', [OwnerOnboardingController::class, 'emailOtp'])->middleware('throttle:3,1');
         Route::post('/owner/profile/email/verify', [OwnerOnboardingController::class, 'verifyEmail'])->middleware('throttle:10,1');

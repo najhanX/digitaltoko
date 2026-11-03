@@ -142,7 +142,7 @@ class CustomerAuthController extends Controller
         $customer = $access->customer($request, $store, true);
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate(['email' => ['required', 'email:rfc', 'max:255', Rule::unique('customers')->where('store_id', $store->id)->ignore($customer->id)]]);
-        $otp->issue($request, $store, 'email', 'email', $data['email'], ['customer_id' => $customer->id, 'email' => $data['email']]);
+        $otp->issue($request, $store, 'email', 'email', $data['email'], ['customer_id' => $customer->id, 'email' => $data['email'], 'previous_email' => $customer->email]);
 
         return redirect('/account', 303)->with('success', 'OTP verifikasi email dikirim.');
     }
@@ -157,17 +157,32 @@ class CustomerAuthController extends Controller
         DB::transaction(function () use ($store, $customer, $payload, $data) {
             StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
             app(CustomerCommerce::class)->ensure(! Customer::where('store_id', $store->id)->where('email', $payload['email'])->whereKeyNot($customer->id)->exists(), 'Email sudah digunakan.');
+            $customer = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
+            abort_unless($customer->email === ($payload['previous_email'] ?? $customer->email), 409);
             $customer->update(['email' => $payload['email'], 'email_verified_at' => now(), ...(filled($data['password'] ?? null) ? ['password' => $data['password']] : [])]);
         });
 
         return redirect('/account', 303)->with('success', 'Email terverifikasi. Login email dan password sudah dapat digunakan.');
     }
 
+    public function updateProfile(Request $request, CustomerAccess $access): RedirectResponse
+    {
+        $store = $access->store($request);
+        $customer = $access->customer($request, $store, true);
+        $data = $request->validate(['name' => 'required|string|max:100']);
+        $customer->update(['name' => $data['name']]);
+
+        return redirect('/account?tab=profile', 303)->with('success', 'Nama pelanggan diperbarui.');
+    }
+
     public function phoneOtp(Request $request, CustomerAccess $access, CustomerOtp $otp): RedirectResponse
     {
         $store = $access->store($request);
         $customer = $access->customer($request, $store, true);
-        $otp->issue($request, $store, 'phone', 'wa', $customer->phone, ['customer_id' => $customer->id, 'phone' => $customer->phone]);
+        $data = $request->validate(['phone' => 'sometimes|required|string|max:30']);
+        $phone = HanshopIdentity::phone($data['phone'] ?? $customer->phone);
+        validator(['phone' => $phone], ['phone' => Rule::unique('customers', 'phone')->where('store_id', $store->id)->ignore($customer->id)])->validate();
+        $otp->issue($request, $store, 'phone', 'wa', $phone, ['customer_id' => $customer->id, 'phone' => $phone, 'previous_phone' => $customer->phone]);
 
         return redirect('/account?tab=profile', 303)->with('success', 'OTP dikirim melalui WhatsApp toko.');
     }
@@ -178,8 +193,15 @@ class CustomerAuthController extends Controller
         $customer = $access->customer($request, $store, true);
         $data = $request->validate(['otp' => 'required|digits:6']);
         $payload = $otp->consume($request, $store, 'phone', $data['otp']);
-        abort_unless($payload['customer_id'] === $customer->id && $payload['phone'] === $customer->phone, 403);
-        $customer->update(['phone_verified_at' => now()]);
+        abort_unless($payload['customer_id'] === $customer->id && ($payload['previous_phone'] ?? $payload['phone']) === $customer->phone, 403);
+        DB::transaction(function () use ($store, $customer, $payload) {
+            StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
+            $locked = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->phone === ($payload['previous_phone'] ?? $payload['phone']), 409);
+            validator(['phone' => $payload['phone']], ['phone' => Rule::unique('customers', 'phone')->where('store_id', $store->id)->ignore($customer->id)])->validate();
+            $locked->update(['phone' => $payload['phone'], 'phone_verified_at' => now()]);
+        });
+        $request->session()->regenerate();
 
         return redirect('/account?tab=profile', 303)->with('success', 'Nomor WhatsApp terverifikasi.');
     }

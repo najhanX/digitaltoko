@@ -19,6 +19,12 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public function requiresEmailVerification(): bool
+    {
+        return ! $this->email_verified_at || ! filter_var($this->email, FILTER_VALIDATE_EMAIL)
+            || str_ends_with(strtolower($this->email), '@identity.invalid');
+    }
+
     /**
      * Get the attributes that should be cast.
      *

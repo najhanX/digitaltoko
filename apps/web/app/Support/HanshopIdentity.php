@@ -65,7 +65,7 @@ class HanshopIdentity
             }
             throw ValidationException::withMessages(['identifier' => 'Respons akun Hanshop tidak valid.']);
         }
-        if (in_array($path, ['identity', 'register', 'profile'], true)) {
+        if (in_array($path, ['identity', 'register', 'profile', 'profile/contact'], true)) {
             $user = $payload['user'] ?? null;
             if (! array_key_exists('user', $payload) || ($path !== 'identity' && ! is_array($user)) || ($user !== null && (! is_array($user) || Validator::make($user, [
                 'id' => ['required', 'string', 'regex:/^HD[0-9]+$/'], 'name' => 'required|string|max:150',

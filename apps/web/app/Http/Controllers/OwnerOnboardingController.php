@@ -8,6 +8,7 @@ use App\Support\HanshopIdentity;
 use App\Support\OwnerOtp;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -41,12 +42,56 @@ class OwnerOnboardingController extends Controller
         ], 'emailChallengePending' => (bool) $request->session()->get('owner_challenge_email')]);
     }
 
+    public function account(Request $request): Response
+    {
+        $owner = $this->owner($request);
+
+        return Inertia::render('Owner/Account', ['profile' => [
+            'name' => $owner->name, 'phone' => $owner->phone,
+            'email' => str_ends_with($owner->email, '@identity.invalid') ? '' : $owner->email,
+            'email_verified' => (bool) $owner->email_verified_at,
+        ]]);
+    }
+
+    public function updateName(Request $request, HanshopIdentity $hanshop): RedirectResponse
+    {
+        $owner = $this->owner($request);
+        $data = $request->validate(['name' => 'required|string|max:100']);
+        $this->syncAccount($owner, $hanshop, ['name' => $data['name']]);
+
+        return back()->with('success', 'Nama akun diperbarui. Data KTP tetap tersimpan.');
+    }
+
+    public function phoneOtp(Request $request, OwnerOtp $otp): RedirectResponse
+    {
+        $owner = $this->owner($request);
+        $data = $request->validate(['phone' => 'required|string|max:30']);
+        $phone = HanshopIdentity::phone($data['phone']);
+        validator(['phone' => $phone], ['phone' => Rule::unique('users', 'phone')->ignore($owner->id)])->validate();
+        $otp->issue($request, 'phone', 'wa', $phone, ['user_id' => $owner->id, 'phone' => $phone, 'previous_phone' => $owner->phone]);
+
+        return back()->with('success', 'OTP dikirim ke nomor WhatsApp baru.');
+    }
+
+    public function verifyPhone(Request $request, OwnerOtp $otp, HanshopIdentity $hanshop): RedirectResponse
+    {
+        $owner = $this->owner($request);
+        $data = $request->validate(['otp' => 'required|digits:6']);
+        $payload = $otp->consume($request, 'phone', $data['otp']);
+        abort_unless($payload['user_id'] === $owner->id && $payload['previous_phone'] === $owner->phone, 403);
+        $this->syncAccount($owner, $hanshop, ['phone' => $payload['phone']], ['phone' => $payload['previous_phone']]);
+        $request->session()->regenerate();
+
+        return back()->with('success', 'Nomor WhatsApp diperbarui dan disinkronkan ke Hanshop.');
+    }
+
     public function emailOtp(Request $request, OwnerOtp $otp): RedirectResponse
     {
         $owner = $this->owner($request);
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate(['email' => ['required', 'email:rfc', 'max:255', Rule::unique('users', 'email')->ignore($owner->id)]]);
         $email = strtolower(trim($data['email']));
-        $otp->issue($request, 'email', 'email', $email, ['user_id' => $owner->id, 'email' => $email]);
+        $otp->issue($request, 'email', 'email', $email, ['user_id' => $owner->id, 'email' => $email, 'previous_email' => $owner->email]);
 
         return back()->with('success', 'OTP verifikasi email dikirim.');
     }
@@ -57,14 +102,48 @@ class OwnerOnboardingController extends Controller
         $data = $request->validate(['otp' => 'required|digits:6']);
         $payload = $otp->consume($request, 'email', $data['otp']);
         abort_unless($payload['user_id'] === $owner->id, 403);
-        validator(['email' => $payload['email']], ['email' => Rule::unique('users', 'email')->ignore($owner->id)])->validate();
-        $confirmed = $hanshop->call('profile', ['id' => $owner->hanshop_user_id, 'email' => $payload['email']])['user'];
-        if ($confirmed['id'] !== $owner->hanshop_user_id || strtolower((string) $confirmed['email']) !== $payload['email']) {
-            throw ValidationException::withMessages(['email' => 'Sinkronisasi email belum terkonfirmasi. Silakan coba kembali.']);
-        }
-        $owner->forceFill(['email' => $payload['email'], 'email_verified_at' => now()])->save();
+        $this->syncAccount($owner, $hanshop, ['email' => $payload['email']], ['email' => $payload['previous_email'] ?? $owner->email]);
 
         return back()->with('success', 'Email terverifikasi dan tersimpan pada akun Hanshop.');
+    }
+
+    /** @param array<string, string> $changes
+     * @param  array<string, string|null>  $expected
+     */
+    private function syncAccount(User $owner, HanshopIdentity $hanshop, array $changes, array $expected = []): void
+    {
+        Cache::lock('owner-profile:'.$owner->id, 45)->block(3, function () use ($owner, $hanshop, $changes, $expected): void {
+            $current = User::findOrFail($owner->id);
+            foreach ($expected as $field => $value) {
+                if ($current->{$field} !== $value) {
+                    throw ValidationException::withMessages(['otp' => 'Kontak akun berubah. Minta OTP baru.']);
+                }
+            }
+            foreach (['phone', 'email'] as $field) {
+                if (isset($changes[$field])) {
+                    validator([$field => $changes[$field]], [$field => Rule::unique('users', $field)->ignore($current->id)])->validate();
+                }
+            }
+            $path = isset($changes['email']) ? 'profile' : 'profile/contact';
+            $confirmed = $hanshop->call($path, ['id' => $current->hanshop_user_id, ...$changes,
+                ...(isset($changes['phone']) ? ['previous_phone' => $current->phone] : [])])['user'];
+            if ($confirmed['id'] !== $current->hanshop_user_id) {
+                throw ValidationException::withMessages(['identifier' => 'Sinkronisasi profil belum terkonfirmasi. Silakan coba kembali.']);
+            }
+            if (isset($changes['email']) && empty($confirmed['email_verified_at'])) {
+                throw ValidationException::withMessages(['email' => 'Verifikasi email belum dikonfirmasi Hanshop.']);
+            }
+            foreach ($changes as $field => $value) {
+                if ($confirmed[$field] !== $value) {
+                    throw ValidationException::withMessages([$field => 'Perubahan profil belum dikonfirmasi Hanshop. Silakan coba kembali.']);
+                }
+            }
+            $current->forceFill([...$changes,
+                ...(isset($changes['phone']) ? ['phone_verified_at' => now()] : []),
+                ...(isset($changes['email']) ? ['email_verified_at' => now()] : []),
+            ])->save();
+        });
+        $owner->refresh();
     }
 
     public function submit(Request $request): RedirectResponse

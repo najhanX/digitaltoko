@@ -17,6 +17,16 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return [...parent::share($request), 'brand' => ['name' => 'DigitalToko'],
+            'ownerEmailGate' => function () use ($request) {
+                $owner = $request->user('web');
+                if ($owner?->role !== 'owner' || (app(WorkspaceContext::class)->forRequest($request)['role'] ?? null) !== 'owner' || ! $request->attributes->get('platform_host') || config('backup.preview')) {
+                    return null;
+                }
+
+                return ['required' => $owner->requiresEmailVerification(),
+                    'email' => str_ends_with($owner->email, '@identity.invalid') ? '' : $owner->email,
+                    'pending' => (bool) $request->session()->get('owner_challenge_email')];
+            },
             'storeCustomer' => function () use ($request) {
                 $store = $request->attributes->get('store');
 

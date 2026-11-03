@@ -375,7 +375,7 @@ class OwnerOnboardingTest extends TestCase
         $owner = $this->owner('unsubmitted');
         $owner->forceFill(['email_verified_at' => null])->save();
         $this->actingAs($owner)->post('/owner/profile/verification', ['birth_place' => 'Bandung', 'birth_date' => '1995-06-15', 'legal_name' => 'Owner', 'nik' => '1234567890123456',
-            'address' => 'Alamat simulasi', 'ktp' => UploadedFile::fake()->image('ktp.png')])->assertForbidden();
+            'address' => 'Alamat simulasi', 'ktp' => UploadedFile::fake()->image('ktp.png')])->assertRedirect('/owner/account');
         $owner->forceFill(['email_verified_at' => now()])->save();
         $this->post('/owner/profile/verification', ['birth_place' => 'Bandung', 'birth_date' => '1995-06-15', 'legal_name' => 'Owner', 'nik' => '123', 'address' => 'Alamat simulasi',
             'ktp' => UploadedFile::fake()->create('document.svg', 10, 'image/svg+xml')])->assertSessionHasErrors(['nik', 'ktp']);
