@@ -51,7 +51,7 @@ class PlatformHost
     public function storeUrl(Store $store): string
     {
         $url = parse_url((string) config('app.url'));
-        $custom = $store->domain?->status === 'active' && $store->domain?->verified_at;
+        $custom = ! config('backup.preview') && $store->domain?->status === 'active' && $store->domain?->verified_at;
         $host = $custom
             ? $store->domain->hostname : $store->slug.'.'.$this->domain();
 

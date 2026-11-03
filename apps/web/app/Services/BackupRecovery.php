@@ -68,11 +68,11 @@ class BackupRecovery
         $id = $data['id'] ?? substr($row->name, 8);
 
         return ['id' => $id, 'name' => $data['source'] ?? 'Arsip backup', 'created_at' => $data['requested_at'] ?? $row->checked_at, 'state' => $state,
-            'database' => $data['database'] ?? null, 'directory' => 'recoveries/'.$id,
+            'mode' => $data['mode'] ?? 'isolated', 'database' => $data['active_database'] ?? $data['database'] ?? null, 'directory' => 'recoveries/'.$id,
             'message' => match ($state) {
                 'queued' => 'Menunggu worker backup.',
                 'processing' => 'Memeriksa arsip dan memulihkan database serta berkas.',
-                'completed' => 'Pemulihan selesai di ruang terpisah. Operator VPS dapat meninjau hasil sebelum mengaktifkannya.',
+                'completed' => ($data['mode'] ?? 'isolated') === 'active' ? 'Database aktif dan media telah dipulihkan. Layanan background menunggu tinjauan operator.' : 'Pemulihan selesai di ruang terpisah. Jalankan recovery-preview untuk memeriksa hasilnya.',
                 default => 'Pemulihan belum berhasil. Periksa log worker dengan ID ini, kunci backup, kapasitas disk dan izin CREATE DATABASE. Data aktif tidak ditimpa; hasil parsial mungkin perlu dibersihkan operator.',
             }];
     }
@@ -83,10 +83,13 @@ class BackupRecovery
             ->where('checked_at', '>=', now()->subMinutes(70))->get()->contains(fn ($row) => in_array($this->operation($row)['state'], ['queued', 'processing'], true));
     }
 
-    public function request(int $adminId, ?string $snapshot, ?UploadedFile $upload): void
+    public function request(int $adminId, ?string $snapshot, ?UploadedFile $upload, string $mode = 'isolated'): string
     {
         if (! app(PlatformBackup::class)->configured()) {
             throw ValidationException::withMessages(['backup' => 'Backup belum dikonfigurasi. Periksa kunci, MySQL dan worker backup.']);
+        }
+        if (! in_array($mode, ['isolated', 'active'], true) || ($mode === 'active' && (! config('backup.live_enabled') || is_file(config('backup.restore_hold'))))) {
+            throw ValidationException::withMessages(['backup' => 'Restore aktif belum diizinkan atau pemulihan sebelumnya belum ditinjau.']);
         }
         $id = (string) Str::uuid();
         $stage = $this->input($id);
@@ -110,15 +113,18 @@ class BackupRecovery
                 $name = mb_substr(preg_replace('/[\x00-\x1F\x7F]/u', '', basename(str_replace('\\', '/', $upload->getClientOriginalName()))), 0, 120);
             }
             chmod($stage, 0600);
-            DB::transaction(function () use ($adminId, $id, $name): void {
+            DB::transaction(function () use ($adminId, $id, $name, $mode): void {
                 DB::table('system_health_signals')->insertOrIgnore(['name' => 'backup_restore_lock', 'group' => 'internal', 'label' => 'Pengunci pemulihan', 'status' => 'idle', 'details' => '{}', 'checked_at' => now()]);
                 DB::table('system_health_signals')->where('name', 'backup_restore_lock')->lockForUpdate()->first();
                 if ($this->busy()) {
                     throw ValidationException::withMessages(['backup' => 'Masih ada pemulihan berjalan. Tunggu sampai selesai.']);
                 }
-                $data = ['id' => $id, 'source' => $name, 'requested_by' => $adminId, 'requested_at' => now()->toIso8601String(),
+                $data = ['id' => $id, 'mode' => $mode, 'source' => $name, 'requested_by' => $adminId, 'requested_at' => now()->toIso8601String(),
                     'deadline' => now()->addMinutes(15)->toIso8601String(), 'database' => 'dt_restore_'.str_replace('-', '', $id)];
                 DB::table('system_health_signals')->insert(['name' => 'restore_'.$id, 'group' => 'backup_restores', 'label' => 'Pemulihan backup', 'status' => 'queued', 'details' => json_encode($data, JSON_THROW_ON_ERROR), 'checked_at' => now()]);
+                if ($mode === 'active') {
+                    app(LiveBackupRestore::class)->record($id, [...$data, 'state' => 'queued', 'phase' => 'Menunggu worker backup']);
+                }
                 Queue::connection('backups')->push(new RestorePlatformBackup($id));
             }, 3);
         } catch (\Throwable $error) {
@@ -130,6 +136,8 @@ class BackupRecovery
                 fclose($lock);
             }
         }
+
+        return $id;
     }
 
     public function input(string $id): string
@@ -186,6 +194,12 @@ class BackupRecovery
 
     public function finish(string $id, bool $success): void
     {
+        if (is_file(app(LiveBackupRestore::class)->journal($id))) {
+            $journal = app(LiveBackupRestore::class)->read($id);
+            if (! in_array($journal['state'], ['completed', 'failed'], true)) {
+                app(LiveBackupRestore::class)->record($id, ['state' => $success ? 'completed' : 'failed', 'phase' => $success ? 'Pemulihan selesai' : 'Proses gagal atau kedaluwarsa. Periksa log worker dan status maintenance.']);
+            }
+        }
         DB::table('system_health_signals')->where('name', 'restore_'.$id)->whereIn('status', ['queued', 'processing'])->update(['status' => $success ? 'completed' : 'failed', 'checked_at' => now()]);
     }
 }

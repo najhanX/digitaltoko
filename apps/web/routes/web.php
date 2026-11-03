@@ -91,6 +91,7 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/panduan/{slug}', [TutorialController::class, 'index'])->where('slug', '[a-z0-9-]+')->name('tutorials.show');
     Route::get('/admin/backups', [AdminBackupController::class, 'index'])->name('admin.backups');
     Route::get('/admin/backups/download/{name}', [AdminBackupController::class, 'download'])->where('name', '[a-zA-Z0-9.\-]+')->middleware('throttle:10,1,backup-download');
+    Route::post('/admin/backups/resume', [AdminBackupController::class, 'resume'])->middleware('throttle:3,1,backup-resume');
     Route::post('/admin/backups/restore', [AdminBackupController::class, 'restore'])->middleware('throttle:3,1,backup-restore');
     Route::get('/admin/system-health', [AdminSystemHealthController::class, 'index'])->name('admin.system-health');
     Route::post('/admin/system-health/backup', [AdminSystemHealthController::class, 'backup'])->middleware('throttle:2,1,system-backup')->name('admin.backup');

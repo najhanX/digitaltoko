@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'live_enabled' => (bool) env('BACKUP_LIVE_RESTORE_ENABLED', false),
+    'restore_lock' => storage_path('framework/live-restore.lock'),
+    'restore_hold' => storage_path('framework/restore-hold.json'),
+    'pm2_cli' => env('BACKUP_PM2_CLI') ?: (PHP_OS_FAMILY === 'Windows' ? getenv('APPDATA').'/npm/node_modules/pm2/bin/pm2' : null),
+    'node' => env('BACKUP_NODE_BINARY', 'node'),
+    'preview' => (bool) env('RECOVERY_PREVIEW', false),
     'enabled' => (bool) env('BACKUP_ENABLED', false),
     'key' => env('BACKUP_KEY'),
     'directory' => env('BACKUP_DIRECTORY') ?: storage_path('app/backups'),

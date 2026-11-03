@@ -619,3 +619,46 @@ DatabaseSeeder menjadi dispatcher APP_ENV:local/development/testing memakai Deve
 DevelopmentSeeder harus dijalankan hanya pada local/development/testing. Guard diperiksa sebelum admin/data dasar ditulis, dan guard juga ada pada seeder dummy anak. Ia memuat fondasi production, demo store/catalog dan DevelopmentActivitySeeder. Katalog menjadi60produk per empat toko (240), dengan taksonomi kategori/layanan normal melalui model saving; dispatcher tidak lagi menonaktifkan seluruh model events. Aktivitas contoh mencakup100customer dan ledger awal sandbox,160pesanan status akhir,24invoice sewa applied/expired serta receipt/attempt sintetis. Toko demo yang baru dibuat berada dalam sandbox, saldo asli customer0; tidak ada customer notice/job transaksi baru, kredensial gateway atau koneksi supplier asli. Transaksi gagal berbayar contoh memakai guest sehingga tidak menimbulkan klaim refund saldo akun tanpa ledger. Data berlabel demo/simulasi, bukan pendapatan/pembayaran nyata.
 
 Seeder hanya menambahkan data yang belum ada, kecuali sinkronisasi admin dari .env, konsolidasi penawaran lama dan aktivasi contoh paket baru yang memang dibuat pada run development. Tidak menghapus atau mengubah toko bisnis lain, tidak mereset edit pada fixture existing. ProductionSeeder tidak membersihkan dummy dari database yang sebelumnya dipakai development; gunakan database deployment baru atau rencana pemisahan/migrasi yang ditinjau. Mode development tidak boleh digunakan pada data production. Tidak ada perubahan schema atau dependency; seeder tidak otomatis dijalankan saat app startup. SupplierLabSeeder tetap opt-in karena dapat menghubungi server simulator.
+
+### Restore aktif atau terpisah, lalu uji hasil — 3 November 2026
+
+Bagian ini menggantikan batasan panel isolated-only pada catatan sebelumnya. CLI digitaltoko:backup-restore tetap hanya membuat target baru. Tidak ada migrasi/dependensi baru.
+
+**Prasyarat mode Timpa aplikasi aktif**
+
+- BACKUP_LIVE_RESTORE_ENABLED=true (sudah diisi pada .env laptop untuk fitur baru; .env.example defaultfalse). Muat ulang config/worker setelah deploy. APP_KEY runtime harus sama dengan APP_KEY di manifest; berbeda key ditolak sebelum maintenance. Gunakan isolated dan prosedur operator untuk backup dari instalasi berkunci lain.
+- Worker backup harus mengakses PM2 milik aplikasi yang sama. Tiga proses wajib terdaftar dengan status online atau stopped: digitaltoko-queue, digitaltoko-scheduler, digitaltoko-bot-manager. Tidak boleh ada worker/scheduler/bot kedua yang dijalankan manual atau pada host lain. Mode ini mendukung deployment satu VPS/host dengan PM2; bukan koordinator cluster atau supervisor yang tidak dikelola modul.
+- Windows mendeteksi APPDATA/npm/node_modules/pm2/bin/pm2; bila berbeda set BACKUP_PM2_CLI dan BACKUP_NODE_BINARY. Linux memakai pm2 pada PATH jika BACKUP_PM2_CLI kosong. Akun web/PHP/PM2 harus memiliki akses konsisten ke storage, journal, media dan sesi. Proses PM2 API Hanshop, bot Hanshop, web, Vite dan worker backup tidak dihentikan.
+- Selesaikan pembayaran/pesanan aktif sebelum menimpa. Pemeriksaan dilakukan setelah maintenance dan penghentian penulis, sebelum perubahan schema. Tidak ada migrate:fresh yang perlu dijalankan.
+
+**Melalui panel**
+
+1. Admin → Backup & pemulihan → Pulihkan pada snapshot atau Unggah & pulihkan. Pilih Tujuan pemulihan **Timpa aplikasi aktif**.
+2. Ketik **TIMPA DATA AKTIF** serta **PULIHKAN**. Setelah dikirim, halaman status signed berlaku2jam dan tetap dapat diakses saat maintenance/database diganti; simpan URL jika perlu. Link ini hanya memberi status aman, bukan otorisasi resume.
+3. Worker memverifikasi/mengimpor ke schema penyiapan, menghentikan penulisan, membuat snapshot keselamatan, lalu menghapus struktur schema aktif dan mengimpor snapshot ke **nama database aktif yang sama**. Tabel tambahan setelah snapshot ikut hilang. APP_KEY/.env tidak diganti otomatis. Media private/public/WhatsApp dipulihkan; file lama dipindahkan ke folder saudara `.old-ALIAS-ID12`, dan folder staging `.r-ALIAS-ID12` dapat tersisa kosong. Tidak ada penghapusan rekursif media secara diam-diam. Sumber symlink ditolak. Pada Windows berkas dipindah satu per satu dalam maintenance, menghindari penguncian rename folder.
+4. jobs dan sessions database dikosongkan; notifikasi lama ditandai tidak untuk dikirim ulang; remember tokens dinonaktifkan. Arsip asli tetap memuat data sebelum karantina untuk audit operator. Data keuangan pelanggan/order/ledger bukan dihapus oleh langkah karantina. Password admin mengikuti snapshot; admin yang baru dibuat setelah snapshot bisa tidak ada lagi.
+5. Setelah sukses, web dibuka dalam mode tinjauan, penulisan/API diblokir dan proses background tetap berhenti. Login kembali, periksa pesanan tertunda terhadap status supplier/gateway dan saldo eksternal. Buka **Backup & pemulihan → Buka kembali layanan**, centang sudah meninjau dan konfirmasi. Hanya proses yang sebelumnya online dijalankan kembali. Alternatif terminal dari apps/web: `php artisan digitaltoko:recovery-resume ID --reviewed`. Proses yang semula stopped tetap stopped.
+
+**Menguji database terpisah tanpa mengganti .env**
+
+1. Pada modal pilih **Database terpisah · untuk pengujian**; tunggu selesai. Buka Rincian dan salin ID/perintah pratinjau.
+2. Dari apps/web jalankan:
+
+```text
+php artisan digitaltoko:recovery-preview ID --port=8011
+```
+
+3. Buka http://localhost:8011/admin/login dan login menggunakan akun yang tersimpan pada snapshot. Akun admin baru dari seeder sesudah snapshot bukan akun yang dipulihkan. Staff dapat masuk dengan halaman staff/login dan password pada snapshot; owner OTP/operasi pengubahan data tidak dinyalakan dalam pratinjau ini.
+4. Periksa jumlah toko, pelanggan, riwayat transaksi, saldo serta media sesuai waktu snapshot. Storefront lokal: `http://SLUG.localhost:8011/`; domain custom asli sengaja tidak dipakai. Halaman memiliki penanda Pratinjau pemulihan · hanya baca. Hasil supplier lama dapat ditandai stale karena sinkronisasi dinonaktifkan, bukan berarti backup kehilangan data.
+5. Hentikan dengan Ctrl+C. Database utama, .env utama, port8000 dan PM2 tidak dialihkan. Cookie/session/cache/media runtime pratinjau berada terpisah di `BACKUP_DIRECTORY/recoveries/ID/preview-runtime`, bukan folder data aktif. Berkas settings.json privat berisi credential yang diperlukan runtime; jangan dipublikasikan/dicommmit. Tidak ada queue/scheduler/bot pratinjau yang perlu dinyalakan. Pratinjau bukan mode checkout sandbox: MySQL READ ONLY, outbound HTTP diblokir, SMTP array, null queue, API/mutasi HTTP ditolak423. Build frontend harus tersedia; tidak memakai hot Vite/SSR server aktif.
+
+Untuk hasil restore user yang sudah ada pada saat pengembangan, ID943d4cd8-62ae-41ae-b699-bef3cbacec83 dapat dipratinjau dengan perintah tersebut. Pengujian browser berhasil login akun demo snapshot dan menampilkan10toko. Tidak membuat perubahan data pada database itu; session file pratinjau terpisah. Port lain boleh1024–65535, selain port utama8000/3099/4000/5173. Bind selalu127.0.0.1.
+
+**Jika restore aktif gagal**
+
+- Sebelum penggantian dimulai: data aktif tetap utuh, maintenance dilepas dan proses semula dikembalikan. Hasil penyiapan terpisah tetap untuk pemeriksaan.
+- Sesudah penggantian dimulai: maintenance dan proses berhenti dipertahankan. Jangan menjalankan artisan up/pm2 restart all untuk memaksa online di atas hasil parsial. Operator memeriksa log dengan restore_id, jurnal privat `BACKUP_DIRECTORY/.live-restore-ID.json`, snapshot pada before_backup, dan folder media lama. Bila rollback diperlukan, pulihkan snapshot sebelum restore melalui CLI ke target baru, verifikasi DB/media/kunci, lalu ikuti prosedur pengalihan bencana di atas. Folder hasil/penyiapan dan arsip media lama tidak terkena retensi snapshot; bersihkan hanya sesudah hasil dipastikan benar dan backup independen tersedia.
+
+Penimpaan pada VPS publik, integrasi PM2 multi-user, dan gangguan host saat import belum diuji langsung. Kegagalan sesudah DDL tidak bisa di-rollback dengan transaksi SQL biasa; karena itu backup keselamatan, journal filesystem dan maintenance dipertahankan. Backup ini tidak mencakup database API Hanshop atau membalikkan dana/provider nyata.
+
+Retensi diperkuat: arsip yang baru selesai dibuat selalu dipertahankan walau timestamp sama/jam mundur. Selama restore-hold aktif, snapshot before_backup dipin pada arsip utama/replika sehingga tidak dipangkas; jumlah sementara dapat melampaui BACKUP_KEEP bila pin lebih banyak. Setelah tinjauan selesai, retensi normal berlaku pada backup berikutnya. Snapshot keselamatan tidak menggantikan kebutuhan salinan luar perangkat.

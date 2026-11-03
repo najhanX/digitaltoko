@@ -231,9 +231,9 @@ class PlatformBackup
                 }
             }
             $this->state(['status' => 'ok', 'last_success_at' => now()->toIso8601String(), 'file' => $name, 'sha256' => hash_file('sha256', $final), 'replicated' => (bool) $replica]);
-            $this->prune($root);
+            $this->prune($root, basename($final));
             if ($replica) {
-                $this->prune($replica);
+                $this->prune($replica, basename($final));
             }
 
             return $final;
@@ -354,11 +354,21 @@ class PlatformBackup
         }
     }
 
-    private function prune(string $directory): void
+    private function prune(string $directory, string $newest): void
     {
         $files = array_filter(glob($directory.'/digitaltoko-*.zip'), fn ($p) => preg_match('/^digitaltoko-\d{8}-\d{6}(?:\d{6})?-[a-z0-9]{8}\.zip$/', basename($p)) && ! is_link($p));
         rsort($files);
-        foreach (array_slice($files, max(1, (int) config('backup.keep'))) as $file) {
+        $pins = [$newest];
+        if (is_file(config('backup.restore_hold'))) {
+            $hold = json_decode(file_get_contents(config('backup.restore_hold')), true);
+            if (is_array($hold) && is_string($hold['before_backup'] ?? null)) {
+                $pins[] = $hold['before_backup'];
+            }
+        }
+        $pinned = array_values(array_filter($files, fn ($file) => in_array(basename($file), $pins, true)));
+        $others = array_values(array_diff($files, $pinned));
+        $slots = max(0, max(1, (int) config('backup.keep')) - count($pinned));
+        foreach (array_slice($others, $slots) as $file) {
             $this->verify($file);
             unlink($file);
         }
@@ -463,6 +473,43 @@ class PlatformBackup
                 unlink($cnf);
             }
             $zip->close();
+        }
+    }
+
+    /** Replace only the configured active schema after the coordinator has installed its recovery hold. */
+    public function replaceActiveDatabase(string $directory): void
+    {
+        $root = realpath(config('backup.directory').'/recoveries');
+        $absolute = realpath($directory);
+        $hold = is_file(config('backup.restore_hold')) ? json_decode(file_get_contents(config('backup.restore_hold')), true) : [];
+        $database = DB::connection()->getDatabaseName();
+        if (! config('backup.live_enabled') || ! $root || ! $absolute || is_link($directory) || dirname($absolute) !== $root
+            || ($hold['id'] ?? '') !== basename($absolute) || ($hold['database'] ?? '') !== $database
+            || ! preg_match('/^[a-zA-Z0-9_]{1,64}$/D', $database) || in_array(strtolower($database), ['mysql', 'sys', 'information_schema', 'performance_schema'], true)
+            || ! is_file($absolute.'/RESTORED.json')) {
+            throw new RuntimeException('Koordinator restore aktif atau target database tidak valid.');
+        }
+        $cnf = $this->mysqlConfig($absolute);
+        $input = fopen($absolute.'/database.sql', 'rb');
+        try {
+            $tables = DB::select('SELECT TABLE_NAME AS name, TABLE_TYPE AS type FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?', [$database]);
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+            try {
+                foreach (['VIEW', 'BASE TABLE'] as $type) {
+                    foreach ($tables as $table) {
+                        if ($table->type === $type) {
+                            $quoted = '`'.str_replace('`', '``', $table->name).'`';
+                            DB::unprepared(($type === 'VIEW' ? 'DROP VIEW ' : 'DROP TABLE ').$quoted);
+                        }
+                    }
+                }
+            } finally {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            }
+            $this->process([config('backup.mysql'), '--defaults-extra-file='.$cnf, '--binary-mode=1', '--default-character-set=utf8mb4', '--database='.$database], $input);
+        } finally {
+            fclose($input);
+            unlink($cnf);
         }
     }
 }

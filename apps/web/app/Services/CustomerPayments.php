@@ -120,6 +120,9 @@ class CustomerPayments
 
     public function repairQr(CustomerOrder $order): void
     {
+        if (config('backup.preview') || is_file(config('backup.restore_hold'))) {
+            return;
+        }
         if ($order->gateway !== 'midtrans' || ! $order->provider_id || $order->payment_status !== 'unpaid' || $order->status !== 'awaiting_payment' || $order->expires_at->isPast() || str_starts_with($order->qr_image ?? '', 'data:image/png;base64,')) {
             return;
         }
@@ -138,6 +141,9 @@ class CustomerPayments
 
     public function refreshForReceipt(CustomerOrder $order): bool
     {
+        if (config('backup.preview') || is_file(config('backup.restore_hold'))) {
+            return true;
+        }
         if ($order->gateway !== 'midtrans' || $order->payment_status === 'paid' || $order->status !== 'awaiting_payment') {
             return true;
         }

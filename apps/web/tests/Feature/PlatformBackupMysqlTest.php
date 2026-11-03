@@ -3,16 +3,21 @@
 namespace Tests\Feature;
 
 use App\Models\CatalogProduct;
+use App\Models\Customer;
 use App\Models\PremiumStock;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\BackupRecovery;
 use App\Services\BackupRequests;
+use App\Services\LiveBackupRestore;
 use App\Services\PlatformBackup;
+use App\Services\RecoveryPreview;
+use App\Services\RecoveryProcesses;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class PlatformBackupMysqlTest extends TestCase
@@ -31,12 +36,14 @@ class PlatformBackupMysqlTest extends TestCase
         config(['database.connections.backup_admin' => [...$original, 'database' => 'information_schema', 'url' => null]]);
         DB::connection('backup_admin')->statement('CREATE DATABASE `'.$name.'`');
         $panelRestored = null;
+        $liveRestored = null;
         try {
-            config(['database.default' => 'mysql', 'database.connections.mysql' => [...$original, 'database' => $name, 'url' => null], 'backup.key' => 'base64:'.base64_encode(random_bytes(32)), 'backup.directory' => $root.'/archives', 'backup.replica' => $root.'/replica', 'backup.keep' => 2, 'backup.mysqldump' => getenv('BACKUP_MYSQLDUMP') ?: config('backup.mysqldump'), 'backup.mysql' => getenv('BACKUP_MYSQL') ?: config('backup.mysql'), 'backup.sources' => ['private' => $root.'/private', 'public' => $root.'/public', 'whatsapp' => $root.'/wa']]);
+            config(['database.default' => 'mysql', 'database.connections.mysql' => [...$original, 'database' => $name, 'url' => null], 'backup.key' => 'base64:'.base64_encode(random_bytes(32)), 'backup.directory' => $root.'/archives', 'backup.replica' => $root.'/replica', 'backup.keep' => 2, 'backup.restore_lock' => $root.'/live.lock', 'backup.restore_hold' => $root.'/hold.json', 'backup.mysqldump' => getenv('BACKUP_MYSQLDUMP') ?: config('backup.mysqldump'), 'backup.mysql' => getenv('BACKUP_MYSQL') ?: config('backup.mysql'), 'backup.sources' => ['private' => $root.'/private', 'public' => $root.'/public', 'whatsapp' => $root.'/wa']]);
             DB::purge('mysql');
             Artisan::call('migrate', ['--force' => true, '--no-interaction' => true]);
             $owner = User::factory()->create(['name' => 'Backup fixture only']);
             $store = Store::create(['owner_id' => $owner->id, 'name' => 'Backup fixture', 'slug' => 'backup-fixture', 'template' => 'aurora', 'category' => 'full', 'plan' => 'galaxy', 'status' => 'active']);
+            $customer = Customer::create(['store_id' => $store->id, 'name' => 'Recovered Customer', 'phone' => '628000000001', 'balance' => 12000]);
             $product = CatalogProduct::create(['store_id' => $store->id, 'code' => 'BACKUP', 'name' => 'Fixture only', 'kind' => 'premium', 'service' => 'Apps', 'category' => 'Test', 'sale_price' => 15000, 'active' => true]);
             PremiumStock::create(['store_id' => $store->id, 'product_id' => $product->id, 'payload' => 'BACKUP ENCRYPTED STOCK', 'cost' => 1000]);
             File::ensureDirectoryExists($root.'/private/backups');
@@ -93,12 +100,56 @@ class PlatformBackupMysqlTest extends TestCase
             $this->assertSame('PRIVATE FIXTURE', file_get_contents($root.'/archives/recoveries/'.$operation['id'].'/files/private/test.txt'));
             $this->assertSame(1, DB::table('users')->count());
             $this->assertSame([], glob($root.'/archives/.restore-input-*'));
+            $this->assertSame(1, DB::connection('panel_recovery')->table('customers')->count());
+            $router = app(RecoveryPreview::class)->prepare($operation['id'], 8011);
+            $settings = json_decode(file_get_contents(dirname($router).'/settings.json'), true)['env'];
+            $code = <<<'PHP'
+require 'vendor/autoload.php';
+$app=require 'bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+try {Illuminate\Support\Facades\Http::get('https://supplier.invalid/test');exit(3);}catch(Illuminate\Http\Client\StrayRequestException){echo "NETWORK_BLOCKED\n";}
+if(config('mail.default')!=='array'||config('queue.connections.recovery_preview.driver')!=='null'){exit(4);}
+try {Illuminate\Support\Facades\DB::table('customers')->update(['balance'=>999]);exit(2);}catch(Illuminate\Database\QueryException $e){if((int)($e->errorInfo[1]??0)!==1792){throw $e;}echo "READONLY_BLOCKED\n";}
+PHP;
+            $preview = new Process([PHP_BINARY, '-r', $code], base_path(), $settings);
+            $preview->setTimeout(20)->run();
+            $this->assertTrue($preview->isSuccessful(), $preview->getOutput().$preview->getErrorOutput());
+            $this->assertStringContainsString('NETWORK_BLOCKED', $preview->getOutput());
+            $this->assertStringContainsString('READONLY_BLOCKED', $preview->getOutput());
+
+            $latest = app(BackupRecovery::class)->snapshots()[0]['name'];
+            $customer->update(['balance' => 999]);
+            $owner->update(['name' => 'CHANGED AFTER SNAPSHOT']);
+            file_put_contents($root.'/private/test.txt', 'CHANGED AFTER SNAPSHOT');
+            DB::statement('CREATE TABLE live_only_marker (id INT) ENGINE=InnoDB');
+            config(['backup.live_enabled' => true]);
+            $processes = $this->mock(RecoveryProcesses::class);
+            $processes->shouldReceive('inspect')->once()->andReturn([]);
+            $processes->shouldReceive('down')->once();
+            $processes->shouldReceive('pause')->once();
+            $processes->shouldReceive('up')->once();
+            $processes->shouldNotReceive('resume');
+            Str::createRandomStringsUsing(fn ($length) => str_repeat('0', $length));
+            $liveId = app(BackupRecovery::class)->request($owner->id, $latest, null, 'active');
+            $liveRestored = 'dt_restore_'.str_replace('-', '', $liveId);
+            $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'backups', '--queue' => 'backups', '--once' => true, '--sleep' => 0, '--tries' => 1]));
+            $journal = app(LiveBackupRestore::class)->read($liveId);
+            $this->assertSame('completed', $journal['state']);
+            $this->assertSame($name, DB::connection()->getDatabaseName());
+            $this->assertSame('Backup fixture only', DB::table('users')->where('id', $owner->id)->value('name'));
+            $this->assertSame(12000, (int) DB::table('customers')->where('id', $customer->id)->value('balance'));
+            $this->assertFalse(DB::getSchemaBuilder()->hasTable('live_only_marker'));
+            $this->assertSame('PRIVATE FIXTURE', file_get_contents($root.'/private/test.txt'));
+            $this->assertFileExists($root.'/archives/'.$journal['before_backup']);
+            $this->assertFileExists($root.'/hold.json');
+            $this->assertSame(0, DB::table('jobs')->count());
 
         } finally {
+            Str::createRandomStringsNormally();
             DB::disconnect('mysql');
             DB::disconnect('restored');
             DB::disconnect('panel_recovery');
-            foreach (array_filter([$name, $restored, $panelRestored]) as $schema) {
+            foreach (array_filter([$name, $restored, $panelRestored, $liveRestored]) as $schema) {
                 if (preg_match('/^dt_(backup_test|restore)_[a-f0-9]{32}$/D', $schema)) {
                     DB::connection('backup_admin')->statement('DROP DATABASE IF EXISTS `'.$schema.'`');
                 }

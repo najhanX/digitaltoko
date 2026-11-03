@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\RecoveryStatusController;
 use App\Http\Middleware\AuthenticatePanelSession;
 use App\Http\Middleware\CapturePanelNotifications;
 use App\Http\Middleware\ConfiguredTrustProxies;
+use App\Http\Middleware\GuardRecoveryRuntime;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ObserveCommerceWebhook;
 use App\Http\Middleware\ProtectPurgingStore;
@@ -14,6 +16,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,9 +24,13 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function (): void {
+            Route::get('/recovery-status/{id}', [RecoveryStatusController::class, 'show'])->middleware('signed')->name('recovery.status');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->prepend(ObserveCommerceWebhook::class);
+        $middleware->prepend([GuardRecoveryRuntime::class, ObserveCommerceWebhook::class]);
+        $middleware->preventRequestsDuringMaintenance(except: ['recovery-status/*']);
         $middleware->web(prepend: [ResolvePlatformHost::class], append: [AuthenticatePanelSession::class, ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->trimStrings(except: ['pin', 'payload', 'entries.*', 'content.*.text', 'config.rules.*.captures.*.prefix', 'config.rules.*.captures.*.suffix', 'config.rules.*.keyword', 'config.rules.*.regex', 'config.rules.*.template', 'text']);

@@ -24,7 +24,7 @@ class CustomerCommerce
 {
     public function settings(Store $store): StorePaymentSetting
     {
-        return StorePaymentSetting::firstOrCreate(['store_id' => $store->id]);
+        return (config('backup.preview') || is_file(config('backup.restore_hold'))) ? StorePaymentSetting::firstOrNew(['store_id' => $store->id]) : StorePaymentSetting::firstOrCreate(['store_id' => $store->id]);
     }
 
     public function ensure(bool $ok, string $message): void

@@ -35,7 +35,7 @@ class SupplierWallets
 
     public function account(SupplierConnection $connection): SupplierAccount
     {
-        return SupplierAccount::firstOrCreate(['identity_key' => $this->identity($connection)], ['store_id' => $connection->store_id]);
+        return (config('backup.preview') || is_file(config('backup.restore_hold'))) ? SupplierAccount::firstOrNew(['identity_key' => $this->identity($connection)], ['store_id' => $connection->store_id]) : SupplierAccount::firstOrCreate(['identity_key' => $this->identity($connection)], ['store_id' => $connection->store_id]);
     }
 
     /** Supplier event time is distinct from the time an HTTP response reached us. */

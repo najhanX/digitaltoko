@@ -8,9 +8,11 @@ use App\Models\Store;
 use App\Services\SupplierSimulator;
 use App\Services\SystemHealth;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Vite;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -30,7 +32,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (config('suppliers.simulator.enabled')) {
+        if (config('backup.preview')) {
+            Http::preventStrayRequests();
+            if (DB::connection()->getDriverName() === 'mysql') {
+                DB::statement('SET SESSION TRANSACTION READ ONLY');
+            }
+            config(['inertia.ssr.enabled' => false, 'queue.default' => 'recovery_preview', 'queue.connections.recovery_preview' => ['driver' => 'null'], 'mail.default' => 'array']);
+            app(Vite::class)->useHotFile(storage_path('framework/preview.hot'));
+        }
+        if (! config('backup.preview') && config('suppliers.simulator.enabled')) {
             app(SupplierSimulator::class)->secureRuntime();
         }
         Queue::looping(fn (Looping $event) => app(SystemHealth::class)->workerLoop($event));

@@ -102,3 +102,7 @@ Backup memakai ZIP AES-256, key independen, dump InnoDB konsisten, salinan media
 ## 3 November 2026 — Panel riwayat backup dan pemulihan
 
 Administrator dapat membuat snapshot, mengunduh arsip dan meminta restore dari riwayat/unggahan. Restore tetap ke database/folder baru untuk ditinjau operator; tidak tersedia overwrite live lewat HTTP. Retensi snapshot tidak menghapus hasil pemulihan. Pemulihan sebenarnya diuji lewat queue database/MySQL terisolasi, tanpa menulis database toko aktif. Tidak ada perubahan schema atau dependensi.
+
+## 3 November 2026 — Perubahan restore: opsi aktif dan terpisah
+
+Permintaan user memperluas keputusan isolated-only sebelumnya. Panel sekarang menyediakan dua mode yang dijelaskan eksplisit; isolated tetap default dan tidak mengalihkan aplikasi, sedangkan active menimpa schema/media aktif dengan koordinasi maintenance, PM2, lease HTTP, safety backup dan review. Penimpaan tidak dijalankan pada database utama laptop selama implementasi; dibuktikan pada schema MySQL uji. Tinjauan sebelum resume diperlukan karena restore DigitalToko tidak memutar mundur transaksi/saldo di supplier, gateway, atau API Hanshop. Pratinjau hasil terpisah disediakan lewat CLI server localhost read-only, bukan mengganti .env aktif.

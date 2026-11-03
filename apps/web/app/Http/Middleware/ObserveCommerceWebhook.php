@@ -16,6 +16,9 @@ class ObserveCommerceWebhook
 
     public function terminate(Request $request, Response $response): void
     {
+        if (config('backup.preview') || is_file(config('backup.restore_hold')) || app()->isDownForMaintenance()) {
+            return;
+        }
         if (! in_array($request->method(), ['GET', 'POST'], true) || ! preg_match('#^api/commerce/(digiflazz|midtrans|otomax|forward)(?:/|$)#D', $request->path(), $matches)) {
             return;
         }

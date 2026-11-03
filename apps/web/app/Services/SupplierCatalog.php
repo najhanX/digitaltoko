@@ -21,6 +21,9 @@ class SupplierCatalog
 
     public function refreshForStore(Store $store): void
     {
+        if (config('backup.preview') || is_file(config('backup.restore_hold'))) {
+            return;
+        }
         if (! $store->acceptsOrders() && $store->status !== 'provisioning') {
             return;
         }
