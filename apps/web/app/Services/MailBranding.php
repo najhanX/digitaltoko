@@ -40,7 +40,7 @@ class MailBranding
             $path = 'storefront/'.$store->id.'/'.$match[1];
             if (Storage::disk('local')->exists($path)) {
                 $brand['logo_path'] = Storage::disk('local')->path($path);
-                $brand['logo'] = rtrim(config('app.url'), '/').$logo;
+                $brand['logo'] = $logo;
             }
         } elseif (is_string($logo) && filter_var($logo, FILTER_VALIDATE_URL) && parse_url($logo, PHP_URL_SCHEME) === 'https' && ! parse_url($logo, PHP_URL_USER) && ! parse_url($logo, PHP_URL_PASS)) {
             $brand['logo'] = $logo;

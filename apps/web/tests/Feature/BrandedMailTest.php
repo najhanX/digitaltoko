@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\CustomerOtpMail;
 use App\Mail\OwnerOtpMail;
 use App\Mail\StoreMessageMail;
+use App\Models\MaintenanceWindow;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\StoreMail;
@@ -52,6 +53,7 @@ class BrandedMailTest extends TestCase
         $this->assertStringContainsString('#111122', $html);
         $this->assertStringContainsString('#222233', $html);
         $this->assertSame('#17213a', $mail->branding['on_primary']);
+        $this->assertSame($branding['design']['logo'], $mail->branding['logo']);
         $this->assertStringContainsString('Toko Warna', $html);
         Mail::fake();
         app(StoreMail::class)->send($store, 'test@example.test', new CustomerOtpMail($store->name, '123456'));
@@ -83,5 +85,31 @@ class BrandedMailTest extends TestCase
         $this->assertStringContainsString($text, $message->getTextBody());
         $this->assertStringNotContainsString($text, $message->getHtmlBody());
         $this->assertStringContainsString('A&amp;B&lt;123&gt;', $message->getHtmlBody());
+    }
+
+    public function test_local_logo_uses_current_storefront_host_and_is_embedded_in_real_mime_parts(): void
+    {
+        Storage::fake('local');
+        config(['platform.domain' => 'localhost', 'app.url' => 'http://192.0.2.123:8000']);
+        $store = $this->store();
+        $filename = Str::random(30).'.png';
+        $bytes = UploadedFile::fake()->image('logo.png', 64, 64)->getContent();
+        Storage::disk('local')->put('storefront/'.$store->id.'/'.$filename, $bytes);
+        $branding = $store->branding;
+        $branding['design']['logo'] = '/storefront-media/'.$store->id.'/'.$filename;
+        $store->update(['branding' => $branding]);
+        MaintenanceWindow::create(['scope' => 'store:'.$store->id, 'store_id' => $store->id, 'enabled' => true]);
+        $this->get('http://toko-warna.localhost/maintenance')->assertOk()->assertSee('src="'.$branding['design']['logo'].'"', false)->assertDontSee('192.0.2.123');
+        $this->get('http://toko-warna.localhost'.$branding['design']['logo'])->assertOk()->assertHeader('Content-Type', 'image/png');
+        foreach ([new CustomerOtpMail($store->name, '123456'), new StoreMessageMail($store->name, 'Pesanan selesai.')] as $mail) {
+            $sent = Mail::mailer('array')->to('not-sent@example.test')->send($mail->forStore($store));
+            $mime = $sent->getSymfonySentMessage()->getOriginalMessage();
+            $images = $mime->getAttachments();
+            $this->assertCount(1, $images);
+            $this->assertSame('inline', $images[0]->getDisposition());
+            $this->assertStringContainsString('cid:'.$images[0]->getContentId(), $mime->getHtmlBody());
+            $this->assertSame($bytes, $images[0]->getBody());
+            $this->assertStringNotContainsString('192.0.2.123', $mime->getHtmlBody());
+        }
     }
 }

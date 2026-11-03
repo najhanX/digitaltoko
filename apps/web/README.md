@@ -138,3 +138,8 @@ Menu admin `/admin/maintenance` dan owner `/stores/{store}/maintenance` menulis 
 Migrasi: `php artisan migrate --force` sesudah backup. Tidak ada migrasi API Hanshop/dependency baru. Jalankan build web/bot dan restart worker setelah deploy. Source baru memerlukan tabel maintenance_windows; saat memulihkan snapshot versi lama, jalankan migrasi yang belum ada sebelum membuka layanan.
 
 Validasi modul ini: 749 tes web (744 lulus, 5 opsional dilewati), 76 tes bot dan 40 tes frontend lulus; build web/bot, Pint dan diff check lulus. Tes mencakup batas antarowner, dampak global, tenggat tanpa scheduler, jendela tumpang tindih, admission bot/web, registrasi OTP yang terbit sebelum maintenance, callback pembayaran dan fulfillment stok lama, inquiry failover pascabayar paid, isolasi logo, escaping HTML dan karakter kredensial pada text/plain. Browser memakai data simulasi: modal admin/owner, halaman countdown, pembukaan otomatis sesudah tenggat, email platform/toko/notifikasi, dan batas lebar 320/390 px. Tidak menyalakan maintenance pada toko nyata, tidak melakukan pembayaran/OTP/email nyata.
+
+
+### Perbaikan alamat logo maintenance — 4 November 2026
+
+Logo media lokal pada MailBranding memakai path relatif storefront-media yang sama dengan storefront, sehingga halaman maintenance tidak bergantung pada IP/hostname APP_URL yang mungkin sudah berubah di laptop. Email tetap menyematkan file logo lokal sebagai CID; URL eksternal HTTPS tetap mengikuti konfigurasi. Uji regresi memeriksa gambar bisa diakses saat maintenance dengan APP_URL berbeda, serta CID, disposition inline, dan byte gambar pada MIME OTP/notifikasi. Validasi terkait: 25 tes lulus. Tidak ada perubahan data toko, SMTP, schema, atau pengiriman email nyata.
