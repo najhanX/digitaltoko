@@ -662,3 +662,12 @@ Untuk hasil restore user yang sudah ada pada saat pengembangan, ID943d4cd8-62ae-
 Penimpaan pada VPS publik, integrasi PM2 multi-user, dan gangguan host saat import belum diuji langsung. Kegagalan sesudah DDL tidak bisa di-rollback dengan transaksi SQL biasa; karena itu backup keselamatan, journal filesystem dan maintenance dipertahankan. Backup ini tidak mencakup database API Hanshop atau membalikkan dana/provider nyata.
 
 Retensi diperkuat: arsip yang baru selesai dibuat selalu dipertahankan walau timestamp sama/jam mundur. Selama restore-hold aktif, snapshot before_backup dipin pada arsip utama/replika sehingga tidak dipangkas; jumlah sementara dapat melampaui BACKUP_KEEP bila pin lebih banyak. Setelah tinjauan selesai, retensi normal berlaku pada backup berikutnya. Snapshot keselamatan tidak menggantikan kebutuhan salinan luar perangkat.
+
+
+### Pesan layanan ditahan sesudah restore — 3 November 2026
+
+`restore-hold.json` berarti hasil **Timpa aplikasi aktif** masih menunggu peninjauan; mengganti SMTP atau restart PM2 tidak menyelesaikan tinjauan. OTP owner juga ditahan sebelum proses pengiriman berjalan. Admin masuk melalui `/admin/login` memakai akun dari snapshot, membuka **Backup & pemulihan**, memeriksa transaksi/pembayaran/saldo terhadap kondisi eksternal, lalu memilih **Buka kembali layanan** dan mengonfirmasi peninjauan. Owner/pelanggan menghubungi admin platform. Jangan menghapus hold secara manual atau menandai reviewed sebelum pemeriksaan selesai.
+
+Permintaan Inertia yang ditahan kini memakai external-location 409 ke `/recovery-review`, sehingga tidak memunculkan dialog “plain JSON response”. Form HTML memakai 303 ke halaman yang sama. API/JSON tetap mendapat 423 (atau 503 selama lock restore) dan tidak menjalankan tindakan. Halaman pemberitahuan tidak memerlukan query database, tidak menampilkan ID/journal/credential pemulihan, dan tetap tersedia saat maintenance. Halaman hanya menjelaskan status dan cara membuka kembali layanan; tidak melakukan resume otomatis. Preview tetap hanya baca.
+
+Validasi perbaikan respons recovery: 51 tes terkait backup/recovery/profil/sesi, 50 lulus dan 1 MySQL opsional dilewati; Pint dan diff check lulus. Pengujian memakai hold/lease terisolasi, tidak menjalankan resume pemulihan pengguna.

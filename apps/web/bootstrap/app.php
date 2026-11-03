@@ -26,12 +26,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
+            Route::get('/recovery-review', [RecoveryStatusController::class, 'review'])->name('recovery.review');
             Route::get('/recovery-status/{id}', [RecoveryStatusController::class, 'show'])->middleware('signed')->name('recovery.status');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend([GuardRecoveryRuntime::class, ObserveCommerceWebhook::class]);
-        $middleware->preventRequestsDuringMaintenance(except: ['recovery-status/*']);
+        $middleware->preventRequestsDuringMaintenance(except: ['recovery-status/*', 'recovery-review']);
         $middleware->web(prepend: [ResolvePlatformHost::class], append: [AuthenticatePanelSession::class, RequireOwnerEmail::class, ProtectPurgingStore::class, HandleInertiaRequests::class, CapturePanelNotifications::class]);
         $middleware->api(prepend: [ResolvePlatformHost::class]);
         $middleware->trimStrings(except: ['pin', 'payload', 'entries.*', 'content.*.text', 'config.rules.*.captures.*.prefix', 'config.rules.*.captures.*.suffix', 'config.rules.*.keyword', 'config.rules.*.regex', 'config.rules.*.template', 'text']);

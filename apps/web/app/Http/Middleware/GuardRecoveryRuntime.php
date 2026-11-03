@@ -4,13 +4,14 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class GuardRecoveryRuntime
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->is('recovery-status/*')) {
+        if ($request->is('recovery-status/*', 'recovery-review')) {
             return $next($request);
         }
         $preview = config('backup.preview');
@@ -19,7 +20,7 @@ class GuardRecoveryRuntime
             abort(403);
         }
         if (($preview || $hold) && ($request->is('api/*') || (! in_array($request->method(), ['GET', 'HEAD'], true) && ! $request->is('admin/login', 'staff/*/login', 'logout') && ! (! $preview && $request->is('admin/backups/resume'))))) {
-            return response()->json(['message' => $preview ? 'Pratinjau pemulihan hanya untuk membaca. Transaksi dan perubahan data dinonaktifkan.' : 'Hasil pemulihan sedang ditinjau. Jalankan prosedur resume setelah rekonsiliasi.'], 423);
+            return $this->blocked($request, $preview ? 'Pratinjau pemulihan hanya untuk membaca. Transaksi dan perubahan data dinonaktifkan.' : 'Hasil pemulihan menunggu tinjauan admin. Buka Backup & pemulihan, tinjau transaksi dan pembayaran, lalu pilih Buka kembali layanan.', 423);
         }
         if ($preview && $request->is('storage/*')) {
             $root = realpath(storage_path('app/public'));
@@ -44,7 +45,7 @@ class GuardRecoveryRuntime
         if (! flock($lease, LOCK_SH | LOCK_NB)) {
             fclose($lease);
 
-            return response('Pemulihan sedang berlangsung. Silakan tunggu.', 503, ['Retry-After' => '15']);
+            return $this->blocked($request, 'Pemulihan sedang berlangsung. Silakan tunggu.', 503);
         }
         try {
             return $next($request);
@@ -52,5 +53,17 @@ class GuardRecoveryRuntime
             flock($lease, LOCK_UN);
             fclose($lease);
         }
+    }
+
+    private function blocked(Request $request, string $message, int $status): Response
+    {
+        if ($request->header('X-Inertia')) {
+            return Inertia::location('/recovery-review')->header('Cache-Control', 'no-store');
+        }
+        if ($request->is('api/*') || $request->expectsJson()) {
+            return response()->json(['message' => $message], $status, ['Cache-Control' => 'no-store', 'Retry-After' => '15']);
+        }
+
+        return redirect('/recovery-review', 303)->header('Cache-Control', 'no-store');
     }
 }

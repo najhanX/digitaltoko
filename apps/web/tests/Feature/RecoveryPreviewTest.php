@@ -62,7 +62,8 @@ class RecoveryPreviewTest extends TestCase
     public function test_read_only_guard_blocks_mutations_webhooks_and_remote_host(): void
     {
         config(['backup.preview' => true, 'platform.domain' => 'localhost']);
-        $this->post('/checkout')->assertStatus(423);
+        $this->post('/checkout')->assertRedirect('/recovery-review');
+        $this->postJson('/checkout')->assertStatus(423);
         $this->post('/api/commerce/digiflazz')->assertStatus(423);
         $this->get('/api/commerce/digiflazz')->assertStatus(423);
         $this->get('http://external.example.test/')->assertForbidden();

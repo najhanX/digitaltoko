@@ -88,7 +88,7 @@ class LiveBackupRestoreTest extends TestCase
             $this->assertFileDoesNotExist($path.'/old-only.txt');
             $this->assertFileExists(dirname($path).'/.old-'.$alias.'-'.substr(str_replace('-', '', $this->id), 0, 12).'/old-only.txt');
         }
-        $this->post('/anything')->assertStatus(423);
+        $this->postJson('/anything')->assertStatus(423);
         $processes->shouldReceive('resume')->once()->with($states);
         app(LiveBackupRestore::class)->resume($this->id, $processes);
         $this->assertFileDoesNotExist(config('backup.restore_hold'));
@@ -180,6 +180,51 @@ class LiveBackupRestoreTest extends TestCase
         $this->mock(LiveBackupRestore::class)->shouldReceive('resume')->once()->withArgs(fn ($id, $processes) => $id === $this->id && $processes instanceof RecoveryProcesses);
         $this->post('/admin/backups/resume', ['id' => $this->id, 'reviewed' => true])->assertRedirect('/admin/backups');
         config(['backup.preview' => true]);
-        $this->post('/admin/backups/resume', ['id' => $this->id, 'reviewed' => true])->assertStatus(423);
+        $this->postJson('/admin/backups/resume', ['id' => $this->id, 'reviewed' => true])->assertStatus(423);
+    }
+
+    public function test_inertia_actions_during_review_redirect_to_a_readable_notice_without_running_action(): void
+    {
+        file_put_contents(config('backup.restore_hold'), json_encode(['id' => $this->id]));
+        $owner = User::factory()->create();
+        $name = $owner->name;
+        $this->actingAs($owner)->withHeaders(['X-Inertia' => 'true', 'Accept' => 'text/html, application/xhtml+xml'])
+            ->patch('/owner/account', ['name' => 'Must not change'])->assertStatus(409)->assertHeader('X-Inertia-Location', '/recovery-review');
+        $this->assertSame($name, $owner->fresh()->name);
+        $this->get('/recovery-review')->assertOk()->assertSee('Buka kembali layanan')->assertSee('OTP')->assertDontSee($this->id);
+        $this->assertFileExists(config('backup.restore_hold'));
+    }
+
+    public function test_review_notice_works_without_database_queries_and_normal_forms_redirect(): void
+    {
+        file_put_contents(config('backup.restore_hold'), json_encode(['id' => $this->id]));
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->get('/recovery-review')->assertOk()->assertSee('Hasil pemulihan menunggu tinjauan admin')->assertHeader('Cache-Control', 'no-store, private');
+        $this->assertCount(0, DB::getQueryLog());
+        DB::disableQueryLog();
+        $this->post('/login/otp')->assertRedirect('/recovery-review');
+        $this->postJson('/login/otp')->assertStatus(423)->assertJsonPath('message', 'Hasil pemulihan menunggu tinjauan admin. Buka Backup & pemulihan, tinjau transaksi dan pembayaran, lalu pilih Buka kembali layanan.');
+    }
+
+    public function test_preview_inertia_actions_and_restore_lease_use_notice_while_api_keeps_error_status(): void
+    {
+        config(['backup.preview' => true]);
+        $this->withHeaders(['X-Inertia' => 'true'])->post('/account/otp')->assertStatus(409)->assertHeader('X-Inertia-Location', '/recovery-review');
+        $this->get('/recovery-review')->assertOk()->assertSee('Pratinjau pemulihan hanya baca');
+        $this->flushHeaders();
+        $this->postJson('/api/commerce/digiflazz')->assertStatus(423);
+        config(['backup.preview' => false]);
+        $lock = fopen(config('backup.restore_lock'), 'c');
+        flock($lock, LOCK_EX);
+        try {
+            $this->withHeaders(['X-Inertia' => 'true'])->get('/owner')->assertStatus(409)->assertHeader('X-Inertia-Location', '/recovery-review');
+            $this->get('/recovery-review')->assertOk()->assertSee('Pemulihan sedang berlangsung');
+            $this->flushHeaders();
+            $this->getJson('/api/commerce/digiflazz')->assertStatus(503);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
 }
