@@ -111,3 +111,9 @@ Schedule::call(function () {
 
 Schedule::call(fn () => app(SystemHealth::class)->schedulerTick())
     ->everyMinute()->name('system-health-heartbeat');
+
+$backupTime = (string) config('backup.time', '03:00');
+if (! preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/D', $backupTime)) {
+    $backupTime = '03:00';
+}
+Schedule::command('digitaltoko:backup')->dailyAt($backupTime)->timezone('Asia/Jakarta')->when(fn () => (bool) config('backup.enabled'))->withoutOverlapping(180)->runInBackground();

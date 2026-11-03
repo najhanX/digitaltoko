@@ -46,7 +46,7 @@ class StoreRetentionMysqlTest extends TestCase
             $this->assertTrue(app(StoreRetention::class)->purge($store));
             $this->assertModelMissing($customer);
             $this->assertSame(0, CustomerOrder::count());
-            $plan = PlanOption::create(['name' => 'MySQL Renew', 'category' => 'web', 'plan' => 'orbit', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
+            $plan = PlanOption::create(['name' => 'MySQL Renew', 'category' => 'full', 'plan' => 'galaxy', 'price' => 50000, 'duration_days' => 30, 'active' => true]);
             $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000]);
             $retained = $newStore('unrelated');
             for ($iteration = 0; $iteration < 3; $iteration++) {
@@ -83,6 +83,8 @@ class StoreRetentionMysqlTest extends TestCase
             if ($absolute && $parent && dirname($absolute) === $parent && str_starts_with(basename($absolute), 'retention-')) {
                 File::deleteDirectory($absolute);
             }
+            config(['database.default' => 'sqlite', 'database.connections.mysql' => $original]);
+            DB::purge('mysql');
         }
     }
 }

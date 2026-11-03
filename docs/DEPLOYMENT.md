@@ -525,3 +525,51 @@ Backup tabel stores, plan_options, subscription_invoices, discount_vouchers dan 
 Jalankan `php artisan db:seed --class=PackagePlanSeeder --force` bila diperlukan; seeder mempertahankan harga/durasi/status full existing, bukan mengaktifkan harga dummy. Install baru menyiapkan penawaran nonaktif. Build web, restart queue dan muat ulang scheduler/web/bot manager long-lived melalui konfigurasi proses yang sudah dipakai; jangan membuat instance ganda. Kebijakan paket tidak memiliki rollback otomatis: pemulihan membutuhkan backup.
 
 Backup lokal tahap ini tersimpan pada disk private: `backups/unified-package-20261102-144319.json` dan `backups/voucher-claims-20261102-174436.json`. Migrasi lokal sudah diterapkan, belum merupakan bukti deployment VPS. Arsip promosi ada di docs/marketing/DigitalToko-Promo-60-Detik.zip.
+
+## Backup otomatis dan pemulihan offline — 3 November 2026
+
+Implementasi tersedia melalui Laravel, tanpa Composer/package baru. Cakupan: **database aplikasi DigitalToko**, media private/public dan folder sesi bot tenant (termasuk registry manager). Database API Hanshop, bot Hanshop pribadi, konfigurasi DNS/provider, Redis sebagai cache, SDK/APK rilis dan source Git tidak otomatis masuk arsip ini; masing-masing tetap perlu dipertahankan/dicadangkan di lingkungannya. APP_KEY dimasukkan dalam manifest terenkripsi agar credential/stok hasil restore dapat dibaca. File .env lengkap dan BACKUP_KEY tidak disertakan.
+
+### Konfigurasi dan jadwal
+
+Pada apps/web/.env, atur BACKUP_ENABLED=true setelah key/path siap. BACKUP_KEY memakai `base64:` diikuti 32 byte acak dalam base64, **berbeda dari APP_KEY**. Contoh pembuatan kunci untuk pemasangan baru: `php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;"`. Simpan hasil langsung di .env dan salinan offline terlindungi; jangan mencetak/menyalin kunci ke log atau Git. Kehilangan kunci berarti arsip tidak dapat dipulihkan. Jangan mengganti kunci tanpa menyimpan kunci lama untuk arsip lama.
+
+- BACKUP_TIME=03:00 menggunakan **Asia/Jakarta**, meskipun waktu aplikasi/penamaan file UTC. Schedule Laravel memanggil backup setiap hari; cukup scheduler/cron Laravel yang sudah ada, jangan tambahkan job backup ganda. Laptop harus hidup dan scheduler berjalan. BACKUP_KEEP=7 mempertahankan tujuh arsip berhasil, bukan tujuh hari jika ada backup manual tambahan.
+- BACKUP_DIRECTORY default `storage/app/backups`, di luar sumber media dan web root. BACKUP_BOT_SESSIONS default `apps/bot/sessions`; samakan dengan SESSION_ROOT manager jika berbeda. BACKUP_MYSQLDUMP/BACKUP_MYSQL memakai binary mysql/mysqldump yang sesuai versi server; lokal Windows sudah diatur ke instalasi Laragon. VPS harus menyesuaikan binary/path, bukan menyalin path Windows.
+- BACKUP_REPLICA_DIRECTORY opsional: folder/mount di lokasi kedua. Arsip disalin atomik dan hash dibandingkan sebelum retensi dijalankan. Folder lain pada disk yang sama **bukan** backup luar perangkat. Penyedia cloud/SSH/mount dan kredensialnya tidak dibuat otomatis. Saat ini belum ada tujuan luar laptop yang dihubungkan; panel menyatakan belum ada salinan di lokasi kedua.
+- PHP memerlukan ZipArchive dengan AES-256 dan izin eksekusi proses; database MySQL/InnoDB. Gunakan user sistem yang tepat untuk scheduler dan pembacaan status oleh panel. Direktori kerja dibatasi 0700 dan berkas sensitif 0600 pada OS yang mendukung; ACL Windows mengikuti akun/profil sistem. BACKUP_RESTORE_LIMIT_BYTES default 20 GiB membatasi ukuran hasil ekstraksi, sesuaikan untuk data lebih besar.
+
+Arsip ZIP mengenkripsi seluruh isi berkas beserta manifest dengan AES-256; nama entry ZIP masih terlihat sehingga arsip tetap bersifat privat. Password ZIP adalah bagian setelah prefix base64: dari BACKUP_KEY; sebaiknya gunakan perintah aplikasi untuk verifikasi/restore. Jangan memakai extractor bawaan OS sebagai pengganti verifikasi checksum aplikasi. Lihat [dokumentasi PHP ZipArchive](https://www.php.net/manual/en/ziparchive.setencryptionname.php).
+
+### Konsistensi, kegagalan dan pemantauan
+
+Database diekspor dengan single-transaction/quick, hanya tabel InnoDB, tanpa password di argumen proses. Jangan menjalankan migrasi/DDL saat snapshot berlangsung; batas snapshot dijelaskan pada [dokumentasi mysqldump](https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html). Media/sesi disalin dan SHA-256 diperiksa sebelum dan sesudah snapshot. Jika berubah, backup gagal dan **tidak dipublikasikan**; ulangi saat tenang. Untuk toko sibuk terus-menerus, gunakan jendela maintenance dan hentikan penulis/worker yang relevan sebelum backup. DB snapshot ini tidak mengunci provider eksternal atau menjanjikan titik konsisten lintas database Hanshop.
+
+Hanya arsip yang lolos dekripsi/manifest/checksum dipublikasikan. Lock berkas mencegah dua job pada direktori yang sama. Retensi hanya menghapus nama arsip yang dikelola modul, sesudah verifikasi; gagal ekspor/replikasi tidak memangkas cadangan lama. Workspace sementara dibersihkan setelah proses selesai; workspace tertinggal karena proses mati dibersihkan pada run berikutnya setelah lock diperoleh. Kebutuhan ruang sementara mencakup salinan media dan dump, bukan hanya ukuran ZIP akhirnya.
+
+Admin → Kesehatan sistem menampilkan Backup terenkripsi ketika modul diaktifkan: hasil terakhir, keberadaan arsip dan batas umur (default 30 jam). Backup gagal/usang menjadi indikator gangguan dan mengikuti jalur peringatan kesehatan existing. Pemantauan ini membutuhkan web/scheduler; bukan pengganti monitor eksternal jika VPS mati total. Status aman disimpan di BACKUP_DIRECTORY/status.json, tanpa key atau data pelanggan.
+
+### Perintah operator (dari apps/web)
+
+```text
+php artisan digitaltoko:backup
+php artisan digitaltoko:backup-verify "PATH/digitaltoko-TANGGAL-WAKTU-ID.zip"
+php artisan digitaltoko:backup-drill "PATH/digitaltoko-TANGGAL-WAKTU-ID.zip"
+php artisan schedule:list
+```
+
+backup-verify memeriksa AES, kunci, manifest, ukuran dan hash tanpa menulis database. backup-drill membuat nama database dt_restore_UUID serta folder .drill-UUID sendiri, menjalankan import nyata, memeriksa tabel dan contoh stok terenkripsi bila tersedia, lalu menghapus **salinan sementara miliknya sendiri**. Tidak menjalankan queue, bot, callback atau transaksi supplier. User database untuk drill memerlukan CREATE/DROP pada schema uji tersebut. Tinjau hasil drill secara berkala, terutama setelah perubahan schema/penyimpanan.
+
+Pemulihan yang ingin dipertahankan untuk investigasi:
+
+```text
+php artisan digitaltoko:backup-restore "PATH/arsip.zip" --database=dt_restore_investigasi --directory="PATH_BARU/recovery-investigasi"
+```
+
+Database dan folder tujuan wajib baru; database berawalan dt_restore_, berbeda dari database aktif, dan direktori di luar web root/sumber media aktif. Tidak ada opsi overwrite live. Hasilnya database terpisah, `files/private`, `files/public`, `files/whatsapp`, database.sql, .env.recovery berisi APP_KEY/database dan RESTORED.json. Bila import gagal, hasil parsial tetap offline untuk diperiksa; retry memakai tujuan baru. Jangan menampilkan file recovery melalui web.
+
+Untuk beralih saat bencana: sediakan source/dependensi yang cocok dengan schema backup, hentikan akses dan semua penulis lama, pastikan kewajiban/transaksi terbaru direkonsiliasi dengan provider, lalu operator memindahkan media/sesi dan mengarahkan konfigurasi ke database hasil pemulihan dengan APP_KEY yang benar. Registry WA memuat token terenkripsi/rahasia; jangan menjalankan manager/sesi yang sama pada dua host. Jangan menyalakan queue transaksi yang dipulihkan sebelum memeriksa job/invoice pending dan idempotensinya. Flush cache dan sesi aplikasi yang perlu dibatalkan, muat ulang worker/scheduler, serta periksa DNS/HTTPS/gateway/OTP. Perintah restore sengaja tidak otomatis mengganti .env, menyalakan layanan atau menghubungi supplier.
+
+### Kondisi laptop saat penyelesaian
+
+Jadwal 03.00 WIB/retensi tujuh arsip sudah aktif; hanya PM2 digitaltoko-scheduler dimuat ulang. Backup pertama `digitaltoko-20261103-023557-lzwni3we.zip` tersimpan di apps/web/storage/app/backups, sekitar 7 MB. Arsip telah diverifikasi dan dipulihkan lewat drill offline; database/folder drill dibersihkan. Kunci pemulihan disimpan di `C:/Users/62878/.digitaltoko/backup-recovery-5f55b01c.key`, di luar Git dan di luar arsip. Salin kunci dan arsip ke media aman di luar perangkat sesuai kebijakan operasional; tujuan replika belum tersedia. Konfigurasi ini belum dipasang pada VPS.

@@ -27,6 +27,20 @@ if (! preg_match('/^dt_commerce_test_[a-f0-9]{32}$/', $input['database'])) {
 config(['database.default' => 'mysql', 'database.connections.mysql' => $input['config'], 'cache.default' => 'array', 'queue.default' => 'database', 'session.driver' => 'array', 'inertia.ssr.enabled' => false]);
 DB::purge('mysql');
 Http::preventStrayRequests();
+if (isset($input['gate'])) {
+    $gate = $input['gate'];
+    $parent = realpath(storage_path('framework/testing'));
+    if (! $parent || realpath(dirname($gate)) !== $parent || ! str_starts_with(basename($gate), 'mysql-gate-')) {
+        throw new RuntimeException('Invalid test gate');
+    }
+    touch($gate.'.ready.'.getmypid());
+    $deadline = microtime(true) + 25;
+    while (! is_file($gate)) {
+        if (microtime(true) > $deadline) {
+            throw new RuntimeException('Test gate timeout');
+        } usleep(10000);
+    }
+}
 if (in_array($input['mode'], ['retention-renew', 'retention-purge'], true)) {
     config(['platform.store_purge_enabled' => true, 'services.bot_manager.url' => 'http://127.0.0.1:3099', 'services.bot_manager.token' => str_repeat('x', 40), 'filesystems.disks.local.root' => $input['storage']]);
     Http::fake(['http://127.0.0.1:3099/*' => Http::response(['status' => 'SUCCESS'])]);
@@ -46,9 +60,9 @@ if (in_array($input['mode'], ['retention-renew', 'retention-purge'], true)) {
         echo DB::transaction(function () use ($input) {
             Store::whereKey($input['store'])->lockForUpdate()->firstOrFail();
             ModulePurchase::where('store_id', $input['store'])->exists();
-            $quote = app(Vouchers::class)->quote(null, $input['code'], 20000, module: true, lock: true);
+            $quote = app(Vouchers::class)->quote(null, $input['code'], 20000, module: true, lock: true, owner: Store::findOrFail($input['store'])->owner);
             $invoice = ModulePurchase::create(['store_id' => $input['store'], 'status' => 'pending', 'amount' => $quote['total']]);
-            app(Vouchers::class)->redeem($quote, 'module', $invoice->id);
+            app(Vouchers::class)->redeem($quote, 'module', $invoice->id, owner: Store::findOrFail($input['store'])->owner);
 
             return $invoice->id;
         }, 3);

@@ -40,7 +40,7 @@ Disinkronkan dengan source dan keputusan pengguna sampai **3 November 2026**. Ke
 | Area | Kondisi / tindak lanjut |
 | --- | --- |
 | Domain | Klaim TXT/arah DNS, proof HTTPS, pelepasan dan adapter Caddy tersedia. Deploy TLS nyata, Cloudflare for SaaS API, alias www/apex dan rename slug berbayar tetap pekerjaan operasional/lanjutan |
-| Purge dan backup | Hold/reminder, pratinjau, purge data/media/WA dan pembatalan renewal sudah tersedia. Aktivasi produksi, backup/log bersama, restore offline dan pelepasan DNS/TLS provider masih tugas operator; lihat RETENTION_PROGRESS.md. |
+| Purge dan backup | Hold/reminder, pratinjau, purge data/media/WA dan pembatalan renewal sudah tersedia. Backup terenkripsi/retensi/restore-drill lokal tersedia (3 November). Aktivasi produksi, replika luar perangkat, backup database Hanshop/log bersama dan pelepasan DNS/TLS provider masih tugas operator. |
 | Gagal provisioning | Pelaporan, retry, review admin dan refund sewa awal ke Hanshop sudah tersedia. SLA operator dan uji refund operasional masih perlu ditetapkan/diverifikasi; bukan refund otomatis tanpa approval. |
 | Upgrade kanal | Evaluasi UX/readiness kanal tambahan; implementasi change berlaku saat invoice lunas, readiness aktivasi pertama tidak otomatis menjadi gerbang upgrade |
 | Akun | Reset password mandiri dan prosedur cleanup lanjutan; endpoint membersihkan data diri owner tanpa toko sudah ada, jangan menganggap label permission sama dengan endpoint fitur |
@@ -92,3 +92,9 @@ Unduhan tenant dipisah menjadi APK dan satu ZIP tools sesuai OS pilihan; tidak l
 - Voucher memiliki opsi Sekali per akun. Toko: per akun pelanggan terverifikasi, guest ditolak; bot mengenali akun pelanggan dari nomor pengirim terverifikasi. Platform: per owner lintas toko serta sewa/perpanjangan/modul; pembelian staff memakai jatah owner.
 - Invoice pending menahan jatah; expired/cancelled yang belum dibayar melepas jatah. Pesanan sudah dibayar tetap menggunakan jatah walau produk gagal/refund. Kuota sandbox terpisah. Identitas penggunaan dicatat juga saat opsi belum aktif; migrasi menautkan riwayat yang masih dapat diidentifikasi. Riwayat yang telah dipurge sebelum migrasi tidak dapat dipulihkan identitasnya dari counter anonim.
 - Claim voucher owner yang diketahui dipertahankan setelah toko dihapus; tidak menyimpan isi transaksi atau kontak toko. Delapan ilustrasi promosi dan prompt Flow 60 detik diperbarui; bukan video final/rekaman UI.
+
+## 3 November 2026 — Validasi MySQL dan backup
+
+Dua proses terpisah mencapai barrier sebelum request dilepas untuk membuktikan lock pada MySQL nyata; voucher sekali per akun tidak menggunakan kuota global sebagai pengganti identitas. Satu akun hanya satu pemenang, akun/owner berbeda tetap eligible. Database uji berawalan dt_commerce_test_/dt_otomax_test_/dt_backup_test_ dan hasil restore dt_restore_; bukan database toko aktif.
+
+Backup memakai ZIP AES-256, key independen, dump InnoDB konsisten, salinan media/sesi dengan pemeriksaan perubahan, publikasi atomik, verifikasi hash dan retensi. Pemulihan hanya ke target baru/offline. Module tidak otomatis membalikkan pembayaran provider atau mengaktifkan antrean hasil restore. Jadwal laptop 03.00 WIB, tujuh arsip; backup dan drill lokal berhasil. Konfigurasi/penyedia replika luar perangkat serta rollout VPS tetap pekerjaan operasional.

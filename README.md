@@ -85,3 +85,9 @@ Panduan `/panduan/aktifkan-listener` menyediakan aktivasi listener USB langkah d
 - **Panduan publik**: 22 topik, 111 langkah; QRIS custom 10 langkah dan aktivasi listener 12 langkah. Gambar memakai screenshot panel simulasi, 10 screenshot HP asli, serta ilustrasi berlabel. APK dokumentasi dengan data contoh bukan APK rilis tenant.
 
 Perubahan terbaru tidak memerlukan migrasi atau dependensi tambahan. Jika memperbarui instalasi, deploy seluruh source/aset, build frontend, salin empat file rilis bila menyediakan unduhan HansDev, serta muat ulang konfigurasi/proses sesuai [DEPLOYMENT.md](docs/DEPLOYMENT.md). Catatan validasi bertanggal berada di [FOUNDATION_VALIDATION.md](docs/FOUNDATION_VALIDATION.md); tidak menyatakan semua tes atau layanan produksi diuji ulang pada setiap perubahan dokumen.
+
+## Backup dan uji MySQL — 3 November 2026
+
+Backup terenkripsi database DigitalToko, media dan sesi bot tersedia melalui `digitaltoko:backup`, `digitaltoko:backup-verify`, `digitaltoko:backup-drill` dan `digitaltoko:backup-restore`. Jadwal laptop 03.00 WIB/retensi tujuh arsip sudah aktif; status terlihat di Kesehatan sistem. Pemulihan selalu ke database/direktori baru, tanpa mengaktifkan transaksi/bot. Replika luar perangkat dapat dikonfigurasi tetapi tujuan eksternal belum dihubungkan. Cakupan, kunci, batas snapshot dan prosedur operator: [deployment](docs/DEPLOYMENT.md#backup-otomatis-dan-pemulihan-offline--3-november-2026).
+
+Pengujian MySQL bersamaan sudah dijalankan pada schema sementara: idempotensi/debit, stok, callback/refund, kode pembayaran, voucher global dan sekali per customer/owner lintas toko, serta renewal melawan purge. Suite lengkap dengan opt-in MySQL: 694 lulus, satu tes file XLSX eksternal opsional dilewati. Hasil rinci tercatat pada FOUNDATION_VALIDATION.md; bukan bukti pembayaran supplier/gateway nyata.

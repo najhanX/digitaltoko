@@ -351,4 +351,12 @@ class SystemHealthTest extends TestCase
         $this->assertSame(2, PanelNotification::where('user_id', $admin->id)->count());
         $this->assertDatabaseHas('panel_notifications', ['user_id' => $admin->id, 'title' => 'Kesehatan sistem pulih']);
     }
+
+    public function test_enabled_backup_health_is_visible_to_admin_without_credentials(): void
+    {
+        config(['backup.enabled' => true, 'backup.directory' => storage_path('framework/testing/no-backups-'.Str::uuid()), 'backup.key' => 'SECRET-BACKUP-KEY']);
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->get('/admin/system-health')
+            ->assertInertia(fn (Assert $page) => $page->has('overview.services', 7)->where('overview.services.6.id', 'backup')->where('overview.services.6.status', 'warning'))
+            ->assertDontSee('SECRET-BACKUP-KEY');
+    }
 }

@@ -47,17 +47,36 @@ class CustomerCommerceMysqlTest extends TestCase
             $input = ['purpose' => 'product', 'product_id' => $product->id, 'phone' => $customer->phone, 'destination' => $customer->phone, 'payment' => 'wallet', 'idempotency_key' => (string) Str::uuid()];
             $payload = ['database' => $name, 'config' => $configuration, 'store' => $store->id, 'customer' => $customer->id, 'input' => $input, 'mode' => 'begin'];
             $run = function (array $payloads) {
+                $gate = storage_path('framework/testing/mysql-gate-'.Str::uuid());
                 $processes = [];
-                foreach ($payloads as $payload) {
-                    $process = new Process([PHP_BINARY, base_path('tests/Fixtures/commerce-worker.php')], base_path(), ['APP_ENV' => 'testing', 'APP_KEY' => config('app.key')]);
-                    $process->setInput(json_encode($payload))->setTimeout(45)->start();
-                    $processes[] = $process;
-                }foreach ($processes as $process) {
-                    $process->wait();
-                    $this->assertTrue($process->isSuccessful(), 'Isolated worker failed: '.$process->getErrorOutput());
-                }
+                try {
+                    foreach ($payloads as $payload) {
+                        $process = new Process([PHP_BINARY, base_path('tests/Fixtures/commerce-worker.php')], base_path(), ['APP_ENV' => 'testing', 'APP_KEY' => config('app.key')]);
+                        $process->setInput(json_encode([...$payload, 'gate' => $gate]))->setTimeout(45)->start();
+                        $processes[] = $process;
+                    }
+                    $deadline = microtime(true) + 25;
+                    while (count(glob($gate.'.ready.*')) < count($processes) && microtime(true) < $deadline) {
+                        usleep(10000);
+                    }
+                    $this->assertCount(count($processes), glob($gate.'.ready.*'), 'All workers must reach the barrier before releasing requests.');
+                    touch($gate);
+                    foreach ($processes as $process) {
+                        $process->wait();
+                        $this->assertTrue($process->isSuccessful(), 'Isolated worker failed: '.$process->getErrorOutput());
+                    }
 
-                return array_map(fn ($process) => trim($process->getOutput()), $processes);
+                    return array_map(fn ($process) => trim($process->getOutput()), $processes);
+                } finally {
+                    foreach ($processes as $process) {
+                        if ($process->isRunning()) {
+                            $process->stop(1);
+                        }
+                    }
+                    foreach (glob($gate.'*') as $file) {
+                        unlink($file);
+                    }
+                }
             };
             $ids = $run([$payload, $payload]);
             $this->assertSame($ids[0], $ids[1]);
@@ -112,11 +131,31 @@ class CustomerCommerceMysqlTest extends TestCase
             $this->assertSame(1, app(Vouchers::class)->used($voucher));
             $this->assertSame(86000, $customer->fresh()->balance);
 
+            $once = DiscountVoucher::factory()->create(['store_id' => $store->id, 'scope_key' => $store->id, 'once_per_user' => true]);
+            $onceInput = [...$input, 'voucher_code' => $once->code, 'idempotency_key' => (string) Str::uuid()];
+            $results = $run([[...$payload, 'mode' => 'voucher', 'input' => $onceInput], [...$payload, 'mode' => 'voucher', 'input' => [...$onceInput, 'idempotency_key' => (string) Str::uuid()]]]);
+            $this->assertSame(1, count(array_filter($results, fn ($r) => $r === 'QUOTA_REJECTED')));
+            $this->assertSame(1, app(Vouchers::class)->used($once));
+            $different = Customer::create(['store_id' => $store->id, 'phone' => '628999999999', 'name' => 'Other', 'phone_verified_at' => now(), 'balance' => 100000]);
+            $results = $run([[...$payload, 'mode' => 'voucher', 'input' => [...$onceInput, 'idempotency_key' => (string) Str::uuid()]], [...$payload, 'customer' => $different->id, 'mode' => 'voucher', 'input' => [...$onceInput, 'phone' => $different->phone, 'idempotency_key' => (string) Str::uuid()]]]);
+            $this->assertSame(1, count(array_filter($results, fn ($r) => $r === 'QUOTA_REJECTED')));
+            $this->assertSame(2, app(Vouchers::class)->used($once));
+
             $otherStore = Store::create(['owner_id' => $owner->id, 'name' => 'Other fixture', 'slug' => 'other-fixture', 'category' => 'full', 'plan' => 'galaxy', 'status' => 'active', 'template' => 'aurora', 'expires_at' => now()->addMonth()]);
             $platformVoucher = DiscountVoucher::factory()->create(['usage_limit' => 1]);
             $results = $run([[...$payload, 'mode' => 'platform_voucher', 'code' => $platformVoucher->code], [...$payload, 'store' => $otherStore->id, 'mode' => 'platform_voucher', 'code' => $platformVoucher->code]]);
             $this->assertSame(1, count(array_filter($results, fn ($value) => $value === 'QUOTA_REJECTED')));
             $this->assertSame(1, app(Vouchers::class)->used($platformVoucher));
+
+            $perOwner = DiscountVoucher::factory()->create(['once_per_user' => true]);
+            $results = $run([[...$payload, 'mode' => 'platform_voucher', 'code' => $perOwner->code], [...$payload, 'store' => $otherStore->id, 'mode' => 'platform_voucher', 'code' => $perOwner->code]]);
+            $this->assertSame(1, count(array_filter($results, fn ($r) => $r === 'QUOTA_REJECTED')));
+            $this->assertSame(1, app(Vouchers::class)->used($perOwner));
+            $thirdOwner = User::factory()->create(['role' => 'owner']);
+            $third = Store::create(['owner_id' => $thirdOwner->id, 'name' => 'Different owner', 'slug' => 'different-owner', 'category' => 'full', 'plan' => 'galaxy', 'status' => 'active', 'template' => 'aurora', 'expires_at' => now()->addMonth()]);
+            $results = $run([[...$payload, 'mode' => 'platform_voucher', 'code' => $perOwner->code], [...$payload, 'store' => $third->id, 'mode' => 'platform_voucher', 'code' => $perOwner->code]]);
+            $this->assertSame(1, count(array_filter($results, fn ($r) => $r === 'QUOTA_REJECTED')));
+            $this->assertSame(2, app(Vouchers::class)->used($perOwner));
 
         } finally {
             DB::disconnect('mysql');

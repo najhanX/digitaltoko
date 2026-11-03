@@ -297,6 +297,9 @@ class SystemHealth
         }
 
         $queue = $this->queueMetrics();
+        if (config('backup.enabled')) {
+            $services[] = app(PlatformBackup::class)->health();
+        }
         $issues = DB::table('system_health_signals')->whereIn('group', ['bots', 'suppliers'])->where(fn ($q) => $q->where('status', '!=', 'ok')->orWhere('checked_at', '<', now()->subMinutes(3)))->count();
         $webhooks = DB::table('system_webhook_health')->where('bucket', '>=', now()->subDay());
 
