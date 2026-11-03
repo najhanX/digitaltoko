@@ -44,6 +44,12 @@ return [
             'after_commit' => false,
         ],
 
+        // Separate long-running backups from customer transaction jobs.
+        'backups' => [
+            'driver' => 'database', 'connection' => null, 'table' => 'jobs', 'queue' => 'backups',
+            'retry_after' => 7200, 'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

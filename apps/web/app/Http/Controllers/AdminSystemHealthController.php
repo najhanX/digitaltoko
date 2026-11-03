@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\BackupRequests;
 use App\Services\FailedJobDiagnostics;
 use App\Services\SystemHealth;
 use App\Support\ListQuery;
@@ -32,8 +33,16 @@ class AdminSystemHealthController extends Controller
             $listing = ['items' => [], 'pagination' => $this->emptyMeta($list->filters['per_page']), 'listingUnavailable' => true];
         }
 
-        return Inertia::render('Admin/SystemHealth', ['overview' => fn () => $health->overview(), 'tab' => $tab, 'filters' => $list->filters,
+        return Inertia::render('Admin/SystemHealth', ['backup' => fn () => app(BackupRequests::class)->status(), 'overview' => fn () => $health->overview(), 'tab' => $tab, 'filters' => $list->filters,
             ...$listing]);
+    }
+
+    public function backup(Request $request, BackupRequests $requests): RedirectResponse
+    {
+        $this->authorizeAdmin($request);
+        $requests->request((int) $request->user('web')->id);
+
+        return back()->with('success', 'Permintaan backup diterima. Status diperbarui otomatis sampai selesai.');
     }
 
     public function refresh(Request $request, SystemHealth $health): RedirectResponse

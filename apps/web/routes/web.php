@@ -89,6 +89,7 @@ Route::middleware('platform.host')->group(function () {
     Route::get('/panduan', [TutorialController::class, 'index'])->name('tutorials.index');
     Route::get('/panduan/{slug}', [TutorialController::class, 'index'])->where('slug', '[a-z0-9-]+')->name('tutorials.show');
     Route::get('/admin/system-health', [AdminSystemHealthController::class, 'index'])->name('admin.system-health');
+    Route::post('/admin/system-health/backup', [AdminSystemHealthController::class, 'backup'])->middleware('throttle:2,1,system-backup')->name('admin.backup');
     Route::post('/admin/system-health/refresh', [AdminSystemHealthController::class, 'refresh'])->middleware('throttle:4,1,system-health');
     Route::post('/admin/system-health/queue-probe', [AdminSystemHealthController::class, 'retryQueue'])->middleware('throttle:2,1,system-health-queue-probe');
     Route::get('/admin/vouchers', [VoucherController::class, 'index']);

@@ -6,6 +6,7 @@ use App\Models\CatalogProduct;
 use App\Models\PremiumStock;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BackupRequests;
 use App\Services\PlatformBackup;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -72,6 +73,13 @@ class PlatformBackupMysqlTest extends TestCase
             $this->assertCount(2, glob($root.'/replica/digitaltoko-*.zip'));
             $this->assertFileDoesNotExist($first);
             $this->assertSame(1, DB::connection('restored')->table('users')->count());
+            config(['backup.enabled' => true]);
+            app(BackupRequests::class)->request($owner->id);
+            $this->assertSame('queued', app(BackupRequests::class)->status()['state']);
+            $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'backups', '--queue' => 'backups', '--once' => true, '--sleep' => 0, '--tries' => 1]));
+            $this->assertSame('completed', app(BackupRequests::class)->status()['state']);
+            $this->assertSame(0, DB::table('jobs')->where('queue', 'backups')->count());
+
         } finally {
             DB::disconnect('mysql');
             DB::disconnect('restored');

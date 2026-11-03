@@ -50,5 +50,5 @@ $pathEntries = @($userPath -split ';' | Where-Object { $_ -and $_.TrimEnd('\') -
 [Environment]::SetEnvironmentVariable('Path', (@($launcherDirectory) + $pathEntries -join ';'), 'User')
 $env:Path = $launcherDirectory + ';' + $env:Path
 Write-Output "Launcher terpasang: $launcherDirectory"
-Write-Output 'Buka terminal baru. pm2 start tanpa argumen akan menjalankan tujuh layanan DigitalToko laptop.'
+Write-Output 'Buka terminal baru. pm2 start tanpa argumen akan menjalankan delapan layanan DigitalToko laptop.'
 Write-Output 'pm2 status/logs serta perintah dengan target eksplisit tetap memakai PM2 asli.'

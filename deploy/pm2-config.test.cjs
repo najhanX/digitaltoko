@@ -6,10 +6,10 @@ const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const { createConfig } = require('./pm2-apps.cjs');
 
-test('default laptop profile resolves all seven dev services with one manager and scheduler', () => {
+test('default laptop profile resolves all eight dev services with one manager and scheduler', () => {
   const { apps } = require('../ecosystem.config.js');
   assert.deepEqual(apps.map(app => app.name), [
-    'digitaltoko-web', 'digitaltoko-vite', 'digitaltoko-queue', 'digitaltoko-scheduler', 'digitaltoko-bot-manager', 'api-hanshop', 'hanshop-bot',
+    'digitaltoko-web', 'digitaltoko-vite', 'digitaltoko-queue', 'digitaltoko-scheduler', 'digitaltoko-bot-manager', 'api-hanshop', 'hanshop-bot', 'digitaltoko-backup-queue',
   ]);
   for (const app of apps) {
     assert.equal(path.isAbsolute(app.cwd), true);
@@ -21,6 +21,10 @@ test('default laptop profile resolves all seven dev services with one manager an
   const queue = apps.find(app => app.name === 'digitaltoko-queue');
   assert.ok(queue.args.includes('--timeout=180'));
   assert.ok(queue.kill_timeout > 180000);
+  const backup = apps.find(app=>app.name==='digitaltoko-backup-queue');
+  assert.ok(backup.args.includes('--timeout=3600'));
+  assert.ok(backup.args.includes('backups'));
+  assert.ok(backup.kill_timeout>3600000);
   assert.ok(apps[0].args.includes('--tries=1'));
   assert.ok(apps[1].args.includes('--strictPort'));
   assert.equal(apps[4].script, path.resolve(__dirname, '../apps/bot/scripts/manager-dev.mjs'));
@@ -40,7 +44,7 @@ test('global launcher only redirects bare start and preserves explicit PM2 comma
 
 test('VPS profile excludes development servers and preserves the existing manager name', () => {
   const { apps } = require('./ecosystem.config.cjs');
-  assert.deepEqual(apps.map(app => app.name), ['digitaltoko-queue', 'digitaltoko-scheduler', 'digitaltoko-bot-manager']);
+  assert.deepEqual(apps.map(app => app.name), ['digitaltoko-queue', 'digitaltoko-scheduler', 'digitaltoko-bot-manager', 'digitaltoko-backup-queue']);
   assert.equal(apps[2].env.NODE_ENV, 'production');
   assert.equal(apps[2].script, path.resolve(__dirname, '../apps/bot/dist/manager.js'));
 });
@@ -50,12 +54,12 @@ test('additional Hanshop services are opt-in and read their own working director
     DIGITALTOKO_HANSHOP_API_DIR: path.resolve(__dirname, '../path with spaces/api'),
     DIGITALTOKO_HANSHOP_BOT_DIR: path.resolve(__dirname, '../path with spaces/bot'),
   } });
-  assert.equal(apps.length, 5);
+  assert.equal(apps.length, 6);
   assert.equal(apps[3].name, 'api-hanshop');
   assert.equal(apps[4].name, 'hanshop-bot');
   assert.equal(apps[3].cwd, path.resolve(__dirname, '../path with spaces/api'));
   assert.equal(apps[4].script, path.resolve(__dirname, '../path with spaces/bot/dist/index.js'));
-  assert.equal(require('./ecosystem.full.config.cjs').apps.length, 7);
+  assert.equal(require('./ecosystem.full.config.cjs').apps.length, 8);
 });
 
 test('PHP executable and local server overrides remain separate argv values', () => {
@@ -75,7 +79,7 @@ test('Windows laptop gives PHP a hidden console and preloads hidden Node childre
   const { apps } = createConfig({ development: true, includeHanshop: true, platform: 'win32', env: { NODE_OPTIONS: '--trace-warnings' } });
   for (const app of apps) {
     assert.equal(app.windowsHide, true);
-    if (app.name === 'digitaltoko-web' || app.name === 'digitaltoko-queue' || app.name === 'digitaltoko-scheduler') {
+    if (app.name === 'digitaltoko-web' || app.name === 'digitaltoko-queue' || app.name === 'digitaltoko-scheduler' || app.name === 'digitaltoko-backup-queue') {
       assert.equal(app.interpreter, 'none');
       assert.equal(path.basename(app.script), 'hidden-process.exe');
       assert.equal(app.args[1], path.resolve(__dirname, '../apps/web/artisan'));

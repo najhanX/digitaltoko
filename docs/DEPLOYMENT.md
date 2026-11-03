@@ -573,3 +573,23 @@ Untuk beralih saat bencana: sediakan source/dependensi yang cocok dengan schema 
 ### Kondisi laptop saat penyelesaian
 
 Jadwal 03.00 WIB/retensi tujuh arsip sudah aktif; hanya PM2 digitaltoko-scheduler dimuat ulang. Backup pertama `digitaltoko-20261103-023557-lzwni3we.zip` tersimpan di apps/web/storage/app/backups, sekitar 7 MB. Arsip telah diverifikasi dan dipulihkan lewat drill offline; database/folder drill dibersihkan. Kunci pemulihan disimpan di `C:/Users/62878/.digitaltoko/backup-recovery-5f55b01c.key`, di luar Git dan di luar arsip. Salin kunci dan arsip ke media aman di luar perangkat sesuai kebijakan operasional; tujuan replika belum tersedia. Konfigurasi ini belum dipasang pada VPS.
+
+### Tombol backup admin dan antrean khusus — 3 November 2026
+
+Admin → Kesehatan sistem → kartu Backup terenkripsi → Backup sekarang → Mulai backup. Memerlukan konfigurasi backup aktif, key valid dan MySQL. Modal mengonfirmasi cakupan; request langsung kembali, bukan menunggu mysqldump. Antrean dipantau setiap tiga detik hanya selama queued/processing; status selesai/gagal bertahan setelah navigasi. Arsip dan kunci tetap privat di server; tidak ada endpoint download/restore dari tombol ini. Batas akses tetap admin, POST ber-CSRF dan rate limit dua per menit. Klik ganda berbagi satu permintaan, bukan menciptakan dua job.
+
+Permintaan dicatat pada system_health_signals internal dan enqueue database dalam transaksi yang sama, tanpa migrasi tambahan. Job hanya berisi UUID permintaan. Antrean koneksi/queue `backups` memakai tabel jobs existing; retry_after=7200 detik, timeout job3600, tries1. Jangan mengarahkan worker transaksi default ke job panjang ini. Tidak ada retry otomatis backup gagal; admin dapat memulai permintaan baru. Permintaan queued lewat15menit dinyatakan gagal dan job lama diabaikan; processing mendapat lease70menit. UUID lama/duplikat tidak menimpa hasil permintaan baru. Kegagalan tetap mempertahankan arsip sebelumnya; rincian aman ada di Job gagal, diagnosis lengkap pada log worker privat.
+
+Profil PM2 sekarang menyertakan `digitaltoko-backup-queue`. Saat memperbarui instalasi existing dari root:
+
+```text
+pm2 start ecosystem.config.js --only digitaltoko-backup-queue
+```
+
+Untuk profil VPS gunakan deploy/ecosystem.config.cjs sesuai proses instalasi yang dipilih. Bila tidak memakai PM2, worker ekuivalen dari apps/web:
+
+```text
+php artisan queue:work backups --queue=backups --sleep=2 --timeout=3600 --tries=1 --memory=512
+```
+
+Konfigurasi queue yang di-cache harus dimuat ulang dan worker memakai source terbaru. Desktop Windows tetap memakai hidden-process runner existing; tidak membuka terminal tambahan. Profil laptop berisi delapan layanan, profil VPS utama empat background service (queue transaksi, scheduler, manager, worker backup). Backup terjadwal/CLI tetap memakai lock direktori yang sama agar tidak membuat snapshot bersamaan dengan job panel. Worker khusus laptop sudah ditambahkan dan dinyalakan; deployment VPS belum dilakukan.

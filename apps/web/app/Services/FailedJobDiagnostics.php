@@ -11,6 +11,10 @@ class FailedJobDiagnostics
         $data = json_decode($payload, true, 32);
         $job = is_array($data) && is_string($data['displayName'] ?? null) ? $data['displayName'] : '';
         [$process, $impact, $steps] = match ($job) {
+            'App\\Jobs\\RunPlatformBackup' => ['Pembuatan backup', 'Backup baru belum selesai. Backup sebelumnya tetap tersedia.', [
+                'Administrator: periksa proses digitaltoko-backup-queue di PM2, ruang disk dan izin direktori backup.',
+                'Periksa binary MySQL/mysqldump, kunci backup serta perubahan media/sesi saat snapshot. Setelah masalah selesai, gunakan Backup sekarang pada kartu backup.',
+            ]],
             'App\\Jobs\\RefreshSupplierWallet' => ['Pembaruan saldo pemasok', 'Pembaruan informasi saldo pemasok gagal. Catatan ini tidak menyatakan transaksi pelanggan gagal.', [
                 'Owner: pilih toko terkait, buka Produk & harga → Saldo & deposit pemasok, lalu tekan Perbarui saldo pada pemasok yang bermasalah.',
                 'Jika saldo terbaru berhasil terbaca, gunakan hasil baru tersebut. Tidak perlu mengulang semua job pembaruan saldo lama.',

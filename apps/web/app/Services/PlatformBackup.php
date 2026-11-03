@@ -13,6 +13,19 @@ use ZipArchive;
 
 class PlatformBackup
 {
+    public function configured(): bool
+    {
+        try {
+            $this->key();
+
+            return (bool) config('backup.enabled') && DB::connection()->getDriverName() === 'mysql'
+                && config('queue.connections.backups.driver') === 'database'
+                && (int) config('queue.connections.backups.retry_after') > 3600;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     private function key(): string
     {
         $value = (string) config('backup.key');

@@ -63,6 +63,9 @@ function createConfig({ development = false, includeHanshop = false, env = proce
       env: { NODE_ENV: development ? 'development' : 'production' },
     });
   }
+  apps.push(artisan('digitaltoko-backup-queue', [
+    'queue:work', 'backups', '--queue=backups', '--sleep=2', '--timeout=3600', '--tries=1', '--memory=512', '--max-time=7200',
+  ], 3660000));
   if (development && platform === 'win32') {
     const runner = env.DIGITALTOKO_WINDOWS_RUNNER || path.join(env.USERPROFILE || require('node:os').homedir(), '.digitaltoko', 'bin', 'hidden-process.exe');
     const preload = path.join(root, 'deploy', 'hide-child-windows.cjs').replace(/\\/g, '/');
