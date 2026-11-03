@@ -18,8 +18,8 @@ class DemoStoreSeeder extends Seeder
 
     public function run(): void
     {
-        if (! app()->environment('local', 'testing')) {
-            throw new \RuntimeException('Demo hanya untuk local/testing.');
+        if (! app()->environment('local', 'development', 'testing')) {
+            throw new \RuntimeException('Demo hanya untuk local/development/testing.');
         }
         DB::transaction(function () {
             $this->call(PackagePlanSeeder::class);
@@ -49,7 +49,7 @@ class DemoStoreSeeder extends Seeder
             foreach ($scenarios as [$slug, $name, $category, $plan, $status, $template, $days, $trial]) {
                 $store = Store::firstOrCreate(['slug' => $slug], [
                     'owner_id' => $owner->id, 'name' => $name, 'category' => 'full',
-                    'plan' => $plan, 'status' => $status, 'template' => $template,
+                    'plan' => $plan, 'status' => $status, 'template' => $template, 'sandbox' => true,
                     'expires_at' => $days === null ? null : now()->addDays($days), 'is_trial' => $trial,
                 ]);
                 if ($store->owner_id !== $owner->id) {
@@ -68,7 +68,7 @@ class DemoStoreSeeder extends Seeder
             }
             Store::firstOrCreate(['slug' => 'demo-owner-two'], [
                 'owner_id' => $secondOwner->id, 'name' => 'Draft Owner Kedua Demo',
-                'category' => 'full', 'plan' => 'galaxy', 'status' => 'draft', 'template' => 'aurora',
+                'category' => 'full', 'plan' => 'galaxy', 'status' => 'draft', 'template' => 'aurora', 'sandbox' => true,
             ]);
         });
         $this->command?->info('Data dummy siap. Akun baru admin/staff memakai password: '.self::PASSWORD);

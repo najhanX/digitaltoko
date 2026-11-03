@@ -96,4 +96,26 @@ Backup manual juga tersedia untuk admin: **Kesehatan sistem → Backup terenkrip
 
 ## Akun admin saja dari .env
 
-Isi `ADMIN_NAME`, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD` (12–72 karakter) di apps/web/.env. Dari apps/web, jalankan `php artisan config:clear` lalu `php artisan db:seed --class=AdminSeeder`. Seeder hanya membuat akun admin; tidak memasukkan paket/toko/produk/pelanggan dummy. Login melalui `/admin/login`. Jika email sama dengan admin existing, nama/password disesuaikan; email milik non-admin ditolak. Mengubah ADMIN_EMAIL membuat akun admin lain, bukan mengganti alamat akun lama. Perubahan .env baru diterapkan pada akun setelah seeder dijalankan kembali. Perintah interaktif digitaltoko:admin tetap tersedia; db:seed tanpa --class masih menjalankan data demo existing.
+Isi `ADMIN_NAME`, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD` (12–72 karakter) di apps/web/.env. Dari apps/web, jalankan `php artisan config:clear` lalu `php artisan db:seed --class=AdminSeeder`. Seeder hanya membuat akun admin; tidak memasukkan paket/toko/produk/pelanggan dummy. Login melalui `/admin/login`. Jika email sama dengan admin existing, nama/password disesuaikan; email milik non-admin ditolak. Mengubah ADMIN_EMAIL membuat akun admin lain, bukan mengganti alamat akun lama. Perubahan .env baru diterapkan pada akun setelah seeder dijalankan kembali. Perintah interaktif digitaltoko:admin tetap tersedia; db:seed tanpa --class sekarang memilih DevelopmentSeeder pada local/development/testing, dan ProductionSeeder pada lingkungan lainnya.
+
+## Seeder production dan development — 3 November 2026
+
+Isi ADMIN_NAME/ADMIN_EMAIL/ADMIN_PASSWORD terlebih dahulu. Dari apps/web:
+
+```text
+php artisan config:clear
+php artisan db:seed --class=ProductionSeeder --force
+```
+
+Production hanya mengisi admin dari .env, satu paket dasar Web Topup + Bot WhatsApp (awal nonaktif, tinjau harga/durasi pada panel admin), dan opsi harga modul QRIS (awal0/tidak dijual). Tidak membuat tenant, produk, pelanggan, koneksi atau transaksi contoh. Nilai harga/durasi/modul yang sudah diatur dipertahankan. Seeder bukan pembersih: data lama tidak dihapus.
+
+Untuk pengembangan pada APP_ENV=local atau development:
+
+```text
+php artisan config:clear
+php artisan db:seed --class=DevelopmentSeeder
+```
+
+Pada database baru:8toko demo dengan tiga template dan variasi status,21staff,240produk,160stok premium sintetis,100pelanggan,100mutasi saldo sandbox,160pesanan terminal sandbox,80percobaan sumber,80bukti pembayaran simulasi, 24invoice sewa simulasi berstatus akhir, serta5durasi paket (7/30/90/180/365hari). Admin mengikuti .env; akun admin/staff demo legacy dan pelanggan contoh memakai DigitalToko-Demo2026!. Email pelanggan pelanggan1@example.test sampai pelanggan25@example.test terpisah per toko. Saldo asli pelanggan nol; saldo sandbox awal Rp100.000. Pembayaran/koneksi supplier nyata tidak diisi dan tidak ada OTP/notifikasi keluar. Untuk menguji koneksi simulator end-to-end tetap gunakan SupplierLabSeeder secara terpisah sesuai dokumentasi lab.
+
+php artisan db:seed otomatis mengikuti APP_ENV:local/development/testing → development;production/staging/lainnya → production. DevelopmentSeeder menolak environment di luar daftar development, termasuk ketika memakai --force. Menjalankan ulang tidak menggandakan record contoh dan tidak mereset perubahan pengguna pada record existing; AdminSeeder tetap menyelaraskan akun admin yang emailnya sama dengan .env. Tidak ada migrate:fresh otomatis.

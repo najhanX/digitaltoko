@@ -17,8 +17,8 @@ class CatalogDemoSeeder extends Seeder
 {
     public function run(): void
     {
-        if (! app()->environment('local', 'testing')) {
-            throw new \RuntimeException('Katalog demo hanya untuk local/testing.');
+        if (! app()->environment('local', 'development', 'testing')) {
+            throw new \RuntimeException('Katalog demo hanya untuk local/development/testing.');
         }
         if (! User::where('email', 'demo-owner@example.test')->exists()) {
             $this->call(DemoStoreSeeder::class);
@@ -31,7 +31,7 @@ class CatalogDemoSeeder extends Seeder
                     throw new \RuntimeException('Toko demo dimiliki akun lain.');
                 }
                 PricingRule::firstOrCreate(['store_id' => $store->id, 'scope' => 'service', 'key' => 'aplikasi premium'], ['markup' => '5% + 1000', 'auto_update' => true]);
-                for ($i = 1; $i <= 18; $i++) {
+                for ($i = 1; $i <= 60; $i++) {
                     $premium = $i % 3 === 0;
                     $product = CatalogProduct::firstOrCreate(['store_id' => $store->id, 'code' => 'DEMO-'.str_pad((string) $i, 3, '0', STR_PAD_LEFT)],
                         ['name' => ($premium ? 'Aplikasi Premium' : 'Pulsa / Game').' Demo '.$i, 'description' => 'Produk simulasi untuk pengujian katalog. Bukan produk yang dapat dibeli.',

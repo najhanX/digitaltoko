@@ -17,6 +17,7 @@ class DemoStoreSeederTest extends TestCase
 
     public function test_seed_preserves_edits_and_does_not_contact_hanshop(): void
     {
+        config(['platform.admin' => ['name' => 'Admin Demo', 'email' => 'demo-admin@example.test', 'password' => DemoStoreSeeder::PASSWORD]]);
         Http::preventStrayRequests();
         $this->seed(DatabaseSeeder::class);
         $store = Store::where('slug', 'demo-aurora')->firstOrFail();
@@ -69,7 +70,7 @@ class DemoStoreSeederTest extends TestCase
             app(DemoStoreSeeder::class)->run();
             $this->fail('Production must reject demo seed.');
         } catch (\RuntimeException $exception) {
-            $this->assertSame('Demo hanya untuk local/testing.', $exception->getMessage());
+            $this->assertSame('Demo hanya untuk local/development/testing.', $exception->getMessage());
         }
         $this->assertDatabaseCount('users', 0);
         $this->assertDatabaseCount('stores', 0);
