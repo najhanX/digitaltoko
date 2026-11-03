@@ -105,3 +105,36 @@ Status: rencana disetujui; checkpoint ini dibuat sebelum mengubah modul notifika
 - Admin dan seluruh Penjualan owner/staff sudah memakai perapihan tabel/modal/kontrol; tab modal, tombol sekunder/ikon/retry dan pilihan storefront diberi permukaan sesuai tema. Bukti serta hasil pengujian saat perubahan dibuat ada di UI_READABILITY_AUDIT.md.
 - Katalog/checkout/OTP/notifikasi bukan lagi skeleton. README root/web/bot/storefront, arsitektur, keputusan, domain, hak staff dan panduan deployment diperbarui untuk memisahkan implementasi dari rencana. Custom-domain self-service/DNS/TLS dan purge toko penuh tetap belum tersedia. Endpoint cleanup profil owner tanpa toko sudah ada; file KTP privat tidak sama dengan enkripsi file aplikasi.
 - Pembaruan dokumentasi ini tidak mengubah source aplikasi, dependensi, database, konfigurasi layanan, atau deployment. Pemeriksaan berupa konsistensi route/command/permission, path/tautan dan diff; tidak menjalankan pembayaran/OTP/pembelian pemasok atau mengklaim rerun tes historis.
+
+
+## Checkpoint 4 November 2026 — profil, maintenance, email dan logo
+
+### Pekerjaan yang sudah tersimpan
+
+- `269edc9`: email owner wajib diverifikasi melalui popup, profil akun owner, dan perubahan nama/WA/email pelanggan. Kontak baru diverifikasi OTP; profil owner disinkronkan ke API Hanshop melalui ID akun yang sama. Data KTP tetap terpisah. Pasangan perubahan API Hanshop ada pada commit `d3d1393` di repositori API, bukan di repositori Hansbot.
+- `b7f5c91`: permintaan Inertia yang ditahan saat peninjauan restore dialihkan ke `/recovery-review`; API/JSON mempertahankan penolakan yang sesuai. Halaman menjelaskan login admin dan langkah Backup & pemulihan → Buka kembali layanan. Tidak menjalankan resume otomatis atau menghapus hold sebagai jalan pintas.
+- `dfa9488`: maintenance global admin dan maintenance per toko owner, pesan pelanggan, tenggat opsional, countdown dan pembukaan otomatis berdasarkan waktu server. Landing platform/panel, pembayaran serta pembaruan pesanan lama dan callback tetap tersedia. Pengecekan baru dibedakan dari inquiry internal untuk failover pesanan pascabayar paid. Bot tetap terhubung dan melayani status/saldo. Email OTP/notifikasi memakai layout HTML bermerek beserta alternatif text/plain.
+- `e77e343`: logo lokal halaman maintenance memakai path relatif storefront-media, mengikuti host halaman yang dibuka. Sebelumnya URL memakai alamat APP_URL laptop yang tidak lagi dapat dijangkau. File logo toko yang diperiksa tersedia dan endpoint gambar melalui host aplikasi saat itu membalas HTTP 200.
+
+### Konfigurasi dan operasional yang dilakukan
+
+- Diagnosis SMTP lokal menemukan port 587 timeout; koneksi TLS dan autentikasi pada port 465 berhasil. Konfigurasi lokal diubah ke MAIL_SCHEME=smtps / MAIL_PORT=465. MAIL_ENCRYPTION=ssl diselaraskan untuk konfigurasi lama; konfigurasi Laravel saat ini membaca MAIL_SCHEME. Username/password tidak diubah atau dicatat. `.env` tetap diabaikan Git.
+- Restart web dan sinyal restart queue dilakukan saat pembaruan SMTP; worker/manager juga dimuat ulang saat modul maintenance/email diterapkan. Ini catatan tindakan saat pengerjaan, bukan pemantauan status proses secara terus-menerus.
+- Backup terenkripsi terverifikasi dibuat sebelum migrasi `2026_11_03_155820_create_maintenance_windows_table.php` diterapkan lokal. Modul maintenance tidak menambah dependency atau mengubah schema API Hanshop. Petunjuk deploy/migrasi/restore versi lama ada pada DEPLOYMENT.md.
+- ZIP pengguna dan arsip `.old-whatsapp-*` dari restore tidak dimasukkan ke commit pekerjaan ini. File/sesi tersebut tidak dihapus atau diubah untuk merapikan status Git.
+
+### Bukti validasi dan batasnya
+
+- Profil: suite web 733 tes, 728 lulus dan 5 opsional dilewati; suite API 221 tes, 216 lulus dan 5 opsional dilewati; frontend 40 lulus. Ini hasil saat fitur profil dikerjakan.
+- Respons recovery: 51 tes terkait, 50 lulus dan 1 opsional dilewati. Hold/lease pengujian terisolasi.
+- Maintenance/email: suite web 749 tes, 744 lulus dan 5 opsional dilewati; bot 76 dan frontend 40 lulus; build web/bot serta Pint lulus. Browser memakai data simulasi untuk modal admin/owner, deadline/countdown, pembukaan storefront otomatis, template email dan lebar 320/390 px.
+- Perbaikan logo terakhir: 25 tes, 239 assertion lulus. Tes mencakup host APP_URL berbeda, gambar tetap dapat diakses ketika maintenance aktif, dan struktur MIME OTP/notifikasi: referensi CID cocok dengan lampiran inline serta byte gambar yang sama. Tidak mengirim pesan SMTP nyata. Log hasil lokal berada di storage/framework/testing dan tidak masuk Git.
+- Pembacaan file/logo dan pemeriksaan MIME bukan bukti bahwa klien email penerima sudah menampilkan gambar. Pengujian sebelumnya memakai transport array/fake atau render preview, bukan pengiriman ke inbox pengguna. Folder Sent Items umumnya tidak otomatis terisi oleh pengiriman SMTP aplikasi.
+
+### Hal yang masih menunggu konfirmasi
+
+1. Keluhan logo pada email belum boleh dinyatakan selesai pada sisi inbox: masih menunggu informasi apakah email yang dimaksud OTP owner DigitalToko atau OTP/notifikasi pelanggan toko. OTP owner memang memakai logo DigitalToko; email pelanggan memakai logo toko yang tersimpan.
+2. Setelah jenis email diketahui, periksa email baru dan klien email yang dipakai bila gambar tetap tidak terlihat. Bedakan logo yang tidak dimasukkan ke pesan, file gambar yang gagal diakses, dan penampilan gambar oleh klien email. Email yang sudah diterima sebelumnya tidak berubah saat template diperbarui.
+3. Validasi pengiriman email nyata pada konfigurasi publik/produksi belum dilakukan. Konfigurasi SMTP, nama domain publik dan DNS email tetap perlu diperiksa saat deployment. Jangan mencantumkan credential atau OTP nyata dalam catatan/repo.
+
+Pembaruan checkpoint ini hanya dokumentasi. Tidak mengubah konfigurasi/data, menyalakan maintenance, mengirim email, atau mengulang suite tes di atas.

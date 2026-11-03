@@ -137,3 +137,10 @@ Setelah restore aktif sukses, login kembali menggunakan akun pada snapshot. Web 
 - Landing page DigitalToko dan panel tetap tersedia. Katalog/belanja baru, order/topup baru, registrasi pelanggan serta inquiry baru ditahan; deposit supplier baru juga ditahan. Halaman pesanan lama, pembayaran/cek status/cancel, callback Midtrans/Digiflazz/OtomaX/forwarder, notifikasi dan penyelesaian pesanan tetap berjalan. Cek status/saldo bot tetap tersedia dan koneksi bot tidak diputus. Maintenance aplikasi ini berbeda dari `php artisan down` atau pengaman restore.
 - Email OTP platform memakai logo DigitalToko. OTP/notifikasi pelanggan memakai logo serta warna desain toko, termasuk latar/kartu/teks. Logo lokal disematkan sebagai attachment inline, URL logo HTTPS memakai URL tersimpan, dan toko tanpa logo menampilkan nama. Tersedia alternatif text/plain dengan karakter kredensial tetap utuh. Tidak ada dependency baru atau email nyata yang dikirim pada pengujian.
 - Deploy migration `2026_11_03_155820_create_maintenance_windows_table.php`, build web dan bot, lalu muat ulang worker/manager. Migrasi lokal diterapkan setelah backup terenkripsi terverifikasi. Akun/API Hanshop dan schema API Hanshop tidak diubah.
+
+
+## Checkpoint dokumentasi — 4 November 2026
+
+Profil dan verifikasi email owner/pelanggan, pemberitahuan setelah restore, maintenance admin/per toko, template email bermerek serta perbaikan alamat logo maintenance sudah tersimpan di Git. Rangkaian commit, konfigurasi SMTP lokal, migrasi/backup, hasil validasi dan batas pengujian dicatat pada [NOTIFICATION_PROGRESS.md](docs/NOTIFICATION_PROGRESS.md); langkah operasional ada pada [DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+Logo email pelanggan sudah diverifikasi pada struktur MIME, tetapi penampilan logo pada inbox pengguna masih menunggu konfirmasi jenis email. Email OTP owner memakai logo DigitalToko, sedangkan email pelanggan memakai identitas toko. Jangan menyamakan keberhasilan render/autentikasi SMTP dengan bukti penerimaan dan tampilan email nyata.

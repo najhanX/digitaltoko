@@ -143,3 +143,6 @@ Validasi modul ini: 749 tes web (744 lulus, 5 opsional dilewati), 76 tes bot dan
 ### Perbaikan alamat logo maintenance — 4 November 2026
 
 Logo media lokal pada MailBranding memakai path relatif storefront-media yang sama dengan storefront, sehingga halaman maintenance tidak bergantung pada IP/hostname APP_URL yang mungkin sudah berubah di laptop. Email tetap menyematkan file logo lokal sebagai CID; URL eksternal HTTPS tetap mengikuti konfigurasi. Uji regresi memeriksa gambar bisa diakses saat maintenance dengan APP_URL berbeda, serta CID, disposition inline, dan byte gambar pada MIME OTP/notifikasi. Validasi terkait: 25 tes lulus. Tidak ada perubahan data toko, SMTP, schema, atau pengiriman email nyata.
+
+
+Status checkpoint 4 November 2026: perbaikan host gambar maintenance telah diuji; MIME logo email juga telah diuji menggunakan transport lokal. Keluhan penampilan logo pada inbox masih menunggu konfirmasi apakah terkait OTP owner atau email pelanggan, lalu pemeriksaan email baru. Belum ada bukti pengiriman/tampilan inbox nyata. Catatan pekerjaan, commit, konfigurasi lokal dan tindak lanjut dirangkum pada docs/NOTIFICATION_PROGRESS.md di root repositori.
