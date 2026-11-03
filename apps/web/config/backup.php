@@ -4,6 +4,7 @@ return [
     'enabled' => (bool) env('BACKUP_ENABLED', false),
     'key' => env('BACKUP_KEY'),
     'directory' => env('BACKUP_DIRECTORY') ?: storage_path('app/backups'),
+    'upload_max_mb' => (int) env('BACKUP_UPLOAD_MAX_MB', 512),
     'replica' => env('BACKUP_REPLICA_DIRECTORY'),
     'time' => env('BACKUP_TIME', '03:00'),
     'keep' => (int) env('BACKUP_KEEP', 7),

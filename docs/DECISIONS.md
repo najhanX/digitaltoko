@@ -98,3 +98,7 @@ Unduhan tenant dipisah menjadi APK dan satu ZIP tools sesuai OS pilihan; tidak l
 Dua proses terpisah mencapai barrier sebelum request dilepas untuk membuktikan lock pada MySQL nyata; voucher sekali per akun tidak menggunakan kuota global sebagai pengganti identitas. Satu akun hanya satu pemenang, akun/owner berbeda tetap eligible. Database uji berawalan dt_commerce_test_/dt_otomax_test_/dt_backup_test_ dan hasil restore dt_restore_; bukan database toko aktif.
 
 Backup memakai ZIP AES-256, key independen, dump InnoDB konsisten, salinan media/sesi dengan pemeriksaan perubahan, publikasi atomik, verifikasi hash dan retensi. Pemulihan hanya ke target baru/offline. Module tidak otomatis membalikkan pembayaran provider atau mengaktifkan antrean hasil restore. Jadwal laptop 03.00 WIB, tujuh arsip; backup dan drill lokal berhasil. Konfigurasi/penyedia replika luar perangkat serta rollout VPS tetap pekerjaan operasional.
+
+## 3 November 2026 — Panel riwayat backup dan pemulihan
+
+Administrator dapat membuat snapshot, mengunduh arsip dan meminta restore dari riwayat/unggahan. Restore tetap ke database/folder baru untuk ditinjau operator; tidak tersedia overwrite live lewat HTTP. Retensi snapshot tidak menghapus hasil pemulihan. Pemulihan sebenarnya diuji lewat queue database/MySQL terisolasi, tanpa menulis database toko aktif. Tidak ada perubahan schema atau dependensi.

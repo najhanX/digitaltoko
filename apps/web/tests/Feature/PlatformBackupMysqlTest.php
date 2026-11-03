@@ -6,6 +6,7 @@ use App\Models\CatalogProduct;
 use App\Models\PremiumStock;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BackupRecovery;
 use App\Services\BackupRequests;
 use App\Services\PlatformBackup;
 use Illuminate\Support\Facades\Artisan;
@@ -29,6 +30,7 @@ class PlatformBackupMysqlTest extends TestCase
         File::makeDirectory($root, 0700, true);
         config(['database.connections.backup_admin' => [...$original, 'database' => 'information_schema', 'url' => null]]);
         DB::connection('backup_admin')->statement('CREATE DATABASE `'.$name.'`');
+        $panelRestored = null;
         try {
             config(['database.default' => 'mysql', 'database.connections.mysql' => [...$original, 'database' => $name, 'url' => null], 'backup.key' => 'base64:'.base64_encode(random_bytes(32)), 'backup.directory' => $root.'/archives', 'backup.replica' => $root.'/replica', 'backup.keep' => 2, 'backup.mysqldump' => getenv('BACKUP_MYSQLDUMP') ?: config('backup.mysqldump'), 'backup.mysql' => getenv('BACKUP_MYSQL') ?: config('backup.mysql'), 'backup.sources' => ['private' => $root.'/private', 'public' => $root.'/public', 'whatsapp' => $root.'/wa']]);
             DB::purge('mysql');
@@ -79,11 +81,24 @@ class PlatformBackupMysqlTest extends TestCase
             $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'backups', '--queue' => 'backups', '--once' => true, '--sleep' => 0, '--tries' => 1]));
             $this->assertSame('completed', app(BackupRequests::class)->status()['state']);
             $this->assertSame(0, DB::table('jobs')->where('queue', 'backups')->count());
+            $latest = app(BackupRecovery::class)->snapshots()[0]['name'];
+            app(BackupRecovery::class)->request($owner->id, $latest, null);
+            $row = DB::table('system_health_signals')->where('group', 'backup_restores')->first();
+            $operation = json_decode($row->details, true);
+            $panelRestored = $operation['database'];
+            $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'backups', '--queue' => 'backups', '--once' => true, '--sleep' => 0, '--tries' => 1]));
+            $this->assertSame('completed', DB::table('system_health_signals')->where('name', $row->name)->value('status'));
+            config(['database.connections.panel_recovery' => [...$original, 'database' => $panelRestored, 'url' => null]]);
+            $this->assertSame('Backup fixture only', DB::connection('panel_recovery')->table('users')->where('id', $owner->id)->value('name'));
+            $this->assertSame('PRIVATE FIXTURE', file_get_contents($root.'/archives/recoveries/'.$operation['id'].'/files/private/test.txt'));
+            $this->assertSame(1, DB::table('users')->count());
+            $this->assertSame([], glob($root.'/archives/.restore-input-*'));
 
         } finally {
             DB::disconnect('mysql');
             DB::disconnect('restored');
-            foreach ([$name, $restored] as $schema) {
+            DB::disconnect('panel_recovery');
+            foreach (array_filter([$name, $restored, $panelRestored]) as $schema) {
                 if (preg_match('/^dt_(backup_test|restore)_[a-f0-9]{32}$/D', $schema)) {
                     DB::connection('backup_admin')->statement('DROP DATABASE IF EXISTS `'.$schema.'`');
                 }

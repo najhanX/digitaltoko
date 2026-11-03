@@ -11,6 +11,10 @@ class FailedJobDiagnostics
         $data = json_decode($payload, true, 32);
         $job = is_array($data) && is_string($data['displayName'] ?? null) ? $data['displayName'] : '';
         [$process, $impact, $steps] = match ($job) {
+            'App\\Jobs\\RestorePlatformBackup' => ['Pemulihan backup', 'Pemulihan ke ruang terpisah belum selesai. Database toko aktif tidak ditimpa.', [
+                'Administrator: buka Backup & pemulihan → Riwayat pemulihan untuk ID proses dan folder hasil.',
+                'Operator VPS: periksa digitaltoko-backup-queue, kunci backup, ruang disk, binary MySQL serta izin CREATE DATABASE. Periksa hasil parsial sebelum mengajukan pemulihan baru.',
+            ]],
             'App\\Jobs\\RunPlatformBackup' => ['Pembuatan backup', 'Backup baru belum selesai. Backup sebelumnya tetap tersedia.', [
                 'Administrator: periksa proses digitaltoko-backup-queue di PM2, ruang disk dan izin direktori backup.',
                 'Periksa binary MySQL/mysqldump, kunci backup serta perubahan media/sesi saat snapshot. Setelah masalah selesai, gunakan Backup sekarang pada kartu backup.',

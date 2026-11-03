@@ -661,3 +661,15 @@
 @media (max-width: 640px) { .forwarder-downloads { grid-template-columns: minmax(0,1fr); } }
 
 .supplier-connection-overview .catalog-supplier-card { margin-top: 0; }
+
+/* Admin backup and isolated recovery. */
+.backup-summary{display:flex;align-items:center;gap:14px;padding:18px 20px;background:var(--panel-card,#fff);border:1px solid var(--border);border-radius:16px;margin-bottom:20px}
+.backup-summary div{flex:1;min-width:0}.backup-summary p{margin:5px 0 0;color:var(--muted)}
+.backup-history{padding:22px;min-width:0}.backup-list-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:20px 0 10px}.backup-list-heading h2{margin:0;font-size:18px}
+.backup-row-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}.backup-table{width:100%;table-layout:fixed}.backup-table th:first-child{width:38%}.backup-table td{overflow-wrap:anywhere;white-space:normal}.backup-table td small{display:block;margin-top:6px;color:var(--muted)}
+.backup-filename,.backup-recovery-detail dd{overflow-wrap:anywhere}.backup-recovery-detail dd{margin:5px 0 18px}.backup-recovery-detail dt{font-weight:600}
+@media(max-width:640px){.backup-history{padding:14px}.backup-list-heading{align-items:stretch;flex-direction:column}.backup-table{min-width:640px}.backup-summary{padding:14px}.backup-summary>svg{flex-shrink:0}}
+
+.backup-history{background:var(--panel-card);border:1px solid var(--border);border-radius:18px}.backup-history .panel-tabs{display:flex;flex-wrap:wrap;gap:8px}.backup-history .panel-tabs a{display:inline-flex;align-items:center;gap:8px;padding:11px 15px;background:var(--panel-soft);border:1px solid var(--border);border-radius:10px;font-weight:600}.backup-history .panel-tabs a.active{background:var(--primary);color:var(--panel-bg);border-color:var(--primary)}
+
+.backup-table th:last-child{width:26%}

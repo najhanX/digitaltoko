@@ -96,6 +96,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
     }, [mobileOpen]);
     const globalLinks: NavLink[] = role === 'admin' ? [
         {href:'/admin',label:'Ringkasan',icon:LayoutDashboard,active:path === '/admin'},
+        {href:'/admin/backups',label:'Backup & pemulihan',icon:Package,active:path.startsWith('/admin/backups')},
         {href:'/admin/system-health',label:'Kesehatan sistem',icon:Activity,active:path.startsWith('/admin/system-health')},
         {href:'/admin/stores',label:'Kelola toko',icon:Store,active:path.startsWith('/admin/stores')},
         {href:'/admin/verifications',label:'Verifikasi owner',icon:ShieldCheck,active:path === '/admin/verifications'},
