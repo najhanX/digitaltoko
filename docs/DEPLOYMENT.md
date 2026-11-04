@@ -1,5 +1,7 @@
 # VPS dan domain deployment DigitalToko
 
+**Instalasi VPS dengan PM2 Hanshop existing:** ikuti [panduan production langkah demi langkah](VPS_PRODUCTION.md) (4 November 2026). Profil gabungan `deploy/ecosystem.production.config.cjs` mempertahankan `api-hanshop`, `bot-wa`, `bot-tele` dan menambahkan empat proses DigitalToko. Gunakan profil tersebut saja; jangan menumpuk profil VPS lama, laptop, atau cron scheduler. Konfigurasi belum diterapkan di VPS pengguna.
+
 Panduan disinkronkan dengan source lokal **3 November 2026**. Modul bisnis, checkout, OTP dan notifikasi sudah tersedia; DNS/VPS, kepemilikan domain, secret dan layanan produksi harus diverifikasi pada lingkungan tujuan. Sinkronisasi dokumen tidak mengubah server atau membuktikan deploy telah dilakukan.
 
 ## Runtime

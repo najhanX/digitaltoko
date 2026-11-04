@@ -1,5 +1,7 @@
 # DigitalToko — workspace Hansbot
 
+Panduan pemasangan VPS: [konfigurasi production dan PM2 gabungan](docs/VPS_PRODUCTION.md).
+
 Dokumentasi disinkronkan dengan source lokal pada **3 November 2026**. Ini status implementasi, bukan pernyataan bahwa seluruh perubahan telah dideploy atau diuji pada layanan produksi.
 
 DigitalToko adalah platform SaaS multi-store dengan satu paket Web Topup + Bot WhatsApp. Pilihan sewa dibedakan berdasarkan durasi. Satu owner dapat memiliki banyak toko; langganan, katalog, stok, pelanggan, saldo, pesanan, konfigurasi dan sesi WhatsApp dipisahkan per toko.

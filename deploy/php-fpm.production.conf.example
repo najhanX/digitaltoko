@@ -1,0 +1,24 @@
+; /etc/php/8.4/fpm/pool.d/digitaltoko.conf
+; Dedicated pool: same unix user as the PM2 instance and private files.
+[digitaltoko]
+user = hans
+group = hans
+listen = /run/php/digitaltoko.sock
+listen.owner = www-data
+listen.group = www-data
+listen.mode = 0660
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+pm.max_requests = 500
+clear_env = yes
+env[HOME] = /home/hans
+env[PM2_HOME] = /home/hans/.pm2
+env[PATH] = /usr/local/bin:/usr/bin:/bin
+php_admin_value[memory_limit] = 256M
+php_admin_value[upload_max_filesize] = 512M
+php_admin_value[post_max_size] = 520M
+php_admin_value[max_execution_time] = 120
+php_admin_flag[log_errors] = on

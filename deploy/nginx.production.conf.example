@@ -1,0 +1,36 @@
+# Install ONLY after the certificate below exists. Do not replace other sites.
+# Wildcard TLS certificate must cover BOTH hansdigi.biz.id and *.hansdigi.biz.id.
+server {
+    listen 80;
+    server_name hansdigi.biz.id *.hansdigi.biz.id;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name hansdigi.biz.id *.hansdigi.biz.id;
+    ssl_certificate /etc/letsencrypt/live/hansdigi.biz.id/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hansdigi.biz.id/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /home/hans/hanshop/digitaltoko/apps/web/public;
+    index index.php;
+    charset utf-8;
+    client_max_body_size 520m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    location / { try_files $uri $uri/ /index.php?$query_string; }
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt { access_log off; log_not_found off; }
+    location = /index.php {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/digitaltoko.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root/index.php;
+        fastcgi_param HTTP_PROXY "";
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_read_timeout 130s;
+    }
+    location ~ \.php(?:/|$) { return 404; }
+    location ~ /\.(?!well-known).* { deny all; }
+}
