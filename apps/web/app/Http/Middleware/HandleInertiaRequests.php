@@ -6,6 +6,7 @@ use App\Models\CustomerOrder;
 use App\Services\CustomerAccess;
 use App\Services\CustomerCommerce;
 use App\Services\PanelNotifications;
+use App\Services\StoreMaintenance;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -17,6 +18,16 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return [...parent::share($request), 'brand' => ['name' => 'DigitalToko'],
+            'storeMaintenance' => function () use ($request) {
+                $store = $request->attributes->get('store');
+                $maintenance = $store ? app(StoreMaintenance::class)->active($store) : null;
+                if (! $maintenance) {
+                    return null;
+                }
+
+                return [...$maintenance, 'server_now' => now()->toIso8601String(), 'store_name' => $store->name, 'store_slug' => $store->slug, 'template' => $store->template,
+                    'branding' => ['design' => array_intersect_key($store->branding['design'] ?? [], array_flip(['accent', 'colors', 'logo']))]];
+            },
             'ownerEmailGate' => function () use ($request) {
                 $owner = $request->user('web');
                 if ($owner?->role !== 'owner' || (app(WorkspaceContext::class)->forRequest($request)['role'] ?? null) !== 'owner' || ! $request->attributes->get('platform_host') || config('backup.preview')) {

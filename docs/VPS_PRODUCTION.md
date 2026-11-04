@@ -1,6 +1,6 @@
 # Pemasangan production DigitalToko di VPS
 
-Disusun 4 November 2026 dari source saat ini. Ini berkas persiapan; belum dipasang atau diuji pada VPS pengguna. Contoh memakai Ubuntu/Debian, user `hans`, domain `hansdigi.biz.id`, dan checkout `/home/hans/hanshop/digitaltoko`. Sesuaikan path bila berbeda. Jangan menjalankan perintah Linux berikut di laptop Windows.
+Disusun 4 November 2026 dari source saat ini. Contoh berikut menjadi panduan pemasangan; catatan penyiapan VPS nyata pada 4 November 2026 tersedia di akhir dokumen. Penyiapan internal tidak sama dengan aktivasi domain publik. Contoh memakai Ubuntu/Debian, user `hans`, domain `digitaltoko.com`, dan checkout `/home/hans/digitaltoko`. Sesuaikan path bila berbeda. Jangan menjalankan perintah Linux berikut di laptop Windows.
 
 ## 1. Susunan layanan
 
@@ -69,7 +69,7 @@ Backup database Hanshop, konfigurasi Nginx dan ecosystem existing sebelum peruba
 
 ## 3. Salin source dan siapkan database
 
-Salin checkout yang sudah dicommit ke `/home/hans/hanshop/digitaltoko`. Jangan menyertakan `node_modules`, `vendor`, `public/hot`, database lab, simulator, arsip ZIP root atau arsip sesi lama. Sesi bot hanya dipindah dengan prosedur terkontrol, setelah manager asal berhenti. Jangan clone sesi yang masih hidup.
+Salin checkout yang sudah dicommit ke `/home/hans/digitaltoko`. Jangan menyertakan `node_modules`, `vendor`, `public/hot`, database lab, simulator, arsip ZIP root atau arsip sesi lama. Sesi bot hanya dipindah dengan prosedur terkontrol, setelah manager asal berhenti. Jangan clone sesi yang masih hidup.
 
 Buat database **terpisah** dari database API Hanshop lewat MySQL sebagai administrator:
 
@@ -82,7 +82,7 @@ GRANT ALL PRIVILEGES ON digitaltoko.* TO 'digitaltoko'@'127.0.0.1';
 Gunakan nama/password nyata di server. Hak ini hanya mencakup database DigitalToko, bukan `*.*`. Pemulihan ke database terpisah membutuhkan database/user tujuan yang dipersiapkan operator; jangan memberi hak global hanya agar pratinjau restore berjalan.
 
 ```bash
-cd /home/hans/hanshop/digitaltoko/apps/web
+cd /home/hans/digitaltoko/apps/web
 cp .env.vps.example .env
 chmod 600 .env
 ```
@@ -92,7 +92,7 @@ Isi `.env` melalui editor server. Jangan menimpa `.env` existing pada redeploy.
 | Pengaturan | Nilai yang harus diperiksa |
 | --- | --- |
 | `APP_ENV`, `APP_DEBUG` | `production`, `false` |
-| `APP_URL`, `PLATFORM_DOMAIN` | `https://hansdigi.biz.id`, `hansdigi.biz.id` |
+| `APP_URL`, `PLATFORM_DOMAIN` | `https://digitaltoko.com`, `digitaltoko.com` |
 | `DB_*` | database DigitalToko baru, host `127.0.0.1` |
 | `CACHE_STORE`, `SUPPLIER_CACHE_STORE` | `redis`; DB Redis 2/3 contoh harus kosong/khusus aplikasi ini |
 | `QUEUE_CONNECTION` | `database`, `DB_QUEUE_RETRY_AFTER=240` (> timeout 180) |
@@ -112,7 +112,7 @@ Untuk Cloudflare awal gunakan **DNS only** agar routing dan HTTPS origin bisa di
 ## 4. Dependensi, build dan data dasar
 
 ```bash
-cd /home/hans/hanshop/digitaltoko/apps/web
+cd /home/hans/digitaltoko/apps/web
 /usr/bin/php8.5 "$(command -v composer)" install --no-dev --prefer-dist --optimize-autoloader
 /usr/bin/php8.5 "$(command -v composer)" check-platform-reqs --no-dev
 /usr/bin/php8.5 artisan key:generate --force
@@ -127,7 +127,7 @@ rm -f public/hot
 /usr/bin/php8.5 artisan route:cache
 /usr/bin/php8.5 artisan view:cache
 
-cd /home/hans/hanshop/digitaltoko/apps/bot
+cd /home/hans/digitaltoko/apps/bot
 cp .env.vps.example .env
 chmod 600 .env
 # Edit .env: isi token yang sama, WEB_BASE_URL dan SESSION_ROOT yang benar.
@@ -145,12 +145,12 @@ Salin `deploy/php-fpm.production.conf.example` ke `/etc/php/8.5/fpm/pool.d/digit
 
 ```bash
 sudo apt-get install acl
-cd /home/hans/hanshop/digitaltoko
+cd /home/hans/digitaltoko
 mkdir -p apps/bot/sessions /home/hans/backups/digitaltoko
 chmod 700 apps/bot/sessions /home/hans/backups/digitaltoko
 chmod -R u+rwX apps/web/storage apps/web/bootstrap/cache
 # Hanya hak traversal untuk parent, bukan membaca semua isi home.
-sudo setfacl -m u:www-data:--x /home/hans /home/hans/hanshop /home/hans/hanshop/digitaltoko /home/hans/hanshop/digitaltoko/apps /home/hans/hanshop/digitaltoko/apps/web
+sudo setfacl -m u:www-data:--x /home/hans /home/hans/hanshop /home/hans/digitaltoko /home/hans/digitaltoko/apps /home/hans/digitaltoko/apps/web
 sudo setfacl -R -m u:www-data:r-X apps/web/public
 sudo setfacl -R -d -m u:www-data:r-X apps/web/public
 sudo php-fpm8.5 -t
@@ -161,9 +161,18 @@ Source checkout harus dimiliki `hans`. Jangan `chmod -R 777` atau memberi `www-d
 
 ## 6. DNS dan HTTPS
 
-Di Cloudflare siapkan A `@` dan `*` ke IP origin DigitalToko; opsional `shops` sebagai target domain pribadi. Record eksplisit existing seperti `mail`, `api` atau subdomain hosting lain **tetap dipertahankan**. Wildcard DNS tidak menggantikan record tersebut. Jika root masih untuk website lain, tentukan perpindahan root terlebih dahulu; jangan menimpa diam-diam.
+Pada pengelola DNS aktif, siapkan A `@` dan `*` ke IP origin DigitalToko; opsional `shops` sebagai target domain pribadi. Record eksplisit existing seperti `mail`, `api` atau subdomain hosting lain **tetap dipertahankan**. Wildcard DNS tidak menggantikan record tersebut. Jika root masih untuk website lain, tentukan perpindahan root terlebih dahulu; jangan menimpa diam-diam. DNS production saat ini memakai nameserver Jagoanhosting dan dikelola melalui Zone Editor cPanel, bukan Cloudflare.
 
-Contoh sertifikat root + wildcard dengan Certbot DNS Cloudflare (Ubuntu/Debian dengan paket tersedia):
+Jika belum tersedia API DNS, terbitkan sertifikat wildcard dengan verifikasi TXT manual:
+
+```bash
+sudo certbot certonly --manual --preferred-challenges dns \
+  --cert-name digitaltoko.com -d digitaltoko.com -d '*.digitaltoko.com'
+```
+
+Ikuti nilai TXT yang ditampilkan Certbot pada `_acme-challenge.digitaltoko.com`. Jika ada dua challenge, simpan dua record bernama sama dengan nilai berbeda sampai keduanya tervalidasi. Jangan memakai ulang nilai dari percobaan sebelumnya. Metode manual ini **belum memperbarui sertifikat otomatis**: operator perlu menjalankan penerbitan ulang sebelum kedaluwarsa dan memperbarui TXT. Timer Certbot saja tidak dapat menggantikan pengisian DNS. Otomatisasi memerlukan API DNS dan plugin/hook yang sesuai penyedia.
+
+Alternatif bila DNS memakai Cloudflare: sertifikat root + wildcard dengan Certbot DNS Cloudflare (Ubuntu/Debian dengan paket tersedia):
 
 ```bash
 sudo apt-get install certbot python3-certbot-dns-cloudflare
@@ -177,7 +186,7 @@ Isi file: `dns_cloudflare_api_token = TOKEN_CLOUDFLARE_ANDA`. Token hanya perlu 
 sudo chmod 600 /root/.secrets/certbot/cloudflare.ini
 sudo certbot certonly --dns-cloudflare \
   --dns-cloudflare-credentials /root/.secrets/certbot/cloudflare.ini \
-  --cert-name hansdigi.biz.id -d hansdigi.biz.id -d '*.hansdigi.biz.id'
+  --cert-name digitaltoko.com -d digitaltoko.com -d '*.digitaltoko.com'
 ```
 
 Setelah sertifikat ada, salin `deploy/nginx.production.conf.example` ke `/etc/nginx/sites-available/digitaltoko`, periksa root/socket/cert, lalu buat symlink jika belum ada:
@@ -186,7 +195,8 @@ Setelah sertifikat ada, salin `deploy/nginx.production.conf.example` ke `/etc/ng
 sudo ln -s /etc/nginx/sites-available/digitaltoko /etc/nginx/sites-enabled/digitaltoko
 sudo nginx -t
 sudo systemctl reload nginx
-sudo certbot renew --dry-run
+# Untuk sertifikat dengan plugin DNS otomatis, uji juga:
+sudo certbot renew --dry-run --cert-name digitaltoko.com
 ```
 
 Pastikan pembaruan sertifikat memuat ulang Nginx: pasang deploy hook Certbot berisi `systemctl reload nginx` pada `/etc/letsencrypt/renewal-hooks/deploy/`, dan periksa timer `systemctl list-timers '*certbot*'`. Jangan hapus virtual host existing. Nama exact pada Nginx didahulukan dari wildcard, tetapi konflik nama exact yang sama harus diselesaikan. Jangan mengaktifkan site ini sebelum file sertifikatnya tersedia.
@@ -198,7 +208,7 @@ Domain pribadi tenant memerlukan **virtual host + sertifikat tersendiri**; wildc
 Jalankan sebagai `hans`. `DIGITALTOKO_PHP_BINARY` adalah environment saat membaca ecosystem, bukan isi `.env` Laravel.
 
 ```bash
-cd /home/hans/hanshop/digitaltoko
+cd /home/hans/digitaltoko
 export DIGITALTOKO_PHP_BINARY=/usr/bin/php8.5
 pm2 start deploy/ecosystem.production.config.cjs --only digitaltoko-queue,digitaltoko-scheduler,digitaltoko-bot-manager,digitaltoko-backup-queue
 pm2 status
@@ -210,7 +220,7 @@ Keempat proses baru saja dimulai. Tiga proses Hanshop existing tidak direstart. 
 
 Jika autostart user `hans` belum tersedia, jalankan `pm2 startup`, ikuti persis perintah sudo yang dicetak PM2 lalu `pm2 save`. Jika startup sudah ada, periksa `systemctl status pm2-hans` tanpa membuat daemon kedua. NVM membutuhkan PATH Node yang benar pada systemd; setelah upgrade Node, perbarui startup sesuai petunjuk PM2. User FPM dan PM2 harus menggunakan instance PM2 yang sama bila live restore diaktifkan.
 
-Satu manager membuat banyak worker tenant; batas RAM manager bukan batas seluruh anaknya. Awali kapasitas `MANAGER_MAX_WORKERS=10`, ukur RAM bot Hanshop + worker tenant sebelum menambah kapasitas.
+Satu manager membuat banyak worker tenant; batas RAM manager bukan batas seluruh anaknya. Awali kapasitas `MANAGER_MAX_WORKERS=2` pada VPS 2 GB ini, ukur RAM bot Hanshop + worker tenant sebelum menambah kapasitas.
 
 ## 8. Backup, download dan layanan pendukung
 
@@ -222,7 +232,7 @@ Berkas APK/tools HansDev bukan bagian build frontend. Salin release yang sudah d
 
 ## 9. Uji sebelum menerima pelanggan
 
-1. `curl -I https://hansdigi.biz.id/up` harus 200. Landing, `/admin/login`, `/owner` dan `/paket` tersedia dengan aset tanpa Vite/HMR.
+1. `curl -I https://digitaltoko.com/up` harus 200. Landing, `/admin/login`, `/owner` dan `/paket` tersedia dengan aset tanpa Vite/HMR.
 2. Login admin, periksa kesehatan sistem: queue, backup queue, scheduler, Redis, manager dan sinkronisasi. Periksa log bila errored; `online` PM2 saja belum membuktikan proses bisnis berjalan.
 3. Uji email owner dan customer toko, logo, OTP serta private media. Gunakan akun uji; SMTP auth bukan bukti inbox menerima email.
 4. Buat satu toko sandbox, aktifkan paket uji, subdomain, hubungkan WA, sumber, katalog dan pembayaran. Host asing tidak boleh membuka data toko; session customer berbeda antarhost.
@@ -265,3 +275,86 @@ Untuk `.env` bot, restart manager diperlukan. Untuk perubahan ecosystem/PHP bina
 - Target runtime diperbarui menjadi PHP 8.5.12+; profil PM2 production memakai `/usr/bin/php8.5` sebagai default tanpa mengubah profil laptop.
 - Binary Nginx/PHP-FPM Linux dan sertifikat publik belum tersedia pada lingkungan pemeriksaan Windows. Jalankan `nginx -t`, `php-fpm8.5 -t`, pemeriksaan runtime, renewal, reboot dan alur bisnis pada VPS sebelum menerima pelanggan.
 - Profil laptop dan konfigurasi lama tetap tersedia untuk kompatibilitas. Panduan ini memakai profil production gabungan saja; arsip ZIP dan sesi WhatsApp lama tidak termasuk berkas deployment yang disiapkan.
+
+
+## Pelaksanaan prasyarat pada VPS — 4 November 2026
+
+Lokasi clone aktual `/home/hans/digitaltoko`, branch main commit `68a3234`. Konfigurasi dan source contoh menggunakan lokasi ini. Tiga layanan Hanshop existing tidak direstart/dipindahkan selama penyiapan.
+
+Selesai:
+
+- Snapshot konfigurasi Nginx/PHP/APT dan daftar PM2 awal disimpan privat sebelum perubahan. PHP CLI/FPM **8.5.12** dipasang berdampingan; binary default PHP lama serta pool situs existing tidak dipindahkan.
+- Composer **2.11.1** dipasang untuk user hans di `/home/hans/.local/bin/composer.phar` setelah verifikasi checksum installer. Gunakan `/usr/bin/php8.5 /home/hans/.local/bin/composer.phar` pada VPS ini karena Composer sistem masih lama.
+- Database dan user MySQL khusus `digitaltoko` dibuat. Environment web/bot mode 600, APP_KEY, token manager/bridge, BACKUP_KEY dan direktori sesi/backup privat disiapkan tanpa memasukkan credential ke Git. Password Redis existing diterapkan secara internal; DigitalToko memakai DB Redis 2/3, tanpa flush data Hanshop.
+- Dependensi Composer production, pemeriksaan platform, build web dan bot berhasil. Migrasi Laravel diterapkan pada database DigitalToko baru. Hanya `PackagePlanSeeder` dijalankan: penawaran masih nonaktif, tanpa dummy dan tanpa admin. Akun admin akan dibuat sendiri oleh pengguna; jangan menjalankan ProductionSeeder sebelum ADMIN_* terisi.
+- Pool FPM `digitaltoko` dengan tiga child maksimum dan preview Nginx **127.0.0.1:18085** aktif. Pemeriksaan FPM/Nginx lulus, landing dan `/up` menghasilkan HTTP 200 melalui host platform. Domain publik/SSL/DNS belum dialihkan; server preview tidak mendengarkan IP publik.
+- Empat proses PM2 DigitalToko terdaftar; proses PHP memakai `/usr/bin/php8.5`, manager 3099 loopback, kapasitas awal dua tenant. Database, Redis/cache, manager, heartbeat queue dan scheduler sudah terbaca sehat. Proses sempat mengulang saat autentikasi Redis belum terisi; konfigurasi diperbaiki dan worker dimulai ulang secara khusus. Pemeriksaan akhir menunjukkan worker PHP stabil lebih dari lima menit tanpa pertambahan restart setelah perbaikan. Tidak me-restart seluruh PM2.
+- `pm2 save` dijalankan setelah snapshot daftar sebelumnya; service pm2-hans existing enabled. Belum melakukan uji reboot.
+- Backup terenkripsi awal berhasil dibuat dan diverifikasi di `/home/hans/backups/digitaltoko/digitaltoko-20261104-020104285555-wp7zb7t0.zip`. Belum ada salinan offsite atau uji live restore; fitur live restore tetap false.
+
+### Audit dan migrasi database API Hanshop
+
+Database aktual adalah MariaDB **10.4.32**, schema `hansdigi_hanshop`; jangan menggantinya dengan instalasi MySQL baru di atas service existing. Semua tabel yang diaudit memakai InnoDB. Snapshot SQL lengkap sebelum perubahan tersimpan dengan permission privat di `/home/hans/deploy-checkpoints/digitaltoko-20261104/`, termasuk `api-hanshop-before.sql` dan `api-hanshop-before-live.sql`. SQL snapshot ini berisi data nyata: jangan upload ke GitHub atau document root.
+
+Sembilan script berikut terlebih dahulu diuji pada salinan database, kemudian diterapkan pada database aktif:
+
+1. `20260830_complete_saldo_ledger.sql`
+2. `20260830_payment_reconciliation_worker.sql`
+3. `20261013_digitaltoko_billing.sql`
+4. `20261013_digitaltoko_identity.sql`
+5. `20261020_manual_result_supplier_callback.sql`
+6. `20261020_negative_balance_support.sql`
+7. `20261026_digitaltoko_payment_runtime_columns.sql`
+8. `20261026_digitaltoko_rental_refunds.sql`
+9. `20261026_digitaltoko_supplier_deposits.sql`
+
+Verifikasi membandingkan checksum kolom existing sebelum/sesudah, bukan SELECT * yang ikut berubah karena penambahan kolom. **98 akun, 1.165 transaksi dan 503 pembayaran** tetap sama; data akun termasuk saldo, transaksi dan pembayaran tidak berubah. Ledger audit berjumlah 844 setelah backfill yang ditandai sesuai script; tidak ada kredit/debit saldo akun untuk backfill. Tidak ada transaksi/payment pending pada saat penerapan. Ketiga database salinan uji migrasi sudah dihapus setelah verifikasi; snapshot dan bukti checksum tetap disimpan privat. Bukti privat: `clone-verification.json`, `production-verification.json`, log per script dan `production-migrations.log`.
+
+API yang aktif masih commit **1433973**. Source lokal terbaru **d3d1393** diarsipkan tanpa `.env.backup`/credential, lalu disiapkan di `/home/hans/hanshop/api_hanshop_releases/d3d1393` dengan lockfile lokal dan build berhasil. Preflight production release terpisah terhadap konfigurasi/skema VPS berstatus **READY**. Ini bukan bukti release itu sudah melayani HTTP. Token bridge telah disiapkan pada env API, tetapi proses existing belum direstart. Karena API aktif belum memiliki health/ready dan bridge baru, panel DigitalToko masih dapat menampilkan integrasi API Hanshop belum siap. Fetch GitHub API pada VPS belum berhasil dengan autentikasi tersimpan; jangan menggunakan token yang sudah terpapar di chat.
+
+### Sebelum aktivasi publik
+
+- Buat admin sendiri, tinjau harga paket/modul dan aktifkan penawaran yang benar. Perintah interaktif tanpa menaruh password pada argumen: `/usr/bin/php8.5 artisan digitaltoko:admin email-anda@example.com` dari apps/web, atau isi ADMIN_* lalu jalankan AdminSeeder.
+- Tinjau dan aktifkan release API Hanshop terbaru dengan rencana rollback; jangan memindahkan proses ke folder staging tanpa memperbarui cwd/script dan verifikasi ulang kompatibilitas bot/panel existing.
+- Konfigurasi SMTP asli. `MAIL_MAILER=log` sengaja dipakai selama persiapan, sehingga email/OTP production belum dikirim. Tidak ada transaksi supplier atau email uji yang dikirim selama penyiapan.
+- Tinjau audit dependensi runtime sebelum publik: bot memiliki temuan body-parser (high) dan qs (moderate) pada lockfile saat ini. Hasil audit privat disimpan di checkpoint; dependensi belum diubah otomatis. Release API staging mempunyai delapan temuan runtime (satu critical pada proxy-addr, dua high dan lima moderate); jangan mengaktifkan release staging sebelum temuan yang relevan ditinjau/diperbaiki. Audit ini bukan pengukuran versi node_modules API lama yang sedang aktif.
+- Selesaikan DNS root/wildcard, sertifikat dan virtual host publik. Draft vhost sesuai lokasi aktual berada di checkpoint, belum diaktifkan pada port publik. Siapkan release APK/tools HansDev di lokasi download jika belum tersedia.
+- Upgrade kapasitas dan lakukan pemeriksaan OS/MariaDB/PHP situs lama secara terencana. Pemasangan PHP 8.5 DigitalToko tidak sekaligus mempatch PHP 8.1 milik situs existing. Jangan menyatakan seluruh VPS aman hanya dari versi PHP DigitalToko.
+- Uji login, integrasi, callback publik dan backup/restore setelah aktivasi. Semua pekerjaan ini masih berbeda dari keberhasilan build, preflight, atau pemeriksaan localhost.
+
+
+## Pembaruan layanan Hanshop — 4 November 2026
+
+Bagian ini menggantikan status API belum aktif pada checkpoint penyiapan awal di atas.
+
+- **API Hanshop aktif sekarang d3d1393** di `/home/hans/hanshop/api_hanshop`, fast-forward dari 1433973 melalui bundle Git lokal. Tidak memakai token GitHub yang terpapar. Environment/credential production dipertahankan. Backup SQL baru, source, hasil build lama, node_modules lama dan daftar PM2 disimpan privat di `/home/hans/deploy-checkpoints/hanshop-update-20261104/`. Pending transaksi dan pembayaran nol sebelum aktivasi. Tidak ada migrasi baru dalam langkah aktivasi ini; sembilan migrasi prasyarat sudah diterapkan pada penyiapan sebelumnya.
+- Kandidat API mendapat pembaruan dependensi yang masih diizinkan range manifest, tanpa `--force` atau upgrade mayor. Setelahnya audit runtime menunjukkan **0 high / 0 critical**, dengan **6 moderate** yang masih perlu ditinjau. Lockfile hasil patch disimpan juga pada checkout API aktif agar npm ci tidak membaca lockfile lama. Lockfile API masih di-ignore oleh repo; jangan menggantinya dengan lockfile laptop lama pada deploy berikutnya tanpa audit.
+- Pengujian API: **216 lulus, 5 tes integrasi opsional dilewati**, menggunakan environment fixture berport tidak aktif dan tanpa credential production. Build berhasil. Preflight sebelumnya READY; setelah aktivasi `/health/ready` berhasil lewat loopback, HTTPS `api2.hansdigi.biz.id` dan proxy `/api` panel admin. Bridge identity DigitalToko diuji dengan ID dummy yang tidak ada: HTTP 200/SUCCESS tanpa pendaftaran, OTP atau transaksi supplier. Health integrasi API pada DigitalToko berubah menjadi ok.
+- **Panel admin** memakai snapshot working tree lokal terbaru di atas commit e853b00, termasuk perubahan yang belum dicommit. SHA-256 arsip source: `333d82917c2ef4e679c0361d958be410b103ee94761bd244f5d1bf3048fd20b3`. Build, **7 tes**, dan lint lulus di laptop dan VPS. Asset baru aktif pada `/var/www/hanshop/admin/dist`; aset hash lama dipertahankan agar tab yang masih terbuka tidak kehilangan chunk. Source admin VPS disinkronkan tanpa menyentuh env dan override package.json/package-lock.json milik server.
+- Catatan tooling panel admin: override ESLint 10 pada checkout server tidak kompatibel dengan plugin hooks existing. Build tervalidasi memakai manifest/lockfile lokal yang saling cocok (ESLint 9) di `/home/hans/hanshop/admin_frontend_releases/20261104`. Override server disimpan/dipertahankan, bukan dibuang diam-diam. Gunakan release tervalidasi tersebut untuk rebuild sampai override tooling ditinjau.
+- **Bot WA** sudah sama pada commit 678c3ed. Seluruh JS hasil kompilasi source saat ini dibandingkan dengan dist aktif: tidak ada perbedaan. Endpoint health menunjukkan WhatsApp CONNECTED dan Redis READY. Sesi dan proses tidak diganti.
+- **Bot Telegram** sudah sama pada commit 0a7890f; tidak ada perubahan source baru. **Panel catatan** sudah sama pada commit bf3fef5; konfigurasi `.env.production` khusus VPS dipertahankan. Tidak me-restart layanan hanya karena namanya termasuk Hanshop.
+- **Cetak struk** berbeda dari layanan existing yang berhasil diperbarui: Nginx memiliki hostname `cetakstruk.hansdigi.biz.id`, tetapi folder `/var/www/hanshop/cetakstruk/dist` tidak ada sehingga menghasilkan HTTP 500. Belum ada instalasi/source server untuk dibandingkan. Aplikasi lokal juga masih mempunyai integrasi kirim PDF menuju `/kirim-struk` yang tidak tersedia pada bot terbaru. Tidak mempublikasikan aplikasi yang integrasinya belum selesai dalam pembaruan ini; perlu pekerjaan tersendiri.
+- `pm2 save` dijalankan. Tidak melakukan pembelian, pembayaran atau pengiriman pesan uji nyata. Pengujian bisnis live, rollback drill, perbaikan moderate dependency dan penuntasan cetak struk tetap terpisah dari keberhasilan update source ini.
+
+## Audit environment domain DigitalToko — 4 November 2026
+
+- Environment pengguna dicadangkan privat sebelum koreksi di `/home/hans/deploy-checkpoints/digitaltoko-public-20261104/`. APP_KEY, credential database, token integrasi dan BACKUP_KEY dipertahankan. Tidak menyimpan nilai rahasia dalam dokumentasi ini.
+- Domain platform dan APP_URL memakai `digitaltoko.com`. WEB_BASE_URL bot disamakan. MAIL_MAILER yang sebelumnya `log` diperbaiki menjadi `smtp`; alamat pengirim disamakan dengan akun SMTP pengguna dan EHLO memakai domain platform. Koneksi SMTPS port 465 beserta autentikasi berhasil, **belum mengirim email uji atau membuktikan penerimaan inbox**.
+- Autentikasi database dari environment aktual serta kesamaan token web/API/manager diverifikasi. Cache konfigurasi dibangun ulang dan worker diberi sinyal restart; scheduler, manager, database, Redis, queue probe dan integrasi Hanshop terbaca sehat. Layanan Hanshop existing tetap online.
+- APK HansDev dan ZIP tools Windows/macOS/Linux tersedia terpisah pada storage release privat. Landing, login, paket, panduan, dan keempat URL unduhan menghasilkan HTTP 200 melalui preview Nginx internal dengan Host `digitaltoko.com`; permintaan `.env` ditolak 403.
+- Backup terenkripsi terbaru berhasil dibuat dan diverifikasi: `/home/hans/backups/digitaltoko/digitaltoko-20261104-051640263348-rpncik6w.zip`. Live restore tetap dinonaktifkan.
+- DNS root dan wildcard menuju VPS; mail/webmail tetap menuju shared hosting. Sertifikat Let's Encrypt untuk `digitaltoko.com` dan `*.digitaltoko.com` berhasil diterbitkan setelah dua TXT terbaru diverifikasi, berlaku sampai **2 Februari 2027**. Percobaan pertama kedaluwarsa saat menunggu DNS dan diganti dengan challenge baru; jangan memakai ulang nilai TXT dari percobaan sebelumnya.
+- Vhost `/etc/nginx/sites-available/digitaltoko` diaktifkan setelah `nginx -t` lulus. HTTP dialihkan ke HTTPS; `www` dialihkan ke root. Pemeriksaan eksternal menghasilkan HTTP 200 untuk `/`, `/up`, `/login`, `/admin/login`, `/paket`, `/panduan`, keempat unduhan dan seluruh aset build yang dirujuk landing. Sertifikat diverifikasi tanpa bypass. Host wildcard yang belum terdaftar mendapat 404 dengan sertifikat valid, sedangkan `.env` ditolak 403. Landing/login/paket/panduan juga dibuka melalui browser dan tampil dengan CSS.
+- **Renewal wildcard masih manual**, karena DNS Jagoanhosting belum dihubungkan melalui API. Hook tunggu khusus penerbitan pertama sudah dilepas dari konfigurasi renewal sertifikat ini agar timer tidak menggantung menunggu TXT. Operator perlu menjalankan perintah Certbot manual pada bagian DNS sebelum kedaluwarsa, memperbarui TXT yang diminta, lalu menguji HTTPS. Deploy hook memeriksa dan memuat ulang Nginx ketika sertifikat berhasil diperbarui. Timer Certbot existing tidak membuktikan wildcard ini bisa diperpanjang otomatis.
+- Akun admin belum dibuat, mengikuti keputusan pengguna untuk membuatnya sendiri. Penawaran paket juga perlu ditinjau/diaktifkan admin sebelum penjualan.
+
+### Perbaikan pembelian modul QRIS selama penyiapan — 4 November 2026
+
+Pemeriksaan data production menemukan toko sudah memiliki invoice sewa awal `paid`, tetapi statusnya masih `provisioning` dan masa aktif belum berjalan. Pembelian modul sebelumnya mensyaratkan `acceptsOrders()`, sehingga voucher ditolak sebelum validasi promo. Pembelian kini diizinkan saat toko aktif/masa tenggang atau sedang disiapkan dengan invoice sewa awal lunas; toko ditangguhkan, belum membayar atau sedang dalam peninjauan/refund penyiapan tetap ditolak. Pembelian modul tidak mengaktifkan toko atau memulai masa sewa. Pemeriksaan memakai baris toko terbaru yang dikunci; pesan kesalahan lisensi, penjualan modul dan kelayakan sewa dipisahkan. Tidak ada perubahan schema atau migrasi. `VoucherTest` dan `CustomerCommerceTest`: **84 tes, 819 assertion lulus**, mencakup voucher gratis, diskon sebagian, penangguhan dan refund penyiapan. Pembelian/voucher nyata tidak dijalankan otomatis atas nama owner.
+
+### Maintenance tetap membuka katalog — 4 November 2026
+
+Middleware storefront kini membolehkan penelusuran katalog, kategori, pencarian dan informasi toko pada ketiga template. Checkout/quick order dan aktivitas baru yang sebelumnya dibatasi tetap dijeda; callback, pembayaran serta status pesanan existing tetap diproses. Endpoint katalog bot dan respons menu/list juga dibuka selama maintenance, dengan pemberitahuan saat memilih produk untuk dipesan atau membuat topup. Tombol status pesanan existing tetap diizinkan. Halaman pemberitahuan memiliki tautan kembali ke katalog. Pengujian lokal: **35 tes Laravel / 548 assertion** (maintenance, logo email, pendaftaran dan navigasi storefront), serta **77 tes bot** lulus. Tidak ada migrasi, perubahan harga/stok, pengaktifan maintenance nyata atau transaksi uji production.
+
+Pembaruan popup: informasi maintenance dibagikan melalui Inertia hanya pada host toko, dengan tema/logo publik serta waktu server. Popup dapat ditutup, muncul kembali pada full refresh dan tidak berulang pada navigasi Inertia yang sama. Halaman GET checkout tetap bisa dilihat; POST pemesanan tetap ditahan. Tombol checkout menjadi `Sedang maintenance` dengan countdown di bawahnya. Build/TypeScript berhasil, **15 tes Laravel / 324 assertion** dan **40 tes frontend** lulus; sesudah penyesuaian terakhir, **8 tes maintenance / 146 assertion** dijalankan kembali dan lulus. Browser production WuzWuz Topup memverifikasi tutup, refresh, navigasi kategori, tombol disabled serta countdown pada desktop dan viewport ponsel 390 × 844. Tidak membuat transaksi atau mengubah tenggat maintenance. Backup kode/aset sebelumnya tersimpan privat pada `/home/hans/deploy-checkpoints/maintenance-popup-20261104/before.tar.gz`; aset hash lama dipertahankan saat deployment agar tab existing tetap dapat memuat chunk.

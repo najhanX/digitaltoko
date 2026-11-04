@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\CatalogProduct;
 use App\Models\Store;
 use App\Services\StoreCatalog;
-use App\Services\StoreMaintenance;
 use App\Support\ListQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -20,8 +19,6 @@ class BotCatalogController extends Controller
         $store = Store::where('worker_token_hash', hash('sha256', $token))->first();
         abort_unless($store, 401);
         abort_unless($store->supportsBot() && $store->acceptsOrders(), 403);
-
-        app(StoreMaintenance::class)->assertOpen($store);
 
         return $store;
     }

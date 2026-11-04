@@ -16,6 +16,10 @@ function harness(options={}) {
         if(path==='/api/internal/bot/access')return {data:{allowed:options.allowed ?? true,store_name:'Toko Contoh',maintenance:options.maintenance ?? null}};
         if(path==='/api/internal/bot/commerce')return {data:body.action==='balance'?{balance:25000}:{orders:[]}};
         if(options.failure)throw Error('SUPPLIER_SECRET_ERROR');
+        if(path.startsWith('/api/internal/bot/catalog?')){
+            const query=new URL(path,'http://localhost').searchParams;
+            return {data:{view:query.get('view'),service:query.get('service'),category:query.get('category'),store_name:'Toko Contoh',items:[],pagination:{current_page:1,last_page:1,total:0}}};
+        }
         return {data:{store_name:'Toko Contoh',items:[],pagination:{current_page:1,last_page:2,total:12}}};
     };
     return {sent,relays,paths,tokens,sock,run:message=>handleCustomerMessage(sock,message,tokens,api)};
@@ -128,13 +132,21 @@ test('unknown commands do not discard an unfinished checkout or pending destinat
 });
 
 
-test('maintenance pauses new shopping interactions while retaining order status and balance access',async()=>{
-    for(const command of ['#menu','#produk','#beli CANVA 081234567890','#topup 50000']){
+test('maintenance pauses ordering while retaining catalogue, order status and balance access',async()=>{
+    for(const command of ['#beli CANVA 081234567890','#topup 50000']){
         const h=harness({maintenance:{message:'Peningkatan sistem toko.',ends_at:'2030-01-01T10:00:00Z'}});
         await h.run(incoming({conversation:command}));
         assert.match(h.sent[0].text,/LAYANAN SEDANG MAINTENANCE/);
         assert.match(h.sent[0].text,/Peningkatan sistem toko/);
         assert.deepEqual(h.paths,['/api/internal/bot/access']);
+    }
+    for(const command of ['#menu','#produk','#list Aplikasi','#stok Premium --layanan Aplikasi','#produk Canva']){
+        const h=harness({maintenance:{message:'Maintenance',ends_at:null}});
+        await h.run(incoming({conversation:command}));
+        assert.ok(h.sent.length>0);
+        assert.ok(h.sent.every(message=>!message.text?.includes('LAYANAN SEDANG MAINTENANCE')));
+        if(command==='#produk')assert.ok(h.paths.includes('/api/internal/bot/catalog?view=services&page=1'));
+        if(command==='#produk Canva')assert.ok(h.paths.includes('/api/internal/bot/products?page=1&q=Canva'));
     }
     for(const command of ['#status','#saldo']){
         const h=harness({maintenance:{message:'Maintenance',ends_at:null}});
@@ -142,4 +154,16 @@ test('maintenance pauses new shopping interactions while retaining order status 
         assert.ok(h.paths.includes('/api/internal/bot/commerce'));
         assert.ok(!h.sent[0].text.includes('LAYANAN SEDANG MAINTENANCE'));
     }
+});
+
+test('maintenance blocks a product-order button but permits an existing order-status button',async()=>{
+    const h=harness({maintenance:{message:'Maintenance',ends_at:null}});
+    const buy=h.tokens.issue(pn,pn,{type:'select-product',code:'TEST'});
+    await h.run(incoming(response(buy)));
+    assert.match(h.sent[0].text,/LAYANAN SEDANG MAINTENANCE/);
+    assert.deepEqual(h.paths,['/api/internal/bot/access']);
+    const status=h.tokens.issue(pn,pn,{type:'order-status',number:'DTTEST12345'});
+    await h.run(incoming(response(status)));
+    assert.ok(h.paths.includes('/api/internal/bot/commerce'));
+    assert.match(h.sent.at(-1).text,/RIWAYAT PESANAN|Belum ada pesanan/);
 });

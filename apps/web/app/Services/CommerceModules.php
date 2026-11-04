@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ModulePurchase;
 use App\Models\Store;
+use App\Models\SubscriptionInvoice;
 use App\Support\HanshopIdentity;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -19,9 +20,15 @@ class CommerceModules
     public function buy(Store $store, ?string $voucherCode = null): ModulePurchase
     {
         $invoice = DB::transaction(function () use ($store, $voucherCode) {
-            StoreRetention::guard(Store::whereKey($store->id)->lockForUpdate()->firstOrFail());
+            $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
+            StoreRetention::guard($store);
             $setting = app(CustomerCommerce::class)->settings($store);
-            app(CustomerCommerce::class)->ensure($store->acceptsOrders() && ! $setting->custom_licensed_at && $this->price() >= 1000, 'Pembelian modul belum tersedia atau sudah dimiliki toko.');
+            $preparing = $store->status === 'provisioning' && ! $store->admin_suspended_at && ! $store->is_trial && ! $store->trial_requested_at
+                && SubscriptionInvoice::where('store_id', $store->id)->where('purpose', 'initial')->where('status', 'paid')->exists()
+                && ! app(Provisioning::class)->held($store);
+            app(CustomerCommerce::class)->ensure($store->acceptsOrders() || $preparing, 'Pembelian modul memerlukan sewa aktif atau pembayaran sewa awal yang sudah lunas dan sedang disiapkan. Jika toko ditangguhkan atau penyiapan ditinjau admin, selesaikan terlebih dahulu.');
+            app(CustomerCommerce::class)->ensure(! $setting->custom_licensed_at, 'Modul QRIS custom sudah dimiliki toko ini.');
+            app(CustomerCommerce::class)->ensure($this->price() >= 1000, 'Penjualan modul QRIS custom belum dibuka oleh administrator.');
 
             $open = ModulePurchase::where('store_id', $store->id)->whereIn('status', ['pending', 'review'])->first();
             if ($open) {

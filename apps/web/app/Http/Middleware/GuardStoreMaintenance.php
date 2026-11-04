@@ -17,6 +17,9 @@ class GuardStoreMaintenance
         if (! $store instanceof Store || $request->is('maintenance', 'orders/*', 'cek-pesanan', 'cek-pesanan/detail', 'storefront-media/*', 'article-media/*', 'storage/*')) {
             return $next($request);
         }
+        if (in_array($request->method(), ['GET', 'HEAD'], true) && ! $request->is('account/register')) {
+            return $next($request);
+        }
         $account = $request->is('account', 'account/*') && ! $request->is('account/register')
             && ! ($request->is('account/otp') && $request->input('intent') === 'register');
         if ($account || ! ($active = app(StoreMaintenance::class)->active($store))) {

@@ -44,10 +44,11 @@ export async function handleCustomerMessage(sock:WASocket,message:WAMessage,toke
     if (access?.data?.allowed!==true) return;
     const storeName=typeof access.data.store_name==='string' ? access.data.store_name : 'Toko Digital';
     const maintenance=access.data.maintenance;
-    if(maintenance && action!=='balance' && action!=='status') {
+    const readOnlyCommerce=action==='balance'||action==='status'||typeof action==='object'&&action?.type==='order-status';
+    if(maintenance && commerce && !readOnlyCommerce) {
         const estimate=maintenance.ends_at ? new Date(maintenance.ends_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'})+' WIB' : 'Menunggu pemeliharaan selesai';
-        await sock.sendMessage(chat,{text:shopReply(storeName,'🛠 LAYANAN SEDANG MAINTENANCE',[maintenance.message,'','Estimasi buka: '+estimate,'','Pesanan yang sudah dibuat tetap diproses. Cek #status atau #saldo.'])},{quoted:message});
-        await sendControls(sock,message,chat,sender,tokens,[['status','Status pesanan'],['balance','Lihat saldo']],'Pesanan berjalan tetap dapat diperiksa');
+        await sock.sendMessage(chat,{text:shopReply(storeName,'🛠 LAYANAN SEDANG MAINTENANCE',[maintenance.message,'','Estimasi buka: '+estimate,'','Pemesanan baru sementara dijeda. Katalog dan harga tetap dapat dilihat.','Pesanan yang sudah dibuat tetap diproses. Cek #status atau #saldo.'])},{quoted:message});
+        await sendControls(sock,message,chat,sender,tokens,[['services','Lihat produk'],['status','Status pesanan'],['balance','Lihat saldo']],'Katalog dan pesanan tetap dapat diperiksa');
         return;
     }
     if(unknown){

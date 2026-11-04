@@ -1,19 +1,19 @@
 # Install ONLY after the certificate below exists. Do not replace other sites.
-# Wildcard TLS certificate must cover BOTH hansdigi.biz.id and *.hansdigi.biz.id.
+# Wildcard TLS certificate must cover BOTH digitaltoko.com and *.digitaltoko.com.
 server {
     listen 80;
-    server_name hansdigi.biz.id *.hansdigi.biz.id;
+    server_name digitaltoko.com *.digitaltoko.com;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name hansdigi.biz.id *.hansdigi.biz.id;
-    ssl_certificate /etc/letsencrypt/live/hansdigi.biz.id/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/hansdigi.biz.id/privkey.pem;
+    server_name digitaltoko.com *.digitaltoko.com;
+    ssl_certificate /etc/letsencrypt/live/digitaltoko.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/digitaltoko.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
 
-    root /home/hans/hanshop/digitaltoko/apps/web/public;
+    root /home/hans/digitaltoko/apps/web/public;
     index index.php;
     charset utf-8;
     client_max_body_size 520m;
@@ -33,4 +33,13 @@ server {
     }
     location ~ \.php(?:/|$) { return 404; }
     location ~ /\.(?!well-known).* { deny all; }
+}
+
+server {
+    listen 443 ssl;
+    server_name www.digitaltoko.com;
+    ssl_certificate /etc/letsencrypt/live/digitaltoko.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/digitaltoko.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    return 301 https://digitaltoko.com$request_uri;
 }

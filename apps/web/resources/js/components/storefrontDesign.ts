@@ -61,7 +61,7 @@ export function colorInk(color:string):string {
     const luminance=parts[0]*0.2126+parts[1]*0.7152+parts[2]*0.0722;
     return (luminance+0.05)/0.05>1.05/(luminance+0.05)?'#101523':'#ffffff';
 }
-export function designStyle(branding:StoreBranding|null):CSSProperties {
+export function designStyle(branding:{design?:Pick<ShopDesign,'accent'|'colors'>}|null):CSSProperties {
     const color=branding?.design?.accent,style:Record<string,string>={};
     if(color && validColor(color)){style['--sf-accent']=color;style['--sf-accent-ink']=colorInk(color);}
     const variables:Record<keyof ThemeColors,string>={secondary:'--sf-secondary',background:'--sf-bg',surface:'--sf-card',text:'--sf-text',muted:'--sf-muted',border:'--sf-line'};

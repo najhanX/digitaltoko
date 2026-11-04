@@ -71,7 +71,8 @@ class MaintenanceTest extends TestCase
         $this->actingAs($admin)->get('/admin/maintenance')->assertInertia(fn (Page $page) => $page->component('Maintenance/Settings')->where('role', 'admin'));
         $this->patch('/admin/maintenance', ['enabled' => true, 'message' => 'Maintenance platform.', 'ends_at' => now()->addHour()->toIso8601String()])->assertSessionHasNoErrors();
         foreach ([$a, $b] as $store) {
-            $this->get('http://'.$store->slug.'.localhost/')->assertRedirect('/maintenance');
+            $this->get('http://'.$store->slug.'.localhost/')->assertOk();
+            $this->post('http://'.$store->slug.'.localhost/checkout')->assertRedirect('/maintenance');
             $this->get('http://'.$store->slug.'.localhost/maintenance')->assertOk()->assertSee('Maintenance platform.')->assertSee('countdown', false);
         }
         $this->get('http://localhost/')->assertOk();
@@ -119,6 +120,8 @@ class MaintenanceTest extends TestCase
         $store = $this->store();
         $this->pause($store);
         $base = 'http://'.$store->slug.'.localhost';
+        $this->get($base.'/')->assertOk();
+        $this->post($base.'/checkout')->assertRedirect('/maintenance');
         $this->withHeaders(['X-Inertia' => 'true'])->post($base.'/checkout', [])->assertStatus(409)->assertHeader('X-Inertia-Location', '/maintenance');
         $this->flushHeaders();
         $this->postJson($base.'/checkout/inquiry', [])->assertStatus(503)->assertJsonPath('maintenance.scope', 'store');
@@ -127,6 +130,35 @@ class MaintenanceTest extends TestCase
         $this->get($base.'/account/login')->assertOk();
         $this->assertDatabaseCount('customer_orders', 0);
         $this->assertDatabaseCount('customers', 0);
+    }
+
+    public function test_maintenance_keeps_web_and_bot_catalogues_available(): void
+    {
+        $store = $this->store();
+        $product = $this->product($store);
+        $token = str_repeat('c', 64);
+        $store->update(['worker_token_hash' => hash('sha256', $token)]);
+        $this->pause($store);
+        $base = 'http://'.$store->slug.'.localhost';
+        foreach (['aurora', 'nebula', 'atlas'] as $template) {
+            $store->update(['template' => $template]);
+            $this->get($base.'/')->assertOk();
+            $this->get($base.'/kategori/'.$product->category_id)->assertOk()
+                ->assertInertia(fn (Page $page) => $page->component('Storefront/Category')->where('products.0.id', $product->id));
+        }
+        $this->getJson($base.'/search?q=Akun')->assertOk();
+        $this->get($base.'/checkout?product='.$product->id)->assertOk()->assertInertia(fn (Page $page) => $page
+            ->component('Storefront/Checkout')->where('storeMaintenance.store_slug', $store->slug)
+            ->where('storeMaintenance.message', 'Peningkatan layanan toko.')->where('storeMaintenance.server_now', now()->toIso8601String()));
+        $this->get($base.'/artikel')->assertOk();
+        $this->get($base.'/leaderboard')->assertOk();
+        $this->withToken($token)->getJson('http://localhost/api/internal/bot/products')->assertOk()->assertJsonPath('data.items.0.id', $product->id);
+        $this->withToken($token)->getJson('http://localhost/api/internal/bot/catalog?view=services')->assertOk()->assertJsonPath('data.items.0.name', 'Aplikasi');
+        $this->withToken($token)->getJson('http://localhost/api/internal/bot/catalog?view=categories&service=Aplikasi')->assertOk()->assertJsonPath('data.items.0.name', 'Premium');
+        $this->withToken($token)->getJson('http://localhost/api/internal/bot/catalog?view=products&service=Aplikasi&category=Premium')->assertOk()->assertJsonPath('data.items.0.id', $product->id);
+        $this->assertDatabaseCount('customer_orders', 0);
+        $this->assertDatabaseCount('customers', 0);
+        Http::assertNothingSent();
     }
 
     public function test_service_and_bot_cannot_create_orders_or_inquiries_during_maintenance(): void

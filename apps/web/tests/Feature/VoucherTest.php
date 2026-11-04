@@ -11,6 +11,7 @@ use App\Models\DiscountVoucher;
 use App\Models\PlanOption;
 use App\Models\PremiumStock;
 use App\Models\ProductMapping;
+use App\Models\ProvisioningCase;
 use App\Models\Store;
 use App\Models\StoreStaff;
 use App\Models\SubscriptionInvoice;
@@ -21,6 +22,7 @@ use App\Services\CustomerFulfillment;
 use App\Services\CustomerPayments;
 use App\Services\SubscriptionService;
 use App\Services\Vouchers;
+use App\Support\HanshopIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -315,6 +317,81 @@ class VoucherTest extends TestCase
         $this->assertNotNull(app(CustomerCommerce::class)->settings($store)->custom_licensed_at);
         $this->invalid(fn () => app(CommerceModules::class)->buy($store, $voucher->code));
         $this->assertDatabaseCount('module_purchases', 1);
+        Http::assertNothingSent();
+    }
+
+    public function test_owner_can_buy_module_with_free_voucher_during_paid_store_setup(): void
+    {
+        $store = $this->store();
+        $store->update(['status' => 'provisioning', 'expires_at' => null]);
+        SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $store->owner_id, 'purpose' => 'initial', 'status' => 'paid', 'snapshot' => ['price' => 50000, 'duration_days' => 30], 'paid_at' => now()]);
+        DB::table('commerce_options')->updateOrInsert(['id' => 'custom_qris_price'], ['value' => 100000]);
+        $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000, 'once_per_user' => true]);
+
+        $this->actingAs($store->owner)->post('/stores/'.$store->id.'/payments/module', ['voucher_code' => $voucher->code])
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('module_purchases', ['store_id' => $store->id, 'status' => 'paid', 'amount' => 0]);
+        $this->assertNotNull(app(CustomerCommerce::class)->settings($store)->custom_licensed_at);
+        $this->assertSame('provisioning', $store->fresh()->status);
+        $this->assertNull($store->fresh()->starts_at);
+        $this->assertNull($store->fresh()->expires_at);
+        Http::assertNothingSent();
+    }
+
+    public function test_module_purchase_rejects_ineligible_store_before_claiming_voucher(): void
+    {
+        DB::table('commerce_options')->updateOrInsert(['id' => 'custom_qris_price'], ['value' => 100000]);
+        $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000]);
+        foreach (['draft', 'provisioning', 'suspended_manual', 'suspended'] as $status) {
+            $store = $this->store();
+            $store->update(['status' => $status, 'expires_at' => null]);
+            $this->invalid(fn () => app(CommerceModules::class)->buy($store, $voucher->code));
+        }
+        $store = $this->store();
+        $staleStore = clone $store;
+        $store->update(['status' => 'provisioning', 'expires_at' => null, 'admin_suspended_at' => now()]);
+        SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $store->owner_id, 'purpose' => 'initial', 'status' => 'paid', 'snapshot' => ['price' => 50000, 'duration_days' => 30], 'paid_at' => now()]);
+        $this->invalid(fn () => app(CommerceModules::class)->buy($staleStore, $voucher->code));
+        $this->assertDatabaseCount('module_purchases', 0);
+        $this->assertDatabaseCount('voucher_redemptions', 0);
+        Http::assertNothingSent();
+    }
+
+    public function test_discounted_module_invoice_can_be_created_during_paid_store_setup(): void
+    {
+        $store = $this->store();
+        $store->update(['status' => 'provisioning', 'expires_at' => null]);
+        SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $store->owner_id, 'purpose' => 'initial', 'status' => 'paid', 'snapshot' => ['price' => 50000, 'duration_days' => 30], 'paid_at' => now()]);
+        DB::table('commerce_options')->updateOrInsert(['id' => 'custom_qris_price'], ['value' => 100000]);
+        $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 5000]);
+        $this->mock(HanshopIdentity::class, function ($mock) {
+            $mock->shouldReceive('call')->once()->andReturnUsing(fn ($path, $data) => ['invoice' => [...$data, 'total' => $data['amount'] + 123, 'status' => 'PENDING', 'qr_url' => 'https://example.test/qr', 'expires_at' => now()->addMinutes(15)->toIso8601String(), 'paid_at' => null]]);
+        });
+
+        $invoice = app(CommerceModules::class)->buy($store, $voucher->code);
+
+        $this->assertSame('pending', $invoice->status);
+        $this->assertSame(50000, $invoice->amount);
+        $this->assertSame(50123, $invoice->total);
+        $this->assertNull(app(CustomerCommerce::class)->settings($store)->custom_licensed_at);
+        $this->assertNull($store->fresh()->expires_at);
+        Http::assertNothingSent();
+    }
+
+    public function test_store_with_provisioning_refund_under_review_cannot_claim_module_voucher(): void
+    {
+        $store = $this->store();
+        $store->update(['status' => 'provisioning', 'expires_at' => null]);
+        $invoice = SubscriptionInvoice::create(['store_id' => $store->id, 'owner_id' => $store->owner_id, 'purpose' => 'initial', 'status' => 'paid', 'snapshot' => ['price' => 50000, 'duration_days' => 30], 'paid_at' => now()]);
+        ProvisioningCase::create(['store_id' => $store->id, 'invoice_id' => $invoice->id, 'state' => 'refund_requested', 'refund_amount' => 50000]);
+        DB::table('commerce_options')->updateOrInsert(['id' => 'custom_qris_price'], ['value' => 100000]);
+        $voucher = DiscountVoucher::factory()->create(['type' => 'percent', 'value' => 10000]);
+
+        $this->invalid(fn () => app(CommerceModules::class)->buy($store, $voucher->code));
+
+        $this->assertDatabaseCount('module_purchases', 0);
+        $this->assertDatabaseCount('voucher_redemptions', 0);
         Http::assertNothingSent();
     }
 

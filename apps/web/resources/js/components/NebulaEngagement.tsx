@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
+import {usePage} from '@inertiajs/react';
 import { ArrowRight, MessageCircle } from 'lucide-react';
 import Modal from './Modal';
 import { customerServiceUrl, validBannerUrl, type CustomerService, type WelcomeAd } from './storefrontDesign';
 
 export default function NebulaEngagement({slug,home,ad,service}:{slug:string;home:boolean;ad?:WelcomeAd;service?:CustomerService}) {
+    const maintenance=usePage().props.storeMaintenance;
     const [open,setOpen]=useState(false);
     const signature=JSON.stringify(ad ?? null);
     useEffect(()=>{
         setOpen(false);
-        if(!home || !ad?.enabled)return;
+        if(maintenance || !home || !ad?.enabled)return;
         const key='digitaltoko:welcome:'+slug;
         try{if(sessionStorage.getItem(key)===signature)return;}catch{/* Storage can be unavailable in private browsers. */}
         const timer=setTimeout(()=>{
@@ -16,7 +18,7 @@ export default function NebulaEngagement({slug,home,ad,service}:{slug:string;hom
             try{sessionStorage.setItem(key,signature);}catch{/* The popup remains dismissible without storage. */}
         },650);
         return()=>clearTimeout(timer);
-    },[slug,home,signature]);
+    },[slug,home,signature,maintenance]);
     const href=ad?.href && validBannerUrl(ad.href)?ad.href:null;
     return <>
         <CustomerServiceButton settings={service}/>
