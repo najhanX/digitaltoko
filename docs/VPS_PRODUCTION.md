@@ -27,20 +27,40 @@ whoami
 pm2 status
 node --version
 npm --version
-php --version
-composer --version
+/usr/bin/php8.5 --version
+/usr/bin/php8.5 "$(command -v composer)" --version
 nginx -v
 sudo ss -lntp
 sudo nginx -t
 ```
 
-Gunakan Node 22.12+ dan PHP 8.4+ sesuai lock dependencies (disarankan versi patch terbaru yang didukung). Periksa versi PHP CLI dan FPM, jangan hanya salah satunya. Siapkan MySQL 8, Redis, Git, Composer, Nginx, PHP-FPM, klien `mysql`/`mysqldump`, ekstensi PDO MySQL, mbstring, XML/DOM, cURL, zip (AES-256), GD, bcmath, intl dan PCNTL untuk CLI. `composer check-platform-reqs --no-dev` menjadi pemeriksaan akhir kebutuhan sebenarnya. Jika paket PHP 8.4 tidak tersedia di repo OS, siapkan repository PHP tepercaya atau runtime yang sesuai; jangan memaksakan PHP 8.3 melalui `--ignore-platform-reqs`.
+Gunakan Node 22.12+ dan **PHP 8.5.12 atau patch stabil 8.5.x lebih baru** sesuai lock dependencies (disarankan versi patch terbaru yang didukung). Periksa versi PHP CLI dan FPM, jangan hanya salah satunya. Siapkan MySQL 8, Redis, Git, Composer, Nginx, PHP-FPM, klien `mysql`/`mysqldump`, ekstensi PDO MySQL, mbstring, XML/DOM, cURL, zip (AES-256), GD, bcmath, intl dan PCNTL untuk CLI. `/usr/bin/php8.5 "$(command -v composer)" check-platform-reqs --no-dev` menjadi pemeriksaan akhir kebutuhan sebenarnya. Jika paket PHP 8.5 tidak tersedia di repo OS, siapkan repository PHP tepercaya atau runtime yang sesuai; jangan memaksakan PHP 8.3 melalui `--ignore-platform-reqs`.
+
+### Wajib patch PHP2Shell sebelum dibuka publik
+
+Kedua advisory resmi PHP, [GHSA-w8hw-w9fx-j79w](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w) dan [GHSA-6wmf-4rv5-p3rp](https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp), mencantumkan perbaikan pada 8.4.27 dan 8.5.12 (cabang lain: 8.3.36/8.2.35). Profil ini menetapkan cabang **8.5 dengan patch minimal 8.5.12** untuk CLI, FPM, queue dan scheduler. Pada pemeriksaan 4 November 2026, changelog resmi menampilkan 8.5.12 sebagai rilis stabil terbaru cabang 8.5. Gunakan rilis stabil, bukan alpha/beta/RC. Gunakan patch terbaru yang tersedia dari repository tepercaya, jangan mengunci selamanya pada rilis minimum.
+
+Periksa kandidat paket dan binary yang benar:
+
+```bash
+apt-cache policy php8.5-cli php8.5-fpm php8.5-common
+/usr/bin/php8.5 -v
+/usr/sbin/php-fpm8.5 -v
+```
+
+Jangan lanjut membuka layanan jika versi upstream cabang 8.5 di bawah 8.5.12, kecuali vendor distribusi secara resmi membuktikan kedua patch telah di-backport pada build tersebut. Simpan nomor paket dan rujukan advisory vendor. Berhasil menjalankan Composer saja tidak membuktikan patch keamanan sudah diterapkan.
+
+Setelah upgrade pada server existing, drain pekerjaan lalu restart service FPM dan proses PHP jangka panjang agar tidak memakai binary lama. `sudo systemctl restart php8.5-fpm` berdampak pada semua pool versi itu, jadi jadwalkan jika dipakai aplikasi lain. Queue dapat dihentikan graceful melalui `/usr/bin/php8.5 artisan queue:restart`, kemudian periksa worker baru dan scheduler PM2; hentikan/daftar ulang proses bila interpreter menunjuk PHP lama. Restart bot Node tidak menggantikan restart PHP-FPM. Periksa konfigurasi socket Nginx dan executable pada `pm2 describe digitaltoko-queue` serta `pm2 describe digitaltoko-scheduler`.
+
+Nginx + FPM, WAF, batas upload, atau maintenance aplikasi bukan pengganti patch runtime. Batas minimum ini khusus perbaikan PHP2Shell yang diperiksa pada 4 November 2026, bukan jaminan bebas semua celah keamanan.
+
+Jalankan Composer melalui binary PHP 8.5 secara eksplisit agar tidak mengikuti PHP default lama. Contoh mengasumsikan `command -v composer` menunjuk skrip PHP/PHAR Composer asli; bila berupa wrapper shell, gunakan path PHAR aslinya. Tidak perlu mengganti PHP default aplikasi lain.
 
 Contoh setelah repository PHP sesuai tersedia (lewati layanan yang sudah terpasang):
 
 ```bash
 sudo apt-get update
-sudo apt-get install nginx redis-server mysql-client git unzip acl php8.4-cli php8.4-fpm php8.4-mysql php8.4-mbstring php8.4-xml php8.4-curl php8.4-zip php8.4-gd php8.4-bcmath php8.4-intl
+sudo apt-get install nginx redis-server mysql-client git unzip acl php8.5-cli php8.5-fpm php8.5-mysql php8.5-mbstring php8.5-xml php8.5-curl php8.5-zip php8.5-gd php8.5-bcmath php8.5-intl
 ```
 
 MySQL server, Node, Composer dan PM2 existing tetap dipakai jika memenuhi versi. Jika MySQL belum ada, pasang/konfigurasi MySQL server dahulu. Atur firewall VPS/cloud agar HTTP/HTTPS 80/443 masuk, SSH tetap tersedia pada port Anda, dan MySQL/Redis/manager tidak terbuka publik. Jangan mengaktifkan aturan firewall yang memutus SSH sesi ini. Periksa binding proses existing sebelum membatasi port API yang mungkin sedang digunakan partner.
@@ -93,19 +113,19 @@ Untuk Cloudflare awal gunakan **DNS only** agar routing dan HTTPS origin bisa di
 
 ```bash
 cd /home/hans/hanshop/digitaltoko/apps/web
-composer install --no-dev --prefer-dist --optimize-autoloader
-composer check-platform-reqs --no-dev
-php artisan key:generate --force
+/usr/bin/php8.5 "$(command -v composer)" install --no-dev --prefer-dist --optimize-autoloader
+/usr/bin/php8.5 "$(command -v composer)" check-platform-reqs --no-dev
+/usr/bin/php8.5 artisan key:generate --force
 npm ci --include=dev
 npm run build
 # Hanya hapus penanda Vite development ini, bukan direktori public.
 rm -f public/hot
-php artisan migrate --force
-php artisan db:seed --class=ProductionSeeder --force
-php artisan storage:link
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+/usr/bin/php8.5 artisan migrate --force
+/usr/bin/php8.5 artisan db:seed --class=ProductionSeeder --force
+/usr/bin/php8.5 artisan storage:link
+/usr/bin/php8.5 artisan config:cache
+/usr/bin/php8.5 artisan route:cache
+/usr/bin/php8.5 artisan view:cache
 
 cd /home/hans/hanshop/digitaltoko/apps/bot
 cp .env.vps.example .env
@@ -121,7 +141,7 @@ Pastikan source API Hanshop yang menyediakan bridge `/internal/digitaltoko` suda
 
 ## 5. PHP-FPM dan izin file
 
-Salin `deploy/php-fpm.production.conf.example` ke `/etc/php/8.4/fpm/pool.d/digitaltoko.conf`, sesuaikan versi PHP/user. Pool khusus berjalan sebagai `hans`; ini menyamakan kepemilikan private media, sesi dan akun PM2 untuk pemulihan. Nginx tetap `www-data`, melalui socket terbatas. Tidak perlu mengubah pool aplikasi lain.
+Salin `deploy/php-fpm.production.conf.example` ke `/etc/php/8.5/fpm/pool.d/digitaltoko.conf`, sesuaikan versi PHP/user. Pool khusus berjalan sebagai `hans`; ini menyamakan kepemilikan private media, sesi dan akun PM2 untuk pemulihan. Nginx tetap `www-data`, melalui socket terbatas. Tidak perlu mengubah pool aplikasi lain.
 
 ```bash
 sudo apt-get install acl
@@ -133,8 +153,8 @@ chmod -R u+rwX apps/web/storage apps/web/bootstrap/cache
 sudo setfacl -m u:www-data:--x /home/hans /home/hans/hanshop /home/hans/hanshop/digitaltoko /home/hans/hanshop/digitaltoko/apps /home/hans/hanshop/digitaltoko/apps/web
 sudo setfacl -R -m u:www-data:r-X apps/web/public
 sudo setfacl -R -d -m u:www-data:r-X apps/web/public
-sudo php-fpm8.4 -t
-sudo systemctl reload php8.4-fpm
+sudo php-fpm8.5 -t
+sudo systemctl reload php8.5-fpm
 ```
 
 Source checkout harus dimiliki `hans`. Jangan `chmod -R 777` atau memberi `www-data` akses `.env`, sesi bot dan backup. Nginx mengakses file publik; media privat tetap melalui Laravel/FPM. Ulangi ACL public bila metode deploy mengganti direktori sehingga ACL hilang. Jika ada storage public symlink berisi file publik, beri hak baca/traversal khusus `storage/app/public` dan parentnya; jangan seluruh `storage/app/private`.
@@ -179,7 +199,7 @@ Jalankan sebagai `hans`. `DIGITALTOKO_PHP_BINARY` adalah environment saat membac
 
 ```bash
 cd /home/hans/hanshop/digitaltoko
-export DIGITALTOKO_PHP_BINARY=/usr/bin/php8.4
+export DIGITALTOKO_PHP_BINARY=/usr/bin/php8.5
 pm2 start deploy/ecosystem.production.config.cjs --only digitaltoko-queue,digitaltoko-scheduler,digitaltoko-bot-manager,digitaltoko-backup-queue
 pm2 status
 pm2 logs digitaltoko-bot-manager --lines 30
@@ -194,7 +214,7 @@ Satu manager membuat banyak worker tenant; batas RAM manager bukan batas seluruh
 
 ## 8. Backup, download dan layanan pendukung
 
-Generate BACKUP_KEY terpisah: `php -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'`. Simpan offline bersama APP_KEY dengan akses terbatas; jangan commit. Isi `BACKUP_KEY`, aktifkan `BACKUP_ENABLED=true`, cache konfigurasi ulang, lalu `php artisan digitaltoko:backup` dari `apps/web`. Periksa hasil melalui admin dan salin ke penyimpanan di luar VPS; direktori replica di disk yang sama bukan perlindungan jika disk rusak.
+Generate BACKUP_KEY terpisah: `/usr/bin/php8.5 -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'`. Simpan offline bersama APP_KEY dengan akses terbatas; jangan commit. Isi `BACKUP_KEY`, aktifkan `BACKUP_ENABLED=true`, cache konfigurasi ulang, lalu `/usr/bin/php8.5 artisan digitaltoko:backup` dari `apps/web`. Periksa hasil melalui admin dan salin ke penyimpanan di luar VPS; direktori replica di disk yang sama bukan perlindungan jika disk rusak.
 
 Antrean backup sudah berjalan terpisah. `BACKUP_LIVE_RESTORE_ENABLED` tetap false sampai uji restore database terpisah dan prosedur resume lulus di VPS. Untuk mengaktifkannya, isi `BACKUP_PM2_CLI` dengan path absolut `$(npm root -g)/pm2/bin/pm2` dan `BACKUP_NODE_BINARY` sesuai `command -v node`, pastikan user/runtime mampu mengakses daemon PM2 yang sama. Ikuti bagian backup/pemulihan pada [DEPLOYMENT.md](DEPLOYMENT.md); jangan menyalakan live restore hanya untuk menghilangkan pesan error.
 
@@ -216,14 +236,14 @@ Berkas APK/tools HansDev bukan bagian build frontend. Salin release yang sudah d
 Ambil snapshot/backup sebelum migrasi. Pertahankan `.env`, APP_KEY, BACKUP_KEY, media, registry dan sesi bot. Jangan memakai `pm2 restart all` karena ikut mengganggu bot/API Hanshop.
 
 1. Periksa antrean/pekerjaan aktif dan aktifkan maintenance bisnis jika perlu; tunggu backup/restore yang berjalan selesai. Perubahan skema besar membutuhkan rencana maintenance khusus dan pengiriman ulang callback.
-2. Perbarui source, `composer install --no-dev --prefer-dist --optimize-autoloader`, build web/bot seperti langkah 4. Jangan menjalankan seeder rutin atau key:generate.
-3. Dari `apps/web`, jalankan `php artisan migrate --force`, `php artisan config:cache`, `php artisan route:cache`, `php artisan view:cache`, lalu `php artisan schedule:interrupt`.
-4. `php artisan queue:restart` untuk meminta worker selesai secara graceful. Tunggu PM2 menjalankan ulang **kedua antrean**; proses backup panjang bisa memerlukan waktu. Jika hanya mengganti `.env` Laravel, worker baru akan membaca hasil config cache yang baru.
+2. Perbarui source, `/usr/bin/php8.5 "$(command -v composer)" install --no-dev --prefer-dist --optimize-autoloader`, build web/bot seperti langkah 4. Jangan menjalankan seeder rutin atau key:generate.
+3. Dari `apps/web`, jalankan `/usr/bin/php8.5 artisan migrate --force`, `/usr/bin/php8.5 artisan config:cache`, `/usr/bin/php8.5 artisan route:cache`, `/usr/bin/php8.5 artisan view:cache`, lalu `/usr/bin/php8.5 artisan schedule:interrupt`.
+4. `/usr/bin/php8.5 artisan queue:restart` untuk meminta worker selesai secara graceful. Tunggu PM2 menjalankan ulang **kedua antrean**; proses backup panjang bisa memerlukan waktu. Jika hanya mengganti `.env` Laravel, worker baru akan membaca hasil config cache yang baru.
 5. Restart scheduler dan manager sesuai perubahan, dari root:
 
 ```bash
 pm2 restart deploy/ecosystem.production.config.cjs --only digitaltoko-scheduler,digitaltoko-bot-manager --update-env
-sudo systemctl reload php8.4-fpm
+sudo systemctl reload php8.5-fpm
 pm2 save
 ```
 
@@ -242,5 +262,6 @@ Untuk `.env` bot, restart manager diperlukan. Untuk perubahan ecosystem/PHP bina
 - Konfigurasi JS lolos `node --check`; pemeriksaan profil memastikan tujuh nama unik, path/port tiga layanan existing, satu scheduler, queue backup terpisah, satu instance fork dan tidak ada server development.
 - Sebelas tes konfigurasi/launcher PM2 existing lulus. Kedua contoh environment berhasil dibaca parser Dotenv; `git diff --check` lulus.
 - Tidak ada layanan lokal/VPS yang direstart, migrasi/seeder dijalankan, credential nyata ditambahkan, atau callback/transaksi dikirim selama persiapan ini.
-- Binary Nginx/PHP-FPM Linux dan sertifikat publik belum tersedia pada lingkungan pemeriksaan Windows. Jalankan `nginx -t`, `php-fpm8.4 -t`, pemeriksaan runtime, renewal, reboot dan alur bisnis pada VPS sebelum menerima pelanggan.
+- Target runtime diperbarui menjadi PHP 8.5.12+; profil PM2 production memakai `/usr/bin/php8.5` sebagai default tanpa mengubah profil laptop.
+- Binary Nginx/PHP-FPM Linux dan sertifikat publik belum tersedia pada lingkungan pemeriksaan Windows. Jalankan `nginx -t`, `php-fpm8.5 -t`, pemeriksaan runtime, renewal, reboot dan alur bisnis pada VPS sebelum menerima pelanggan.
 - Profil laptop dan konfigurasi lama tetap tersedia untuk kompatibilitas. Panduan ini memakai profil production gabungan saja; arsip ZIP dan sesi WhatsApp lama tidak termasuk berkas deployment yang disiapkan.

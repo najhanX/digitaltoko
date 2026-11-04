@@ -3,7 +3,10 @@
 const path = require('node:path');
 const { createConfig } = require('./pm2-apps.cjs');
 
-const digitaltoko = createConfig().apps.map(app => ({
+const digitaltoko = createConfig({ env: {
+  ...process.env,
+  DIGITALTOKO_PHP_BINARY: process.env.DIGITALTOKO_PHP_BINARY || '/usr/bin/php8.5',
+} }).apps.map(app => ({
   ...app,
   env: { ...app.env, APP_ENV: 'production', NODE_ENV: 'production' },
 }));

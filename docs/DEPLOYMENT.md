@@ -6,7 +6,7 @@ Panduan disinkronkan dengan source lokal **3 November 2026**. Modul bisnis, chec
 
 ## Runtime
 
-- Aplikasi web apps/web: Laravel 13.35, Inertia 3, React 19/TypeScript, Vite 8. Lock Composer saat ini memerlukan PHP 8.4+ (local diuji PHP 8.5.5); verifikasi composer check-platform-reqs pada VPS.
+- Aplikasi web apps/web: Laravel 13.35, Inertia 3, React 19/TypeScript, Vite 8. Target VPS: PHP 8.5.12 atau patch stabil 8.5.x lebih baru untuk perbaikan PHP2Shell; CLI/FPM/queue/scheduler harus memakai cabang ini. Lock Composer saat ini memerlukan PHP 8.4+ (local diuji PHP 8.5.5); verifikasi composer check-platform-reqs pada VPS.
 - Node 22.12+ untuk build React dan worker apps/bot. Git diperlukan untuk patch Baileys exact 7.0.0-rc14.
 - PHP-FPM/Nginx dan extension PHP pdo_mysql untuk MySQL aplikasi terpisah, queue worker/scheduler. Redis dipakai cache/lock pemasok dan koordinasi runtime; Predis tersedia. Pastikan service/driver dikonfigurasi dan tidak bergantung pada array cache untuk produksi.
 - Satu worker bot per toko, satu port loopback dan direktori session UUID; tidak menjalankan semua tenant pada satu socket global.

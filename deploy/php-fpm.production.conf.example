@@ -1,4 +1,5 @@
-; /etc/php/8.4/fpm/pool.d/digitaltoko.conf
+; /etc/php/8.5/fpm/pool.d/digitaltoko.conf
+; Require PHP 8.5.12 or a newer stable 8.5.x patch (PHP2Shell fixes).
 ; Dedicated pool: same unix user as the PM2 instance and private files.
 [digitaltoko]
 user = hans
