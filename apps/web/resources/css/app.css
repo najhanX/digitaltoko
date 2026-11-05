@@ -16,6 +16,12 @@
 @import './platform-home.css';
 @import './platform-header.css';
 
+/* Paint the Android gesture area and tall/mobile viewports with the page canvas. */
+html { min-height: 100%; }
+body { min-height: 100vh; min-height: 100dvh; background-color: inherit; padding-bottom: env(safe-area-inset-bottom, 0px); }
+#app { min-height: 100vh; min-height: 100dvh; }
+.sf-site, .sf-nebula.ng-site { min-height: 100vh; min-height: 100dvh; }
+
 .sandbox-indicator{position:fixed;bottom:16px;left:16px;z-index:90;display:grid;gap:3px;max-width:min(300px,calc(100vw - 100px));padding:10px 14px;border:1px solid #d9a122;border-radius:12px;background:#fff7d6;color:#684309;box-shadow:0 4px 18px #0002;font-size:var(--text-small);pointer-events:none}.sandbox-indicator strong{font-size:var(--text-body)}
 
 #app table thead th{text-align:center;font-weight:600}
