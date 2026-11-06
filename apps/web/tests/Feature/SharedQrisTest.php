@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommerceReceipt;
 use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\Store;
@@ -169,5 +170,24 @@ class SharedQrisTest extends TestCase
         $this->assertSame('unpaid', $order->fresh()->payment_status);
         $this->assertSame(0, $order->customer->fresh()->balance);
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/reserve') && $request['existing_total'] === $order->total && $request['reference'] === $order->id);
+    }
+
+    public function test_legacy_manual_reference_remains_used_across_stores_after_migration(): void
+    {
+        $first = $this->store();
+        $profile = $this->connect($first);
+        $second = $this->store($first->owner);
+        $this->connect($second, $profile['qris_profile_id']);
+        $old = $this->topup($first);
+        $new = $this->topup($second);
+        CommerceReceipt::create(['order_id' => $old->id, 'event' => 'custom-manual:'.hash('sha256', $old->merchant_key.':legacy-bank-ref'), 'amount' => $old->total, 'paid_at' => now()]);
+        try {
+            app(CustomerPayments::class)->confirmCustom($new, ['received_amount' => $new->total, 'paid_at' => now()->toIso8601String(), 'reference' => 'LEGACY-BANK-REF', 'note' => 'Periksa bukti lama'], (string) $second->owner_id);
+            $this->fail('Referensi lama tidak boleh digunakan kembali.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('Bukti pembayaran sudah dipakai', $exception->getMessage());
+        }
+        $this->assertSame('unpaid', $new->fresh()->payment_status);
+        $this->assertSame(0, $new->customer->fresh()->balance);
     }
 }

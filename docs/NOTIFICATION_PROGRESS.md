@@ -154,4 +154,15 @@ Aktivasi terkoordinasi dan migrasi SQL manual API dijelaskan di DEPLOYMENT.md. P
 
 Nominal final dikarantina hingga 24 jam setelah expiry (sesuai perlindungan invoice DigitalToko). Nominal receipt yang baru masuk juga tidak langsung dipakai ulang. Ingress Hanshop lama tanpa ID/waktu asli diterima sebagai review-only, bukan otomatis lunas.
 
-Validasi tahap ini: 107 tes pembayaran/pascabayar Laravel, 7 tes profil bersama (32 assertion), 42 tes frontend, build/TypeScript/Pint, serta suite API 225 tes (223 lulus, 2 opt-in lain dilewati pada run MySQL). Empat tes QRIS khusus termasuk MySQL terpisah juga lulus. Android: analyze, 8 tes Flutter, 11 tes native, lint dan release ARM64 lulus. Sertifikat APK sama dengan 1.0.3: SHA-256 3a8b6230481abc8b9e67e3ea42bad7b3d8812f65399c4dbfe8c1341adf83fd62.
+Validasi tahap ini: 107 tes pembayaran/pascabayar Laravel, 8 tes profil bersama (35 assertion), 42 tes frontend, build/TypeScript/Pint, serta suite API 225 tes (223 lulus, 2 opt-in lain dilewati pada run MySQL). Empat tes QRIS khusus termasuk MySQL terpisah juga lulus. Android: analyze, 8 tes Flutter, 11 tes native, lint dan release ARM64 lulus. Sertifikat APK sama dengan 1.0.3: SHA-256 3a8b6230481abc8b9e67e3ea42bad7b3d8812f65399c4dbfe8c1341adf83fd62.
+
+
+### Pemasangan VPS dan pemeriksaan publik
+
+- Checkpoint utama web `524fe86`, API `c35022b`. Source dipindahkan melalui Git bundle dengan commit yang sama karena checkout VPS belum menyimpan autentikasi GitHub.
+- Backup privat sebelum perubahan: `/home/hans/backups/shared-qris-20261106-064305` (kedua database, source/build, konfigurasi dan APK lama). Lokal juga membuat snapshot terenkripsi sebelum migrasi profil.
+- Migrasi web dan SQL API diterapkan. WuzWuz Topup serta HansDigi memakai satu profil owner yang sama. Broker aktif pada kedua aplikasi, maintenance perpindahan sudah dinonaktifkan dan proses PM2 disimpan.
+- Konflik environment saat restart API melalui proses Laravel ditangani dengan membuat ulang hanya proses API memakai environment bersih. Readiness database/Redis kembali UP sebelum aktivasi diteruskan. Bot WA/Telegram dan sesi tidak dihapus/direstart.
+- Endpoint profil publik diuji dengan probe bawaan tanpa nominal: HTTP 200 / SUCCESS. Landing HTTP 200. APK yang benar-benar diunduh dari `https://digitaltoko.com/downloads/hansdev-forwarder.apk` cocok dengan SHA-256 build 1.0.4. PHP-FPM dimuat ulang, queue/scheduler diperbarui.
+- Bukti konfirmasi manual berformat lama tetap diperiksa setelah perubahan namespace receipt, sehingga tidak dapat dipakai untuk invoice toko lain. Pengujian ulang 71 tes terkait, 708 assertion lulus.
+- Pemeriksaan publik ini tidak mengirim uang, tidak membeli produk, dan tidak menguji ketahanan HP merchant yang idle. Pengguna perlu memasang APK sebagai update dan mengganti koneksi HP ke endpoint/token profil setelah antrean lama selesai.

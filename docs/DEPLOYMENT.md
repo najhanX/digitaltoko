@@ -713,3 +713,5 @@ Build/TypeScript dan **23 tes onboarding / 261 assertion** lulus. Browser diuji 
 API `qris/reserve`, `qris/receive`, `qris/status` dan `qris/config` hanya dapat diakses lewat token internal DigitalToko. Token Forwarder hanya untuk endpoint profil, bukan token internal tersebut. SQL menambah tabel, tidak menghapus mutasi lama, dan tidak mengkreditkan saldo ketika migrasi.
 
 Nominal final dikarantina hingga 24 jam setelah expiry (sesuai perlindungan invoice DigitalToko). Nominal receipt yang baru masuk juga tidak langsung dipakai ulang. Ingress Hanshop lama tanpa ID/waktu asli diterima sebagai review-only, bukan otomatis lunas.
+
+Restart PM2 harus dijalankan dari shell operator dengan environment bersih, bukan langsung dari proses PHP/Laravel yang sudah memuat .env web. `--update-env` dapat membawa konfigurasi web ke API. Jika definisi proses sudah terkontaminasi, buat ulang hanya proses API dari ecosystem production dengan environment bersih, lalu periksa /health/ready. Jangan restart bot WA hanya untuk memuat konfigurasi QRIS.

@@ -366,6 +366,9 @@ class CustomerPayments
         app(CustomerCommerce::class)->ensure($at->lte(now()->addSeconds(30)) && $at->gte(now()->subDay()), 'Waktu notifikasi di luar batas pemeriksaan.');
         $merchant = hash('sha256', app(CustomQris::class)->identity($credentials['qris_payload']));
         $receiptId = filled($parsed['fields']['referensi'] ?? null) ? 'reference:'.mb_strtolower(trim($parsed['fields']['referensi'])) : $data['event_id'];
+        if (filled($parsed['fields']['referensi'] ?? null) && CommerceReceipt::where('event', 'custom-manual:'.hash('sha256', $merchant.':'.mb_strtolower(trim($parsed['fields']['referensi']))))->exists()) {
+            return;
+        }
         if (filled($credentials['qris_profile_id'] ?? null)) {
             app(SharedQris::class)->ingest($credentials, $receiptId, $amount, $at, $data['application_package']);
 
@@ -404,6 +407,8 @@ class CustomerPayments
             $commerce->ensure($at->gte($locked->created_at) && $at->lte(now()), 'Waktu pembayaran harus setelah pesanan dibuat dan tidak boleh di masa depan.');
             $commerce->ensure((int) $data['received_amount'] === $locked->total, 'Nominal diterima harus sama dengan total invoice termasuk kode unik.');
             $reference = trim($data['reference']);
+            $legacy = CommerceReceipt::where('event', 'custom-manual:'.hash('sha256', $locked->merchant_key.':'.mb_strtolower($reference)))->first();
+            $commerce->ensure(! $legacy || $legacy->order_id === $locked->id, 'Bukti pembayaran sudah dipakai pada invoice sebelumnya.');
             $event = 'custom:'.hash('sha256', $locked->merchant_key.':reference:'.mb_strtolower($reference));
             $locked->update(['snapshot' => [...$locked->snapshot, 'payment_confirmation' => ['actor' => $actor, 'reference' => $reference, 'amount' => (int) $data['received_amount'], 'note' => $data['note'], 'paid_at' => $at->toIso8601String(), 'at' => now()->toIso8601String()]]]);
             if (filled($locked->payment_credentials['shared_reservation'] ?? null)) {
