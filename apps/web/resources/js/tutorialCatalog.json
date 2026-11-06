@@ -13,7 +13,7 @@
       {
         "title": "Lengkapi identitas",
         "paragraphs": [
-          "Masuk panel memakai identitas Hanshop dan OTP melalui kanal yang tersedia. Pada Profil & verifikasi lengkapi data sesuai KTP, tempat/tanggal lahir, alamat, WhatsApp, email dan foto KTP. Verifikasi kontak lalu ajukan pemeriksaan manual. Baca alasan jika pengajuan ditolak."
+          "Masuk menggunakan identitas Hanshop dan OTP, lalu verifikasi WhatsApp dan email. Anda bisa langsung membuat toko tanpa upload KTP atau menunggu persetujuan identitas."
         ],
         "visual": {
           "image": "/guides/steps/owner-identity-form.jpg",
@@ -42,7 +42,7 @@
             }
           ],
           "width": 1272,
-          "caption": "Lengkapi data diri, unggah KTP, lalu ajukan verifikasi setelah kontak terverifikasi."
+          "caption": "Ilustrasi versi sebelumnya. Saat ini cukup verifikasi WhatsApp dan email, bagian KTP tidak diwajibkan."
         }
       },
       {
@@ -142,7 +142,7 @@
     "troubleshooting": [
       {
         "question": "Tidak bisa memilih paket",
-        "answer": "Profil/kontak dan KTP owner perlu disetujui. Staff memerlukan izin sesuai menu."
+        "answer": "WhatsApp dan email owner harus terverifikasi. KTP tidak diwajibkan. Staff memerlukan izin sesuai menu."
       }
     ],
     "related": [

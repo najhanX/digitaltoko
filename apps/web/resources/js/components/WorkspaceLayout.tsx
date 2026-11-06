@@ -110,7 +110,7 @@ export default function WorkspaceLayout({ title, description, role = 'owner', ca
         {href:'/owner',label:'Ringkasan',icon:LayoutDashboard,active:path === '/owner'},
         {href:'/owner/stores',label:'Toko saya',icon:Store,active:path === '/owner/stores' || path === '/owner/stores/create'},
         {href:'/owner/account',label:'Profil akun',icon:Users,active:path === '/owner/account'},
-        {href:'/owner/profile',label:'Verifikasi identitas',icon:ShieldCheck,active:path === '/owner/profile'},
+        {href:'/owner/profile',label:'Kontak & verifikasi',icon:ShieldCheck,active:path === '/owner/profile'},
     ] : [];
     const scopedLinks: NavLink[] = [];
     if (store) {

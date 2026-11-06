@@ -48,7 +48,7 @@ class WorkspaceContext
         return ['role' => $user->role, 'viewer' => ['name' => $user->name], 'stores' => $stores,
             'platformDomain' => config('platform.domain'),
             'currentStoreId' => $selectedId,
-            'permissions' => [], 'verificationStatus' => $user->verification_status,
-            'canCreate' => $user->role === 'owner' && $user->verification_status === 'approved' && ! $user->requiresEmailVerification() && (bool) $user->phone_verified_at];
+            'permissions' => [], 'verificationStatus' => $user->verification_status, 'identityRequired' => (bool) config('platform.owner_ktp_required'),
+            'canCreate' => $user->role === 'owner' && $user->canUseOwnerFeatures() && ! $user->requiresEmailVerification() && (bool) $user->phone_verified_at];
     }
 }

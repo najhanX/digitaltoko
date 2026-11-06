@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'owner_ktp_required' => env('OWNER_KTP_REQUIRED', false),
     'admin' => [
         'name' => env('ADMIN_NAME', 'Administrator'),
         'email' => env('ADMIN_EMAIL'),

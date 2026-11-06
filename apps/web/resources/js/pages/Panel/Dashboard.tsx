@@ -18,7 +18,7 @@ export default function Dashboard({role,preview,viewer,stores,counts,ownerStatus
     const pager = pagination && !preview ? <Pagination meta={pagination} onPage={list.go} busy={list.busy}/> : null;
     const context = usePage().props.workspace as WorkspaceContext | null;
     const canCreate = context?.canCreate ?? false;
-    const verified = ownerStatus === 'approved';
+    const verified = context?.identityRequired === false || ownerStatus === 'approved';
     const admin = role === 'admin';
     const active = counts.active ?? stores.filter(store => store.status === 'active' && !store.admin_suspended_at).length;
     const setup = counts.setup ?? stores.filter(store => ['draft','provisioning'].includes(store.status)).length;
@@ -31,7 +31,7 @@ export default function Dashboard({role,preview,viewer,stores,counts,ownerStatus
                 {!preview && role === 'owner' && (!verified || !canCreate) && <Link className="button" href="/owner/profile"><ShieldCheck size={17}/>Buka profil & verifikasi</Link>}
                 {!preview && role === 'owner' && verified && (counts.stores ?? stores.length) > 0 && <Link className="text-link" href="/owner/stores">Lihat semua toko <ArrowRight size={15}/></Link>}
             </div>
-            <ol className="account-checklist"><li className={verified?'done':''}><span>1</span>Verifikasi owner</li><li className={(counts.stores ?? stores.length)?'done':''}><span>2</span>Buat toko</li><li className={(counts.subscribed ?? stores.some(store => store.expires_at || store.status === 'provisioning'))?'done':''}><span>3</span>Pilih paket & bayar</li><li className={active?'done':''}><span>4</span>Siapkan & aktifkan</li></ol>
+            <ol className="account-checklist"><li className={verified?'done':''}><span>1</span>{context?.identityRequired===false?'Verifikasi kontak':'Verifikasi owner'}</li><li className={(counts.stores ?? stores.length)?'done':''}><span>2</span>Buat toko</li><li className={(counts.subscribed ?? stores.some(store => store.expires_at || store.status === 'provisioning'))?'done':''}><span>3</span>Pilih paket & bayar</li><li className={active?'done':''}><span>4</span>Siapkan & aktifkan</li></ol>
         </section>}
         {!listing && !storeScope && <div className="cards three stats"><article className="card"><span>{admin?'Total toko':'Jumlah toko'}</span><strong>{counts.stores ?? stores.length}</strong><small>{storeScope?'Dalam ruang akses Anda':'Toko terdaftar'}</small></article><article className="card"><span>{admin?'Akun owner':'Toko aktif'}</span><strong>{admin?(counts.owners ?? 0):active}</strong><small>{admin?'Terdaftar di platform':'Masa sewa berjalan'}</small></article><article className="card"><span>Menunggu persiapan</span><strong>{setup}</strong><small>Paket atau aktivasi belum selesai</small></article></div>}
         {stores.filter(store => store.status === 'grace').map(store => <div className="feedback warning" key={store.id}><strong>{store.name} dalam masa tenggang</strong><p>Transaksi masih tersedia sampai tujuh hari setelah masa sewa habis. Perpanjang agar layanan tetap berjalan.</p>{!preview && (role === 'owner' || permissions.includes('subscription.view')) && <Link className="text-link" href={'/stores/'+store.id+'/subscription'}>Buka langganan <ArrowRight size={15}/></Link>}</div>)}

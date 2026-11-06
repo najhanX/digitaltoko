@@ -3,5 +3,5 @@ export type StoreSummary = { id:string; name:string; slug:string; category:strin
 export type WorkspaceContext = {
     role: 'owner'|'staff'|'admin'; viewer: {name: string};
     stores: Pick<StoreSummary,'id'|'name'|'category'|'plan'|'status'|'admin_suspended_at'|'admin_suspension_reason'|'sandbox'>[];
-    currentStoreId: string|null; permissions: string[]; canCreate: boolean; verificationStatus?: string; platformDomain?: string;
+    currentStoreId: string|null; permissions: string[]; canCreate: boolean; verificationStatus?: string; identityRequired?: boolean; platformDomain?: string;
 };

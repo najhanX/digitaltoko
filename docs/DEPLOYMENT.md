@@ -715,3 +715,10 @@ API `qris/reserve`, `qris/receive`, `qris/status` dan `qris/config` hanya dapat 
 Nominal final dikarantina hingga 24 jam setelah expiry (sesuai perlindungan invoice DigitalToko). Nominal receipt yang baru masuk juga tidak langsung dipakai ulang. Ingress Hanshop lama tanpa ID/waktu asli diterima sebagai review-only, bukan otomatis lunas.
 
 Restart PM2 harus dijalankan dari shell operator dengan environment bersih, bukan langsung dari proses PHP/Laravel yang sudah memuat .env web. `--update-env` dapat membawa konfigurasi web ke API. Jika definisi proses sudah terkontaminasi, buat ulang hanya proses API dari ecosystem production dengan environment bersih, lalu periksa /health/ready. Jangan restart bot WA hanya untuk memuat konfigurasi QRIS.
+
+
+### Izin aset frontend
+
+Setelah menyalin build dari staging/arsip privat, jalankan `find /home/hans/digitaltoko/apps/web/public/build -type d -exec chmod 755 {} +` dan `find /home/hans/digitaltoko/apps/web/public/build -type f -exec chmod 644 {} +` sebelum menerbitkan manifest. `cp -a` dapat membawa mode 700/600 dari staging dengan umask 077, sehingga Nginx tidak dapat membaca file dan request aset berakhir di respons HTML/404. Jangan menerapkan izin publik tersebut pada .env, dokumen identitas, sesi atau backup.
+
+KTP owner kini opsional dengan OWNER_KTP_REQUIRED=false. Konfigurasi ini tidak menghapus status/dokumen lama dan tidak melewati kewajiban email/WhatsApp maupun kepemilikan toko. Setelah mengganti .env, jalankan config:cache dan muat ulang worker.

@@ -32,7 +32,7 @@ class SubscriptionService
             $owner = User::whereKey($store->owner_id)->lockForUpdate()->firstOrFail();
             $store = Store::whereKey($store->id)->lockForUpdate()->firstOrFail();
             $option = PlanOption::whereKey($option->id)->lockForUpdate()->firstOrFail();
-            $this->ensure($owner->verification_status === 'approved' && $owner->email_verified_at && $owner->phone_verified_at && (bool) $owner->hanshop_user_id, 'Lengkapi verifikasi owner terlebih dahulu.');
+            $this->ensure($owner->canUseOwnerFeatures() && $owner->email_verified_at && $owner->phone_verified_at && (bool) $owner->hanshop_user_id, 'Lengkapi verifikasi owner terlebih dahulu.');
             $this->ensure($option->active && $option->category === 'full' && $option->plan === 'galaxy', 'Paket tidak tersedia.');
             $this->ensure(! $store->admin_suspended_at && ! in_array($store->status, ['purging', 'suspended_manual'], true), 'Toko ini perlu ditinjau admin.');
             if ($requestId) {

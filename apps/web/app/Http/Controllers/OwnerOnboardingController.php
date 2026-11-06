@@ -29,7 +29,7 @@ class OwnerOnboardingController extends Controller
     {
         $owner = $this->owner($request);
 
-        return Inertia::render('Owner/Onboarding', ['profile' => [
+        return Inertia::render('Owner/Onboarding', ['identityRequired' => (bool) config('platform.owner_ktp_required'), 'profile' => [
             'id' => $owner->id,
             'name' => $owner->name, 'legal_name' => $owner->legal_name ?? '', 'address' => $owner->address ?? '',
             'birth_place' => $owner->birth_place ?? '', 'birth_date' => $owner->birth_date ?? '',
@@ -59,7 +59,7 @@ class OwnerOnboardingController extends Controller
         $data = $request->validate(['name' => 'required|string|max:100']);
         $this->syncAccount($owner, $hanshop, ['name' => $data['name']]);
 
-        return back()->with('success', 'Nama akun diperbarui. Data KTP tetap tersimpan.');
+        return back()->with('success', 'Nama akun diperbarui.');
     }
 
     public function phoneOtp(Request $request, OwnerOtp $otp): RedirectResponse
@@ -149,6 +149,7 @@ class OwnerOnboardingController extends Controller
     public function submit(Request $request): RedirectResponse
     {
         $owner = $this->owner($request);
+        abort_unless(config('platform.owner_ktp_required'), 404, 'Verifikasi KTP sedang dinonaktifkan.');
         abort_unless($owner->email_verified_at && $owner->phone_verified_at && $owner->hanshop_user_id, 403);
         $data = $request->validate(['legal_name' => 'required|string|max:150', 'nik' => 'nullable|digits:16',
             'birth_place' => 'required|string|max:150', 'birth_date' => 'required|date_format:Y-m-d|before_or_equal:today',

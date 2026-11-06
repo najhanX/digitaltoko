@@ -31,6 +31,10 @@ export class MenuTokens {
     }
     checkoutMessages(chat:string,sender:string,scope:MenuScope={}):unknown[]{return this.checkout(chat,sender,scope)?.messages??[];}
     rememberCheckoutMessage(chat:string,sender:string,key:unknown,scope:MenuScope={}){const item=this.checkout(chat,sender,scope);if(item&&key)item.messages.push(key);}
+    paymentPurchase(chat:string,sender:string,id:string,scope:MenuScope={}):PurchaseAction|null {
+        const item=this.checkout(chat,sender,scope);
+        return item?.id===id && item.stage==='payment' ? item.purchase : null;
+    }
     choosePayment(chat:string,sender:string,id:string,payment:'wallet'|'gateway',scope:MenuScope={}):Checkout|null {
         const item=this.checkout(chat,sender,scope);
         if(!item||item.id!==id||item.stage!=='payment')return null;

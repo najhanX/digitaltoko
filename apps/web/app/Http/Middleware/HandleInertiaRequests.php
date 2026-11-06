@@ -17,7 +17,7 @@ class HandleInertiaRequests extends Middleware
 
     public function share(Request $request): array
     {
-        return [...parent::share($request), 'brand' => ['name' => 'DigitalToko'],
+        return [...parent::share($request), 'brand' => ['name' => 'DigitalToko'], 'ownerIdentityRequired' => (bool) config('platform.owner_ktp_required'),
             'storeMaintenance' => function () use ($request) {
                 $store = $request->attributes->get('store');
                 $maintenance = $store ? app(StoreMaintenance::class)->active($store) : null;

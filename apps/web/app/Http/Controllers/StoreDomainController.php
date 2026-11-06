@@ -17,7 +17,7 @@ class StoreDomainController extends Controller
     {
         abort_unless($request->user()?->role === 'owner', 403);
         abort_unless($request->user()->id === $store->owner_id, 404);
-        abort_unless($request->user()->verification_status === 'approved' && $store->supportsWeb() && ! $store->purge_started_at, 403);
+        abort_unless($request->user()->canUseOwnerFeatures() && $store->supportsWeb() && ! $store->purge_started_at, 403);
     }
 
     public function save(Request $request, Store $store, StoreDomains $domains): RedirectResponse

@@ -93,7 +93,7 @@ class PanelController extends Controller
 
         return Inertia::render('Panel/Dashboard', ['role' => 'owner', 'preview' => false,
             'viewer' => $request->user()->only(['name']), 'counts' => [], 'ownerStatus' => $request->user()->verification_status, 'storeScope' => true, 'stores' => $this->summaries(collect([$store])),
-            'setup' => $request->user()->verification_status === 'approved' && ($store->status === 'provisioning' || $store->expires_at) ? app(StoreSetup::class)->summary($store) : null]);
+            'setup' => $request->user()->canUseOwnerFeatures() && ($store->status === 'provisioning' || $store->expires_at) ? app(StoreSetup::class)->summary($store) : null]);
     }
 
     public function staff(Request $request, Store $store)

@@ -14,7 +14,7 @@ class ProvisioningController extends Controller
     {
         $actor = $request->user('web');
         $admin = $actor?->role === 'admin';
-        abort_unless($admin || ($actor?->role === 'owner' && $actor->id === $store->owner_id && $actor->verification_status === 'approved'), 403);
+        abort_unless($admin || ($actor?->role === 'owner' && $actor->id === $store->owner_id && $actor->canUseOwnerFeatures()), 403);
         $data = $request->validate(['case_id' => 'required|uuid', 'action' => $admin ? 'required|in:retry,report,approve_refund,reject_refund' : 'required|in:retry,report,request_refund', 'reason' => 'required|string|min:10|max:1000',
             'platform_fault' => 'required_if:action,approve_refund|accepted_if:action,approve_refund', 'confirmation' => 'required_if:action,approve_refund|nullable|string']);
         if ($data['action'] === 'approve_refund') {

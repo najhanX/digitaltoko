@@ -19,7 +19,7 @@ class StoreNotificationController extends Controller
     {
         $owner = $request->user('web');
         if ($owner?->role === 'owner' && $owner->id === $store->owner_id) {
-            abort_unless($owner->verification_status === 'approved', 403);
+            abort_unless($owner->canUseOwnerFeatures(), 403);
 
             return 'owner';
         }

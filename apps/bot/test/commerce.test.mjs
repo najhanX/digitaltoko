@@ -7,10 +7,10 @@ const pn='6281234567890@s.whatsapp.net';
 const message=text=>({key:{id:'A'.repeat(21),remoteJid:pn,fromMe:false},message:{conversation:text}});
 const product={id:'01a13857-4287-710b-ae1d-2e5d4497eadc',name:'Produk Dummy',price:15000,available:true,kind:'ppob'};
 const order={id:product.id,number:'DTTEST1',status:'paid',product:product.name,destination:'08123456789',total:15000,amount:15000,fee:0,unique_code:0,url:'https://shop.example.test/orders/test',refund_amount:15000};
-function harness(override){const calls=[],sent=[],relays=[];const tokens=new MenuTokens();const sock={user:{id:'6289999999999@s.whatsapp.net'},sendMessage:async(chat,body)=>{sent.push({chat,...body});return {key:{id:'reply'}};},relayMessage:async(chat,body)=>{relays.push(body);}};const api=async(path,body)=>{calls.push({path,body});if(path.endsWith('/access'))return {data:{allowed:true,store_name:'Toko Dummy'}};if(override)return override(path,body);if(body.action==='quote')return {data:{product}};if(body.action==='buy'||body.action==='topup')return {data:{order}};return {data:{balance:25000}};};return {calls,sent,relays,tokens,sock,api,run:m=>handleCustomerMessage(sock,m,tokens,api)};}
+function harness(override){const calls=[],sent=[],relays=[];const tokens=new MenuTokens();const sock={user:{id:'6289999999999@s.whatsapp.net'},sendMessage:async(chat,body)=>{sent.push({chat,...body});return {key:{id:'reply'}};},relayMessage:async(chat,body)=>{relays.push(body);}};const api=async(path,body)=>{calls.push({path,body});if(path.endsWith('/access'))return {data:{allowed:true,store_name:'Toko Dummy'}};if(override){const result=await override(path,body);if((body?.action==='quote'||body?.action==='balance')&&result?.data&&result.data.balance===undefined)result.data.balance=25000;return result;}if(body.action==='quote')return {data:{product,balance:25000}};if(body.action==='buy'||body.action==='topup')return {data:{order}};return {data:{balance:25000}};};return {calls,sent,relays,tokens,sock,api,run:m=>handleCustomerMessage(sock,m,tokens,api)};}
 async function approve(h,index=0,key='CONFIRM-1'){
  const methods=h.relays.at(-1).viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons;
- const pick=message('');pick.key.id='P'.repeat(21);pick.message={buttonsResponseMessage:{selectedButtonId:JSON.parse(methods[index].buttonParamsJson).id}};
+ const pick=message('');pick.key.id='P'.repeat(21);pick.message={buttonsResponseMessage:{selectedButtonId:JSON.parse(methods.find(button=>JSON.parse(button.buttonParamsJson).display_text===(index===0?'Saldo toko':'QRIS')).buttonParamsJson).id}};
  const before=h.calls.filter(c=>c.body?.action==='buy').length;await h.run(pick);
  assert.match(h.sent.at(-1).text,/KONFIRMASI PEMBELIAN/);assert.equal(h.calls.filter(c=>c.body?.action==='buy').length,before);
  const buttons=h.relays.at(-1).viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons;
@@ -237,4 +237,58 @@ test('postpaid receipt separates service admin and store admin from principal an
  assert.match(text,/Admin layanan : Rp.?2.000/);
  assert.match(text,/Admin toko : Rp.?100/);
  assert.doesNotMatch(text,/Admin layanan : Rp.?2.100/);
+});
+
+
+test('insufficient wallet hides the wallet button but keeps QRIS available',async()=>{
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product,balance:0}:body.action==='balance'?{balance:0}:{order}}));
+ await h.run(message('#beli SKU1 08123456789'));
+ const buttons=h.relays.at(-1).viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons;
+ const names=buttons.map(button=>JSON.parse(button.buttonParamsJson).display_text);
+ assert.ok(!names.includes('Saldo toko'));assert.ok(names.includes('QRIS'));
+ assert.match(h.sent.at(-1).text,/Saldo toko belum mencukupi/);
+ await h.run(message('#pilihbayar saldo'));
+ assert.match(h.sent.at(-1).text,/SALDO BELUM CUKUP/);
+ assert.equal(h.calls.filter(call=>call.body?.action==='buy').length,0);
+ await h.run(message('#pilihbayar qris'));
+ assert.match(h.sent.at(-1).text,/KONFIRMASI PEMBELIAN/);
+});
+
+test('wallet is checked again after a previously affordable quote and before final confirmation',async()=>{
+ let balance=25000;
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product,balance}:body.action==='balance'?{balance}:{order}}));
+ await h.run(message('#beli SKU1 08123456789'));
+ await h.run(message('#pilihbayar saldo'));
+ assert.match(h.sent.at(-1).text,/KONFIRMASI PEMBELIAN/);
+ balance=0;
+ await h.run(message('#konfirmasi'));
+ assert.match(h.sent.at(-1).text,/SALDO BELUM CUKUP/);
+ assert.equal(h.calls.filter(call=>call.body?.action==='buy').length,0);
+});
+
+test('voucher affordability uses the discounted payable total',async()=>{
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product,balance:14000,...(body.voucher_code?{voucher:{code:'HEMAT10',discount:1500,total:13500}}:{})}:body.action==='balance'?{balance:14000}:{order}}));
+ await h.run(message('#beli SKU1 08123456789 | HEMAT10'));
+ const names=h.relays.at(-1).viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons.map(button=>JSON.parse(button.buttonParamsJson).display_text);
+ assert.ok(names.includes('Saldo toko'));
+ await approve(h);
+ assert.equal(h.calls.at(-1).body.action,'buy');
+});
+
+
+test('negative wallet blocks all checkout methods and offers settlement instead',async()=>{
+ const h=harness(async()=>({data:{product,balance:-5000}}));
+ await h.run(message('#beli SKU1 08123456789'));
+ assert.match(h.sent.at(-1).text,/SALDO TOKO MINUS/);
+ const names=h.relays.at(-1).viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons.map(button=>JSON.parse(button.buttonParamsJson).display_text);
+ assert.ok(!names.includes('QRIS'));assert.ok(names.includes('Isi saldo'));
+ assert.equal(h.calls.filter(call=>call.body?.action==='buy').length,0);
+});
+
+
+test('legacy typed voucher orders also check the discounted wallet total',async()=>{
+ const h=harness(async(_path,body)=>({data:body.action==='quote'?{product,balance:14000,...(body.voucher_code?{voucher:{code:'HEMAT10',discount:1500,total:13500}}:{})}:body.action==='balance'?{balance:14000}:{order}}));
+ await h.run(message('#pesan SKU1|08123456789|saldo|15000||HEMAT10'));
+ assert.equal(h.calls.at(-1).body.action,'buy');
+ assert.equal(h.calls.at(-1).body.voucher_code,'HEMAT10');
 });

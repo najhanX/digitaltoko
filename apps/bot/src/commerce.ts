@@ -4,7 +4,7 @@ import { readCustomerMessage } from './messages.js';
 import { sendControls,sendChoices,sendNoticeControls } from './interactive.js';
 import { shopReply,inline,topupText,expiredMenuText } from './replies.js';
 import {validQrisKey,type QrisTracker,type MessageContext} from './qris-messages.js';
-export type PurchaseAction={type:'purchase';productId:string;code:string;destination:string;price:number;payment:'wallet'|'gateway';inquiryId?:string;voucherCode?:string};
+export type PurchaseAction={type:'purchase';productId:string;code:string;destination:string;price:number;payment:'wallet'|'gateway';inquiryId?:string;voucherCode?:string;walletTotal?:number};
 type Api=(path:string,body?:unknown)=>Promise<unknown>;
 const money=(v:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v);
 const states:Record<string,string>={awaiting_payment:'Menunggu pembayaran',paid:'Lunas · antre diproses',processing:'Diproses',pending:'Pending pemasok',success:'Berhasil',failed:'Gagal',expired:'Kedaluwarsa',review:'Perlu pemeriksaan toko'};
@@ -37,6 +37,17 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
  async function call(data:Record<string,unknown>):Promise<Record<string,unknown>>{const response=await api('/api/internal/bot/commerce',{phone:number,...data}) as {data?:Record<string,unknown>};if(!response?.data)throw Error('Invalid commerce response');return response.data;}
  let checkoutKeys:unknown[]=[];
  const scope=readCustomerMessage(message).scope;
+ async function walletReady(total:number,checkoutId?:string):Promise<boolean>{
+  const data=await call({action:'balance'}),balance=data.balance;
+  if(typeof balance!=='number'||!Number.isSafeInteger(balance))throw Error('Invalid balance');
+  if(balance>=total)return true;
+  await sock.sendMessage(chat,{text:shopReply(name,'SALDO BELUM CUKUP',['Saldo toko : '+money(balance),'Total pesanan : '+money(total),'Kekurangan : '+money(total-balance),'',balance<0?'Topup saldo terlebih dahulu untuk melunasi saldo minus.':'Silakan topup atau gunakan QRIS.'])},{quoted:message});
+  const choices:Array<[MenuAction,string]>=[['topup','Isi saldo']];
+  if(checkoutId && balance>=0)choices.push([{type:'payment-method',checkoutId,payment:'gateway'},'Bayar QRIS']);
+  choices.push(['menu','Menu utama']);
+  await sendControls(sock,message,chat,chat,tokens,choices,'Pilih pembayaran yang tersedia');
+  return false;
+ }
  async function remember(order:Order,key:unknown,context:MessageContext){try{await qris?.remember(order.id,number!,key,context);}catch{/* Delivery must remain independent of registration retries. */}}
  async function sendOrder(order:Order){
   const context:MessageContext={kind:'order',revision:order.wa_revision??'none',order_status:order.status,payment_status:order.payment_status??'unpaid'};
@@ -58,6 +69,8 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
   if(typeof action==='object'&&(action?.type==='payment-method'||action?.type==='confirm-checkout')){
    const scope=readCustomerMessage(message).scope;
    if(action.type==='payment-method'){
+    const pending=tokens.paymentPurchase(chat,chat,action.checkoutId,scope);
+    if(action.payment==='wallet' && pending && !await walletReady(pending.walletTotal??pending.price,action.checkoutId))return;
     const checkout=tokens.choosePayment(chat,chat,action.checkoutId,action.payment,scope);
     if(!checkout){await sock.sendMessage(chat,{text:expiredMenuText(name)},{quoted:message});return;}
     for(const key of checkout.messages)if(validQrisKey(key))try{await sock.sendMessage(key.remoteJid,{delete:key});}catch{}
@@ -90,6 +103,7 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
    }
   }else if(typeof action==='object' && action?.type==='purchase'){
    if(!message.key.id)throw Error('No message reference');
+   if(action.payment==='wallet' && !await walletReady(action.walletTotal??action.price))return;
    const data=await call({action:'buy',product_id:action.productId,destination:action.destination,payment:action.payment,expected_price:action.price,inquiry_id:action.inquiryId,voucher_code:action.voucherCode,idempotency_key:'bot:'+message.key.id});await sendOrder(data.order as Order);
   }else if(/^#topup(?:\s|$)/i.test(text)){
    const amount=text.slice(6).trim().replaceAll('.','');if(!/^[0-9]{4,9}$/.test(amount)||Number(amount)<5000||!message.key.id){await sock.sendMessage(chat,{text:topupText(name)},{quoted:message});return;}
@@ -107,7 +121,17 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
    if(fields&&(fields.length>2||!fields[0]||destinationInput!.length>255||fields.some(value=>/[\r\n]/.test(value))))throw Error('Invalid destination');
    const quote=await call({action:'quote',code,...(fields?{destination_id:fields[0],destination_server:fields[1]??''}:{})}),product=quote.product as {id:string;name:string;price:number;available:boolean;kind:string;postpaid_fees?:{service_admin:number;store_admin:number}|null};
    if(!product?.id || !Number.isSafeInteger(product.price))throw Error('Invalid product');
-   if(confirm){if(!message.key.id)throw Error('No message reference');const data=await call({action:'buy',product_id:product.id,destination,payment:confirm[3].toLowerCase()==='saldo'?'wallet':'gateway',expected_price:Number(confirm[4]),inquiry_id:confirm[5]||undefined,voucher_code:voucherCode,idempotency_key:'bot:'+message.key.id});await sendOrder(data.order as Order);return;}
+   if(typeof quote.balance==='number' && quote.balance<0){
+    await sock.sendMessage(chat,{text:shopReply(name,'SALDO TOKO MINUS',['Saldo toko : '+money(quote.balance),'Topup hingga saldo minimal Rp0 sebelum membuat pesanan baru.'])},{quoted:message});
+    await sendControls(sock,message,chat,chat,tokens,[['topup','Isi saldo'],['balance','Lihat saldo'],['menu','Menu utama']],'Selesaikan saldo minus terlebih dahulu');return;
+   }
+   if(confirm){
+    if(confirm[3].toLowerCase()==='saldo'){
+     let payable=Number(confirm[4]);
+     if(voucherCode){const promotion=await call({action:'quote',code,voucher_code:voucherCode,inquiry_id:confirm[5]||undefined});const discount=promotion.voucher as {total?:number}|undefined;if(typeof discount?.total!=='number'||!Number.isSafeInteger(discount.total))throw Error('Invalid voucher total');payable=discount.total;}
+     if(!await walletReady(payable))return;
+    }
+    if(!message.key.id)throw Error('No message reference');const data=await call({action:'buy',product_id:product.id,destination,payment:confirm[3].toLowerCase()==='saldo'?'wallet':'gateway',expected_price:Number(confirm[4]),inquiry_id:confirm[5]||undefined,voucher_code:voucherCode,idempotency_key:'bot:'+message.key.id});await sendOrder(data.order as Order);return;}
    if(!product.available){await sock.sendMessage(chat,{text:shopReply(name,'PRODUK BELUM DAPAT DIPESAN',[inline(product.name),product.kind==='postpaid'?'Produk tagihan memerlukan pemeriksaan nominal terlebih dahulu.':'Produk sedang tidak tersedia.','Pilih produk lain dari katalog toko.'])},{quoted:message});await sendControls(sock,message,chat,chat,tokens,[['services','Pilih produk lain'],['menu','Menu utama']],'Lanjutkan belanja');return;}
    if(product.kind==='premium'){
     if(match?.[2]?.trim()&&!confirm){
@@ -147,12 +171,13 @@ export async function handleCommerce(sock:WASocket,message:WAMessage,tokens:Menu
    }
    let voucher:{code:string;discount:number;total:number}|undefined;
    if(voucherCode){const promotion=await call({action:'quote',code,voucher_code:voucherCode,inquiry_id:inquiryId});voucher=promotion.voucher as typeof voucher;}
-   const purchase=(payment:'wallet'|'gateway'):PurchaseAction=>({type:'purchase',productId:product.id,code,destination,price,payment,...(inquiryId?{inquiryId}:{}),...(voucherCode?{voucherCode}:{})});
+   const purchase=(payment:'wallet'|'gateway'):PurchaseAction=>({type:'purchase',productId:product.id,code,destination,price,payment,walletTotal:voucher?.total??price,...(inquiryId?{inquiryId}:{}),...(voucherCode?{voucherCode}:{})});
    const summary=[...(quote.sandbox?['*SANDBOX · PENGUJIAN*']:[]),'*'+inline(product.name)+'*','Kode : '+inline(code),...(product.kind==='premium'?['Pengiriman : WhatsApp Anda']:['Tujuan : '+inline(destination)]),...billInfo,'Harga : *'+money(price)+'*',...(voucher?['Voucher : '+inline(voucher.code)+' · −'+money(voucher.discount),'Setelah diskon : *'+money(voucher.total)+'*']:[])];
-   const checkoutId=tokens.beginCheckout(chat,chat,purchase('wallet'),summary,readCustomerMessage(message).scope);
-   const paymentPrompt=await sock.sendMessage(chat,{text:shopReply(name,'💳 PILIH PEMBAYARAN',[...summary,'','Pilih metode melalui tombol di bawah.','#pilihbayar saldo · #pilihbayar qris','#batal untuk membatalkan.'])},{quoted:message});
+   const canWallet=typeof quote.balance==='number' && Number.isSafeInteger(quote.balance) && quote.balance>=(voucher?.total??price);
+   const checkoutId=tokens.beginCheckout(chat,chat,purchase(canWallet?'wallet':'gateway'),summary,readCustomerMessage(message).scope);
+   const paymentPrompt=await sock.sendMessage(chat,{text:shopReply(name,'💳 PILIH PEMBAYARAN',[...summary,'','Pilih metode melalui tombol di bawah.',...(canWallet?['#pilihbayar saldo · #pilihbayar qris']:['Saldo toko belum mencukupi. Gunakan QRIS atau topup saldo.','#pilihbayar qris']),'#batal untuk membatalkan.'])},{quoted:message});
    tokens.rememberCheckoutMessage(chat,chat,paymentPrompt?.key,scope);
-   const paymentControls=await sendControls(sock,message,chat,chat,tokens,[[{type:'payment-method',checkoutId,payment:'wallet'},'Saldo toko'],[{type:'payment-method',checkoutId,payment:'gateway'},'QRIS'],['menu','Batal / menu']],'Pilih metode pembayaran');
+   const paymentControls=await sendControls(sock,message,chat,chat,tokens,[...(canWallet?[[{type:'payment-method',checkoutId,payment:'wallet'},'Saldo toko'] as [MenuAction,string]]:[]),[{type:'payment-method',checkoutId,payment:'gateway'},'QRIS'],['menu','Batal / menu']],'Pilih metode pembayaran');
    tokens.rememberCheckoutMessage(chat,chat,paymentControls,scope);
   }
  }catch{

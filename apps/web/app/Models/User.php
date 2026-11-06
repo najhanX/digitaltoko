@@ -19,6 +19,11 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public function canUseOwnerFeatures(): bool
+    {
+        return ! config('platform.owner_ktp_required', false) || $this->verification_status === 'approved';
+    }
+
     public function requiresEmailVerification(): bool
     {
         return ! $this->email_verified_at || ! filter_var($this->email, FILTER_VALIDATE_EMAIL)

@@ -36,7 +36,7 @@ class BotConnectionController extends Controller
     public function connect(Request $request, Store $store, BotManager $manager): RedirectResponse
     {
         $role = BotConnection::access($request, $store, true);
-        abort_unless($role !== 'owner' || $request->user('web')->verification_status === 'approved', 403);
+        abort_unless($role !== 'owner' || $request->user('web')->canUseOwnerFeatures(), 403);
         $data = $request->validate(['phone' => ['required', 'string', 'max:30', 'regex:/^[+0-9 ()-]+$/'], 'method' => 'required|in:qr,code']);
         $phone = preg_replace('/\D/', '', $data['phone']);
         if (str_starts_with($phone, '0')) {

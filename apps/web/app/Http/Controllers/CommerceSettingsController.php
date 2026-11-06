@@ -26,7 +26,7 @@ class CommerceSettingsController extends Controller
 {
     private function owner(Request $request, Store $store): void
     {
-        abort_unless($request->user('web')?->role === 'owner' && $request->user('web')->id === $store->owner_id && $request->user('web')->verification_status === 'approved', 403);
+        abort_unless($request->user('web')?->role === 'owner' && $request->user('web')->id === $store->owner_id && $request->user('web')->canUseOwnerFeatures(), 403);
     }
 
     public function show(Request $request, Store $store): Response

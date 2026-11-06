@@ -20,7 +20,7 @@ class StoreClosureController extends Controller
     private function owner(Request $request, Store $store): void
     {
         $owner = $request->user('web');
-        abort_unless($owner?->role === 'owner' && $owner->id === $store->owner_id && $owner->verification_status === 'approved', 403);
+        abort_unless($owner?->role === 'owner' && $owner->id === $store->owner_id && $owner->canUseOwnerFeatures(), 403);
     }
 
     public function show(Request $request, Store $store): Response

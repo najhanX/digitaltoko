@@ -71,7 +71,7 @@ test('checkout text and native payment/confirmation buttons are scoped to the re
  const saved=[],deleted=[],sent=[];let sequence=0;const tokens=new MenuTokens();
  const sock={user:{id:jid},sendMessage:async(_chat,body)=>{if(body.delete){deleted.push(body.delete);return;}const outgoing={...key,id:'TEXT'+(++sequence)};sent.push(outgoing);return {key:outgoing};},relayMessage:async()=>{}};
  const product={id:orderId,name:'Test',kind:'premium',price:10000,available:true};
- const api=async(path,body)=>({data:path.endsWith('/access')?{allowed:true,store_name:'Test'}:body.action==='quote'?{product}:{order:{id:orderId,number:'DTTEST2',status:'pending',payment_status:'paid',wa_revision:recordId,product:'Test',destination:phone,total:10000,amount:10000,url:'https://shop.example/order',refund_amount:10000}}});
+ const api=async(path,body)=>({data:path.endsWith('/access')?{allowed:true,store_name:'Test'}:body.action==='quote'?{product,balance:25000}:body.action==='balance'?{balance:25000}:{order:{id:orderId,number:'DTTEST2',status:'pending',payment_status:'paid',wa_revision:recordId,product:'Test',destination:phone,total:10000,amount:10000,url:'https://shop.example/order',refund_amount:10000}}});
  const tracker={remember:async(...args)=>saved.push(args),flush:async()=>{}};
  const run=text=>handleCustomerMessage(sock,{key:{id:'A'.repeat(21),remoteJid:jid,fromMe:false},message:{conversation:text}},tokens,api,tracker);
  await run('#beli TEST');

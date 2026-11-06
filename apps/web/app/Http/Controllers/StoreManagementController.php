@@ -41,7 +41,7 @@ class StoreManagementController extends Controller
     {
         $owner = $this->owner($request);
         abort_unless($store->owner_id === $owner->id, 404);
-        abort_unless($owner->verification_status === 'approved', 403);
+        abort_unless($owner->canUseOwnerFeatures(), 403);
 
         return $owner;
     }
@@ -49,7 +49,7 @@ class StoreManagementController extends Controller
     public function create(Request $request): Response
     {
         $owner = $this->owner($request);
-        abort_unless($owner->verification_status === 'approved' && ! $owner->requiresEmailVerification() && $owner->phone_verified_at, 403);
+        abort_unless($owner->canUseOwnerFeatures() && ! $owner->requiresEmailVerification() && $owner->phone_verified_at, 403);
 
         return Inertia::render('Owner/CreateStore', ['platformDomain' => config('platform.domain')]);
     }
@@ -65,7 +65,7 @@ class StoreManagementController extends Controller
         $data['plan'] = 'galaxy';
         $store = DB::transaction(function () use ($owner, $data) {
             $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->verification_status === 'approved' && ! $locked->requiresEmailVerification() && $locked->phone_verified_at, 403);
+            abort_unless($locked->canUseOwnerFeatures() && ! $locked->requiresEmailVerification() && $locked->phone_verified_at, 403);
 
             return Store::create([...$data, 'owner_id' => $owner->id, 'status' => 'draft', 'expires_at' => null, 'is_trial' => false]);
         });
