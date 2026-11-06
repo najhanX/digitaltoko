@@ -699,3 +699,17 @@ Logo lokal pada maintenance kini relatif terhadap host halaman. Email lokal meng
 Verifikasi owner kini memakai area unggah dengan pratinjau lokal, nama/ukuran file, pilih/ganti/hapus foto, drag-and-drop, validasi JPG/PNG maksimal 5 MB serta progres pengiriman. Status **Foto dipilih · siap dikirim** tidak berarti sudah tersimpan; setelah pengajuan berhasil, halaman menampilkan **Foto KTP sudah tersimpan** beserta gambar dan tautan dokumen privat yang tetap tersedia setelah refresh. Dokumen tetap menggunakan endpoint autentikasi existing `/identity/{owner}/document`; tidak dipindah ke direktori publik. Tidak ada migrasi atau perubahan API/backend penyimpanan.
 
 Build/TypeScript dan **23 tes onboarding / 261 assertion** lulus. Browser diuji dengan akun/dokumen simulasi pada SQLite terisolasi: pemilihan file, thumbnail/nama/ukuran, progres, pengajuan sampai pending, foto tersimpan setelah refresh, dan tampilan desktop/ponsel. Tidak membuka atau mengunggah KTP asli pada pengujian visual.
+
+
+### QRIS bersama (Forwarder 1.0.4)
+
+1. Backup kedua database, source/config dan APK lama. Hentikan sementara pembuatan invoice QRIS pada kedua aplikasi selama perpindahan, bukan menghapus invoice/antrean HP.
+2. Di API Hanshop jalankan SQL manual `scripts/migrations/20261106_shared_qris.sql`, build API terbaru. Set `SHARED_QRIS_ENABLED=true`, `SHARED_QRIS_HANSHOP_OWNER=<id akun Hanshop pemilik QRIS utama>`. Merchant diturunkan dari `QR_DYNAMIC`; `SHARED_QRIS_HANSHOP_MERCHANT` opsional dan wajib cocok bila diisi. Pemilik toko lain tidak boleh menghubungkan QRIS utama Hanshop.
+3. Terapkan migrasi web `php artisan migrate --force`. Jalankan `php artisan digitaltoko:qris-shared-prepare`, kemudian `--apply`. Perintah membentuk profil dan mereservasi nominal invoice berjalan tanpa mengubah harga/status/saldo. Bila bertabrakan, hentikan aktivasi dan selesaikan pemeriksaannya, jangan membatalkan invoice berbayar atau menebak pasangan mutasi.
+4. Set web `HANSDEV_SHARED_QRIS_BROKER=true`, jalankan config cache dan restart queue/scheduler serta API dengan environment baru. Kedua sisi harus memakai source terbaru. Setelah aktif, jangan menonaktifkan broker secara sepihak ketika invoice berjalan masih ada.
+5. Owner: Pembayaran pelanggan → Atur koneksi → QRIS → pilih profil yang sama untuk seluruh toko terkait. Di Hubungkan Forwarder salin endpoint profil dan token, pasang APK sebagai update, lalu pilih DigitalToko · QRIS bersama. Antrean endpoint lama harus selesai dahulu. Pengiriman ke banyak endpoint bukan mekanisme QRIS bersama.
+6. Pastikan penerimaan ulang tidak menambah saldo lagi, receipt tanpa invoice tetap unmatched, dan receipt toko tidak melunasi invoice Hanshop. Gunakan database/saldo pengujian untuk validasi finansial, bukan transaksi pelanggan produksi.
+
+API `qris/reserve`, `qris/receive`, `qris/status` dan `qris/config` hanya dapat diakses lewat token internal DigitalToko. Token Forwarder hanya untuk endpoint profil, bukan token internal tersebut. SQL menambah tabel, tidak menghapus mutasi lama, dan tidak mengkreditkan saldo ketika migrasi.
+
+Nominal final dikarantina hingga 24 jam setelah expiry (sesuai perlindungan invoice DigitalToko). Nominal receipt yang baru masuk juga tidak langsung dipakai ulang. Ingress Hanshop lama tanpa ID/waktu asli diterima sebagai review-only, bukan otomatis lunas.

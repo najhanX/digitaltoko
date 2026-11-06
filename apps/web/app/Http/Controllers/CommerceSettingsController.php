@@ -9,6 +9,7 @@ use App\Services\CustomerCommerce;
 use App\Services\CustomQris;
 use App\Services\ProductPricing;
 use App\Services\QrisNotificationParser;
+use App\Services\SharedQris;
 use App\Support\CatalogAccess;
 use App\Support\ForwarderDownloads;
 use App\Support\ListQuery;
@@ -32,17 +33,22 @@ class CommerceSettingsController extends Controller
     {
         $role = CatalogAccess::authorize($request, $store, 'payments.view');
         $setting = app(CustomerCommerce::class)->settings($store);
+        $profile = $setting->credentials['qris_profile_id'] ?? null;
+        $sharedCredentials = $profile ? app(SharedQris::class)->credentials($profile, (int) $store->owner_id) : ($setting->credentials ?? []);
         $list = new ListQuery($request, ['status' => ['pending', 'paid', 'expired', 'review']], 5);
         $page = $list->paginate($list->apply(ModulePurchase::where('store_id', $store->id), ['id'], ['status' => 'status'])->latest()->orderByDesc('id'));
 
-        return Inertia::render('Owner/Payments', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'settings' => [...$setting->toArray(), 'application_package' => $setting->credentials['application_package'] ?? 'id.dana', 'application_name' => $setting->credentials['application_name'] ?? ''],
+        return Inertia::render('Owner/Payments', ['role' => $role, 'store' => $store->only(['id', 'name', 'status']), 'settings' => [...$setting->toArray(), 'application_package' => $sharedCredentials['application_package'] ?? 'id.dana', 'application_name' => $sharedCredentials['application_name'] ?? ''],
             'forwarderDownloads' => ForwarderDownloads::available(),
+            'qrisProfiles' => $role === 'owner' ? app(SharedQris::class)->profiles($store) : [],
+            'qrisProfileId' => $profile,
+            'sharedBroker' => (bool) config('services.forwarder.shared_broker'),
             'configured' => ['midtrans' => filled($setting->credentials['server_key'] ?? null), 'custom' => filled($setting->credentials['qris_payload'] ?? null)],
-            'qrisParser' => $setting->credentials['notification_parser'] ?? app(QrisNotificationParser::class)->defaults(), 'hasQrisParser' => isset($setting->credentials['notification_parser']),
-            'canParser' => CatalogAccess::has($request, $role, 'payments.parsers'),
+            'qrisParser' => $sharedCredentials['notification_parser'] ?? app(QrisNotificationParser::class)->defaults(), 'hasQrisParser' => isset($sharedCredentials['notification_parser']),
+            'canParser' => CatalogAccess::has($request, $role, 'payments.parsers') && (! $profile || $role === 'owner'),
             'canConfirmPayment' => CatalogAccess::has($request, $role, 'payments.confirm'), 'canConnect' => $role === 'owner', 'canPolicy' => CatalogAccess::has($request, $role, 'payments.policy'), 'canCheckout' => CatalogAccess::has($request, $role, 'checkout.manage'),
             'modulePrice' => app(CommerceModules::class)->price(), 'invoices' => $page->items(), 'filters' => $list->filters, 'pagination' => ListQuery::meta($page),
-            'callbackUrl' => url('/api/commerce/midtrans/'.$store->id), 'forwardUrl' => url('/api/commerce/forward/'.$store->id)]);
+            'callbackUrl' => url('/api/commerce/midtrans/'.$store->id), 'forwardUrl' => $profile ? url('/api/commerce/qris-profiles/'.$profile.'/forward') : url('/api/commerce/forward/'.$store->id)]);
     }
 
     public function save(Request $request, Store $store): RedirectResponse
@@ -61,6 +67,12 @@ class CommerceSettingsController extends Controller
             abort_unless($setting->custom_licensed_at, 403, 'Modul QRIS custom belum aktif.');
             $input = $request->validate(['parser' => 'required|array']);
             $parser = app(QrisNotificationParser::class)->validate($input['parser']);
+            if ($profile = $setting->credentials['qris_profile_id'] ?? null) {
+                $this->owner($request, $store);
+                app(SharedQris::class)->saveParser($profile, (int) $store->owner_id, $parser);
+
+                return back()->with('success', 'Penangkap QRIS bersama diperbarui untuk seluruh toko yang memakai profil ini.');
+            }
             DB::transaction(function () use ($store, $parser) {
                 $locked = app(CustomerCommerce::class)->settings($store)->newQuery()->where('store_id', $store->id)->lockForUpdate()->firstOrFail();
                 $locked->update(['credentials' => [...($locked->credentials ?? []), 'notification_parser' => $parser]]);
@@ -71,6 +83,14 @@ class CommerceSettingsController extends Controller
         if ($action === 'connection') {
             $data = $request->validate(['gateway' => 'required|in:midtrans,custom', 'sandbox' => 'required|boolean', 'server_key' => 'nullable|string|max:250', 'qris_payload' => 'nullable|string|max:4096', 'application_package' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+$/'], 'application_name' => 'nullable|string|max:100']);
             $credentials = $setting->credentials ?? [];
+            $profileId = $request->validate(['qris_profile_id' => 'nullable|uuid'])['qris_profile_id'] ?? null;
+            if ($data['gateway'] === 'custom' && filled($profileId)) {
+                app(CustomerCommerce::class)->ensure($setting->custom_licensed_at !== null, 'Toko ini belum memiliki lisensi modul QRIS.');
+                $credentials = app(SharedQris::class)->connect($store, $credentials, $profileId);
+                $setting->update(['gateway' => 'custom', 'sandbox' => $data['sandbox'], 'credentials' => $credentials]);
+
+                return back()->with('success', 'Toko terhubung ke QRIS bersama. Gunakan satu endpoint profil pada Forwarder.');
+            }
             if (filled($data['server_key'] ?? null)) {
                 $credentials['server_key'] = $data['server_key'];
             }
@@ -90,6 +110,7 @@ class CommerceSettingsController extends Controller
                 $credentials['application_package'] = $data['application_package'] ?? '';
                 $credentials['application_name'] = trim($data['application_name'] ?? '');
                 $credentials['forward_token'] ??= Str::random(64);
+                $credentials = app(SharedQris::class)->connect($store, $credentials, null);
             } else {
                 app(CustomerCommerce::class)->ensure(filled($credentials['server_key'] ?? null), 'Server key Midtrans wajib diisi.');
             }
@@ -134,7 +155,12 @@ class CommerceSettingsController extends Controller
         $setting = app(CustomerCommerce::class)->settings($store);
         abort_unless($setting->custom_licensed_at && filled($setting->credentials['forward_token'] ?? null), 404);
 
-        return response()->json(['token' => $setting->credentials['forward_token']])->header('Cache-Control', 'private, no-store');
+        $credentials = $setting->credentials;
+        if ($profile = $credentials['qris_profile_id'] ?? null) {
+            $credentials = app(SharedQris::class)->credentials($profile, (int) $store->owner_id);
+        }
+
+        return response()->json(['token' => $credentials['forward_token']])->header('Cache-Control', 'private, no-store');
     }
 
     public function testParser(Request $request, Store $store, QrisNotificationParser $parser): JsonResponse

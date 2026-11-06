@@ -35,6 +35,14 @@ class HanshopIdentity
             throw ValidationException::withMessages(['identifier' => 'Hanshop belum dapat dihubungi. Silakan coba kembali.']);
         }
         if (! $response->successful() || $response->json('status') !== 'SUCCESS') {
+            if (str_starts_with($path, 'qris/')) {
+                $message = match ($response->json('data.code')) {
+                    'MERCHANT_OWNER_NOT_AUTHORIZED' => 'QRIS Hanshop hanya dapat dihubungkan oleh akun owner yang disetujui administrator.',
+                    'AMOUNT_UNAVAILABLE' => 'Nominal pembayaran QRIS sedang penuh atau bertabrakan dengan invoice lain. Coba kembali beberapa saat lagi.',
+                    default => 'Layanan QRIS bersama belum siap. Hubungi administrator atau coba kembali dengan pesanan yang sama.',
+                };
+                throw ValidationException::withMessages(['payment' => $message]);
+            }
             if ($supplier) {
                 $status = $response->status();
                 if (in_array($path, ['supplier/deposit', 'supplier/deposit-status'], true)) {

@@ -30,7 +30,7 @@ class ProcessCustomerCommerce extends Command
                 return false;
             }
             try {
-                if ($order->payment_status === 'unpaid' && $order->gateway === 'midtrans') {
+                if ($order->payment_status === 'unpaid' && ($order->gateway === 'midtrans' || filled($order->payment_credentials['shared_reservation'] ?? null))) {
                     app(CustomerPayments::class)->refresh($order);
                 }
                 $order->refresh();

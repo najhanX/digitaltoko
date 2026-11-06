@@ -16,6 +16,7 @@ use App\Models\StorePaymentSetting;
 use App\Models\SupplierConnection;
 use App\Support\HanshopIdentity;
 use App\Support\PlatformHost;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -154,6 +155,8 @@ class CustomerCommerce
             $unique = 0;
             $merchant = null;
             $active = null;
+            $sharedReference = null;
+            $sharedExpires = null;
             if ($gateway === 'custom') {
                 $merchant = hash('sha256', app(CustomQris::class)->identity($credentials['qris_payload']));
                 DB::table('commerce_locks')->insertOrIgnore(['id' => $merchant]);
@@ -168,14 +171,25 @@ class CustomerCommerce
                     }
                 }
                 $this->ensure($active !== null, 'Kode pembayaran sedang penuh. Coba beberapa saat lagi.');
+                if (config('services.forwarder.shared_broker')) {
+                    $digest = hash('sha256', $store->id.':'.$key);
+                    $sharedReference = substr($digest, 0, 8).'-'.substr($digest, 8, 4).'-4'.substr($digest, 13, 3).'-8'.substr($digest, 17, 3).'-'.substr($digest, 20, 12);
+                    $reservation = app(SharedQris::class)->reserve($store, $sharedReference, $amount, $inquiry?->expires_at ?? now()->addMinutes(15), $merchant);
+                    $this->ensure(isset($reservation['total']) && is_int($reservation['total']) && $reservation['total'] > $amount && $reservation['total'] <= $amount + 999, 'Reservasi nominal QRIS belum dapat dipastikan. Coba kembali dengan pesanan yang sama.');
+                    $unique = $reservation['total'] - $amount;
+                    $active = hash('sha256', $merchant.':'.$reservation['total']);
+                    $sharedExpires = Carbon::parse($reservation['expires_at']);
+                    $this->ensure($sharedExpires->isFuture(), 'Reservasi pembayaran sudah kedaluwarsa. Buat pesanan baru.');
+                    $credentials['shared_reservation'] = $sharedReference;
+                }
             }
             $total = $amount + $fee + $unique;
-            $order = CustomerOrder::create(['store_id' => $store->id, 'customer_id' => $customer?->id, 'product_id' => $product?->id, 'inquiry_id' => $inquiry?->id, 'is_sandbox' => $store->sandbox, 'number' => ($store->sandbox ? 'SB' : 'DT').Str::ulid(),
+            $order = CustomerOrder::create(['id' => $sharedReference ?? (string) Str::uuid(), 'store_id' => $store->id, 'customer_id' => $customer?->id, 'product_id' => $product?->id, 'inquiry_id' => $inquiry?->id, 'is_sandbox' => $store->sandbox, 'number' => ($store->sandbox ? 'SB' : 'DT').Str::ulid(),
                 'guest_checkout_hash' => ! $customer && $channel === 'web' ? ($input['guest_checkout_hash'] ?? null) : null, 'idempotency_key' => $key, 'request_hash' => $hash, 'channel' => $channel, 'purpose' => $purpose, 'gateway' => $gateway, 'phone' => $phone, 'email' => $email, 'destination' => $destination,
                 'snapshot' => [...$snapshot, 'refund_unique' => $setting->refund_unique, 'topup_unique' => $setting->topup_unique, 'fee_payer' => $setting->fee_payer, 'sandbox' => $setting->sandbox],
                 'amount' => $amount, 'fee' => $fee, 'unique_code' => $unique, 'total' => $total, 'credit_amount' => $purpose === 'topup' ? $amount + ($gateway === 'custom' && $setting->topup_unique ? $unique : 0) : 0,
                 'refund_amount' => $amount + ($gateway === 'custom' && $setting->refund_unique ? $unique : 0), 'merchant_key' => $merchant, 'active_amount_key' => $active,
-                'payment_credentials' => in_array($gateway, ['wallet', 'sandbox'], true) ? null : $credentials, 'expires_at' => $inquiry?->expires_at ?? now()->addMinutes(15)]);
+                'payment_credentials' => in_array($gateway, ['wallet', 'sandbox'], true) ? null : $credentials, 'expires_at' => $sharedExpires ?? $inquiry?->expires_at ?? now()->addMinutes(15)]);
             app(Vouchers::class)->redeem($voucher, 'order', $order->id, $order->is_sandbox, customer: $customer);
             foreach ($candidates as $index => $candidate) {
                 $mapping = ProductMapping::with('item.connection')->findOrFail($candidate['mapping_id']);

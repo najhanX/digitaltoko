@@ -6,6 +6,7 @@ use App\Models\CommerceReceipt;
 use App\Models\CustomerOrder;
 use App\Models\Store;
 use App\Models\StorePaymentSetting;
+use App\Support\HanshopIdentity;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
@@ -179,6 +180,14 @@ class CustomerPayments
 
     public function refresh(CustomerOrder $order): ?array
     {
+        if ($order->gateway === 'custom' && filled($order->payment_credentials['shared_reservation'] ?? null) && $order->payment_status !== 'paid') {
+            $result = app(HanshopIdentity::class)->call('qris/status', ['reference' => $order->payment_credentials['shared_reservation'], 'store' => $order->store_id]);
+            if (is_array($result['receipt'] ?? null)) {
+                app(SharedQris::class)->applyReceipt($result['receipt']);
+            }
+
+            return $result;
+        }
         if ($order->gateway !== 'midtrans' || $order->payment_status === 'paid') {
             return null;
         }
@@ -321,21 +330,24 @@ class CustomerPayments
         });
     }
 
-    public function custom(Store $store, array $data, ?array $context = null): void
+    public function custom(?Store $store, array $data, ?array $context = null): void
     {
-        $setting = app(CustomerCommerce::class)->settings($store);
-        $credentials = $context ?? $setting->credentials ?? [];
-        app(CustomerCommerce::class)->ensure($setting->custom_licensed_at !== null, 'Lisensi QRIS custom tidak aktif.');
+        $setting = $store ? app(CustomerCommerce::class)->settings($store) : null;
+        $credentials = $context ?? $setting?->credentials ?? [];
+        if ($profile = $credentials['qris_profile_id'] ?? null) {
+            $credentials = app(SharedQris::class)->credentials($profile, $store ? (int) $store->owner_id : null);
+        }
+        app(CustomerCommerce::class)->ensure(isset($credentials['qris_profile_id']) || $setting?->custom_licensed_at !== null, 'Lisensi QRIS custom tidak aktif.');
         $package = $credentials['application_package'] ?? 'id.dana';
         $sourceMatches = filled($package)
             ? ($data['application_package'] ?? '') === $package
             : filled($credentials['application_name'] ?? '') && mb_strtolower(trim($data['app_name'] ?? '')) === mb_strtolower(trim($credentials['application_name']));
         abort_unless($sourceMatches, 422, 'Aplikasi sumber notifikasi tidak cocok dengan pengaturan toko.');
         $text = ($data['title'] ?? '').' '.($data['text'] ?? '');
-        $current = $setting->credentials ?? [];
+        $current = $setting?->credentials ?? [];
         $sameSource = ($current['application_package'] ?? 'id.dana') === ($credentials['application_package'] ?? 'id.dana')
             && mb_strtolower(trim($current['application_name'] ?? '')) === mb_strtolower(trim($credentials['application_name'] ?? ''));
-        $parserConfig = ($sameSource ? $current['notification_parser'] ?? null : null) ?? ($credentials['notification_parser'] ?? null);
+        $parserConfig = isset($credentials['qris_profile_id']) ? ($credentials['notification_parser'] ?? null) : (($sameSource ? $current['notification_parser'] ?? null : null) ?? ($credentials['notification_parser'] ?? null));
         if ($parserConfig !== null) {
             $parsed = app(QrisNotificationParser::class)->parse($parserConfig, $data);
             app(CustomerCommerce::class)->ensure($parsed['matched'], $parsed['reason']);
@@ -354,6 +366,11 @@ class CustomerPayments
         app(CustomerCommerce::class)->ensure($at->lte(now()->addSeconds(30)) && $at->gte(now()->subDay()), 'Waktu notifikasi di luar batas pemeriksaan.');
         $merchant = hash('sha256', app(CustomQris::class)->identity($credentials['qris_payload']));
         $receiptId = filled($parsed['fields']['referensi'] ?? null) ? 'reference:'.mb_strtolower(trim($parsed['fields']['referensi'])) : $data['event_id'];
+        if (filled($credentials['qris_profile_id'] ?? null)) {
+            app(SharedQris::class)->ingest($credentials, $receiptId, $amount, $at, $data['application_package']);
+
+            return;
+        }
         $event = 'custom:'.hash('sha256', $merchant.':'.$receiptId);
         if (CommerceReceipt::where('event', $event)->exists()) {
             return;
@@ -387,9 +404,15 @@ class CustomerPayments
             $commerce->ensure($at->gte($locked->created_at) && $at->lte(now()), 'Waktu pembayaran harus setelah pesanan dibuat dan tidak boleh di masa depan.');
             $commerce->ensure((int) $data['received_amount'] === $locked->total, 'Nominal diterima harus sama dengan total invoice termasuk kode unik.');
             $reference = trim($data['reference']);
-            $event = 'custom-manual:'.hash('sha256', $locked->merchant_key.':'.mb_strtolower($reference));
+            $event = 'custom:'.hash('sha256', $locked->merchant_key.':reference:'.mb_strtolower($reference));
             $locked->update(['snapshot' => [...$locked->snapshot, 'payment_confirmation' => ['actor' => $actor, 'reference' => $reference, 'amount' => (int) $data['received_amount'], 'note' => $data['note'], 'paid_at' => $at->toIso8601String(), 'at' => now()->toIso8601String()]]]);
-            $commerce->paid($locked, $event, (int) $data['received_amount'], $at);
+            if (filled($locked->payment_credentials['shared_reservation'] ?? null)) {
+                $receipt = app(SharedQris::class)->receive($locked->merchant_key, 'reference:'.mb_strtolower($reference), $locked->total, $at, $locked->payment_credentials['application_package'] ?? 'manual')['receipt'];
+                $commerce->ensure(($receipt['reference'] ?? null) === $locked->id && ($receipt['store_id'] ?? null) === $locked->store_id, 'Bukti ini tidak terikat ke invoice tersebut. Periksa nominal, referensi dan waktu pembayaran.');
+                app(SharedQris::class)->applyReceipt($receipt);
+            } else {
+                $commerce->paid($locked, $event, (int) $data['received_amount'], $at);
+            }
         }, 3);
     }
 }

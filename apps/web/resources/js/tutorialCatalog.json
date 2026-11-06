@@ -2180,7 +2180,7 @@
         "title": "Pilih aplikasi dan sambungkan toko",
         "paragraphs": [
           "Di aplikasi HansDev Forwarder buka Sumber. Cari dan pilih aplikasi merchant yang menerima uang; aplikasi lain dapat dipilih dari daftar terpasang atau package manual. Samakan dengan package/nama yang disimpan pada gateway DigitalToko.",
-          "Buka Koneksi → Endpoint sendiri · POST JSON. Salin Endpoint dan Bearer token dari popup Hans Forward di panel toko. Gunakan token saja tanpa awalan Bearer pada kolom token. Pertahankan JSON bawaan yang menyertakan event_id, application_package, app_name, title, text dan occurred_at; simpan koneksi."
+          "Buka Koneksi → DigitalToko · QRIS bersama (APK 1.0.4). Salin endpoint profil dan Bearer token dari panel toko, tanpa awalan Bearer. Untuk beberapa toko dengan QRIS/HP yang sama, pilih profil QRIS yang sama di setiap toko. Cukup satu koneksi HP, jangan broadcast ke beberapa endpoint. Pencocokan Hanshop perlu diaktifkan administrator. Selesaikan antrean lama sebelum mengganti mode/endpoint, jangan menghapus mutasi belum terkirim."
         ],
         "visual": {
           "image": "/guides/steps/hansdev-device-sources.png",
@@ -2230,10 +2230,10 @@
             "height": 2400,
             "capture": "device",
             "exampleData": true,
-            "caption": "Pada Koneksi, pilih Endpoint sendiri · POST JSON; isi endpoint dan Bearer token dari panel toko Anda.",
+            "caption": "Contoh layar versi sebelumnya. Pada APK 1.0.4 pilih DigitalToko · QRIS bersama, lalu isi endpoint profil dan token.",
             "markers": [
               {
-                "label": "Pilih POST JSON",
+                "label": "Mode koneksi",
                 "x": 50,
                 "y": 32,
                 "w": 77,
@@ -4004,10 +4004,10 @@
             "height": 2400,
             "capture": "device",
             "exampleData": true,
-            "caption": "Pada Koneksi, pilih Endpoint sendiri · POST JSON; isi endpoint dan Bearer token dari panel toko Anda.",
+            "caption": "Contoh layar versi sebelumnya. Pada APK 1.0.4 pilih DigitalToko · QRIS bersama, lalu isi endpoint profil dan token.",
             "markers": [
               {
-                "label": "Pilih POST JSON",
+                "label": "Mode koneksi",
                 "x": 50,
                 "y": 32,
                 "w": 77,

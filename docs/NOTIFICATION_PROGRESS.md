@@ -138,3 +138,20 @@ Status: rencana disetujui; checkpoint ini dibuat sebelum mengubah modul notifika
 3. Validasi pengiriman email nyata pada konfigurasi publik/produksi belum dilakukan. Konfigurasi SMTP, nama domain publik dan DNS email tetap perlu diperiksa saat deployment. Jangan mencantumkan credential atau OTP nyata dalam catatan/repo.
 
 Pembaruan checkpoint ini hanya dokumentasi. Tidak mengubah konfigurasi/data, menyalakan maintenance, mengirim email, atau mengulang suite tes di atas.
+
+
+## 6 November 2026 — QRIS bersama lintas toko dan Hanshop
+
+- QRIS dengan identitas merchant yang sama menjadi satu profil milik owner. Setiap toko tetap membeli lisensi modul sendiri, memilih profil yang sama, dan memakai saldo/riwayatnya sendiri. Profil menyimpan token dan penangkap terenkripsi, tidak mengikuti penghapusan salah satu toko. Pemilihan profil lintas owner ditolak.
+- Endpoint `/api/commerce/qris-profiles/{profile}/forward` menerima satu pengiriman HP. Mode APK **DigitalToko · QRIS bersama** mempertahankan event ID/waktu/judul/isi asli dan hanya mengakui JSON SUCCESS. Antrean lama tidak dialihkan, APK dipasang sebagai update tanpa uninstall. APK 1.0.4+5 ARM64: 17.692.970 byte; SHA-256 `2c0248df4dc2f118e2668298a4b7995241966d59b31ad6f0eb2f2afb9cb7941e`.
+- Ketika broker aktif, API Hanshop menjadi otoritas reservasi nominal akhir. Reservasi terlindungi lock yang sama dengan invoice Hanshop, sewa DigitalToko dan topup Hanshop. Harga dasar berbeda pun tidak boleh menghasilkan nominal aktif yang sama untuk QRIS yang sama.
+- Semua penerimaan valid dicatat, termasuk tanpa pasangan invoice. Keputusan unmatched/review tidak dialihkan ke invoice yang dibuat belakangan. Hanya satu pasangan nominal/waktu yang tepat boleh dilunasi. Replay memakai receipt yang sama, saldo topup dikreditkan sekali. Konfirmasi manual menggunakan namespace referensi yang sama.
+- Penerima pusat membedakan pembayaran Hanshop dan toko. Tabel mutasi Hanshop tetap dapat memuat seluruh uang masuk pada QRIS utamanya, tetapi worker, transaksi direct dan pembayaran sewa hanya menggunakan mutasi yang terikat ke invoice Hanshop tersebut.
+- Server toko mengulang pemeriksaan status reservasi melalui rekonsiliasi/pemeriksaan pembayaran. Gangguan broker pada ingress menghasilkan HTTP 503 agar antrean HP mencoba ulang dengan ID/waktu asli.
+- Pemindahan aplikasi penerima profil diblokir selagi ada invoice berjalan pada merchant tersebut. Perubahan penangkap bersama hanya oleh owner, karena berdampak pada beberapa toko. Staff tetap memantau/konfirmasi pembayaran sesuai izin toko.
+
+Aktivasi terkoordinasi dan migrasi SQL manual API dijelaskan di DEPLOYMENT.md. Pengujian tidak membeli produk atau mengirim pembayaran sungguhan. Ketahanan idle Android dan pembayaran bank nyata perlu dipantau setelah update dipasang pengguna.
+
+Nominal final dikarantina hingga 24 jam setelah expiry (sesuai perlindungan invoice DigitalToko). Nominal receipt yang baru masuk juga tidak langsung dipakai ulang. Ingress Hanshop lama tanpa ID/waktu asli diterima sebagai review-only, bukan otomatis lunas.
+
+Validasi tahap ini: 107 tes pembayaran/pascabayar Laravel, 7 tes profil bersama (32 assertion), 42 tes frontend, build/TypeScript/Pint, serta suite API 225 tes (223 lulus, 2 opt-in lain dilewati pada run MySQL). Empat tes QRIS khusus termasuk MySQL terpisah juga lulus. Android: analyze, 8 tes Flutter, 11 tes native, lint dan release ARM64 lulus. Sertifikat APK sama dengan 1.0.3: SHA-256 3a8b6230481abc8b9e67e3ea42bad7b3d8812f65399c4dbfe8c1341adf83fd62.

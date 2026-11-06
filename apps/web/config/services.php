@@ -2,6 +2,7 @@
 
 return [
     'forwarder' => [
+        'shared_broker' => env('HANSDEV_SHARED_QRIS_BROKER', false),
         'apk_path' => env('HANSDEV_FORWARDER_APK_PATH') ?: storage_path('app/releases/HansDev-Forwarder.apk'),
         'tools' => [
             'windows' => env('HANSDEV_FORWARDER_TOOLS_WINDOWS_PATH') ?: storage_path('app/releases/HansDev-Listener-windows.zip'),
